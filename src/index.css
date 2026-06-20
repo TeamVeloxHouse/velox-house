@@ -27,7 +27,8 @@ h1,
 h2,
 h3,
 h4 {
-  font-family: "Playfair Display", serif;
+  font-family: "Sora", "Inter", system-ui, sans-serif;
+  letter-spacing: -0.02em;
 }
 
 /* Subtle dot grid texture */
