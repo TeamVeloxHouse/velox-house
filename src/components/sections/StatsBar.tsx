@@ -4,7 +4,7 @@ import { inViewport } from "../../lib/utils";
 
 /**
  * Counts up from 0 to `target` once the element scrolls into view.
- * `suffix` is appended (e.g. "%", "x"). `prefix` for things like "£".
+ * `suffix` is appended (e.g. "x", "min").
  */
 function CountUp({
   target,
@@ -25,7 +25,6 @@ function CountUp({
     const start = performance.now();
     const tick = (now: number) => {
       const progress = Math.min((now - start) / duration, 1);
-      // ease-out cubic
       const eased = 1 - Math.pow(1 - progress, 3);
       setValue(Math.round(eased * target));
       if (progress < 1) frame = requestAnimationFrame(tick);
@@ -44,16 +43,16 @@ function CountUp({
 
 const STATS = [
   {
-    node: "72h",
-    label: "Average deployment time. From signed to shipped.",
+    node: "Unlimited",
+    label: "Email sending on every plan — straight from your own inbox.",
   },
   {
-    node: <CountUp target={40} suffix="%" />,
-    label: "Average reduction in manual marketing admin.",
+    node: <CountUp target={5} suffix="min" />,
+    label: "From sign-up to your first researched, ready-to-send campaign.",
   },
   {
     node: <CountUp target={3} suffix="x" />,
-    label: "Average pipeline growth in the first 90 days.",
+    label: "Higher reply rates with AI-personalised messaging vs. generic cold email.",
   },
 ];
 

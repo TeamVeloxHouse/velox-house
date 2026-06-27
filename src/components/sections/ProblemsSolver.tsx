@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { inViewport } from "../../lib/utils";
+import { inViewport, SIGNUP_URL } from "../../lib/utils";
 
 interface Problem {
   tile: string;
@@ -13,59 +13,59 @@ interface Problem {
 const PROBLEMS: Problem[] = [
   {
     tile: "I have no consistent flow of new leads",
-    headline: "Your pipeline is empty because your outreach isn't running.",
-    body: "We deploy a personalised outreach operation contacting 500+ ideal clients every month. Messages reference real, specific things about each business. Response rates run 3–5× higher than generic cold email.",
-    solutions: ["Outreach Engine", "LinkedIn Signal", "War Room Dashboard"],
-    chip: "Red Chip from £1,500/mo",
+    headline: "Your pipeline is empty because nothing is prospecting for you.",
+    body: "Velox House discovers decision-makers that match your ideal client — by role, industry, size and location — and verifies their email. Add them to a campaign and personalised outreach goes out automatically.",
+    solutions: ["Find Leads", "AI Messaging", "Sequences"],
+    chip: "Starter — £29/mo",
   },
   {
-    tile: "My website isn't converting visitors into enquiries",
-    headline: "Your website is leaking leads every single day.",
-    body: "We build websites around your ideal client's journey — clear messaging, specific CTAs, conversion elements. Live in 72 hours. Tracked from day one.",
-    solutions: ["Custom Website", "War Room Dashboard"],
-    chip: "White Chip from £750/mo",
+    tile: "I spend hours writing cold emails that get ignored",
+    headline: "Generic cold emails get deleted. Personalised ones get replies.",
+    body: "The AI researches each prospect's business — their pain points and angles — then writes a personalised email, LinkedIn note or follow-up for you. You review and send. Reply rates run 3× higher than templated blasts.",
+    solutions: ["AI Research", "AI Messaging", "Templates"],
+    chip: "Starter — £29/mo",
   },
   {
-    tile: "I'm paying an agency but don't know what I'm getting",
-    headline: "If you can't see exactly what your agency did last week, that's the problem.",
-    body: "We replace your agency with a full stack you own and see in real time. Every message sent, every post published, every lead — visible in your war room. No monthly PDF reports.",
-    solutions: ["War Room Dashboard", "Outreach Engine", "Content Machine"],
-    chip: "Red Chip from £1,500/mo",
+    tile: "I forget to follow up and leads go cold",
+    headline: "Most replies come from the follow-ups you never send.",
+    body: "Build a multi-step sequence once and it runs from your own inbox on schedule — pausing instantly the moment someone replies. Sending is unlimited, so no lead ever slips through the cracks.",
+    solutions: ["Sequences", "Inbox", "Unlimited sending"],
+    chip: "Growth — £69/mo",
   },
   {
-    tile: "I have no CRM or pipeline visibility",
-    headline: "You're running your business on guesswork and a spreadsheet.",
-    body: "We build a custom CRM around how your business actually works. Your pipeline stages, your lead sources, your follow-up process. Every lead tracked from first touch to closed deal.",
-    solutions: ["AI-Powered CRM", "War Room Dashboard"],
-    chip: "White Chip from £750/mo",
+    tile: "I can't tell what's actually working",
+    headline: "You're sending into the dark with no idea what converts.",
+    body: "Live analytics show every open, reply, meeting and pound of pipeline. See your best-performing messages and campaigns, and double down on what books meetings.",
+    solutions: ["Analytics", "Pipeline", "Engagement scoring"],
+    chip: "Starter — £29/mo",
   },
   {
-    tile: "Marketing is taking too much of my time",
-    headline: "You're running a business, not a marketing agency.",
-    body: "We take the entire marketing operation off your plate — content scheduled, outreach running, leads tracked. Most clients spend less than 20 minutes a week on their marketing after we set it up.",
-    solutions: ["Content Machine", "Outreach Engine", "AI-Powered CRM"],
-    chip: "Blue Chip from £2,500/mo",
+    tile: "My emails keep landing in spam",
+    headline: "Your domain has a deliverability problem — and it's costing you replies.",
+    body: "Velox House checks SPF, DKIM and DMARC, monitors your domain reputation and bounce rate, and includes a pre-send spam checker. Send from your own warmed mailbox so you land in the inbox.",
+    solutions: ["Deliverability", "Domain health checks", "Own-mailbox sending"],
+    chip: "Free — £0/mo",
   },
   {
-    tile: "I'm locked in a contract that isn't working",
-    headline: "You shouldn't be paying for something that isn't delivering.",
-    body: "We operate with no contracts at any level. Start when you're ready. Stop when you want. When your current contract ends, we can have your full replacement stack live before you've sent the cancellation email.",
-    solutions: ["Full Stack", "War Room Dashboard"],
-    chip: "Any chip — no contract ever",
+    tile: "I don't know who I should even be targeting",
+    headline: "The right list is half the battle — and most people guess.",
+    body: "Search a real database of companies and people, filter to your exact ideal customer, and let scoring surface the prospects most likely to engage. No more buying stale, generic lists.",
+    solutions: ["Find Leads", "AI Research", "Engagement scoring"],
+    chip: "Starter — £29/mo",
   },
   {
-    tile: "My emails are going to spam",
-    headline: "Your email domain has a deliverability problem — and it's costing you leads.",
-    body: "We configure your email infrastructure properly. SPF, DKIM, DMARC. Sending domain setup. Warming protocols that get your messages into inboxes.",
-    solutions: ["Email Infrastructure Setup", "Outreach Engine"],
-    chip: "White Chip from £750/mo",
+    tile: "My team's outreach is disorganised and duplicated",
+    headline: "Without one shared system, leads get dropped or double-contacted.",
+    body: "One workspace for the whole team — shared contacts, pipeline and sequences, with seats for each member. Everyone sees who's been contacted and what stage every deal is at.",
+    solutions: ["Workspace & seats", "Pipeline", "Shared sequences"],
+    chip: "Growth — £69/mo",
   },
   {
-    tile: "I have no social media presence that drives business",
-    headline: "Social media that doesn't convert is just noise.",
-    body: "We don't post for the sake of posting. Every piece of content attracts your ideal clients. 30 posts a month across LinkedIn, Instagram, and TikTok. Written, designed, scheduled.",
-    solutions: ["Content Machine", "LinkedIn Signal"],
-    chip: "Red Chip from £1,500/mo",
+    tile: "Outreach tools are too expensive to even try",
+    headline: "You shouldn't have to pay to find out if it works.",
+    body: "Start on the free forever plan — 50 contacts, 50 AI credits and unlimited sending, no card required. Upgrade only once it's booking you meetings. No contracts, cancel anytime.",
+    solutions: ["Free forever plan", "Unlimited sending", "No credit card"],
+    chip: "Free — £0/mo",
   },
 ];
 
@@ -133,10 +133,10 @@ export default function ProblemsSolver() {
                   </h3>
                   <p className="mt-4 text-[#A0A0A0]">{current.body}</p>
                   <a
-                    href="#seat"
+                    href={SIGNUP_URL}
                     className="mt-6 inline-block rounded-md bg-[#DA291C] px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-[#FF3B2D]"
                   >
-                    Fix This Now →
+                    Fix This Free →
                   </a>
                 </div>
 

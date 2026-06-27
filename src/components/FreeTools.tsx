@@ -1,5 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { SIGNUP_URL } from "../lib/utils";
 import {
   Monitor,
   Mail,
@@ -114,10 +115,10 @@ function ResultCTA({ line }: { line: string }) {
     <div className="mt-6 rounded-lg border border-[#DA291C]/30 bg-[#0A0A0A] p-5">
       <p className="text-sm text-[#A0A0A0]">{line}</p>
       <a
-        href="/#seat"
+        href={SIGNUP_URL}
         className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-[#DA291C] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#FF3B2D]"
       >
-        Book a free call <ArrowRight size={15} />
+        Start free <ArrowRight size={15} />
       </a>
     </div>
   );

@@ -7,6 +7,15 @@ export function cn(...classes: Array<string | false | null | undefined>): string
 }
 
 /**
+ * The Velox House SaaS app. Marketing CTAs (Start free / Sign in) point here.
+ * Override with VITE_APP_URL in dev (e.g. http://localhost:3002).
+ */
+export const APP_URL =
+  import.meta.env.VITE_APP_URL ?? "https://app.veloxhouse.co.uk";
+export const SIGNUP_URL = `${APP_URL}/signup`;
+export const LOGIN_URL = `${APP_URL}/login`;
+
+/**
  * Shared framer-motion fade-up variant used across sections.
  */
 export const fadeUp = {

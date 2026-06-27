@@ -4,19 +4,19 @@ import { inViewport } from "../../lib/utils";
 const QUOTES = [
   {
     quote:
-      "We replaced four tools and an agency retainer with Velox. Pipeline doubled in 60 days and I can finally see what's working.",
+      "We booked 14 meetings in our first month. The AI writes better cold emails than I do, and the follow-ups run themselves.",
     name: "Sarah Patel",
     role: "Founder, Northwind Ltd",
   },
   {
     quote:
-      "Live in 72 hours sounded like marketing. It wasn't. Site, CRM and outreach were all running by the end of week one.",
+      "Set up in an afternoon, sending from our own domain. Replies tripled and nothing lands in spam anymore.",
     name: "James Okafor",
     role: "Director, Helios Group",
   },
   {
     quote:
-      "No contract was the unlock. We started small, scaled when it worked, and now they run our entire growth operation.",
+      "The free plan got us started with zero risk. We upgraded the week the meetings started rolling in.",
     name: "Mira Chen",
     role: "CEO, Atlas Studio",
   },

@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { inViewport } from "../../lib/utils";
+import { inViewport, SIGNUP_URL } from "../../lib/utils";
 import { submitLead } from "../../lib/supabase";
 
-const CHIP_TIERS = ["White Chip", "Red Chip", "Blue Chip", "Black Chip"];
+const PLAN_OPTIONS = ["Not sure yet", "Free", "Starter", "Growth", "Pro"];
 
 const REASSURANCE = [
-  "No contract. Stop, pause, or scale anytime.",
-  "Full stack live within 72 hours.",
-  "First intel report within 48 hours.",
+  "Free forever plan — no credit card.",
+  "Unlimited email sending on every plan.",
+  "Set up and sending in minutes.",
 ];
 
 const inputClass =
@@ -18,7 +18,7 @@ export default function FinalCTA() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [businessName, setBusinessName] = useState("");
-  const [chip, setChip] = useState(CHIP_TIERS[0]);
+  const [plan, setPlan] = useState(PLAN_OPTIONS[0]);
   const [message, setMessage] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
@@ -38,7 +38,7 @@ export default function FinalCTA() {
         name,
         email,
         businessName,
-        chipTier: chip,
+        chipTier: plan,
         message,
         source: "website_contact_form",
       });
@@ -64,90 +64,104 @@ export default function FinalCTA() {
           }}
         >
           <h2 className="mx-auto max-w-3xl font-display text-4xl font-extrabold tracking-[-0.02em] text-white md:text-6xl">
-            Ready to build the system that grows your business?
+            Start sending in the next five minutes.
           </h2>
           <p className="mx-auto mt-6 max-w-xl text-lg text-[#A0A0A0]">
-            Book a 30-minute conversation. We'll show you exactly what your stack
-            would look like, what it would cost, and what to expect in your first
-            90 days.
+            Create your free account and get lead discovery, AI research and
+            messaging, and unlimited sending — no credit card, no contract. Upgrade
+            only when it's booking you meetings.
           </p>
 
-          {submitted ? (
-            <div className="mx-auto mt-10 max-w-xl rounded-xl border border-[#DA291C]/30 bg-[#0A0A0A] p-8">
-              <div className="text-3xl text-[#DA291C]">✦</div>
-              <p className="mt-4 text-lg text-white">
-                Seat reserved. We'll be in touch within 24 hours.
-              </p>
-            </div>
-          ) : (
-            <form
-              onSubmit={handleSubmit}
-              className="mx-auto mt-10 max-w-xl text-left"
+          {/* Primary self-serve CTA */}
+          <div className="mt-10">
+            <a
+              href={SIGNUP_URL}
+              className="inline-block rounded-md bg-[#DA291C] px-8 py-4 text-sm font-semibold text-white transition-colors hover:bg-[#FF3B2D]"
             >
-              <div className="grid gap-4 sm:grid-cols-2">
-                <input
-                  type="text"
-                  placeholder="Your name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className={inputClass}
-                />
-                <input
-                  type="email"
-                  placeholder="you@company.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className={inputClass}
-                />
-              </div>
-
-              <input
-                type="text"
-                placeholder="Business name"
-                value={businessName}
-                onChange={(e) => setBusinessName(e.target.value)}
-                className={`${inputClass} mt-4`}
-              />
-
-              <select
-                value={chip}
-                onChange={(e) => setChip(e.target.value)}
-                className={`${inputClass} mt-4`}
-              >
-                {CHIP_TIERS.map((tier) => (
-                  <option key={tier} value={tier} className="bg-[#141414]">
-                    {tier}
-                  </option>
-                ))}
-              </select>
-
-              <textarea
-                placeholder="Tell us a little about your business"
-                rows={4}
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                className={`${inputClass} mt-4 resize-none`}
-              />
-
-              <button
-                type="submit"
-                disabled={submitting}
-                className="mt-4 w-full rounded-md bg-[#DA291C] py-3.5 text-sm font-medium text-white transition-colors hover:bg-[#FF3B2D] disabled:opacity-60"
-              >
-                {submitting ? "Sending…" : "Get Started →"}
-              </button>
-
-              {error && (
-                <p className="mt-3 text-center text-xs text-[#DA291C]">{error}</p>
-              )}
-            </form>
-          )}
+              Start Free — No Card →
+            </a>
+          </div>
 
           {/* Reassurance */}
-          <div className="mt-10 flex flex-wrap justify-center gap-x-8 gap-y-3 text-xs text-[#A0A0A0]">
+          <div className="mt-8 flex flex-wrap justify-center gap-x-8 gap-y-3 text-xs text-[#A0A0A0]">
             {REASSURANCE.map((r) => (
               <span key={r}>{r}</span>
             ))}
+          </div>
+
+          {/* Secondary — talk to us */}
+          <div className="mx-auto mt-14 max-w-xl border-t border-[#1A1A1A] pt-10 text-left">
+            <p className="text-center text-sm text-[#A0A0A0]">
+              Prefer to talk first, or want a hand getting set up? Send us a message.
+            </p>
+
+            {submitted ? (
+              <div className="mt-6 rounded-xl border border-[#DA291C]/30 bg-[#0A0A0A] p-8 text-center">
+                <div className="text-3xl text-[#DA291C]">✦</div>
+                <p className="mt-4 text-lg text-white">
+                  Thanks — we'll be in touch within 24 hours.
+                </p>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="mt-6">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <input
+                    type="text"
+                    placeholder="Your name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className={inputClass}
+                  />
+                  <input
+                    type="email"
+                    placeholder="you@company.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className={inputClass}
+                  />
+                </div>
+
+                <input
+                  type="text"
+                  placeholder="Business name"
+                  value={businessName}
+                  onChange={(e) => setBusinessName(e.target.value)}
+                  className={`${inputClass} mt-4`}
+                />
+
+                <select
+                  value={plan}
+                  onChange={(e) => setPlan(e.target.value)}
+                  className={`${inputClass} mt-4`}
+                >
+                  {PLAN_OPTIONS.map((p) => (
+                    <option key={p} value={p} className="bg-[#141414]">
+                      {p === "Not sure yet" ? "Plan you're interested in" : p}
+                    </option>
+                  ))}
+                </select>
+
+                <textarea
+                  placeholder="Tell us a little about your business"
+                  rows={4}
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  className={`${inputClass} mt-4 resize-none`}
+                />
+
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="mt-4 w-full rounded-md border border-[#2A2A2A] py-3.5 text-sm font-medium text-white transition-colors hover:border-[#444] disabled:opacity-60"
+                >
+                  {submitting ? "Sending…" : "Send Message"}
+                </button>
+
+                {error && (
+                  <p className="mt-3 text-center text-xs text-[#DA291C]">{error}</p>
+                )}
+              </form>
+            )}
           </div>
         </motion.div>
       </div>

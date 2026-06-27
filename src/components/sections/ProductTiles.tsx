@@ -3,34 +3,34 @@ import { inViewport } from "../../lib/utils";
 
 const TILES = [
   {
-    icon: "◆",
-    title: "CRM & Pipeline",
-    desc: "Every lead tracked. Every stage visible. One source of truth.",
-  },
-  {
     icon: "◉",
-    title: "AI Outreach",
-    desc: "Personalised email and LinkedIn sequences that actually convert.",
-  },
-  {
-    icon: "▲",
-    title: "Lead Generation",
-    desc: "Qualified prospects sourced and scored, delivered weekly.",
-  },
-  {
-    icon: "■",
-    title: "Content Engine",
-    desc: "On-brand posts, articles and assets published on autopilot.",
+    title: "Find Leads",
+    desc: "Discover decision-makers by role, industry, company size and location.",
   },
   {
     icon: "✦",
-    title: "Analytics Dashboard",
-    desc: "Live war room. See every result. No more agency PDFs.",
+    title: "AI Research",
+    desc: "Every prospect researched automatically — pain points, angles and fit.",
+  },
+  {
+    icon: "◆",
+    title: "AI Messaging",
+    desc: "Personalised cold emails, LinkedIn notes and follow-ups, written for you.",
   },
   {
     icon: "▶",
-    title: "72-Hour Deployment",
-    desc: "Live within three days. Not three months.",
+    title: "Sequences",
+    desc: "Multi-step follow-up that runs on schedule until they reply.",
+  },
+  {
+    icon: "■",
+    title: "Pipeline & Inbox",
+    desc: "Every reply and deal stage in one place, from first touch to closed.",
+  },
+  {
+    icon: "◐",
+    title: "Analytics & Deliverability",
+    desc: "Track opens, replies and meetings. Keep your domain inbox-safe.",
   },
 ];
 
@@ -45,10 +45,10 @@ export default function ProductTiles() {
           viewport={inViewport}
           className="mb-16 max-w-3xl"
         >
-          <span className="text-sm font-semibold text-[#DA291C]">The product</span>
+          <span className="text-sm font-semibold text-[#DA291C]">The platform</span>
           <h2 className="mt-3 font-display text-4xl font-bold tracking-[-0.02em] text-white md:text-5xl">
-            One system.{" "}
-            <span className="text-[#A0A0A0]">Everything your marketing needs.</span>
+            One platform.{" "}
+            <span className="text-[#A0A0A0]">Everything your outreach needs.</span>
           </h2>
         </motion.div>
 

@@ -1,10 +1,11 @@
 import { motion } from "framer-motion";
+import { SIGNUP_URL } from "../../lib/utils";
 
 const STATS = [
-  { value: "72h", label: "Deployment time" },
-  { value: "0", label: "Contract length" },
-  { value: "1", label: "Unified system" },
-  { value: "24/7", label: "Visibility" },
+  { value: "£0", label: "Free forever plan" },
+  { value: "Unlimited", label: "Email sending" },
+  { value: "AI", label: "Research & writing" },
+  { value: "Your inbox", label: "Send from your domain" },
 ];
 
 export default function Hero() {
@@ -30,7 +31,7 @@ export default function Hero() {
           className="inline-flex items-center gap-2 rounded-full border border-[#222] bg-[#141414] px-3 py-1.5 text-xs text-[#A0A0A0]"
         >
           <span className="h-1.5 w-1.5 rounded-full bg-[#DA291C]" />
-          For ambitious UK businesses · No contract ever
+          Free forever plan · No credit card required
         </motion.div>
 
         {/* H1 */}
@@ -40,7 +41,7 @@ export default function Hero() {
           transition={{ duration: 0.5, delay: 0.05 }}
           className="mt-8 max-w-4xl font-display text-5xl font-extrabold leading-[0.98] tracking-[-0.02em] text-white md:text-7xl lg:text-[88px]"
         >
-          Build the system that grows your business.
+          Cold outreach that books meetings on autopilot.
         </motion.h1>
 
         {/* Subtitle */}
@@ -50,9 +51,10 @@ export default function Hero() {
           transition={{ duration: 0.5, delay: 0.18 }}
           className="mt-8 max-w-2xl text-lg leading-relaxed text-[#A0A0A0] md:text-xl"
         >
-          A complete marketing operation — website, CRM, outreach, content,
-          analytics — deployed in 72 hours. No agency markup. No 12-month
-          contract. Just results you can see.
+          Velox House finds your ideal prospects, researches them with AI, writes
+          personalised emails, and runs follow-up sequences from your own inbox.
+          Track every open, reply and meeting in real time. Start free — no card
+          required.
         </motion.p>
 
         {/* CTAs */}
@@ -63,10 +65,10 @@ export default function Hero() {
           className="mt-10 flex flex-wrap gap-3"
         >
           <a
-            href="#seat"
+            href={SIGNUP_URL}
             className="rounded-md bg-[#DA291C] px-6 py-3.5 text-sm font-medium text-white transition-colors hover:bg-[#FF3B2D]"
           >
-            Get Started — Free →
+            Start Free — No Card →
           </a>
           <a
             href="#how"
@@ -86,7 +88,7 @@ export default function Hero() {
           <div className="grid grid-cols-2 gap-px bg-[#1A1A1A] md:grid-cols-4">
             {STATS.map((stat) => (
               <div key={stat.label} className="bg-[#0A0A0A] p-6">
-                <div className="text-3xl font-bold text-white md:text-4xl">
+                <div className="text-2xl font-bold text-white md:text-3xl">
                   {stat.value}
                 </div>
                 <div className="mt-1 text-sm text-[#A0A0A0]">{stat.label}</div>

@@ -4,7 +4,7 @@ import { Check } from "lucide-react";
 import { cn, inViewport } from "../../lib/utils";
 
 /* ------------------------------------------------------------------ */
-/* Visual 1 — Outreach Engine                                          */
+/* Visual 1 — Find & Research (prospect list)                          */
 /* ------------------------------------------------------------------ */
 
 const PROSPECTS = [
@@ -14,7 +14,7 @@ const PROSPECTS = [
   { name: "Tom Reeves", company: "Vertex Co", status: "Sent", color: "#555" },
 ];
 
-function OutreachVisual() {
+function ProspectsVisual() {
   return (
     <div className="rounded-xl border border-[#222] bg-[#0F0F0F] p-6">
       {/* Window header */}
@@ -24,7 +24,7 @@ function OutreachVisual() {
           <span className="h-3 w-3 rounded-full bg-[#333]" />
           <span className="h-3 w-3 rounded-full bg-[#333]" />
         </div>
-        <span className="text-xs text-[#666]">Outreach Engine</span>
+        <span className="text-xs text-[#666]">Find Leads · Researched prospects</span>
       </div>
 
       {/* Rows */}
@@ -56,13 +56,13 @@ function OutreachVisual() {
 }
 
 /* ------------------------------------------------------------------ */
-/* Visual 2 — Dashboard                                                */
+/* Visual 2 — Analytics dashboard                                      */
 /* ------------------------------------------------------------------ */
 
 const METRICS = [
-  { label: "Leads", value: "1,284" },
+  { label: "Sent", value: "1,284" },
   { label: "Replies", value: "312" },
-  { label: "Booked", value: "48" },
+  { label: "Meetings", value: "48" },
   { label: "Pipeline", value: "£284K" },
 ];
 
@@ -105,19 +105,27 @@ function DashboardVisual() {
 }
 
 /* ------------------------------------------------------------------ */
-/* Visual 3 — Deployment timeline                                      */
+/* Visual 3 — Sequence steps                                           */
 /* ------------------------------------------------------------------ */
 
 const STEPS = [
-  { day: "Day 1", label: "Brand & website built", done: true },
-  { day: "Day 2", label: "CRM & data imported", done: true },
-  { day: "Day 3", label: "Outreach engine live", done: true },
-  { day: "Day 4+", label: "Results in your inbox", done: false },
+  { day: "Day 1", label: "Intro email sent", done: true },
+  { day: "Day 3", label: "Follow-up if no reply", done: true },
+  { day: "Day 6", label: "Value + case study", done: true },
+  { day: "Day 10", label: "Final nudge", done: false },
 ];
 
-function TimelineVisual() {
+function SequenceVisual() {
   return (
     <div className="rounded-xl border border-[#222] bg-[#0F0F0F] p-6">
+      <div className="mb-5 flex items-center gap-3">
+        <div className="flex gap-1.5">
+          <span className="h-3 w-3 rounded-full bg-[#333]" />
+          <span className="h-3 w-3 rounded-full bg-[#333]" />
+          <span className="h-3 w-3 rounded-full bg-[#333]" />
+        </div>
+        <span className="text-xs text-[#666]">Sequence · 4 steps · running</span>
+      </div>
       <div className="space-y-5">
         {STEPS.map((s, i) => (
           <motion.div
@@ -138,12 +146,7 @@ function TimelineVisual() {
             </div>
             <div>
               <div className="text-xs text-[#666]">{s.day}</div>
-              <div
-                className={cn(
-                  "text-sm",
-                  s.done ? "text-white" : "text-[#666]"
-                )}
-              >
+              <div className={cn("text-sm", s.done ? "text-white" : "text-[#666]")}>
                 {s.label}
               </div>
             </div>
@@ -169,26 +172,26 @@ interface Volley {
 
 const VOLLEYS: Volley[] = [
   {
-    eyebrow: "AI Outreach",
-    title: "Build your pipeline on autopilot.",
-    body: "Personalised email and LinkedIn sequences run every day in the background — sourcing prospects, opening conversations, and booking meetings while you focus on closing.",
+    eyebrow: "Find & Research",
+    title: "Find your next 100 clients in minutes.",
+    body: "Search by role, industry, company size and location to surface real decision-makers. Velox House verifies their email and researches each business with AI — pain points, angles and fit — so every message lands personal.",
     cta: "Learn more",
-    visual: <OutreachVisual />,
+    visual: <ProspectsVisual />,
   },
   {
-    eyebrow: "War Room Dashboard",
-    title: "See everything. Control everything.",
-    body: "Live visibility into every lead, every reply, every booking and every pound of pipeline. No more PDF reports. No more 'trust us, it's working.' Just the numbers, in real time.",
+    eyebrow: "Automated Sequences",
+    title: "Follow up automatically. Never drop a lead.",
+    body: "Build multi-step sequences that send from your own inbox on a schedule, and stop the moment someone replies. Sending is unlimited on every plan — so the only limit is how many great prospects you find.",
     cta: "Learn more",
-    visual: <DashboardVisual />,
+    visual: <SequenceVisual />,
     reverse: true,
   },
   {
-    eyebrow: "72-Hour Deployment",
-    title: "Live in 72 hours. No contract.",
-    body: "Most agencies take three months to set up. We're live in three days. Start Monday, stop whenever. Scale when it's working. You're always in control.",
+    eyebrow: "Real-time Analytics",
+    title: "See exactly what's working.",
+    body: "Live tracking of every open, reply, meeting and pound of pipeline. Spot your best-performing messages, watch deliverability stay healthy, and double down on what books meetings — all in one dashboard.",
     cta: "Learn more",
-    visual: <TimelineVisual />,
+    visual: <DashboardVisual />,
   },
 ];
 

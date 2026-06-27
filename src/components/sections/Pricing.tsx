@@ -1,10 +1,11 @@
 import { motion } from "framer-motion";
 import { Check } from "lucide-react";
-import { cn, inViewport } from "../../lib/utils";
+import { cn, inViewport, SIGNUP_URL } from "../../lib/utils";
 
 interface Plan {
   name: string;
   price: string;
+  period: string;
   blurb: string;
   features: string[];
   cta: string;
@@ -13,44 +14,61 @@ interface Plan {
 
 const PLANS: Plan[] = [
   {
-    name: "Starter",
-    price: "£1,800/mo",
-    blurb: "For founder-led teams getting their first system in place.",
+    name: "Free",
+    price: "£0",
+    period: "forever",
+    blurb: "Everything you need to start sending today.",
     features: [
-      "Custom website",
-      "CRM & pipeline",
-      "Lead capture & nurture",
-      "Monthly review",
-      "72-hour deployment",
+      "50 contacts / month",
+      "50 AI credits / month",
+      "Unlimited email sending",
+      "1 seat · 1 mailbox",
+      "AI research & messaging",
+    ],
+    cta: "Start free",
+  },
+  {
+    name: "Starter",
+    price: "£29",
+    period: "/mo",
+    blurb: "For founders getting consistent outreach going.",
+    features: [
+      "300 contacts / month",
+      "500 AI credits / month",
+      "Unlimited email sending",
+      "1 seat · 3 mailboxes",
+      "Sequences & analytics",
     ],
     cta: "Start with Starter",
   },
   {
     name: "Growth",
-    price: "£3,200/mo",
-    blurb: "For businesses ready to scale outbound and content together.",
+    price: "£69",
+    period: "/mo",
+    blurb: "For teams scaling outbound together.",
     features: [
+      "800 contacts / month",
+      "2,000 AI credits / month",
+      "Unlimited email sending",
+      "3 seats · 10 mailboxes",
       "Everything in Starter",
-      "AI outreach engine",
-      "Content engine",
-      "Weekly intel reports",
-      "Priority support",
     ],
     cta: "Start with Growth",
     highlighted: true,
   },
   {
-    name: "Scale",
-    price: "£5,400/mo",
-    blurb: "For ambitious operators running multi-channel acquisition.",
+    name: "Pro",
+    price: "£149",
+    period: "/mo",
+    blurb: "For agencies and high-volume senders.",
     features: [
-      "Everything in Growth",
-      "Dedicated strategist",
-      "Custom integrations",
-      "Multi-brand support",
-      "Quarterly planning",
+      "2,000 contacts / month",
+      "4,000 AI credits / month",
+      "Unlimited email sending",
+      "5 seats · 25 mailboxes",
+      "Priority support",
     ],
-    cta: "Start with Scale",
+    cta: "Start with Pro",
   },
 ];
 
@@ -66,19 +84,24 @@ export default function Pricing() {
         >
           <span className="text-sm font-semibold text-[#DA291C]">Pricing</span>
           <h2 className="mt-3 font-display text-4xl font-bold tracking-[-0.02em] text-white md:text-5xl">
-            Simple pricing.{" "}
-            <span className="text-[#A0A0A0]">No contract. Cancel anytime.</span>
+            Start free.{" "}
+            <span className="text-[#A0A0A0]">Upgrade when you're winning.</span>
           </h2>
+          <p className="mt-4 text-[#A0A0A0]">
+            Sending is unlimited and free on every plan — you only pay for more
+            contacts and AI credits as you scale. No credit card to start, cancel
+            anytime.
+          </p>
         </motion.div>
 
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {PLANS.map((plan, i) => (
             <motion.div
               key={plan.name}
               initial={{ opacity: 0, y: 16 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={inViewport}
-              transition={{ delay: i * 0.1 }}
+              transition={{ delay: i * 0.08 }}
               className={cn(
                 "relative flex flex-col rounded-xl bg-[#0F0F0F] p-8",
                 plan.highlighted
@@ -95,7 +118,10 @@ export default function Pricing() {
               <h3 className="font-display text-2xl font-bold text-white">
                 {plan.name}
               </h3>
-              <div className="mt-2 text-3xl font-bold text-white">{plan.price}</div>
+              <div className="mt-2 flex items-baseline gap-1">
+                <span className="text-3xl font-bold text-white">{plan.price}</span>
+                <span className="text-sm text-[#666]">{plan.period}</span>
+              </div>
               <p className="mt-3 text-sm text-[#A0A0A0]">{plan.blurb}</p>
 
               <ul className="mt-8 space-y-3">
@@ -108,7 +134,7 @@ export default function Pricing() {
               </ul>
 
               <a
-                href="#seat"
+                href={SIGNUP_URL}
                 className={cn(
                   "mt-auto block rounded-md px-5 py-3 text-center text-sm font-medium transition-colors",
                   plan.highlighted
@@ -121,6 +147,11 @@ export default function Pricing() {
             </motion.div>
           ))}
         </div>
+
+        {/* Top-ups note */}
+        <p className="mt-8 text-center text-sm text-[#666]">
+          Need more reach? Add contacts any time — +500 for £20 or +2,000 for £60.
+        </p>
       </div>
     </section>
   );

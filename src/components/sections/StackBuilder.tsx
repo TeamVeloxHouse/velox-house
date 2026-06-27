@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { inViewport } from "../../lib/utils";
+import { inViewport, SIGNUP_URL } from "../../lib/utils";
 import { submitLead } from "../../lib/supabase";
 
 /* ------------------------------------------------------------------ */
@@ -15,53 +15,47 @@ interface Question {
 
 const QUESTIONS: Question[] = [
   {
-    prompt: "What is your single biggest marketing challenge right now?",
+    prompt: "What's your biggest outreach challenge right now?",
     options: [
-      "Not enough new leads or enquiries",
-      "Website isn't converting",
-      "Can't track what's working — no visibility",
-      "Marketing is taking too much of my time",
-      "Paying too much for poor results",
+      "I don't have enough leads to contact",
+      "My cold emails get ignored",
+      "I forget to follow up",
+      "I can't tell what's working",
+      "My emails land in spam",
     ],
   },
   {
-    prompt: "What does your current marketing setup look like?",
+    prompt: "How do you do outreach today?",
     options: [
-      "Nothing — starting from scratch",
-      "Basic website, no CRM or outreach",
-      "Website + some social, but nothing connected",
-      "Full stack but fragmented and disconnected",
-      "Agency doing it all — not seeing results",
+      "Nothing yet — starting from scratch",
+      "Manually, one email at a time",
+      "A patchwork of spreadsheets and tools",
+      "Another outreach tool I've outgrown",
+      "An agency does it for me",
     ],
   },
   {
-    prompt: "What's your primary goal in the next 6 months?",
+    prompt: "What's your main goal for the next 90 days?",
     options: [
-      "Get visible and credible online",
-      "Generate a consistent flow of leads",
-      "Convert more of the leads I already get",
-      "Build a brand that commands premium prices",
-      "Reduce time spent on marketing",
+      "Book more meetings",
+      "Build a repeatable outreach system",
+      "Save time on manual sending",
+      "Scale outbound across a team",
+      "Just test the waters cheaply",
     ],
   },
   {
-    prompt: "How many new clients do you want per month?",
+    prompt: "How many new prospects do you want to reach each month?",
     options: [
-      "1–3 high-value clients",
-      "5–10 regular clients",
-      "20+ volume clients",
-      "I want to retain existing clients better",
+      "Up to 50 (just testing)",
+      "A few hundred",
+      "Around 800",
+      "2,000+",
     ],
   },
   {
-    prompt: "What's your monthly marketing budget?",
-    options: [
-      "Under £750/month",
-      "£750–£1,500/month",
-      "£1,500–£2,500/month",
-      "£2,500–£4,000/month",
-      "£4,000+/month",
-    ],
+    prompt: "What monthly budget works for you?",
+    options: ["£0 — free only", "Up to £29", "Up to £69", "£149+"],
   },
 ];
 
@@ -77,61 +71,83 @@ interface Plan {
 }
 
 const PLANS: Record<string, Plan> = {
-  white: {
-    name: "The Starter Hand",
-    chipLine: "White Chip · £750/mo",
-    why: "You're laying the foundations. We'll get you visible, credible and capturing every enquiry — without overcommitting before the system is proven.",
-    stack: ["Custom Website", "AI-Powered CRM", "War Room Dashboard"],
-  },
-  red: {
-    name: "The Growth Hand",
-    chipLine: "Red Chip · £1,500/mo",
-    why: "Your priority is a reliable flow of leads. We'll run personalised outreach to your ideal clients every month and track every reply in one place.",
-    stack: ["Outreach Engine", "LinkedIn Signal", "AI-Powered CRM", "War Room Dashboard"],
-  },
-  blue: {
-    name: "The Scale Hand",
-    chipLine: "Blue Chip · £2,500/mo",
-    why: "You want marketing off your plate entirely. We'll run content, outreach and pipeline together so you spend minutes a week, not days.",
-    stack: ["Content Machine", "Outreach Engine", "AI-Powered CRM", "War Room Dashboard"],
-  },
-  black: {
-    name: "The High-Roller Hand",
-    chipLine: "Black Chip · £4,000+/mo",
-    why: "You're running multi-channel acquisition at scale. We'll deploy the full stack with a dedicated strategist and custom integrations built around you.",
+  free: {
+    name: "Free",
+    chipLine: "Free · £0/mo",
+    why: "Start with zero risk. You get real lead discovery, AI research and messaging, and unlimited sending — enough to land your first meetings before you pay a penny.",
     stack: [
-      "Full Stack",
-      "Dedicated Strategist",
-      "Custom Integrations",
-      "War Room Dashboard",
+      "50 contacts / month",
+      "50 AI credits / month",
+      "Unlimited email sending",
+      "1 seat · 1 mailbox",
+    ],
+  },
+  starter: {
+    name: "Starter",
+    chipLine: "Starter · £29/mo",
+    why: "Perfect once you're ready for a steady flow. More contacts and credits to run consistent, personalised outreach with sequences and analytics behind it.",
+    stack: [
+      "300 contacts / month",
+      "500 AI credits / month",
+      "Sequences & analytics",
+      "Unlimited email sending",
+    ],
+  },
+  growth: {
+    name: "Growth",
+    chipLine: "Growth · £69/mo",
+    why: "Built for scaling outbound, especially with a team. Higher allowances and seats so everyone works from one shared pipeline and sequence library.",
+    stack: [
+      "800 contacts / month",
+      "2,000 AI credits / month",
+      "3 seats for your team",
+      "Everything in Starter",
+    ],
+  },
+  pro: {
+    name: "Pro",
+    chipLine: "Pro · £149/mo",
+    why: "For agencies and high-volume senders. The largest allowances, the most seats and mailboxes, and priority support to keep the machine running.",
+    stack: [
+      "2,000 contacts / month",
+      "4,000 AI credits / month",
+      "5 seats · 25 mailboxes",
+      "Priority support",
     ],
   },
 };
 
 function recommend(answers: (string | null)[]): Plan {
-  const challenge = answers[0];
   const setup = answers[1];
+  const goal = answers[2];
+  const volume = answers[3];
   const budget = answers[4];
 
-  // Priority order matches the spec.
-  if (budget === "Under £750/month" || setup === "Nothing — starting from scratch") {
-    return PLANS.white;
-  }
-  if (budget === "£750–£1,500/month" || challenge === "Not enough new leads or enquiries") {
-    return PLANS.red;
+  if (
+    budget === "£149+" ||
+    volume === "2,000+"
+  ) {
+    return PLANS.pro;
   }
   if (
-    budget === "£1,500–£2,500/month" ||
-    challenge === "Marketing is taking too much of my time"
+    budget === "Up to £69" ||
+    volume === "Around 800" ||
+    goal === "Scale outbound across a team"
   ) {
-    return PLANS.blue;
+    return PLANS.growth;
   }
-  // Higher budgets
-  if (budget === "£2,500–£4,000/month" || budget === "£4,000+/month") {
-    return PLANS.black;
+  if (budget === "Up to £29" || volume === "A few hundred") {
+    return PLANS.starter;
   }
-  // Fallback
-  return PLANS.red;
+  if (
+    budget === "£0 — free only" ||
+    volume === "Up to 50 (just testing)" ||
+    setup === "Nothing yet — starting from scratch" ||
+    goal === "Just test the waters cheaply"
+  ) {
+    return PLANS.free;
+  }
+  return PLANS.starter;
 }
 
 /* ------------------------------------------------------------------ */
@@ -234,11 +250,11 @@ export default function StackBuilder() {
         >
           <span className="text-sm font-semibold text-[#DA291C]">Free tool</span>
           <h2 className="mt-3 font-display text-4xl font-bold tracking-[-0.02em] text-white md:text-5xl">
-            Not sure where to start?
+            Not sure which plan you need?
           </h2>
           <p className="mt-4 text-[#A0A0A0]">
-            Answer 5 questions. Get your personalised marketing stack
-            recommendation — free, in 60 seconds.
+            Answer 5 quick questions and we'll recommend the right Velox House plan
+            for you — free, in 60 seconds.
           </p>
         </motion.div>
 
@@ -315,7 +331,7 @@ export default function StackBuilder() {
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold text-[#DA291C]">
-                      Your recommendation
+                      Your recommended plan
                     </span>
                     <button
                       onClick={back}
@@ -366,15 +382,15 @@ export default function StackBuilder() {
                       disabled={submitting}
                       className="w-full rounded-md bg-[#DA291C] py-3.5 text-sm font-medium text-white transition-colors hover:bg-[#FF3B2D] disabled:opacity-60"
                     >
-                      {submitting ? "Sending…" : "Send My Recommendation →"}
+                      {submitting ? "Sending…" : "Email Me This Plan →"}
                     </button>
                   </form>
 
                   <a
-                    href="#seat"
+                    href={SIGNUP_URL}
                     className="mt-4 block text-center text-sm text-[#A0A0A0] transition-colors hover:text-white"
                   >
-                    Or book a call directly
+                    Or start free right now →
                   </a>
                 </motion.div>
               )}
@@ -389,16 +405,16 @@ export default function StackBuilder() {
                 >
                   <div className="text-4xl text-[#DA291C]">✦</div>
                   <h3 className="mt-4 font-display text-3xl font-bold tracking-[-0.02em] text-white">
-                    Your hand is dealt.
+                    You're all set.
                   </h3>
                   <p className="mt-3 text-sm text-[#A0A0A0]">
-                    Recommendation on its way to {email || "your inbox"}.
+                    We've sent your recommended plan to {email || "your inbox"}.
                   </p>
                   <a
-                    href="#seat"
+                    href={SIGNUP_URL}
                     className="mt-6 inline-block rounded-md bg-[#DA291C] px-6 py-3.5 text-sm font-medium text-white transition-colors hover:bg-[#FF3B2D]"
                   >
-                    Book The Table Now →
+                    Start Free Now →
                   </a>
                 </motion.div>
               )}

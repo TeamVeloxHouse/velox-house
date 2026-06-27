@@ -22,7 +22,7 @@ export default function SocialProof() {
           viewport={inViewport}
           className="text-center text-sm text-[#A0A0A0]"
         >
-          Trusted by 200+ growing UK businesses
+          Trusted by B2B teams sending smarter outreach
         </motion.p>
 
         <motion.div

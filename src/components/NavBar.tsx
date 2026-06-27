@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Menu, X } from "lucide-react";
-import { cn } from "../lib/utils";
+import { cn, LOGIN_URL, SIGNUP_URL } from "../lib/utils";
 
 const NAV_LINKS = [
   { label: "Product", href: "/#product" },
@@ -10,9 +10,6 @@ const NAV_LINKS = [
   { label: "Customers", href: "/#testimonials" },
   { label: "Free tools", href: "/tools" },
 ];
-
-// The Velox House app (the software). Override with VITE_APP_URL in dev (e.g. http://localhost:3002).
-const APP_URL = import.meta.env.VITE_APP_URL ?? "https://app.veloxhouse.co.uk";
 
 export default function NavBar() {
   const [open, setOpen] = useState(false);
@@ -52,9 +49,9 @@ export default function NavBar() {
           <Link
             to="/"
             onClick={() => setOpen(false)}
-            className="flex items-center text-lg font-semibold text-white"
+            className="flex items-center gap-1.5 text-lg font-semibold text-white"
           >
-            Velox<span className="text-[#DA291C]">.</span>
+            Velox <span className="text-[#DA291C]">House</span>
           </Link>
 
           {/* Center links */}
@@ -73,16 +70,16 @@ export default function NavBar() {
           {/* Right actions — into the app */}
           <div className="hidden items-center gap-4 md:flex">
             <a
-              href={`${APP_URL}/login`}
+              href={LOGIN_URL}
               className="text-sm text-[#A0A0A0] transition-colors hover:text-white"
             >
               Sign in
             </a>
             <a
-              href={`${APP_URL}/signup`}
+              href={SIGNUP_URL}
               className="rounded-full bg-[#DA291C] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#FF3B2D]"
             >
-              Get started
+              Start free
             </a>
           </div>
 
@@ -116,16 +113,16 @@ export default function NavBar() {
           ))}
           <div className="mt-3 flex flex-col gap-3 border-t border-[#1A1A1A] pt-4">
             <a
-              href={`${APP_URL}/login`}
+              href={LOGIN_URL}
               className="text-left text-sm text-[#A0A0A0] hover:text-white"
             >
               Sign in
             </a>
             <a
-              href={`${APP_URL}/signup`}
+              href={SIGNUP_URL}
               className="rounded-full bg-[#DA291C] px-4 py-2.5 text-center text-sm font-medium text-white transition-colors hover:bg-[#FF3B2D]"
             >
-              Get started
+              Start free
             </a>
           </div>
         </div>

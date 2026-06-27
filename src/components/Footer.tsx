@@ -1,7 +1,7 @@
 const COLUMNS = [
   {
     title: "Product",
-    links: ["CRM & Pipeline", "AI Outreach", "Lead Generation", "Content Engine", "Analytics"],
+    links: ["Find Leads", "AI Messaging", "Sequences", "Pipeline & Inbox", "Analytics", "Deliverability"],
   },
   {
     title: "Company",
@@ -9,7 +9,7 @@ const COLUMNS = [
   },
   {
     title: "Resources",
-    links: ["How it works", "72-hour deployment", "Case studies", "Help centre"],
+    links: ["How it works", "Help centre", "Case studies", "Legal"],
   },
 ];
 
@@ -21,10 +21,10 @@ export default function Footer() {
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
             <div className="text-lg font-semibold text-white">
-              Velox<span className="text-[#DA291C]">.</span>
+              Velox <span className="text-[#DA291C]">House</span>
             </div>
             <p className="mt-4 max-w-xs text-sm text-[#A0A0A0]">
-              Complete marketing operations for ambitious UK businesses.
+              AI-powered cold outreach for ambitious B2B teams.
             </p>
           </div>
 
