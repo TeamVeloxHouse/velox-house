@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { cn, LOGIN_URL, SIGNUP_URL } from "../lib/utils";
+import Logo from "./Logo";
 
 const NAV_LINKS = [
   { label: "Product", href: "/#product" },
@@ -49,9 +50,10 @@ export default function NavBar() {
           <Link
             to="/"
             onClick={() => setOpen(false)}
-            className="flex items-center gap-1.5 text-lg font-semibold text-white"
+            className="flex items-center"
+            aria-label="Velox House home"
           >
-            Velox <span className="text-[#DA291C]">House</span>
+            <Logo />
           </Link>
 
           {/* Center links */}

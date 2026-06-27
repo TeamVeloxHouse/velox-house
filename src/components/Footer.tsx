@@ -1,3 +1,5 @@
+import Logo from "./Logo";
+
 const COLUMNS = [
   {
     title: "Product",
@@ -20,9 +22,8 @@ export default function Footer() {
         <div className="grid grid-cols-2 gap-10 md:grid-cols-4">
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
-            <div className="text-lg font-semibold text-white">
-              Velox <span className="text-[#DA291C]">House</span>
-            </div>
+            <Logo align="start" />
+
             <p className="mt-4 max-w-xs text-sm text-[#A0A0A0]">
               AI-powered cold outreach for ambitious B2B teams.
             </p>
