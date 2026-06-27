@@ -11,6 +11,9 @@ const NAV_LINKS = [
   { label: "Free tools", href: "/tools" },
 ];
 
+// The Velox House app (the software). Override with VITE_APP_URL in dev (e.g. http://localhost:3002).
+const APP_URL = import.meta.env.VITE_APP_URL ?? "https://app.veloxhouse.co.uk";
+
 export default function NavBar() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
@@ -67,20 +70,20 @@ export default function NavBar() {
             ))}
           </div>
 
-          {/* Right actions */}
+          {/* Right actions — into the app */}
           <div className="hidden items-center gap-4 md:flex">
-            <button
-              onClick={() => handleNav("/#seat")}
+            <a
+              href={`${APP_URL}/login`}
               className="text-sm text-[#A0A0A0] transition-colors hover:text-white"
             >
               Sign in
-            </button>
-            <button
-              onClick={() => handleNav("/#seat")}
+            </a>
+            <a
+              href={`${APP_URL}/signup`}
               className="rounded-full bg-[#DA291C] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#FF3B2D]"
             >
               Get started
-            </button>
+            </a>
           </div>
 
           {/* Mobile toggle */}
@@ -112,18 +115,18 @@ export default function NavBar() {
             </button>
           ))}
           <div className="mt-3 flex flex-col gap-3 border-t border-[#1A1A1A] pt-4">
-            <button
-              onClick={() => handleNav("/#seat")}
+            <a
+              href={`${APP_URL}/login`}
               className="text-left text-sm text-[#A0A0A0] hover:text-white"
             >
               Sign in
-            </button>
-            <button
-              onClick={() => handleNav("/#seat")}
+            </a>
+            <a
+              href={`${APP_URL}/signup`}
               className="rounded-full bg-[#DA291C] px-4 py-2.5 text-center text-sm font-medium text-white transition-colors hover:bg-[#FF3B2D]"
             >
               Get started
-            </button>
+            </a>
           </div>
         </div>
       </div>
