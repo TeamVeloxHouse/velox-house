@@ -124,7 +124,7 @@ export default function Pricing() {
               </div>
               <p className="mt-3 text-sm text-[#A0A0A0]">{plan.blurb}</p>
 
-              <ul className="mt-8 space-y-3">
+              <ul className="mb-8 mt-8 space-y-3">
                 {plan.features.map((f) => (
                   <li key={f} className="flex items-start gap-3">
                     <Check size={16} className="mt-0.5 shrink-0 text-[#DA291C]" />
