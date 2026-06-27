@@ -9,7 +9,7 @@ const NAV_LINKS = [
   { label: "How it works", href: "/#how" },
   { label: "Pricing", href: "/#pricing" },
   { label: "Customers", href: "/#testimonials" },
-  { label: "Free tools", href: "/tools" },
+  { label: "Free email check", href: "/tools" },
 ];
 
 export default function NavBar() {
