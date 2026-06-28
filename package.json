@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc && vite build && node -e \"require('fs').rmSync('dist/_redirects',{force:true})\"",
     "preview": "vite preview"
   },
   "dependencies": {
