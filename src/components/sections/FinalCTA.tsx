@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { inViewport, SIGNUP_URL } from "../../lib/utils";
 import { submitLead } from "../../lib/supabase";
 
-const PLAN_OPTIONS = ["Not sure yet", "Free", "Starter", "Growth", "Pro"];
+const PLAN_OPTIONS = ["Not sure yet", "Free", "Starter", "Growth", "Scale", "Agency"];
 
 const REASSURANCE = [
   "Free forever plan — no credit card.",

@@ -47,15 +47,15 @@ const QUESTIONS: Question[] = [
   {
     prompt: "How many new prospects do you want to reach each month?",
     options: [
-      "Up to 50 (just testing)",
+      "Up to 100 (just testing)",
       "A few hundred",
-      "Around 800",
-      "2,000+",
+      "Around 1,500",
+      "4,000+",
     ],
   },
   {
     prompt: "What monthly budget works for you?",
-    options: ["£0 — free only", "Up to £29", "Up to £69", "£149+"],
+    options: ["£0 — free only", "Up to £20", "Up to £50", "£99+"],
   },
 ];
 
@@ -74,9 +74,9 @@ const PLANS: Record<string, Plan> = {
   free: {
     name: "Free",
     chipLine: "Free · £0/mo",
-    why: "Start with zero risk. You get real lead discovery, AI research and messaging, and unlimited sending — enough to land your first meetings before you pay a penny.",
+    why: "Start with zero risk. You get real lead discovery, AI research and messaging, and unlimited email sending — enough to land your first meetings before you pay a penny.",
     stack: [
-      "50 contacts / month",
+      "100 contacts / month",
       "50 AI credits / month",
       "Unlimited email sending",
       "1 seat · 1 mailbox",
@@ -84,35 +84,46 @@ const PLANS: Record<string, Plan> = {
   },
   starter: {
     name: "Starter",
-    chipLine: "Starter · £29/mo",
-    why: "Perfect once you're ready for a steady flow. More contacts and credits to run consistent, personalised outreach with sequences and analytics behind it.",
+    chipLine: "Starter · £19.99/mo",
+    why: "Email and LinkedIn from day one. Run consistent, personalised outreach across both channels with sequences and analytics behind it.",
     stack: [
       "300 contacts / month",
-      "500 AI credits / month",
-      "Sequences & analytics",
+      "Email + LinkedIn — 1 seat",
+      "300 AI credits / month",
       "Unlimited email sending",
     ],
   },
   growth: {
     name: "Growth",
-    chipLine: "Growth · £69/mo",
-    why: "Built for scaling outbound, especially with a team. Higher allowances and seats so everyone works from one shared pipeline and sequence library.",
+    chipLine: "Growth · £49.99/mo",
+    why: "Built for scaling email + LinkedIn together. Higher allowances and seats so you (and your team) work from one shared pipeline, sequence library and inbox.",
     stack: [
-      "800 contacts / month",
-      "2,000 AI credits / month",
-      "3 seats for your team",
-      "Everything in Starter",
+      "1,500 contacts / month",
+      "Email + LinkedIn — 1 seat",
+      "1,000 AI credits / month",
+      "3 seats · 5 mailboxes",
     ],
   },
-  pro: {
-    name: "Pro",
-    chipLine: "Pro · £149/mo",
-    why: "For agencies and high-volume senders. The largest allowances, the most seats and mailboxes, and priority support to keep the machine running.",
+  scale: {
+    name: "Scale",
+    chipLine: "Scale · £99/mo",
+    why: "For teams running serious multichannel volume. Large allowances across email and LinkedIn, with the seats and mailboxes to match.",
     stack: [
-      "2,000 contacts / month",
-      "4,000 AI credits / month",
-      "5 seats · 25 mailboxes",
-      "Priority support",
+      "4,000 contacts / month",
+      "Email + LinkedIn — 1 seat",
+      "2,500 AI credits / month",
+      "5 seats · 10 mailboxes",
+    ],
+  },
+  agency: {
+    name: "Agency",
+    chipLine: "Agency · £179/mo",
+    why: "For agencies and high-volume senders. The largest allowances, two LinkedIn seats, the most mailboxes, and priority support to keep the machine running.",
+    stack: [
+      "10,000 contacts / month",
+      "Email + LinkedIn — 2 seats",
+      "5,000 AI credits / month",
+      "10 seats · 25 mailboxes · priority support",
     ],
   },
 };
@@ -123,25 +134,25 @@ function recommend(answers: (string | null)[]): Plan {
   const volume = answers[3];
   const budget = answers[4];
 
-  if (
-    budget === "£149+" ||
-    volume === "2,000+"
-  ) {
-    return PLANS.pro;
+  if (volume === "4,000+") {
+    return PLANS.agency;
+  }
+  if (budget === "£99+") {
+    return PLANS.scale;
   }
   if (
-    budget === "Up to £69" ||
-    volume === "Around 800" ||
+    budget === "Up to £50" ||
+    volume === "Around 1,500" ||
     goal === "Scale outbound across a team"
   ) {
     return PLANS.growth;
   }
-  if (budget === "Up to £29" || volume === "A few hundred") {
+  if (budget === "Up to £20" || volume === "A few hundred") {
     return PLANS.starter;
   }
   if (
     budget === "£0 — free only" ||
-    volume === "Up to 50 (just testing)" ||
+    volume === "Up to 100 (just testing)" ||
     setup === "Nothing yet — starting from scratch" ||
     goal === "Just test the waters cheaply"
   ) {

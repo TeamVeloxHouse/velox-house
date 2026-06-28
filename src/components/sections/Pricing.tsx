@@ -14,61 +14,61 @@ interface Plan {
 
 const PLANS: Plan[] = [
   {
-    name: "Free",
-    price: "£0",
-    period: "forever",
-    blurb: "Everything you need to start sending today.",
-    features: [
-      "50 contacts / month",
-      "50 AI credits / month",
-      "Unlimited email sending",
-      "1 seat · 1 mailbox",
-      "AI research & messaging",
-    ],
-    cta: "Start free",
-  },
-  {
     name: "Starter",
-    price: "£29",
+    price: "£19.99",
     period: "/mo",
     blurb: "For founders getting consistent outreach going.",
     features: [
       "300 contacts / month",
-      "500 AI credits / month",
+      "Email + LinkedIn — 1 seat",
+      "300 AI credits / month",
       "Unlimited email sending",
-      "1 seat · 3 mailboxes",
-      "Sequences & analytics",
+      "2 mailboxes · sequences & analytics",
     ],
     cta: "Start with Starter",
   },
   {
     name: "Growth",
-    price: "£69",
+    price: "£49.99",
     period: "/mo",
-    blurb: "For teams scaling outbound together.",
+    blurb: "For founders scaling email + LinkedIn together.",
     features: [
-      "800 contacts / month",
-      "2,000 AI credits / month",
+      "1,500 contacts / month",
+      "Email + LinkedIn — 1 seat",
+      "1,000 AI credits / month",
       "Unlimited email sending",
-      "3 seats · 10 mailboxes",
-      "Everything in Starter",
+      "3 seats · 5 mailboxes",
     ],
     cta: "Start with Growth",
     highlighted: true,
   },
   {
-    name: "Pro",
-    price: "£149",
+    name: "Scale",
+    price: "£99",
+    period: "/mo",
+    blurb: "For teams running serious multichannel volume.",
+    features: [
+      "4,000 contacts / month",
+      "Email + LinkedIn — 1 seat",
+      "2,500 AI credits / month",
+      "5 seats · 10 mailboxes",
+      "Everything in Growth",
+    ],
+    cta: "Start with Scale",
+  },
+  {
+    name: "Agency",
+    price: "£179",
     period: "/mo",
     blurb: "For agencies and high-volume senders.",
     features: [
-      "2,000 contacts / month",
-      "4,000 AI credits / month",
-      "Unlimited email sending",
-      "5 seats · 25 mailboxes",
+      "10,000 contacts / month",
+      "Email + LinkedIn — 2 seats",
+      "5,000 AI credits / month",
+      "10 seats · 25 mailboxes",
       "Priority support",
     ],
-    cta: "Start with Pro",
+    cta: "Start with Agency",
   },
 ];
 
@@ -84,14 +84,37 @@ export default function Pricing() {
         >
           <span className="text-sm font-semibold text-[#DA291C]">Pricing</span>
           <h2 className="mt-3 font-display text-4xl font-bold tracking-[-0.02em] text-white md:text-5xl">
-            Start free.{" "}
-            <span className="text-[#A0A0A0]">Upgrade when you're winning.</span>
+            Email and LinkedIn.{" "}
+            <span className="text-[#A0A0A0]">One platform, one price.</span>
           </h2>
           <p className="mt-4 text-[#A0A0A0]">
-            Sending is unlimited and free on every plan — you only pay for more
-            contacts and AI credits as you scale. No credit card to start, cancel
-            anytime.
+            Every paid plan includes a LinkedIn seat — connect your account and
+            automate connection requests and messages alongside email. Sending is
+            unlimited and free; you only pay for more contacts as you scale. No card
+            to start, cancel anytime.
           </p>
+        </motion.div>
+
+        {/* Free callout */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={inViewport}
+          className="mb-8 flex flex-col items-start justify-between gap-4 rounded-xl border border-[#1A1A1A] bg-[#0F0F0F] p-6 sm:flex-row sm:items-center"
+        >
+          <div>
+            <h3 className="font-display text-xl font-bold text-white">Free forever</h3>
+            <p className="mt-1 text-sm text-[#A0A0A0]">
+              100 contacts/mo · unlimited email sending · 1 mailbox · AI research &amp;
+              messaging. No card required.
+            </p>
+          </div>
+          <a
+            href={SIGNUP_URL}
+            className="shrink-0 rounded-md border border-[#2A2A2A] px-5 py-3 text-sm font-medium text-white transition-colors hover:border-[#444]"
+          >
+            Start free
+          </a>
         </motion.div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -151,6 +174,7 @@ export default function Pricing() {
         {/* Top-ups note */}
         <p className="mt-8 text-center text-sm text-[#666]">
           Need more reach? Add contacts any time — +500 for £20 or +2,000 for £60.
+          Extra LinkedIn seats are £20/mo each.
         </p>
       </div>
     </section>
