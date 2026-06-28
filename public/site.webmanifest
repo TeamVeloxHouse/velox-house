@@ -1,0 +1,12 @@
+{
+  "name": "Velox House",
+  "short_name": "Velox",
+  "icons": [
+    { "src": "/favicon.svg", "type": "image/svg+xml", "sizes": "any" },
+    { "src": "/icon-512.png", "type": "image/png", "sizes": "512x512", "purpose": "any maskable" }
+  ],
+  "theme_color": "#E8202A",
+  "background_color": "#0A0A0A",
+  "display": "standalone",
+  "start_url": "/"
+}
