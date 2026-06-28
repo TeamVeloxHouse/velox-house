@@ -11,7 +11,7 @@ export function cn(...classes: Array<string | false | null | undefined>): string
  * Override with VITE_APP_URL in dev (e.g. http://localhost:3002).
  */
 export const APP_URL =
-  import.meta.env.VITE_APP_URL ?? "https://app.veloxhouse.co.uk";
+  import.meta.env.VITE_APP_URL ?? "https://hub.veloxhouse.co.uk";
 export const SIGNUP_URL = `${APP_URL}/signup`;
 export const LOGIN_URL = `${APP_URL}/login`;
 
