@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { cn, LOGIN_URL, SIGNUP_URL } from "../lib/utils";
+import { track } from "../lib/track";
 import Logo from "./Logo";
 
 const NAV_LINKS = [
@@ -73,12 +74,14 @@ export default function NavBar() {
           <div className="hidden items-center gap-4 md:flex">
             <a
               href={LOGIN_URL}
+              onClick={() => track("cta_click", { label: "Sign in" })}
               className="text-sm text-[#A0A0A0] transition-colors hover:text-white"
             >
               Sign in
             </a>
             <a
               href={SIGNUP_URL}
+              onClick={() => track("cta_click", { label: "Start free" })}
               className="rounded-full bg-[#DA291C] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#FF3B2D]"
             >
               Start free
@@ -116,12 +119,14 @@ export default function NavBar() {
           <div className="mt-3 flex flex-col gap-3 border-t border-[#1A1A1A] pt-4">
             <a
               href={LOGIN_URL}
+              onClick={() => track("cta_click", { label: "Sign in (mobile)" })}
               className="text-left text-sm text-[#A0A0A0] hover:text-white"
             >
               Sign in
             </a>
             <a
               href={SIGNUP_URL}
+              onClick={() => track("cta_click", { label: "Start free (mobile)" })}
               className="rounded-full bg-[#DA291C] px-4 py-2.5 text-center text-sm font-medium text-white transition-colors hover:bg-[#FF3B2D]"
             >
               Start free
