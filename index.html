@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-GB">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -7,11 +7,100 @@
     <link rel="manifest" href="/site.webmanifest" />
     <meta name="theme-color" content="#E8202A" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Velox House — AI cold outreach platform for B2B teams</title>
+
+    <!-- Primary SEO -->
+    <title>Velox House — AI Cold Email & Outreach Software for B2B Teams</title>
     <meta
       name="description"
-      content="Find prospects, research them with AI, write personalised emails, and run follow-up sequences from your own inbox. Unlimited sending. Free forever plan — no credit card."
+      content="AI cold email & outreach software for B2B teams. Find prospects, write personalised emails, and run email + LinkedIn follow-up sequences from your own inbox. Free forever plan — no card."
     />
+    <link rel="canonical" href="https://veloxhouse.co.uk/" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="author" content="Velox House" />
+    <meta name="keywords" content="cold email software, cold outreach platform, B2B sales prospecting, AI cold email, LinkedIn outreach, email sequences, sales engagement, UK cold email tool" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Velox House" />
+    <meta property="og:locale" content="en_GB" />
+    <meta property="og:url" content="https://veloxhouse.co.uk/" />
+    <meta property="og:title" content="Velox House — AI Cold Email & Outreach Software for B2B Teams" />
+    <meta property="og:description" content="Find prospects, write personalised cold emails with AI, and run multichannel email + LinkedIn sequences from your own inbox. Free forever plan — no card." />
+    <meta property="og:image" content="https://veloxhouse.co.uk/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Velox House — AI cold outreach platform" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Velox House — AI Cold Email & Outreach Software for B2B Teams" />
+    <meta name="twitter:description" content="Find prospects, write personalised cold emails with AI, and run multichannel email + LinkedIn sequences from your own inbox. Free forever plan — no card." />
+    <meta name="twitter:image" content="https://veloxhouse.co.uk/og-image.png" />
+
+    <!-- Structured data (Organization + SoftwareApplication + WebSite + FAQ) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://veloxhouse.co.uk/#organization",
+          "name": "Velox House",
+          "url": "https://veloxhouse.co.uk/",
+          "logo": "https://veloxhouse.co.uk/icon-512.png",
+          "description": "AI cold email and multichannel outreach software for B2B teams."
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://veloxhouse.co.uk/#website",
+          "url": "https://veloxhouse.co.uk/",
+          "name": "Velox House",
+          "publisher": { "@id": "https://veloxhouse.co.uk/#organization" }
+        },
+        {
+          "@type": "SoftwareApplication",
+          "name": "Velox House",
+          "applicationCategory": "BusinessApplication",
+          "operatingSystem": "Web",
+          "url": "https://veloxhouse.co.uk/",
+          "description": "Find B2B prospects, research them with AI, write personalised cold emails, and run automated multichannel email + LinkedIn follow-up sequences from your own inbox.",
+          "offers": {
+            "@type": "AggregateOffer",
+            "priceCurrency": "GBP",
+            "lowPrice": "0",
+            "highPrice": "179.99",
+            "offerCount": "5"
+          }
+        },
+        {
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "Is Velox House free?",
+              "acceptedAnswer": { "@type": "Answer", "text": "Yes — there is a free forever plan with no credit card required. Paid multichannel plans start at £19.99 per month." }
+            },
+            {
+              "@type": "Question",
+              "name": "Can I send cold emails from my own inbox?",
+              "acceptedAnswer": { "@type": "Answer", "text": "Yes. Velox House sends from your own connected mailbox (Google, Microsoft 365 or any SMTP), so emails come from your domain — not a shared sending service." }
+            },
+            {
+              "@type": "Question",
+              "name": "Does Velox House do LinkedIn outreach as well as email?",
+              "acceptedAnswer": { "@type": "Answer", "text": "Yes. Every paid plan includes multichannel sequences across email and LinkedIn, managed from one place." }
+            },
+            {
+              "@type": "Question",
+              "name": "What does Velox House do?",
+              "acceptedAnswer": { "@type": "Answer", "text": "It finds B2B prospects, researches them with AI, writes personalised cold emails, and runs automated follow-up sequences — tracking opens, clicks, replies and booked meetings in real time." }
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -21,6 +110,17 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- Crawler fallback: key context for bots that don't execute JavaScript. -->
+    <noscript>
+      <h1>Velox House — AI cold email &amp; outreach software for B2B teams</h1>
+      <p>
+        Velox House finds your ideal B2B prospects, researches them with AI, writes
+        personalised cold emails, and runs automated multichannel email and LinkedIn
+        follow-up sequences from your own inbox — tracking every open, reply and meeting.
+        Free forever plan, no credit card required. Paid plans from £19.99/month.
+      </p>
+      <p><a href="https://hub.veloxhouse.co.uk/signup">Start free</a></p>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
