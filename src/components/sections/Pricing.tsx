@@ -44,7 +44,7 @@ const PLANS: Plan[] = [
   },
   {
     name: "Scale",
-    price: "£99",
+    price: "£99.99",
     period: "/mo",
     blurb: "For teams running serious multichannel volume.",
     features: [
@@ -58,7 +58,7 @@ const PLANS: Plan[] = [
   },
   {
     name: "Agency",
-    price: "£179",
+    price: "£179.99",
     period: "/mo",
     blurb: "For agencies and high-volume senders.",
     features: [

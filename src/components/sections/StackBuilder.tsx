@@ -106,7 +106,7 @@ const PLANS: Record<string, Plan> = {
   },
   scale: {
     name: "Scale",
-    chipLine: "Scale · £99/mo",
+    chipLine: "Scale · £99.99/mo",
     why: "For teams running serious multichannel volume. Large allowances across email and LinkedIn, with the seats and mailboxes to match.",
     stack: [
       "4,000 contacts / month",
@@ -117,7 +117,7 @@ const PLANS: Record<string, Plan> = {
   },
   agency: {
     name: "Agency",
-    chipLine: "Agency · £179/mo",
+    chipLine: "Agency · £179.99/mo",
     why: "For agencies and high-volume senders. The largest allowances, two LinkedIn seats, the most mailboxes, and priority support to keep the machine running.",
     stack: [
       "10,000 contacts / month",
