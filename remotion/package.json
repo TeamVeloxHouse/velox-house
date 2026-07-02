@@ -8,8 +8,9 @@
     "setup:arm64": "node scripts/setup-arm64.mjs && node scripts/patch-headless.mjs",
     "dev": "remotion studio",
     "studio": "remotion studio",
-    "render": "remotion render VeloxHero out/velox-hero.mp4",
-    "render:webm": "remotion render VeloxHero out/velox-hero.webm --codec=vp8",
+    "render": "remotion render VeloxHero out/velox-hero-raw.mp4",
+    "optimize": "node scripts/optimize.mjs",
+    "publish": "npm run render && npm run optimize && node scripts/publish.mjs",
     "still": "remotion still VeloxHero out/still.png",
     "upgrade": "remotion upgrade"
   },

@@ -18,11 +18,10 @@ export default function HeroVideo() {
           muted
           loop
           playsInline
-          preload="metadata"
+          preload="auto"
           poster="/velox-hero-poster.jpg"
           aria-label="Velox House product demo: find prospects, research with AI, write personalised emails, and book meetings on autopilot."
         >
-          <source src="/velox-hero.webm" type="video/webm" />
           <source src="/velox-hero.mp4" type="video/mp4" />
         </video>
       </div>
