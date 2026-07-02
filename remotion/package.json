@@ -1,0 +1,28 @@
+{
+  "name": "velox-house-remotion",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Remotion hero video for the Velox House marketing site",
+  "scripts": {
+    "postinstall": "node scripts/patch-headless.mjs",
+    "setup:arm64": "node scripts/setup-arm64.mjs && node scripts/patch-headless.mjs",
+    "dev": "remotion studio",
+    "studio": "remotion studio",
+    "render": "remotion render VeloxHero out/velox-hero.mp4",
+    "render:webm": "remotion render VeloxHero out/velox-hero.webm --codec=vp8",
+    "still": "remotion still VeloxHero out/still.png",
+    "upgrade": "remotion upgrade"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.484",
+    "@remotion/google-fonts": "4.0.484",
+    "remotion": "4.0.484",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.5.0"
+  }
+}

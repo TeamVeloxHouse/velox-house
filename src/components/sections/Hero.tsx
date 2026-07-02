@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { SIGNUP_URL } from "../../lib/utils";
-import HeroMockup from "./HeroMockup";
+import HeroVideo from "./HeroVideo";
 
 const STATS = [
   { value: "£0", label: "Free forever plan" },
@@ -99,7 +99,7 @@ export default function Hero() {
         </motion.div>
 
         {/* Product preview */}
-        <HeroMockup />
+        <HeroVideo />
       </div>
     </section>
   );
