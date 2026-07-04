@@ -1,17 +1,13 @@
-// Velox House logo lockup — fox mark + wordmark (mirrors the app's Logo).
-//   Mark  — /velox-mark.png (transparent red fox)
-//   VELOX — Inter 900 italic, letter-spacing -0.04em
-//   HOUSE — Inter 700, letter-spacing 0.16em, all caps, red
-// The marketing site is always dark, so VELOX renders white.
-const INTER = "'Inter', sans-serif";
-
+// Velox House logo — the official fox + wordmark lockup (single artwork).
+//   Full    — /velox-lockup-dark.png (transparent, tight-cropped; marketing is always dark)
+//   Compact — /velox-mark.png (fox mark only, for tight spaces)
 export default function Logo({
   className,
   compact,
-  align = "start",
 }: {
   className?: string;
   compact?: boolean;
+  /** kept for call-site compatibility; the single-artwork lockup ignores it */
   align?: "start" | "end";
 }) {
   if (compact) {
@@ -24,31 +20,10 @@ export default function Logo({
     );
   }
   return (
-    <div className={`flex items-center gap-2.5 ${className ?? ""}`}>
-      <img src="/velox-mark.png" alt="" aria-hidden className="h-9 w-9 shrink-0" />
-      <div
-        className={`flex flex-col leading-[0.82] ${
-          align === "start" ? "items-start" : "items-end"
-        }`}
-      >
-        <span
-          className="text-[10px] uppercase text-[#DA291C]"
-          style={{ fontFamily: INTER, fontWeight: 700, letterSpacing: "0.16em" }}
-        >
-          House
-        </span>
-        <span
-          className="text-2xl uppercase text-white"
-          style={{
-            fontFamily: INTER,
-            fontWeight: 900,
-            fontStyle: "italic",
-            letterSpacing: "-0.04em",
-          }}
-        >
-          Velox
-        </span>
-      </div>
-    </div>
+    <img
+      src="/velox-lockup-dark.png"
+      alt="Velox House"
+      className={`h-9 w-auto ${className ?? ""}`}
+    />
   );
 }
