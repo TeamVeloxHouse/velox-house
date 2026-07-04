@@ -1,4 +1,4 @@
-import { Easing, interpolate, useCurrentFrame } from "remotion";
+import { Easing, Img, interpolate, staticFile, useCurrentFrame } from "remotion";
 import { COLORS, SORA, INTER } from "../theme";
 
 const ease = Easing.bezier(0.16, 1, 0.3, 1);
@@ -93,7 +93,7 @@ export const Dashboard: React.FC = () => {
         {/* Sidebar */}
         <div style={{ width: 220, background: COLORS.background, padding: "22px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 26, paddingLeft: 8 }}>
-            <div style={{ width: 26, height: 26, borderRadius: 7, background: COLORS.red, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: SORA, fontWeight: 800, color: "#fff", fontSize: 15 }}>V</div>
+            <Img src={staticFile("velox-mark.png")} style={{ width: 26, height: 26 }} />
             <span style={{ fontFamily: SORA, fontWeight: 700, color: "#fff", fontSize: 15 }}>Velox House</span>
           </div>
           {NAV.map((label) => {
