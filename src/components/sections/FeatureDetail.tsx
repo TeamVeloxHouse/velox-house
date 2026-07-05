@@ -27,6 +27,11 @@ export default function FeatureDetail({
         <span className="text-sm font-semibold uppercase tracking-wider text-[#DA291C]">
           {feature.eyebrow}
         </span>
+        {feature.ai && (
+          <span className="rounded-full border border-[#DA291C]/40 bg-[#DA291C]/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#FF6A4D]">
+            AI
+          </span>
+        )}
       </div>
 
       <h2 className="mt-5 font-display text-3xl font-bold tracking-[-0.02em] text-white md:text-4xl">

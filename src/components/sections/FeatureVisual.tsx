@@ -16,26 +16,23 @@ function Chrome({ label }: { label: string }) {
   );
 }
 
-/* 1 — Find Leads: mode toggle + filters + results */
+/* 1 — AI Discovery: ICP prompt + AI-scored, ranked results */
 function FindLeadsVisual() {
   const rows = [
-    { name: "Sarah Patel", role: "Marketing Director", company: "Northwind Ltd" },
-    { name: "James Okafor", role: "Founder & CEO", company: "Helios Group" },
-    { name: "Mira Chen", role: "Head of Ops", company: "Atlas Studio" },
+    { name: "Sarah Patel", role: "Marketing Director", company: "Northwind Ltd", fit: 96 },
+    { name: "James Okafor", role: "Founder & CEO", company: "Helios Group", fit: 91 },
+    { name: "Mira Chen", role: "Head of Ops", company: "Atlas Studio", fit: 84 },
   ];
+  const fitColor = (f: number) => (f >= 90 ? "#3fb950" : f >= 80 ? "#FF6A4D" : "#888");
   return (
     <div className="card-depth rounded-xl p-6">
-      <Chrome label="Find Leads" />
-      <div className="mb-4 flex gap-2">
-        <span className="rounded-md bg-[#DA291C] px-3 py-1 text-xs font-medium text-white">People</span>
-        <span className="rounded-md border border-[#222] px-3 py-1 text-xs text-[#888]">Companies</span>
+      <Chrome label="AI Discovery" />
+      <div className="mb-4 rounded-lg border border-[#191919] bg-[#0E0E0E] px-3 py-2 text-xs text-[#9A9A9A]">
+        <span className="text-[#FF6A4D]">ICP ›</span> Marketing leaders at UK SaaS, 11–50 staff
       </div>
-      <div className="mb-4 flex flex-wrap gap-2">
-        {["Marketing", "Director+", "SaaS", "11–50", "London"].map((f) => (
-          <span key={f} className="rounded-full border border-[#DA291C]/30 bg-[#DA291C]/10 px-2.5 py-1 text-xs text-[#FF6A4D]">
-            {f}
-          </span>
-        ))}
+      <div className="mb-3 flex items-center gap-2 text-[10px] text-[#666]">
+        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#DA291C]" />
+        AI planned 18 searches · 214 companies · ranked by fit
       </div>
       <div>
         {rows.map((r, i) => (
@@ -51,9 +48,50 @@ function FindLeadsVisual() {
               <div className="text-sm text-white">{r.name}</div>
               <div className="text-xs text-[#666]">{r.role} · {r.company}</div>
             </div>
-            <span className="rounded border border-[#2ea043]/40 px-2 py-0.5 text-[10px] text-[#3fb950]">
-              Email verified
+            <div className="flex items-center gap-2">
+              <span
+                className="rounded px-2 py-0.5 text-[10px] font-medium"
+                style={{ color: fitColor(r.fit), border: `1px solid ${fitColor(r.fit)}55` }}
+              >
+                {r.fit}% fit
+              </span>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* 2 — AI Copilot: next-best-actions */
+function CopilotVisual() {
+  const actions = [
+    { text: "12 hot leads opened twice — send them a nudge today", tag: "Do now" },
+    { text: "“Q3 outbound” reply rate is 2× your others — clone its subject", tag: "Insight" },
+    { text: "Northwind replied with a pricing objection — draft ready", tag: "Reply" },
+  ];
+  return (
+    <div className="card-depth rounded-xl p-6">
+      <Chrome label="AI Copilot · what to do next" />
+      <div className="space-y-3">
+        {actions.map((a, i) => (
+          <motion.div
+            key={a.text}
+            initial={{ opacity: 0, y: 8 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={inViewport}
+            transition={{ delay: i * 0.12 }}
+            className="flex items-start gap-3 rounded-lg border border-[#191919] bg-[#101010] p-3"
+          >
+            <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[#DA291C]/15 text-xs text-[#FF6A4D]">
+              ✳
             </span>
+            <div className="flex-1">
+              <div className="text-sm leading-snug text-[#E4E4E4]">{a.text}</div>
+              <span className="mt-1.5 inline-block rounded-full border border-[#DA291C]/30 px-2 py-0.5 text-[10px] text-[#FF6A4D]">
+                {a.tag}
+              </span>
+            </div>
           </motion.div>
         ))}
       </div>
@@ -289,6 +327,7 @@ function DeliverabilityVisual() {
 
 const VISUALS: Record<string, () => JSX.Element> = {
   "find-leads": FindLeadsVisual,
+  "ai-copilot": CopilotVisual,
   "ai-research": ResearchVisual,
   "ai-messaging": MessagingVisual,
   sequences: SequenceVisual,

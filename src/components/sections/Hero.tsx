@@ -5,7 +5,7 @@ import HeroVideo from "./HeroVideo";
 const STATS = [
   { value: "£0", label: "Free forever plan" },
   { value: "Unlimited", label: "Email sending" },
-  { value: "AI", label: "Research & writing" },
+  { value: "App-wide", label: "AI: find, write, guide" },
   { value: "Your inbox", label: "Send from your domain" },
 ];
 
@@ -52,10 +52,10 @@ export default function Hero() {
           transition={{ duration: 0.5, delay: 0.18 }}
           className="mt-8 max-w-2xl text-lg leading-relaxed text-[#A0A0A0] md:text-xl"
         >
-          Velox House finds your ideal prospects, researches them with AI, writes
-          personalised emails, and runs follow-up sequences from your own inbox.
-          Track every open, reply and meeting in real time. Start free — no card
-          required.
+          AI finds your ideal prospects, scores them by fit, writes personalised
+          emails, and tells you exactly what to do next — while follow-up sequences
+          run from your own inbox. Track every open, reply and meeting in real time.
+          Start free — no card required.
         </motion.p>
 
         {/* CTAs */}

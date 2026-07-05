@@ -17,9 +17,9 @@ const ROUTE_META: Record<string, RouteMeta> = {
     path: "/",
   },
   "/features": {
-    title: "Features — Find, Research, Write & Send | Velox House",
+    title: "Features — AI Discovery, Copilot, Messaging & Sequences | Velox House",
     description:
-      "Every Velox House feature in detail: find B2B leads, AI research and messaging, multichannel email + LinkedIn sequences, pipeline, inbox, analytics and deliverability — all from your own inbox.",
+      "Every Velox House feature in detail: AI-planned lead discovery and fit-scoring, an app-wide AI copilot, per-prospect research and messaging, multichannel email + LinkedIn sequences, pipeline, analytics and deliverability — all from your own inbox.",
     path: "/features",
   },
   "/tools": {

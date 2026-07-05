@@ -1,6 +1,6 @@
 # Velox House
 
-> AI cold email and multichannel outreach software for B2B teams. Velox House finds your ideal B2B prospects, researches them with AI, writes personalised cold emails and LinkedIn messages, and runs automated email + LinkedIn follow-up sequences from your own inbox — tracking every open, reply and booked meeting in real time. There is a free forever plan (no credit card); paid plans start at £19.99/month.
+> AI cold email and multichannel outreach software for B2B teams. AI runs through the whole workflow: it plans your lead discovery, scores and ranks prospects by fit, researches each business, writes personalised cold emails and LinkedIn messages, tells you the next-best-actions to take, explains your analytics, and drafts replies — while automated email + LinkedIn sequences run from your own inbox, tracking every open, reply and booked meeting. There is a free forever plan (no credit card); paid plans start at £19.99/month.
 
 Website: https://veloxhouse.co.uk
 App / sign-up: https://hub.veloxhouse.co.uk/signup
@@ -9,17 +9,19 @@ Currency: GBP (£)
 
 ## What it does
 
-- **Find Leads** — Search a real database of UK companies and people. Filter decision-makers by role/job title, seniority, department, industry, company size and location. Toggle between company-first and people-first search, with relevance ranking and verified email discovery.
+- **AI Discovery** — Describe your ideal customer and an AI query-planner expands it into dozens of targeted searches (role variants, industry codes, nearby locations), building a universe of hundreds of matching companies rather than a shallow first page. A "broaden the net" pass proposes adjacent niches and wider geography when a segment is thin. Every prospect is AI fit-scored and ranked, with a reason. "Find more like this" runs a lookalike search from any strong lead. Search companies or people; filter by role, seniority, department, industry, size and location; verified email discovery.
+- **AI Copilot** — App-wide AI guidance, not a bolt-on chatbot: dashboard next-best-actions (2–3 specific things to do now), "explain my numbers" plain-English analytics reads, one-click campaign autopsies with next-round tweaks, and inbox reply suggestions that read the objection/tone and draft a response.
 - **AI Research** — Every prospect is researched automatically: business, pain points, angles and fit, so each message is personalised rather than templated.
 - **AI Messaging** — The AI writes personalised cold emails, LinkedIn connection notes and follow-ups. You review and send.
-- **Sequences** — Multi-step email + LinkedIn follow-up that runs on a schedule from your own inbox and pauses automatically the moment a prospect replies. Sub-day delays supported.
+- **Sequences** — Multi-step email + LinkedIn follow-up that runs on a schedule from your own inbox and pauses automatically the moment a prospect replies. Human-paced, staggered sending inside safe daily windows (Europe/London), with the next send time shown. Sub-day delays supported.
 - **Campaigns** — Role-based or business-based targeting; run multichannel (email + LinkedIn) or LinkedIn-only.
 - **Pipeline & Inbox** — Every reply and deal stage in one place, from first touch to closed.
-- **Analytics** — Live tracking of opens, replies, meetings booked and pipeline value.
+- **Analytics** — Live tracking of opens, replies, meetings booked and pipeline value, with an AI "explain my numbers" read and per-campaign autopsies.
 - **Deliverability** — SPF/DKIM/DMARC checks, domain reputation and bounce monitoring, a pre-send spam checker, and own-mailbox sending (Google, Microsoft 365 or any SMTP) so email comes from your own domain.
 
 ## Key facts
 
+- AI is woven through the whole app (not one feature): discovery planning, fit-scoring/ranking, per-prospect research, message writing, next-best-actions, analytics explanations, campaign autopsies and inbox reply drafting.
 - Sending is unlimited and free on every plan, because email is sent through the customer's own connected mailbox.
 - Two metered allowances: **Contacts** (verified prospect discoveries) and **AI credits** (research and content generation).
 - Every paid plan includes a LinkedIn seat; the free plan is email-only.

@@ -6,27 +6,30 @@ import { inViewport } from "../../lib/utils";
 const TILES = [
   {
     icon: "◉",
-    title: "Find Leads",
+    title: "AI Discovery",
     href: "/features#find-leads",
-    desc: "Discover decision-makers by role, industry, company size and location.",
+    desc: "Describe your ICP; the AI plans the searches and builds a ranked market of hundreds.",
+    ai: true,
   },
   {
-    icon: "✦",
-    title: "AI Research",
-    href: "/features#ai-research",
-    desc: "Every prospect researched automatically — pain points, angles and fit.",
+    icon: "✳",
+    title: "AI Copilot",
+    href: "/features#ai-copilot",
+    desc: "Next-best-actions, campaign autopsies and reply drafts — guidance across the whole app.",
+    ai: true,
   },
   {
     icon: "◆",
     title: "AI Messaging",
     href: "/features#ai-messaging",
-    desc: "Personalised cold emails, LinkedIn notes and follow-ups, written for you.",
+    desc: "Researched, personalised cold emails, LinkedIn notes and follow-ups, written for you.",
+    ai: true,
   },
   {
     icon: "▶",
     title: "Sequences",
     href: "/features#sequences",
-    desc: "Multi-step email + LinkedIn follow-up that runs until they reply.",
+    desc: "Multi-step email + LinkedIn follow-up, naturally paced, that runs until they reply.",
   },
   {
     icon: "■",
@@ -38,7 +41,7 @@ const TILES = [
     icon: "◐",
     title: "Analytics & Deliverability",
     href: "/features#analytics",
-    desc: "Track opens, replies and meetings. Keep your domain inbox-safe.",
+    desc: "Track opens, replies and meetings — with an AI read of the numbers. Stay inbox-safe.",
   },
 ];
 
@@ -89,8 +92,13 @@ export default function ProductTiles() {
                     <div className="icon-chip mb-6 flex h-11 w-11 items-center justify-center rounded-xl text-xl text-[#FF6A4D]">
                       {tile.icon}
                     </div>
-                    <h3 className="mb-2 text-lg font-semibold text-white">
+                    <h3 className="mb-2 flex items-center gap-2 text-lg font-semibold text-white">
                       {tile.title}
+                      {tile.ai && (
+                        <span className="rounded-full border border-[#DA291C]/40 bg-[#DA291C]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#FF6A4D]">
+                          AI
+                        </span>
+                      )}
                     </h3>
                     <p className="text-sm text-[#A0A0A0]">{tile.desc}</p>
                     <div className="mt-6 flex items-center gap-1.5 text-sm text-[#DA291C] opacity-0 transition-opacity group-hover:opacity-100">
