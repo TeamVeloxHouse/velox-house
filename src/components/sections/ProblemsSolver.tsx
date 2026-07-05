@@ -63,7 +63,7 @@ const PROBLEMS: Problem[] = [
   {
     tile: "Outreach tools are too expensive to even try",
     headline: "You shouldn't have to pay to find out if it works.",
-    body: "Start on the free forever plan — 50 contacts, 50 AI credits and unlimited sending, no card required. Upgrade only once it's booking you meetings. No contracts, cancel anytime.",
+    body: "Start on the free forever plan — 100 contacts, 50 AI credits and unlimited sending, no card required. Upgrade only once it's booking you meetings. No contracts, cancel anytime.",
     solutions: ["Free forever plan", "Unlimited sending", "No credit card"],
     chip: "Free — £0/mo",
   },

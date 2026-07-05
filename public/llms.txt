@@ -1,0 +1,51 @@
+# Velox House
+
+> AI cold email and multichannel outreach software for B2B teams. Velox House finds your ideal B2B prospects, researches them with AI, writes personalised cold emails and LinkedIn messages, and runs automated email + LinkedIn follow-up sequences from your own inbox — tracking every open, reply and booked meeting in real time. There is a free forever plan (no credit card); paid plans start at £19.99/month.
+
+Website: https://veloxhouse.co.uk
+App / sign-up: https://hub.veloxhouse.co.uk/signup
+Company location: United Kingdom
+Currency: GBP (£)
+
+## What it does
+
+- **Find Leads** — Search a real database of UK companies and people. Filter decision-makers by role/job title, seniority, department, industry, company size and location. Toggle between company-first and people-first search, with relevance ranking and verified email discovery.
+- **AI Research** — Every prospect is researched automatically: business, pain points, angles and fit, so each message is personalised rather than templated.
+- **AI Messaging** — The AI writes personalised cold emails, LinkedIn connection notes and follow-ups. You review and send.
+- **Sequences** — Multi-step email + LinkedIn follow-up that runs on a schedule from your own inbox and pauses automatically the moment a prospect replies. Sub-day delays supported.
+- **Campaigns** — Role-based or business-based targeting; run multichannel (email + LinkedIn) or LinkedIn-only.
+- **Pipeline & Inbox** — Every reply and deal stage in one place, from first touch to closed.
+- **Analytics** — Live tracking of opens, replies, meetings booked and pipeline value.
+- **Deliverability** — SPF/DKIM/DMARC checks, domain reputation and bounce monitoring, a pre-send spam checker, and own-mailbox sending (Google, Microsoft 365 or any SMTP) so email comes from your own domain.
+
+## Key facts
+
+- Sending is unlimited and free on every plan, because email is sent through the customer's own connected mailbox.
+- Two metered allowances: **Contacts** (verified prospect discoveries) and **AI credits** (research and content generation).
+- Every paid plan includes a LinkedIn seat; the free plan is email-only.
+- No contracts; cancel anytime. No credit card required to start.
+
+## Pricing (GBP / month)
+
+- **Free** — £0: 100 contacts/mo, 50 AI credits, unlimited email sending, 1 mailbox, email-only, no card.
+- **Starter** — £19.99: 300 contacts/mo, 300 AI credits, email + LinkedIn (1 seat), 1 seat, 2 mailboxes.
+- **Growth** — £49.99 (most popular): 1,500 contacts/mo, 1,000 AI credits, email + LinkedIn (1 seat), 3 seats, 5 mailboxes.
+- **Scale** — £99.99: 4,000 contacts/mo, 2,500 AI credits, email + LinkedIn (1 seat), 5 seats, 10 mailboxes.
+- **Agency** — £179.99: 10,000 contacts/mo, 5,000 AI credits, email + LinkedIn (2 seats), 10 seats, 25 mailboxes, priority support.
+- **Add-ons** — Extra contacts: +500 for £20 or +2,000 for £60. Extra LinkedIn seat: £20/mo each.
+
+## Who it's for
+
+Founders, B2B sales teams and agencies who want consistent, personalised cold outreach across email and LinkedIn without paying for expensive per-seat tools or sending from a shared service.
+
+## Free tools
+
+- Email deliverability / domain health checker: https://veloxhouse.co.uk/tools
+
+## Links
+
+- Home: https://veloxhouse.co.uk/
+- Features (full detail): https://veloxhouse.co.uk/features
+- Free tools: https://veloxhouse.co.uk/tools
+- Start free: https://hub.veloxhouse.co.uk/signup
+- Log in: https://hub.veloxhouse.co.uk/login

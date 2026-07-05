@@ -83,3 +83,97 @@ h4 {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* ============================================================= */
+/* Depth & glow design language                                  */
+/* Layered off-blacks + red gradients/glows for visual hierarchy */
+/* ============================================================= */
+
+/* Alternating section surfaces for vertical rhythm */
+.surface-raised {
+  background: linear-gradient(180deg, #0e0e0e 0%, #0a0a0a 100%);
+}
+.surface-sunken {
+  background: radial-gradient(130% 90% at 50% 0%, #111 0%, #0a0a0a 62%);
+}
+
+/* Red radial atmospherics — drop into an absolutely-positioned layer */
+.glow-top {
+  background: radial-gradient(
+    ellipse 60% 50% at 50% 0%,
+    rgba(218, 41, 28, 0.12),
+    transparent 70%
+  );
+}
+.glow-bottom {
+  background: radial-gradient(
+    ellipse 60% 50% at 50% 100%,
+    rgba(218, 41, 28, 0.1),
+    transparent 70%
+  );
+}
+.glow-corner {
+  background: radial-gradient(
+    ellipse 45% 55% at 100% 0%,
+    rgba(255, 90, 60, 0.1),
+    transparent 68%
+  );
+}
+
+/* Red gradient text (brighter than the gold helper) */
+.text-gradient-red {
+  background: linear-gradient(115deg, #ff5a3c 0%, #da291c 55%, #ff3b2d 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Elevated card: soft top-lit gradient + hairline, with a sheen on top */
+.card-depth {
+  position: relative;
+  background: linear-gradient(180deg, #131313 0%, #0c0c0c 100%);
+  border: 1px solid #1c1c1c;
+  overflow: hidden;
+}
+.card-depth::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.08),
+    transparent
+  );
+}
+
+/* Red-lit feature card — highlighted tiles */
+.card-ember {
+  position: relative;
+  background: linear-gradient(180deg, rgba(218, 41, 28, 0.08) 0%, #0c0c0c 55%);
+  border: 1px solid rgba(218, 41, 28, 0.35);
+  box-shadow: 0 0 40px -14px rgba(218, 41, 28, 0.45);
+}
+
+/* Gradient hairline divider */
+.divider-glow {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(218, 41, 28, 0.55),
+    transparent
+  );
+}
+
+/* Icon chip with a soft red glow */
+.icon-chip {
+  background: linear-gradient(
+    180deg,
+    rgba(218, 41, 28, 0.18),
+    rgba(218, 41, 28, 0.04)
+  );
+  border: 1px solid rgba(218, 41, 28, 0.3);
+  box-shadow: inset 0 0 20px -8px rgba(255, 90, 60, 0.6);
+}

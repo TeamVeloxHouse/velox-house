@@ -5,7 +5,7 @@ import VolleySections from "../components/sections/VolleySections";
 import StatsBar from "../components/sections/StatsBar";
 import ProblemsSolver from "../components/sections/ProblemsSolver";
 import StackBuilder from "../components/sections/StackBuilder";
-import Testimonials from "../components/sections/Testimonials";
+import FreeTier from "../components/sections/FreeTier";
 import Pricing from "../components/sections/Pricing";
 import FinalCTA from "../components/sections/FinalCTA";
 
@@ -19,7 +19,7 @@ export default function Home() {
       <StatsBar />
       <ProblemsSolver />
       <StackBuilder />
-      <Testimonials />
+      <FreeTier />
       <Pricing />
       <FinalCTA />
     </>

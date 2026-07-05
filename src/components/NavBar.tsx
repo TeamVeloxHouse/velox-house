@@ -6,10 +6,9 @@ import { track } from "../lib/track";
 import Logo from "./Logo";
 
 const NAV_LINKS = [
-  { label: "Product", href: "/#product" },
+  { label: "Features", href: "/features" },
   { label: "How it works", href: "/#how" },
   { label: "Pricing", href: "/#pricing" },
-  { label: "Customers", href: "/#testimonials" },
   { label: "Free email check", href: "/tools" },
 ];
 

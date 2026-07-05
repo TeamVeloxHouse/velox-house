@@ -65,13 +65,33 @@
           "applicationCategory": "BusinessApplication",
           "operatingSystem": "Web",
           "url": "https://veloxhouse.co.uk/",
+          "publisher": { "@id": "https://veloxhouse.co.uk/#organization" },
           "description": "Find B2B prospects, research them with AI, write personalised cold emails, and run automated multichannel email + LinkedIn follow-up sequences from your own inbox.",
+          "featureList": [
+            "Find B2B leads by role, seniority, department, industry, company size and location",
+            "Search companies and people with verified email discovery",
+            "AI research on every prospect",
+            "AI-written personalised cold emails and LinkedIn messages",
+            "Automated multichannel email + LinkedIn follow-up sequences",
+            "Send from your own mailbox (Google, Microsoft 365 or SMTP)",
+            "Unlimited email sending on every plan",
+            "Pipeline, shared inbox and reply tracking",
+            "Real-time analytics: opens, replies, meetings and pipeline value",
+            "Deliverability: SPF/DKIM/DMARC checks and pre-send spam checker"
+          ],
           "offers": {
             "@type": "AggregateOffer",
             "priceCurrency": "GBP",
             "lowPrice": "0",
             "highPrice": "179.99",
-            "offerCount": "5"
+            "offerCount": "5",
+            "offers": [
+              { "@type": "Offer", "name": "Free", "price": "0", "priceCurrency": "GBP", "description": "100 contacts/mo, 50 AI credits, unlimited email sending, 1 mailbox, email-only. No card." },
+              { "@type": "Offer", "name": "Starter", "price": "19.99", "priceCurrency": "GBP", "description": "300 contacts/mo, 300 AI credits, email + LinkedIn (1 seat), 2 mailboxes." },
+              { "@type": "Offer", "name": "Growth", "price": "49.99", "priceCurrency": "GBP", "description": "1,500 contacts/mo, 1,000 AI credits, email + LinkedIn (1 seat), 3 seats, 5 mailboxes." },
+              { "@type": "Offer", "name": "Scale", "price": "99.99", "priceCurrency": "GBP", "description": "4,000 contacts/mo, 2,500 AI credits, email + LinkedIn (1 seat), 5 seats, 10 mailboxes." },
+              { "@type": "Offer", "name": "Agency", "price": "179.99", "priceCurrency": "GBP", "description": "10,000 contacts/mo, 5,000 AI credits, email + LinkedIn (2 seats), 10 seats, 25 mailboxes, priority support." }
+            ]
           }
         },
         {
@@ -96,6 +116,26 @@
               "@type": "Question",
               "name": "What does Velox House do?",
               "acceptedAnswer": { "@type": "Answer", "text": "It finds B2B prospects, researches them with AI, writes personalised cold emails, and runs automated follow-up sequences — tracking opens, clicks, replies and booked meetings in real time." }
+            },
+            {
+              "@type": "Question",
+              "name": "How much does Velox House cost?",
+              "acceptedAnswer": { "@type": "Answer", "text": "There is a free forever plan (£0). Paid plans are Starter £19.99/mo, Growth £49.99/mo, Scale £99.99/mo and Agency £179.99/mo, all billed in GBP. Every paid plan includes email and LinkedIn, and email sending is unlimited on every plan." }
+            },
+            {
+              "@type": "Question",
+              "name": "Can I run LinkedIn-only outreach?",
+              "acceptedAnswer": { "@type": "Answer", "text": "Yes. Campaigns and sequences can run as email + LinkedIn multichannel or as LinkedIn-only, and you can target prospects by role or by business type." }
+            },
+            {
+              "@type": "Question",
+              "name": "Where does the prospect data come from?",
+              "acceptedAnswer": { "@type": "Answer", "text": "Velox House searches a real database of companies and people, lets you filter to your exact ideal customer by role, industry, company size and location, and verifies email addresses before you reach out." }
+            },
+            {
+              "@type": "Question",
+              "name": "Is there a contract, and can I cancel anytime?",
+              "acceptedAnswer": { "@type": "Answer", "text": "No contract. You can start free with no credit card, upgrade when it's working, and cancel anytime." }
             }
           ]
         }
@@ -121,7 +161,25 @@
         follow-up sequences from your own inbox — tracking every open, reply and meeting.
         Free forever plan, no credit card required. Paid plans from £19.99/month.
       </p>
-      <p><a href="https://hub.veloxhouse.co.uk/signup">Start free</a></p>
+      <h2>What Velox House does</h2>
+      <ul>
+        <li><strong>Find Leads</strong> — search companies and people; filter decision-makers by role, seniority, department, industry, company size and location, with verified email discovery.</li>
+        <li><strong>AI Research</strong> — every prospect researched automatically for pain points, angles and fit.</li>
+        <li><strong>AI Messaging</strong> — personalised cold emails, LinkedIn notes and follow-ups written for you.</li>
+        <li><strong>Sequences</strong> — multi-step email + LinkedIn follow-up that runs from your own inbox and stops when they reply.</li>
+        <li><strong>Pipeline &amp; Inbox</strong> — every reply and deal stage in one place.</li>
+        <li><strong>Analytics &amp; Deliverability</strong> — track opens, replies and meetings; SPF/DKIM/DMARC checks and a pre-send spam checker keep your domain inbox-safe.</li>
+      </ul>
+      <h2>Pricing</h2>
+      <ul>
+        <li><strong>Free</strong> — £0/mo: 100 contacts, 50 AI credits, unlimited email sending, 1 mailbox, email-only. No card.</li>
+        <li><strong>Starter</strong> — £19.99/mo: 300 contacts, 300 AI credits, email + LinkedIn, 2 mailboxes.</li>
+        <li><strong>Growth</strong> — £49.99/mo: 1,500 contacts, 1,000 AI credits, email + LinkedIn, 3 seats, 5 mailboxes.</li>
+        <li><strong>Scale</strong> — £99.99/mo: 4,000 contacts, 2,500 AI credits, email + LinkedIn, 5 seats, 10 mailboxes.</li>
+        <li><strong>Agency</strong> — £179.99/mo: 10,000 contacts, 5,000 AI credits, email + LinkedIn (2 seats), 10 seats, 25 mailboxes.</li>
+      </ul>
+      <p>Sending is unlimited and free on every plan — emails go from your own connected mailbox (Google, Microsoft 365 or SMTP). No contract, cancel anytime.</p>
+      <p><a href="https://hub.veloxhouse.co.uk/signup">Start free</a> · <a href="https://veloxhouse.co.uk/tools">Free deliverability checker</a></p>
     </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
