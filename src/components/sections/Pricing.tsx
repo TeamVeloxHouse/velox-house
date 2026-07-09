@@ -6,10 +6,12 @@ interface Plan {
   name: string;
   price: string;
   period: string;
+  perContact: string;
   blurb: string;
   features: string[];
   cta: string;
   highlighted?: boolean;
+  badge?: string;
 }
 
 const PLANS: Plan[] = [
@@ -17,6 +19,7 @@ const PLANS: Plan[] = [
     name: "Starter",
     price: "£19.99",
     period: "/mo",
+    perContact: "6.7p / contact",
     blurb: "For founders getting consistent outreach going.",
     features: [
       "300 contacts / month",
@@ -31,38 +34,43 @@ const PLANS: Plan[] = [
     name: "Growth",
     price: "£49.99",
     period: "/mo",
+    perContact: "5.0p / contact",
     blurb: "For founders scaling email + LinkedIn together.",
     features: [
-      "1,500 contacts / month",
+      "1,000 contacts / month",
       "Email + LinkedIn — 1 seat",
       "1,000 AI credits / month",
       "Unlimited email sending",
       "3 seats · 5 mailboxes",
     ],
     cta: "Start with Growth",
-    highlighted: true,
+    badge: "Popular",
   },
   {
     name: "Scale",
-    price: "£99.99",
+    price: "£79.99",
     period: "/mo",
-    blurb: "For teams running serious multichannel volume.",
+    perContact: "4.6p / contact",
+    blurb: "The best value per contact — most teams land here.",
     features: [
-      "4,000 contacts / month",
+      "1,750 contacts / month",
       "Email + LinkedIn — 1 seat",
       "2,500 AI credits / month",
       "5 seats · 10 mailboxes",
       "Everything in Growth",
     ],
     cta: "Start with Scale",
+    highlighted: true,
+    badge: "Best value",
   },
   {
     name: "Agency",
     price: "£179.99",
     period: "/mo",
+    perContact: "4.5p / contact",
     blurb: "For agencies and high-volume senders.",
     features: [
-      "10,000 contacts / month",
+      "4,000 contacts / month",
       "Email + LinkedIn — 2 seats",
       "5,000 AI credits / month",
       "10 seats · 25 mailboxes",
@@ -132,9 +140,16 @@ export default function Pricing() {
                   : "border border-[#1A1A1A]"
               )}
             >
-              {plan.highlighted && (
-                <span className="absolute -top-3 left-8 rounded-full bg-[#DA291C] px-3 py-1 text-xs font-semibold text-white">
-                  Most popular
+              {plan.badge && (
+                <span
+                  className={cn(
+                    "absolute -top-3 left-8 rounded-full px-3 py-1 text-xs font-semibold",
+                    plan.highlighted
+                      ? "bg-[#DA291C] text-white"
+                      : "border border-[#2A2A2A] bg-[#0F0F0F] text-[#A0A0A0]"
+                  )}
+                >
+                  {plan.badge}
                 </span>
               )}
 
@@ -145,6 +160,7 @@ export default function Pricing() {
                 <span className="text-3xl font-bold text-white">{plan.price}</span>
                 <span className="text-sm text-[#666]">{plan.period}</span>
               </div>
+              <p className="mt-1 text-xs font-medium text-[#DA291C]">{plan.perContact}</p>
               <p className="mt-3 text-sm text-[#A0A0A0]">{plan.blurb}</p>
 
               <ul className="mb-8 mt-8 space-y-3">
@@ -173,7 +189,7 @@ export default function Pricing() {
 
         {/* Top-ups note */}
         <p className="mt-8 text-center text-sm text-[#666]">
-          Need more reach? Add contacts any time — +500 for £20 or +2,000 for £60.
+          Need more reach? Add contacts any time — +500 for £25 or +2,000 for £80.
           Extra LinkedIn seats are £20/mo each.
         </p>
       </div>
