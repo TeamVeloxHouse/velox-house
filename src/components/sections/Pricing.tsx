@@ -23,7 +23,7 @@ const PLANS: Plan[] = [
     blurb: "For founders getting consistent outreach going.",
     features: [
       "300 contacts / month",
-      "Email + LinkedIn — 1 seat",
+      "Add LinkedIn automation — £19.99/mo",
       "300 AI credits / month",
       "Unlimited email sending",
       "2 mailboxes · sequences & analytics",
@@ -38,7 +38,7 @@ const PLANS: Plan[] = [
     blurb: "For founders scaling email + LinkedIn together.",
     features: [
       "1,000 contacts / month",
-      "Email + LinkedIn — 1 seat",
+      "Add LinkedIn automation — £19.99/mo",
       "1,000 AI credits / month",
       "Unlimited email sending",
       "3 seats · 5 mailboxes",
@@ -54,7 +54,7 @@ const PLANS: Plan[] = [
     blurb: "The best value per contact — most teams land here.",
     features: [
       "1,750 contacts / month",
-      "Email + LinkedIn — 1 seat",
+      "Add LinkedIn automation — £19.99/mo",
       "2,500 AI credits / month",
       "5 seats · 10 mailboxes",
       "Everything in Growth",
@@ -71,7 +71,7 @@ const PLANS: Plan[] = [
     blurb: "For agencies and high-volume senders.",
     features: [
       "4,000 contacts / month",
-      "Email + LinkedIn — 2 seats",
+      "Add LinkedIn automation — £19.99/mo/seat",
       "5,000 AI credits / month",
       "10 seats · 25 mailboxes",
       "Priority support",
@@ -92,14 +92,15 @@ export default function Pricing() {
         >
           <span className="text-sm font-semibold text-[#DA291C]">Pricing</span>
           <h2 className="mt-3 font-display text-4xl font-bold tracking-[-0.02em] text-white md:text-5xl">
-            Email and LinkedIn.{" "}
-            <span className="text-[#A0A0A0]">One platform, one price.</span>
+            Email that lands.{" "}
+            <span className="text-[#A0A0A0]">LinkedIn that replies.</span>
           </h2>
           <p className="mt-4 text-[#A0A0A0]">
-            Every paid plan includes a LinkedIn seat — connect your account and
-            automate connection requests and messages alongside email. Sending is
-            unlimited and free; you only pay for more contacts as you scale. No card
-            to start, cancel anytime.
+            Every plan is a full email outreach engine — unlimited free sending, AI
+            research and writing, and <span className="text-white">every contact SMTP-verified</span> so
+            you don't burn your sender reputation on bounces. Add LinkedIn automation to
+            any paid plan for £19.99/mo per seat when you want a true multichannel touch.
+            No card to start, cancel anytime.
           </p>
         </motion.div>
 
@@ -187,10 +188,37 @@ export default function Pricing() {
           ))}
         </div>
 
+        {/* LinkedIn power-up callout */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={inViewport}
+          className="mt-8 flex flex-col items-start justify-between gap-4 rounded-xl border border-[#1A1A1A] bg-[#0F0F0F] p-6 sm:flex-row sm:items-center"
+        >
+          <div>
+            <h3 className="font-display text-xl font-bold text-white">
+              Add LinkedIn — <span className="text-[#0A66C2]">£19.99/mo</span> per seat
+            </h3>
+            <p className="mt-1 max-w-2xl text-sm text-[#A0A0A0]">
+              Email opens the door; LinkedIn gets the reply. Turn on connection requests
+              and follow-up messages in the same sequences and inbox as your email — a
+              true multichannel touch that consistently lifts reply rates, plus
+              higher-volume role-based prospecting through LinkedIn search. Add it to any
+              paid plan, cancel any time.
+            </p>
+          </div>
+          <a
+            href={SIGNUP_URL}
+            className="shrink-0 rounded-md bg-[#0A66C2] px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-[#0954a0]"
+          >
+            Add LinkedIn
+          </a>
+        </motion.div>
+
         {/* Top-ups note */}
         <p className="mt-8 text-center text-sm text-[#666]">
           Need more reach? Add contacts any time — +500 for £25 or +2,000 for £80.
-          Extra LinkedIn seats are £20/mo each.
+          Additional LinkedIn seats are £19.99/mo each.
         </p>
       </div>
     </section>
