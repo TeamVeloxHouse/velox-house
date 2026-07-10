@@ -8,6 +8,8 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { SIGNUP_URL } from "../lib/utils";
+import { submitLead } from "../lib/supabase";
+import { track } from "../lib/track";
 
 /* ------------------------------------------------------------------ */
 /* DNS helpers (live checks via Google DNS-over-HTTPS, CORS-enabled)   */
@@ -112,9 +114,16 @@ export default function DeliverabilityCheck() {
   const [result, setResult] = useState<Result | null>(null);
 
   const run = async () => {
-    const d = toDomain(domain.includes("@") ? domain.split("@")[1] : domain);
+    const raw = domain.trim();
+    const email = raw.toLowerCase();
+    // Require a real email so the check doubles as lead capture.
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      setError("Enter your work email, e.g. you@yourbusiness.co.uk");
+      return;
+    }
+    const d = toDomain(email.split("@")[1]);
     if (!d || !d.includes(".")) {
-      setError("Enter your email domain, e.g. yourbusiness.co.uk");
+      setError("That doesn't look like a valid email domain.");
       return;
     }
     setError("");
@@ -183,6 +192,26 @@ export default function DeliverabilityCheck() {
         0
       );
       setResult({ score, rows });
+
+      // Capture the enquiry into the CRM (owner workspace) — fire-and-forget so a
+      // capture hiccup never breaks the free tool. Domain + score + per-check
+      // results go in the note so the lead lands pre-qualified.
+      track("lead_capture", {
+        label: "deliverability_check",
+        props: { source: "deliverability_check", score },
+      });
+      submitLead({
+        name: "",
+        email,
+        businessName: d,
+        chipTier: `Deliverability ${gradeFor(score)} (${score}/100)`,
+        message:
+          `Ran the free deliverability check for ${d} — scored ${score}/100 (grade ${gradeFor(score)}). ` +
+          rows.map((r) => `${r.label}: ${r.pass ? "pass" : "fail"}`).join("; "),
+        source: "deliverability_check",
+      }).catch(() => {
+        /* non-blocking: the report still shows even if capture fails */
+      });
     } catch {
       setError("Couldn't run the check — please try again.");
     } finally {
@@ -214,7 +243,7 @@ export default function DeliverabilityCheck() {
         >
           <div className="flex items-center justify-center gap-4 text-xs font-semibold uppercase tracking-[0.25em] text-[#DA291C]">
             <span className="hidden h-px w-12 bg-[#DA291C]/40 sm:block" />
-            Free tool · No sign-up
+            Free tool · Instant report
             <span className="hidden h-px w-12 bg-[#DA291C]/40 sm:block" />
           </div>
 
@@ -229,7 +258,7 @@ export default function DeliverabilityCheck() {
           <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-[#A0A0A0] md:text-lg">
             We check your domain's SPF, DKIM, DMARC and mail records live — the
             settings that decide whether your outreach reaches the inbox or the
-            spam folder. Free, instant, no sign-up.
+            spam folder. Free and instant — just pop in your work email.
           </p>
         </motion.div>
 
@@ -259,10 +288,16 @@ export default function DeliverabilityCheck() {
               className="flex shrink-0 items-center justify-center gap-2 rounded-md bg-[#DA291C] px-6 py-3.5 text-sm font-medium text-white transition-colors hover:bg-[#FF3B2D] disabled:opacity-60"
             >
               {loading ? <Loader2 size={16} className="animate-spin" /> : null}
-              {loading ? "Checking…" : "Check my domain"}
+              {loading ? "Checking…" : "Check my email"}
             </button>
           </div>
           {error && <p className="mt-3 text-xs text-[#DA291C]">{error}</p>}
+          {!error && (
+            <p className="mt-3 text-xs text-[#666]">
+              We'll run your report instantly. We may follow up with tips to fix any
+              issues — no spam, unsubscribe anytime.
+            </p>
+          )}
 
           {result && (
             <motion.div
@@ -303,10 +338,10 @@ export default function DeliverabilityCheck() {
                   href={SIGNUP_URL}
                   className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-[#DA291C] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#FF3B2D]"
                 >
-                  Protect my sender reputation — free <ArrowRight size={15} />
+                  Protect my sender reputation <ArrowRight size={15} />
                 </a>
                 <p className="mt-3 text-xs text-[#666]">
-                  Free forever plan · No credit card required
+                  21-day free trial · Cancel anytime
                 </p>
               </div>
             </motion.div>

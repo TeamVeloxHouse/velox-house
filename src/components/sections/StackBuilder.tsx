@@ -55,7 +55,7 @@ const QUESTIONS: Question[] = [
   },
   {
     prompt: "What monthly budget works for you?",
-    options: ["£0 — free only", "Up to £20", "Up to £50", "£99+"],
+    options: ["Up to £20", "Up to £50", "Up to £100", "£180+"],
   },
 ];
 
@@ -71,17 +71,6 @@ interface Plan {
 }
 
 const PLANS: Record<string, Plan> = {
-  free: {
-    name: "Free",
-    chipLine: "Free · £0/mo",
-    why: "Start with zero risk. You get real lead discovery, AI research and messaging, and unlimited email sending — enough to land your first meetings before you pay a penny.",
-    stack: [
-      "100 contacts / month",
-      "50 AI credits / month",
-      "Unlimited email sending",
-      "1 seat · 1 mailbox",
-    ],
-  },
   starter: {
     name: "Starter",
     chipLine: "Starter · £19.99/mo",
@@ -98,7 +87,7 @@ const PLANS: Record<string, Plan> = {
     chipLine: "Growth · £49.99/mo",
     why: "Built for scaling email + LinkedIn together. Higher allowances and seats so you (and your team) work from one shared pipeline, sequence library and inbox.",
     stack: [
-      "1,500 contacts / month",
+      "1,000 contacts / month",
       "Email + LinkedIn — 1 seat",
       "1,000 AI credits / month",
       "3 seats · 5 mailboxes",
@@ -106,10 +95,10 @@ const PLANS: Record<string, Plan> = {
   },
   scale: {
     name: "Scale",
-    chipLine: "Scale · £99.99/mo",
+    chipLine: "Scale · £79.99/mo",
     why: "For teams running serious multichannel volume. Large allowances across email and LinkedIn, with the seats and mailboxes to match.",
     stack: [
-      "4,000 contacts / month",
+      "1,750 contacts / month",
       "Email + LinkedIn — 1 seat",
       "2,500 AI credits / month",
       "5 seats · 10 mailboxes",
@@ -120,7 +109,7 @@ const PLANS: Record<string, Plan> = {
     chipLine: "Agency · £179.99/mo",
     why: "For agencies and high-volume senders. The largest allowances, two LinkedIn seats, the most mailboxes, and priority support to keep the machine running.",
     stack: [
-      "10,000 contacts / month",
+      "4,000 contacts / month",
       "Email + LinkedIn — 2 seats",
       "5,000 AI credits / month",
       "10 seats · 25 mailboxes · priority support",
@@ -129,15 +118,14 @@ const PLANS: Record<string, Plan> = {
 };
 
 function recommend(answers: (string | null)[]): Plan {
-  const setup = answers[1];
   const goal = answers[2];
   const volume = answers[3];
   const budget = answers[4];
 
-  if (volume === "4,000+") {
+  if (volume === "4,000+" || budget === "£180+") {
     return PLANS.agency;
   }
-  if (budget === "£99+") {
+  if (budget === "Up to £100") {
     return PLANS.scale;
   }
   if (
@@ -147,17 +135,8 @@ function recommend(answers: (string | null)[]): Plan {
   ) {
     return PLANS.growth;
   }
-  if (budget === "Up to £20" || volume === "A few hundred") {
-    return PLANS.starter;
-  }
-  if (
-    budget === "£0 — free only" ||
-    volume === "Up to 100 (just testing)" ||
-    setup === "Nothing yet — starting from scratch" ||
-    goal === "Just test the waters cheaply"
-  ) {
-    return PLANS.free;
-  }
+  // Everything else — including testing, starting from scratch, or the lowest
+  // budget — starts on Starter and its 21-day free trial.
   return PLANS.starter;
 }
 
@@ -401,7 +380,7 @@ export default function StackBuilder() {
                     href={SIGNUP_URL}
                     className="mt-4 block text-center text-sm text-[#A0A0A0] transition-colors hover:text-white"
                   >
-                    Or start free right now →
+                    Or start your free trial right now →
                   </a>
                 </motion.div>
               )}
@@ -425,7 +404,7 @@ export default function StackBuilder() {
                     href={SIGNUP_URL}
                     className="mt-6 inline-block rounded-md bg-[#DA291C] px-6 py-3.5 text-sm font-medium text-white transition-colors hover:bg-[#FF3B2D]"
                   >
-                    Start Free Now →
+                    Start Free Trial →
                   </a>
                 </motion.div>
               )}

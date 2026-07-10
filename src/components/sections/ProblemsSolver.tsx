@@ -44,7 +44,7 @@ const PROBLEMS: Problem[] = [
     headline: "Your domain has a deliverability problem — and it's costing you replies.",
     body: "Velox House checks SPF, DKIM and DMARC, monitors your domain reputation and bounce rate, and includes a pre-send spam checker. Send from your own warmed mailbox so you land in the inbox.",
     solutions: ["Deliverability", "Domain health checks", "Own-mailbox sending"],
-    chip: "Free — £0/mo",
+    chip: "Starter — £19.99/mo",
   },
   {
     tile: "I don't know who I should even be targeting",
@@ -63,9 +63,9 @@ const PROBLEMS: Problem[] = [
   {
     tile: "Outreach tools are too expensive to even try",
     headline: "You shouldn't have to pay to find out if it works.",
-    body: "Start on the free forever plan — 100 contacts, 50 AI credits and unlimited sending, no card required. Upgrade only once it's booking you meetings. No contracts, cancel anytime.",
-    solutions: ["Free forever plan", "Unlimited sending", "No credit card"],
-    chip: "Free — £0/mo",
+    body: "Start with a 21-day free trial — the whole product, no charge until it ends. See it book meetings first, then pick a plan from £19.99/mo. Cancel any time before day 21 and you won't pay a penny. No contracts.",
+    solutions: ["21-day free trial", "Unlimited sending", "Cancel anytime"],
+    chip: "21-day free trial",
   },
 ];
 
@@ -136,7 +136,7 @@ export default function ProblemsSolver() {
                     href={SIGNUP_URL}
                     className="mt-6 inline-block rounded-md bg-[#DA291C] px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-[#FF3B2D]"
                   >
-                    Fix This Free →
+                    Start Free Trial →
                   </a>
                 </div>
 

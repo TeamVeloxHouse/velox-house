@@ -99,12 +99,13 @@ export default function Pricing() {
             Every plan is a full email outreach engine — unlimited free sending, AI
             research and writing, and <span className="text-white">every contact SMTP-verified</span> so
             you don't burn your sender reputation on bounces. Add LinkedIn automation to
-            any paid plan for £19.99/mo per seat when you want a true multichannel touch.
-            No card to start, cancel anytime.
+            any plan for £19.99/mo per seat when you want a true multichannel touch.
+            Every plan starts with a 21-day free trial — cancel anytime before it ends
+            and you won't be charged.
           </p>
         </motion.div>
 
-        {/* Free callout */}
+        {/* Free-trial callout */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -112,17 +113,19 @@ export default function Pricing() {
           className="mb-8 flex flex-col items-start justify-between gap-4 rounded-xl border border-[#1A1A1A] bg-[#0F0F0F] p-6 sm:flex-row sm:items-center"
         >
           <div>
-            <h3 className="font-display text-xl font-bold text-white">Free forever</h3>
+            <h3 className="font-display text-xl font-bold text-white">
+              Every plan starts free for 21 days
+            </h3>
             <p className="mt-1 text-sm text-[#A0A0A0]">
-              100 contacts/mo · unlimited email sending · 1 mailbox · AI research &amp;
-              messaging. No card required.
+              The full product · pick your plan up front · cancel anytime before day 21
+              and you won&apos;t be charged.
             </p>
           </div>
           <a
             href={SIGNUP_URL}
             className="shrink-0 rounded-md border border-[#2A2A2A] px-5 py-3 text-sm font-medium text-white transition-colors hover:border-[#444]"
           >
-            Start free
+            Start free trial
           </a>
         </motion.div>
 
@@ -184,6 +187,10 @@ export default function Pricing() {
               >
                 {plan.cta}
               </a>
+              <p className="mt-3 text-center text-xs text-[#666]">
+                21-day free trial, then {plan.price}
+                {plan.period} · cancel anytime
+              </p>
             </motion.div>
           ))}
         </div>

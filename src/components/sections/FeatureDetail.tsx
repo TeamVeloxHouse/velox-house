@@ -98,7 +98,7 @@ export function FeatureListCTA() {
         href={SIGNUP_URL}
         className="inline-flex items-center gap-2 rounded-md bg-[#DA291C] px-6 py-3.5 text-sm font-semibold text-white shadow-cta transition-all hover:bg-[#FF3B2D] hover:shadow-glow-lg"
       >
-        Start free — every feature, no card <ArrowRight size={16} />
+        Start free trial — every feature <ArrowRight size={16} />
       </a>
     </div>
   );

@@ -3,10 +3,10 @@ import { motion } from "framer-motion";
 import { inViewport, SIGNUP_URL } from "../../lib/utils";
 import { submitLead } from "../../lib/supabase";
 
-const PLAN_OPTIONS = ["Not sure yet", "Free", "Starter", "Growth", "Scale", "Agency"];
+const PLAN_OPTIONS = ["Not sure yet", "Starter", "Growth", "Scale", "Agency"];
 
 const REASSURANCE = [
-  "Free forever plan — no credit card.",
+  "21-day free trial — cancel anytime.",
   "Unlimited email sending on every plan.",
   "Set up and sending in minutes.",
 ];
@@ -67,9 +67,9 @@ export default function FinalCTA() {
             Start sending in the next five minutes.
           </h2>
           <p className="mx-auto mt-6 max-w-xl text-lg text-[#A0A0A0]">
-            Create your free account and get lead discovery, AI research and
-            messaging, and unlimited sending — no credit card, no contract. Upgrade
-            only when it's booking you meetings.
+            Start your 21-day free trial and get lead discovery, AI research and
+            messaging, and unlimited sending — the whole product. Pick your plan up
+            front; cancel anytime before day 21 and you won't be charged.
           </p>
 
           {/* Primary self-serve CTA */}
@@ -78,7 +78,7 @@ export default function FinalCTA() {
               href={SIGNUP_URL}
               className="inline-block rounded-md bg-[#DA291C] px-8 py-4 text-sm font-semibold text-white transition-colors hover:bg-[#FF3B2D]"
             >
-              Start Free — No Card →
+              Start Free Trial →
             </a>
           </div>
 

@@ -3,7 +3,7 @@ import { SIGNUP_URL } from "../../lib/utils";
 import HeroVideo from "./HeroVideo";
 
 const STATS = [
-  { value: "£0", label: "Free forever plan" },
+  { value: "21-day", label: "Free trial, full product" },
   { value: "Unlimited", label: "Email sending" },
   { value: "App-wide", label: "AI: find, write, guide" },
   { value: "Your inbox", label: "Send from your domain" },
@@ -32,7 +32,7 @@ export default function Hero() {
           className="inline-flex items-center gap-2 rounded-full border border-[#222] bg-[#141414] px-3 py-1.5 text-xs text-[#A0A0A0]"
         >
           <span className="h-1.5 w-1.5 rounded-full bg-[#DA291C]" />
-          Free forever plan · No credit card required
+          21-day free trial · Cancel anytime
         </motion.div>
 
         {/* H1 */}
@@ -55,7 +55,7 @@ export default function Hero() {
           AI finds your ideal prospects, scores them by fit, writes personalised
           emails, and tells you exactly what to do next — while follow-up sequences
           run from your own inbox. Track every open, reply and meeting in real time.
-          Start free — no card required.
+          Start with a 21-day free trial.
         </motion.p>
 
         {/* CTAs */}
@@ -69,7 +69,7 @@ export default function Hero() {
             href={SIGNUP_URL}
             className="rounded-md bg-[#DA291C] px-6 py-3.5 text-sm font-medium text-white transition-colors hover:bg-[#FF3B2D]"
           >
-            Start Free — No Card →
+            Start Free Trial →
           </a>
           <a
             href="#how"

@@ -83,7 +83,7 @@ export default function NavBar() {
               onClick={() => track("cta_click", { label: "Start free" })}
               className="rounded-full bg-[#DA291C] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#FF3B2D]"
             >
-              Start free
+              Start free trial
             </a>
           </div>
 
@@ -128,7 +128,7 @@ export default function NavBar() {
               onClick={() => track("cta_click", { label: "Start free (mobile)" })}
               className="rounded-full bg-[#DA291C] px-4 py-2.5 text-center text-sm font-medium text-white transition-colors hover:bg-[#FF3B2D]"
             >
-              Start free
+              Start free trial
             </a>
           </div>
         </div>

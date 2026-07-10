@@ -3,16 +3,16 @@ import { Check, Infinity as InfinityIcon } from "lucide-react";
 import { inViewport, SIGNUP_URL } from "../../lib/utils";
 import { track } from "../../lib/track";
 
-// The free plan is a real acquisition lever, so it gets its own section that
-// makes the "actually usable, forever" case — not a 7-day trial. Numbers mirror
-// the app's `trial` tier in credits.ts (100 contacts, 50 AI credits, unlimited send).
+// The 21-day free trial is the top-of-funnel acquisition lever, so it gets its
+// own section that makes the "try the whole product, no crippled trial" case.
+// You pick your plan up front and add a card; nothing is charged until day 21.
 const INCLUDED = [
-  "100 new contacts every month",
-  "50 AI credits for research & writing",
-  "Unlimited email sending — never metered",
+  "Every feature unlocked — no crippled trial",
   "Full AI research on every prospect",
   "AI-written emails and follow-ups",
   "Multi-step sequences from your own inbox",
+  "Unlimited email sending — never metered",
+  "Email, plus optional LinkedIn multichannel",
   "Pipeline, inbox and live analytics",
   "Deliverability checks to stay inbox-safe",
 ];
@@ -34,20 +34,20 @@ export default function FreeTier() {
           >
             <span className="inline-flex items-center gap-2 rounded-full border border-[#DA291C]/40 bg-[#DA291C]/10 px-3 py-1.5 text-xs font-semibold text-[#FF6A4D]">
               <span className="h-1.5 w-1.5 rounded-full bg-[#DA291C]" />
-              Free forever · No credit card
+              21-day free trial · Cancel anytime
             </span>
 
             <h2 className="mt-6 font-display text-4xl font-bold leading-[1.05] tracking-[-0.02em] text-white md:text-5xl">
-              Not a trial.{" "}
-              <span className="text-gradient-red">A free plan that books meetings.</span>
+              Not a crippled trial.{" "}
+              <span className="text-gradient-red">The whole product, free for 21 days.</span>
             </h2>
 
             <p className="mt-6 max-w-xl text-lg leading-relaxed text-[#B0B0B0]">
-              Most tools give you 7 days, then a paywall. Velox House gives you a
-              free plan you can run real outreach on — every month, with no expiry
-              and no card on file. Find prospects, let the AI research and write,
-              send from your own inbox, and watch the replies come in. Upgrade only
-              when it's already working.
+              Most tools hand you a locked-down demo. Velox House gives you the
+              entire product for 21 days — every feature, real sending from your own
+              inbox. Get set up, launch a campaign, and see the replies land before
+              you're billed. Pick your plan up front, cancel any time before day 21
+              and you won't pay a penny.
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-4">
@@ -56,11 +56,11 @@ export default function FreeTier() {
                 onClick={() => track("cta_click", { label: "Free tier — Start free" })}
                 className="rounded-md bg-[#DA291C] px-6 py-3.5 text-sm font-semibold text-white shadow-cta transition-all hover:bg-[#FF3B2D] hover:shadow-glow-lg"
               >
-                Start free — no card →
+                Start your free trial →
               </a>
               <span className="flex items-center gap-2 text-sm text-[#888]">
                 <InfinityIcon size={16} className="text-[#DA291C]" />
-                Unlimited sending on the free plan
+                Unlimited sending from day one
               </span>
             </div>
           </motion.div>
@@ -75,14 +75,14 @@ export default function FreeTier() {
           >
             <div className="flex items-baseline justify-between">
               <div>
-                <div className="text-sm font-semibold text-[#FF6A4D]">Free plan</div>
+                <div className="text-sm font-semibold text-[#FF6A4D]">Free trial</div>
                 <div className="mt-1 flex items-baseline gap-1">
-                  <span className="font-display text-5xl font-bold text-white">£0</span>
-                  <span className="text-sm text-[#888]">/forever</span>
+                  <span className="font-display text-5xl font-bold text-white">21</span>
+                  <span className="text-sm text-[#888]">days free</span>
                 </div>
               </div>
               <span className="rounded-full border border-[#DA291C]/40 px-3 py-1 text-xs font-medium text-[#FF6A4D]">
-                No expiry
+                All features
               </span>
             </div>
 
@@ -100,8 +100,9 @@ export default function FreeTier() {
             </ul>
 
             <p className="mt-6 text-xs text-[#777]">
-              Need more reach? Paid plans add LinkedIn, more contacts and team seats
-              from £19.99/mo — same product, bigger allowances.
+              When your trial ends, keep going from £19.99/mo — pick the plan that
+              fits, add LinkedIn and team seats as you grow. Cancel any time before
+              day 21 and you won't be charged.
             </p>
           </motion.div>
         </div>

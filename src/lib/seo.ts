@@ -13,7 +13,7 @@ const ROUTE_META: Record<string, RouteMeta> = {
   "/": {
     title: "Velox House — AI Cold Email & Outreach Software for B2B Teams",
     description:
-      "AI cold email & outreach software for B2B teams. Find prospects, write personalised emails, and run email + LinkedIn follow-up sequences from your own inbox. Free forever plan — no card.",
+      "AI cold email & outreach software for B2B teams. Find prospects, write personalised emails, and run email + LinkedIn follow-up sequences from your own inbox. 21-day free trial, then plans from £19.99/mo.",
     path: "/",
   },
   "/features": {
