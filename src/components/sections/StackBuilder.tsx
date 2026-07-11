@@ -74,10 +74,10 @@ const PLANS: Record<string, Plan> = {
   starter: {
     name: "Starter",
     chipLine: "Starter · £19.99/mo",
-    why: "Email and LinkedIn from day one. Run consistent, personalised outreach across both channels with sequences and analytics behind it.",
+    why: "Everything to run consistent, personalised email outreach — sequences and analytics behind it. Add LinkedIn as a £19.99/seat add-on whenever you want it.",
     stack: [
       "300 contacts / month",
-      "Email + LinkedIn — 1 seat",
+      "Email outreach · LinkedIn £19.99/seat add-on",
       "300 AI credits / month",
       "Unlimited email sending",
     ],
@@ -85,10 +85,10 @@ const PLANS: Record<string, Plan> = {
   growth: {
     name: "Growth",
     chipLine: "Growth · £49.99/mo",
-    why: "Built for scaling email + LinkedIn together. Higher allowances and seats so you (and your team) work from one shared pipeline, sequence library and inbox.",
+    why: "Built for scaling email outreach across a team — higher allowances and seats so you all work from one shared pipeline, sequence library and inbox. LinkedIn add-on available.",
     stack: [
       "1,000 contacts / month",
-      "Email + LinkedIn — 1 seat",
+      "Email outreach · LinkedIn £19.99/seat add-on",
       "1,000 AI credits / month",
       "3 seats · 5 mailboxes",
     ],
@@ -96,10 +96,10 @@ const PLANS: Record<string, Plan> = {
   scale: {
     name: "Scale",
     chipLine: "Scale · £79.99/mo",
-    why: "For teams running serious multichannel volume. Large allowances across email and LinkedIn, with the seats and mailboxes to match.",
+    why: "For teams running serious email volume — large allowances with the seats and mailboxes to match. Layer on LinkedIn seats as an add-on for multichannel.",
     stack: [
       "1,750 contacts / month",
-      "Email + LinkedIn — 1 seat",
+      "Email outreach · LinkedIn £19.99/seat add-on",
       "2,500 AI credits / month",
       "5 seats · 10 mailboxes",
     ],
@@ -107,10 +107,10 @@ const PLANS: Record<string, Plan> = {
   agency: {
     name: "Agency",
     chipLine: "Agency · £179.99/mo",
-    why: "For agencies and high-volume senders. The largest allowances, two LinkedIn seats, the most mailboxes, and priority support to keep the machine running.",
+    why: "For agencies and high-volume senders. The largest allowances, the most seats and mailboxes, and priority support — with LinkedIn seats available as an add-on.",
     stack: [
       "4,000 contacts / month",
-      "Email + LinkedIn — 2 seats",
+      "Email outreach · LinkedIn add-on (£19.99/seat)",
       "5,000 AI credits / month",
       "10 seats · 25 mailboxes · priority support",
     ],
