@@ -74,7 +74,7 @@ export default function NavBar() {
             <a
               href={LOGIN_URL}
               onClick={() => track("cta_click", { label: "Sign in" })}
-              className="text-sm text-[#A0A0A0] transition-colors hover:text-white"
+              className="rounded-full border border-[#DA291C] px-4 py-2 text-sm font-medium text-[#FF5A3C] transition-colors hover:bg-[rgba(218,41,28,0.12)] hover:text-white"
             >
               Sign in
             </a>
@@ -119,7 +119,7 @@ export default function NavBar() {
             <a
               href={LOGIN_URL}
               onClick={() => track("cta_click", { label: "Sign in (mobile)" })}
-              className="text-left text-sm text-[#A0A0A0] hover:text-white"
+              className="rounded-full border border-[#DA291C] px-4 py-2.5 text-center text-sm font-medium text-[#FF5A3C] transition-colors hover:bg-[rgba(218,41,28,0.12)] hover:text-white"
             >
               Sign in
             </a>
