@@ -2,9 +2,11 @@ import { useEffect } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
 import NavBar from "./components/NavBar";
 import Footer from "./components/Footer";
+import CookieConsent from "./components/CookieConsent";
 import Home from "./pages/Home";
 import Features from "./pages/Features";
 import Tools from "./pages/Tools";
+import Legal from "./pages/Legal";
 import { trackPageView } from "./lib/track";
 import { applyRouteMeta } from "./lib/seo";
 
@@ -31,9 +33,11 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/features" element={<Features />} />
           <Route path="/tools" element={<Tools />} />
+          <Route path="/legal/:slug" element={<Legal />} />
         </Routes>
       </main>
       <Footer />
+      <CookieConsent />
     </div>
   );
 }

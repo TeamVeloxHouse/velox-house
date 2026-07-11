@@ -2,6 +2,8 @@
 // app's public `track` edge function (cross-origin, CORS-open). Fire-and-forget,
 // keepalive so a CTA click still records even as the page navigates to the app.
 
+import { analyticsAllowed } from "./consent";
+
 const TRACK_URL =
   ((import.meta.env.VITE_SUPABASE_URL as string | undefined)?.replace(/\/$/, "") ||
     "https://qmzfuadxcnweiwbrsutn.supabase.co") + "/functions/v1/track";
@@ -36,6 +38,8 @@ export function track(
   event: string,
   opts: { path?: string; label?: string; props?: Record<string, unknown> } = {}
 ) {
+  // No analytics or identifier until the visitor accepts non-essential cookies (PECR).
+  if (!analyticsAllowed()) return;
   try {
     const body = JSON.stringify({
       source: "marketing",

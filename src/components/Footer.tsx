@@ -67,9 +67,16 @@ export default function Footer() {
           ))}
         </div>
 
+        {/* Legal links */}
+        <div className="mt-16 flex flex-wrap gap-x-5 gap-y-2 border-t border-[#1A1A1A] pt-8 text-xs text-[#888]">
+          <a href="/legal/privacy" className="transition-colors hover:text-white">Privacy Policy</a>
+          <a href="/legal/cookies" className="transition-colors hover:text-white">Cookie Policy</a>
+          <a href="/legal/terms" className="transition-colors hover:text-white">Terms of Use</a>
+        </div>
+
         {/* Bottom row */}
-        <div className="mt-16 flex flex-col gap-3 border-t border-[#1A1A1A] pt-8 text-xs text-[#666] sm:flex-row sm:justify-between">
-          <span>© 2026 Velox House Limited. All rights reserved.</span>
+        <div className="mt-4 flex flex-col gap-3 text-xs text-[#666] sm:flex-row sm:justify-between">
+          <span>© 2026 Velox House. All rights reserved.</span>
           <span>Built for ambitious UK businesses.</span>
         </div>
       </div>
