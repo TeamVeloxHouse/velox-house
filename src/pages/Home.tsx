@@ -2,6 +2,7 @@ import Hero from "../components/sections/Hero";
 import SocialProof from "../components/sections/SocialProof";
 import ProductTiles from "../components/sections/ProductTiles";
 import AiEverywhere from "../components/sections/AiEverywhere";
+import MobileCapable from "../components/sections/MobileCapable";
 import VolleySections from "../components/sections/VolleySections";
 import StatsBar from "../components/sections/StatsBar";
 import ProblemsSolver from "../components/sections/ProblemsSolver";
@@ -17,6 +18,7 @@ export default function Home() {
       <SocialProof />
       <ProductTiles />
       <AiEverywhere />
+      <MobileCapable />
       <VolleySections />
       <StatsBar />
       <ProblemsSolver />
