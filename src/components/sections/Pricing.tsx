@@ -23,7 +23,7 @@ const PLANS: Plan[] = [
     blurb: "For founders getting consistent outreach going.",
     features: [
       "300 contacts / month",
-      "Add LinkedIn automation — £19.99/mo",
+      "Email only — LinkedIn from Growth up",
       "300 AI credits / month",
       "Unlimited email sending",
       "2 mailboxes · sequences & analytics",
@@ -38,7 +38,7 @@ const PLANS: Plan[] = [
     blurb: "For founders scaling email + LinkedIn together.",
     features: [
       "1,000 contacts / month",
-      "Add LinkedIn automation — £19.99/mo",
+      "1 LinkedIn seat included free",
       "1,000 AI credits / month",
       "Unlimited email sending",
       "3 seats · 5 mailboxes",
@@ -54,7 +54,7 @@ const PLANS: Plan[] = [
     blurb: "The best value per contact — most teams land here.",
     features: [
       "1,750 contacts / month",
-      "Add LinkedIn automation — £19.99/mo",
+      "1 LinkedIn seat included free",
       "2,500 AI credits / month",
       "5 seats · 10 mailboxes",
       "Everything in Growth",
@@ -71,7 +71,7 @@ const PLANS: Plan[] = [
     blurb: "For agencies and high-volume senders.",
     features: [
       "4,000 contacts / month",
-      "Add LinkedIn automation — £19.99/mo/seat",
+      "1 LinkedIn seat included free",
       "5,000 AI credits / month",
       "10 seats · 25 mailboxes",
       "Priority support",
@@ -98,10 +98,10 @@ export default function Pricing() {
           <p className="mt-4 text-[#A0A0A0]">
             Every plan is a full email outreach engine — unlimited free sending, AI
             research and writing, and <span className="text-white">every contact SMTP-verified</span> so
-            you don't burn your sender reputation on bounces. Add LinkedIn automation to
-            any plan for £19.99/mo per seat when you want a true multichannel touch.
-            Every plan starts with a 21-day free trial — cancel anytime before it ends
-            and you won't be charged.
+            you don't burn your sender reputation on bounces. <span className="text-white">Growth,
+            Scale and Agency each include one LinkedIn seat free</span> for a true multichannel touch —
+            add more seats for £19.99/mo each. Every plan starts with a 21-day free trial —
+            cancel anytime before it ends and you won't be charged.
           </p>
         </motion.div>
 
@@ -204,28 +204,29 @@ export default function Pricing() {
         >
           <div>
             <h3 className="font-display text-xl font-bold text-white">
-              Add LinkedIn — <span className="text-[#0A66C2]">£19.99/mo</span> per seat
+              LinkedIn included from <span className="text-[#0A66C2]">Growth</span> up
             </h3>
             <p className="mt-1 max-w-2xl text-sm text-[#A0A0A0]">
-              Email opens the door; LinkedIn gets the reply. Turn on connection requests
-              and follow-up messages in the same sequences and inbox as your email — a
-              true multichannel touch that consistently lifts reply rates, plus
-              higher-volume role-based prospecting through LinkedIn search. Add it to any
-              paid plan, cancel any time.
+              Email opens the door; LinkedIn gets the reply. Growth, Scale and Agency each
+              include one LinkedIn seat free, so you can turn on connection requests and
+              follow-up messages in the same sequences and inbox as your email — a true
+              multichannel touch that consistently lifts reply rates, plus higher-volume
+              role-based prospecting through LinkedIn search. Need more than one? Add extra
+              seats for £19.99/mo each — cancel any time.
             </p>
           </div>
           <a
             href={SIGNUP_URL}
             className="shrink-0 rounded-md bg-[#0A66C2] px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-[#0954a0]"
           >
-            Add LinkedIn
+            Get Growth
           </a>
         </motion.div>
 
         {/* Top-ups note */}
         <p className="mt-8 text-center text-sm text-[#666]">
           Need more reach? Add contacts any time — +500 for £25 or +2,000 for £80.
-          Additional LinkedIn seats are £19.99/mo each.
+          Extra LinkedIn seats on Growth and up are £19.99/mo each.
         </p>
       </div>
     </section>
