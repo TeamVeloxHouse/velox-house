@@ -6,9 +6,9 @@ import { inViewport } from "../../lib/utils";
 const TILES = [
   {
     icon: "◉",
-    title: "AI Discovery",
+    title: "AI Campaigns",
     href: "/features#find-leads",
-    desc: "Describe your ICP; the AI plans the searches and builds a ranked market of hundreds.",
+    desc: "One prompt builds the whole campaign — finds the leads, writes the messages, sends across email + LinkedIn.",
     ai: true,
   },
   {
@@ -59,7 +59,7 @@ export default function ProductTiles() {
           <div className="max-w-3xl">
             <span className="text-sm font-semibold text-[#DA291C]">The platform</span>
             <h2 className="mt-3 font-display text-4xl font-bold tracking-[-0.02em] text-white md:text-5xl">
-              One platform.{" "}
+              One prompt.{" "}
               <span className="text-[#A0A0A0]">Everything your outreach needs.</span>
             </h2>
           </div>

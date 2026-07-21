@@ -172,16 +172,16 @@ interface Volley {
 
 const VOLLEYS: Volley[] = [
   {
-    eyebrow: "Find & Research",
-    title: "Find your next 100 clients in minutes.",
-    body: "Search by role, industry, company size and location to surface real decision-makers. Velox House verifies their email and researches each business with AI — pain points, angles and fit — so every message lands personal.",
+    eyebrow: "Prompt → Campaign",
+    title: "Set up a whole campaign with one prompt.",
+    body: "Tell Velox AI who you want to reach. It plans the campaign, finds and verifies real decision-makers, researches each business — pain points, angles and fit — and writes the email and LinkedIn messages, personalised in your voice. You just approve.",
     cta: "Learn more",
     visual: <ProspectsVisual />,
   },
   {
-    eyebrow: "Automated Sequences",
-    title: "Follow up automatically. Never drop a lead.",
-    body: "Build multi-step sequences that send from your own inbox on a schedule, and stop the moment someone replies. Sending is unlimited on every plan — so the only limit is how many great prospects you find.",
+    eyebrow: "Autopilot",
+    title: "It sends every day — without you.",
+    body: "Once you approve, Velox House sends across email and LinkedIn on a natural, inbox-safe schedule, and pauses the second someone replies. Set a goal like ‘50 replies a week’ and it keeps finding and sending until it's hit. Unlimited email sending on every plan.",
     cta: "Learn more",
     visual: <SequenceVisual />,
     reverse: true,

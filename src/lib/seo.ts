@@ -11,15 +11,15 @@ interface RouteMeta {
 
 const ROUTE_META: Record<string, RouteMeta> = {
   "/": {
-    title: "Velox House — AI Cold Email & Outreach Software for B2B Teams",
+    title: "Velox House — Launch Lead-Gen Campaigns From a Single Prompt | AI Cold Email & Outreach",
     description:
-      "AI cold email & outreach software for B2B teams. Find prospects, write personalised emails, and run email + LinkedIn follow-up sequences from your own inbox. 21-day free trial, then plans from £19.99/mo.",
+      "The AI outreach platform you run from a single prompt. Describe your ideal customer and Velox AI finds the leads, writes personalised email + LinkedIn messages, and sends them every day on autopilot — from your own inbox. 21-day free trial, then plans from £19.99/mo.",
     path: "/",
   },
   "/features": {
-    title: "Features — AI Discovery, Copilot, Messaging & Sequences | Velox House",
+    title: "Features — Velox AI, Discovery, Messaging & Autopilot Sequences | Velox House",
     description:
-      "Every Velox House feature in detail: AI-planned lead discovery and fit-scoring, an app-wide AI copilot, per-prospect research and messaging, multichannel email + LinkedIn sequences, pipeline, analytics and deliverability — all from your own inbox.",
+      "Every Velox House feature in detail: Velox AI that builds and launches a full campaign from one prompt, AI-planned lead discovery, per-prospect research and messaging, multichannel email + LinkedIn sequences on autopilot, pipeline, analytics and deliverability — all from your own inbox.",
     path: "/features",
   },
   "/tools": {

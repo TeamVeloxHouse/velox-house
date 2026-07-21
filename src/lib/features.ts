@@ -22,6 +22,24 @@ export interface Feature {
 
 export const FEATURES: Feature[] = [
   {
+    slug: "velox-ai",
+    glyph: "✦",
+    eyebrow: "Velox AI",
+    name: "Launch a whole campaign from a single prompt.",
+    tagline: "Describe who you want to reach. It builds, launches and runs the campaign.",
+    ai: true,
+    what: "Velox AI is an agent that drives the whole app for you. Tell it who you want to reach in plain English — it scopes the brief with a couple of quick taps, then plans the campaign, finds and verifies the leads, researches each business, writes the email and LinkedIn messages, and — once you approve — launches it and starts sending across both channels.",
+    does: [
+      "Type one prompt (“find marketing managers at UK SaaS firms”) — Velox AI builds the entire campaign",
+      "Plans the ICP, search filters, angle and a multi-step email + LinkedIn sequence for you",
+      "Finds and verifies real decision-makers, then researches and writes personalised copy in your voice",
+      "One approval launches it live — no manual setup, no engineering the perfect prompt",
+      "Goal-seeking autopilot: set a target like “50 replies a week” and it keeps finding and sending daily until it's hit",
+      "Only ever launches, sends or spends when you explicitly approve",
+    ],
+    why: "Setting up outbound is the part that stops people — the searches, the copy, the sequence, the sending schedule. Velox AI does all of it from one sentence, so you go from an idea to a live, self-running campaign in minutes. Nothing else lets you launch outbound from a single prompt.",
+  },
+  {
     slug: "find-leads",
     glyph: "◉",
     eyebrow: "AI Discovery",
@@ -165,8 +183,8 @@ export const FEATURES: Feature[] = [
 // how the whole product is built.
 export const PLATFORM_TRUTHS: { label: string; detail: string }[] = [
   {
-    label: "AI woven through every step",
-    detail: "Not one AI button — the AI plans your discovery, scores your leads, writes your outreach, explains your numbers and tells you what to do next.",
+    label: "Run it from a single prompt",
+    detail: "Velox AI drives the whole app — describe who you want to reach and it builds, launches and runs the campaign, finding and messaging leads across email + LinkedIn every day.",
   },
   {
     label: "Send from your own inbox",

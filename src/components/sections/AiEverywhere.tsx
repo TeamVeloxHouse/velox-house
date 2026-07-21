@@ -4,39 +4,39 @@ import { ArrowRight } from "lucide-react";
 import { inViewport } from "../../lib/utils";
 import FeatureVisual from "./FeatureVisual";
 
-// The differentiator: AI isn't one button, it runs through the whole workflow.
-// Each item maps to a real capability shipped in the app (query-planner,
-// score-leads, ai-insights dashboard/analytics/campaign, generate-reply).
+// The differentiator: you run the whole campaign from one prompt. Each step maps
+// to a real capability of the Velox AI operator (generate_campaign_plan,
+// launch_campaign → discover, autopilot goal-seeking, analyze_analytics).
 const CAPABILITIES = [
+  {
+    step: "Prompt",
+    title: "One line to a full plan",
+    desc: "Describe who you want to reach. A couple of quick taps to scope it, and Velox AI builds the entire campaign.",
+  },
   {
     step: "Find",
     title: "AI-planned discovery",
-    desc: "Expands your ICP into dozens of searches and builds a market of hundreds — not a first page of 20.",
-  },
-  {
-    step: "Rank",
-    title: "AI fit-scoring",
-    desc: "Every prospect scored and ranked by fit, with a reason — so you work the best matches first.",
+    desc: "Finds and verifies real decision-makers that match — with a working email behind every one.",
   },
   {
     step: "Write",
     title: "Researched, personalised copy",
-    desc: "Reads each business and drafts personalised emails and LinkedIn messages that sound like you.",
+    desc: "Researches each business and drafts the emails and LinkedIn messages — personalised, in your voice.",
   },
   {
-    step: "Act",
-    title: "Next-best-actions",
-    desc: "Tells you the 2–3 highest-leverage things to do right now, straight on your dashboard.",
+    step: "Send",
+    title: "Launches across both channels",
+    desc: "One approval and it goes live, sending email + LinkedIn on a natural, inbox-safe schedule.",
+  },
+  {
+    step: "Autopilot",
+    title: "Runs to your goal",
+    desc: "Set a target like ‘50 replies a week’ and it keeps finding and sending until it's hit — every day.",
   },
   {
     step: "Learn",
-    title: "Explain my numbers",
-    desc: "Turns your analytics into plain English and autopsies each campaign with tweaks for the next round.",
-  },
-  {
-    step: "Reply",
-    title: "Inbox reply suggestions",
-    desc: "Reads the objection and tone of a reply and drafts your response, ready to edit and send.",
+    title: "Explains your numbers",
+    desc: "Reads your analytics back in plain English and tells you exactly what to change next.",
   },
 ];
 
@@ -55,16 +55,16 @@ export default function AiEverywhere() {
         >
           <span className="inline-flex items-center gap-2 rounded-full border border-[#DA291C]/40 bg-[#DA291C]/10 px-3 py-1.5 text-xs font-semibold text-[#FF6A4D]">
             <span className="h-1.5 w-1.5 rounded-full bg-[#DA291C]" />
-            New · App-wide AI
+            New · Velox AI
           </span>
           <h2 className="mt-5 font-display text-4xl font-bold tracking-[-0.02em] text-white md:text-5xl">
-            AI isn't a button here.{" "}
-            <span className="text-gradient-red">It runs the whole workflow.</span>
+            Type one prompt.{" "}
+            <span className="text-gradient-red">It builds and runs the whole campaign.</span>
           </h2>
           <p className="mt-4 text-lg text-[#A8A8A8]">
-            From finding the right companies to drafting the reply, Velox House does
-            the thinking with you at every step — so outbound works even if you've
-            never run it before.
+            Velox AI is the first outreach tool you run from a single prompt. Tell it
+            who you want to reach and it finds the leads, writes the messages, and sends
+            across email and LinkedIn — every day, without you. Nothing else does this.
           </p>
         </motion.div>
 

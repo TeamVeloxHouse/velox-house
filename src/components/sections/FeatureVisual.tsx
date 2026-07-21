@@ -16,6 +16,48 @@ function Chrome({ label }: { label: string }) {
   );
 }
 
+/* 0 — Velox AI: one prompt builds the whole campaign */
+function VeloxAiVisual() {
+  const built = [
+    { label: "Targeting", value: "Marketing leaders · UK SaaS · 11–50" },
+    { label: "Leads found", value: "214 companies · emails verified" },
+    { label: "Messages", value: "Email + LinkedIn, personalised" },
+    { label: "Sequence", value: "4 steps · sending on autopilot" },
+  ];
+  return (
+    <div className="card-depth rounded-xl p-6">
+      <Chrome label="Velox AI" />
+      <div className="mb-4 rounded-lg border border-[#DA291C]/30 bg-[#DA291C]/5 px-3 py-2.5 text-sm text-[#E4E4E4]">
+        <span className="text-[#FF6A4D]">You ›</span> Find marketing managers at UK SaaS firms and start reaching out
+      </div>
+      <div className="mb-3 flex items-center gap-2 text-[10px] text-[#666]">
+        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#DA291C]" />
+        Velox AI built your campaign
+      </div>
+      <div className="space-y-2">
+        {built.map((b, i) => (
+          <motion.div
+            key={b.label}
+            initial={{ opacity: 0, y: 8 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={inViewport}
+            transition={{ delay: i * 0.12 }}
+            className="flex items-center gap-3 rounded-lg border border-[#191919] bg-[#101010] px-3 py-2.5"
+          >
+            <Check size={14} className="shrink-0 text-[#3fb950]" />
+            <span className="text-xs text-[#888]">{b.label}</span>
+            <span className="ml-auto text-right text-xs text-[#D8D8D8]">{b.value}</span>
+          </motion.div>
+        ))}
+      </div>
+      <div className="mt-3 flex gap-2">
+        <span className="rounded-md bg-[#DA291C] px-3 py-1.5 text-xs font-medium text-white">Approve &amp; launch</span>
+        <span className="rounded-md border border-[#222] px-3 py-1.5 text-xs text-[#888]">Review first</span>
+      </div>
+    </div>
+  );
+}
+
 /* 1 — AI Discovery: ICP prompt + AI-scored, ranked results */
 function FindLeadsVisual() {
   const rows = [
@@ -326,6 +368,7 @@ function DeliverabilityVisual() {
 }
 
 const VISUALS: Record<string, () => JSX.Element> = {
+  "velox-ai": VeloxAiVisual,
   "find-leads": FindLeadsVisual,
   "ai-copilot": CopilotVisual,
   "ai-research": ResearchVisual,

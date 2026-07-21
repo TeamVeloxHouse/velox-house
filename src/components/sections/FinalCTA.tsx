@@ -67,9 +67,10 @@ export default function FinalCTA() {
             Start sending in the next five minutes.
           </h2>
           <p className="mx-auto mt-6 max-w-xl text-lg text-[#A0A0A0]">
-            Start your 21-day free trial and get lead discovery, AI research and
-            messaging, and unlimited sending — the whole product. Pick your plan up
-            front; cancel anytime before day 21 and you won't be charged.
+            Start your 21-day free trial, describe your ideal customer in one prompt,
+            and watch Velox AI find the leads, write the messages and send them across
+            email + LinkedIn — the whole product, every feature. Pick your plan up front;
+            cancel anytime before day 21 and you won't be charged.
           </p>
 
           {/* Primary self-serve CTA */}

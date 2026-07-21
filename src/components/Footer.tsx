@@ -43,7 +43,7 @@ export default function Footer() {
             <Logo align="start" />
 
             <p className="mt-4 max-w-xs text-sm text-[#A0A0A0]">
-              AI-powered cold outreach for ambitious B2B teams.
+              Lead generation from a single prompt — for ambitious B2B teams.
             </p>
           </div>
 

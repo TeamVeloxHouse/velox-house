@@ -3,10 +3,10 @@ import { SIGNUP_URL } from "../../lib/utils";
 import HeroVideo from "./HeroVideo";
 
 const STATS = [
+  { value: "One prompt", label: "Build & launch a whole campaign" },
+  { value: "Every day", label: "Finds & sends on autopilot" },
+  { value: "Email + LinkedIn", label: "One multichannel flow" },
   { value: "21-day", label: "Free trial, full product" },
-  { value: "Unlimited", label: "Email sending" },
-  { value: "App-wide", label: "AI: find, write, guide" },
-  { value: "Your inbox", label: "Send from your domain" },
 ];
 
 export default function Hero() {
@@ -32,7 +32,7 @@ export default function Hero() {
           className="inline-flex items-center gap-2 rounded-full border border-[#222] bg-[#141414] px-3 py-1.5 text-xs text-[#A0A0A0]"
         >
           <span className="h-1.5 w-1.5 rounded-full bg-[#DA291C]" />
-          21-day free trial · Cancel anytime
+          New · Velox AI — launch a campaign from one prompt
         </motion.div>
 
         {/* H1 */}
@@ -42,7 +42,7 @@ export default function Hero() {
           transition={{ duration: 0.5, delay: 0.05 }}
           className="mt-8 max-w-4xl font-display text-5xl font-extrabold leading-[0.98] tracking-[-0.02em] text-white md:text-7xl lg:text-[88px]"
         >
-          Cold outreach that books meetings on autopilot.
+          Generate leads every day. From a single prompt.
         </motion.h1>
 
         {/* Subtitle */}
@@ -52,10 +52,10 @@ export default function Hero() {
           transition={{ duration: 0.5, delay: 0.18 }}
           className="mt-8 max-w-2xl text-lg leading-relaxed text-[#A0A0A0] md:text-xl"
         >
-          AI finds your ideal prospects, scores them by fit, writes personalised
-          emails, and tells you exactly what to do next — while follow-up sequences
-          run from your own inbox. Track every open, reply and meeting in real time.
-          Start with a 21-day free trial.
+          Describe who you want to reach. Velox AI builds the whole campaign,
+          finds and verifies the leads, writes the emails and LinkedIn messages,
+          and sends them across both channels — every day, on autopilot. The fastest
+          way to fill your pipeline without lifting a finger. Start with a 21-day free trial.
         </motion.p>
 
         {/* CTAs */}

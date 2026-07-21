@@ -48,7 +48,7 @@ const STATS = [
   },
   {
     node: <CountUp target={5} suffix="min" />,
-    label: "From sign-up to your first researched, ready-to-send campaign.",
+    label: "From a single prompt to a live campaign finding and messaging leads.",
   },
   {
     node: <CountUp target={3} suffix="x" />,

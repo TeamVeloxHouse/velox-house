@@ -28,8 +28,8 @@ function FeaturesHero() {
           transition={{ delay: 0.05 }}
           className="mt-8 max-w-4xl font-display text-5xl font-extrabold leading-[1.02] tracking-[-0.02em] text-white md:text-6xl"
         >
-          Everything you need to turn cold contacts into{" "}
-          <span className="text-gradient-red">booked meetings.</span>
+          One prompt builds it. Then it runs{" "}
+          <span className="text-gradient-red">every day.</span>
         </motion.h1>
 
         <motion.p
@@ -38,8 +38,8 @@ function FeaturesHero() {
           transition={{ delay: 0.15 }}
           className="mt-6 max-w-2xl text-lg leading-relaxed text-[#A8A8A8]"
         >
-          Velox House isn't a single trick — it's the full outbound workflow, from
-          finding the right people to landing the reply. Here's exactly what each
+          Velox House isn't a single trick — it's the full outbound workflow, run from
+          one prompt. Velox AI builds and launches the campaign; here's exactly what each
           part does, and why it moves the needle.
         </motion.p>
 
