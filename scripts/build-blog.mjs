@@ -141,6 +141,45 @@ footer a:hover{color:#fff}
 @media(max-width:720px){.nav-links{display:none}}
 `;
 
+// Consent banner + first-party page_view beacon for the static pages. Mirrors the
+// SPA exactly: same localStorage key/values (src/lib/consent.ts), same track edge
+// function and payload shape (src/lib/track.ts) — analytics only after "Accept all".
+const ANALYTICS = `
+<div id="cc" hidden style="position:fixed;left:0;right:0;bottom:0;z-index:60;display:flex;justify-content:center;padding:0 16px 16px">
+  <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;width:100%;max-width:768px;border:1px solid #222;background:#0F0F0F;border-radius:12px;padding:16px;box-shadow:0 20px 50px rgba(0,0,0,.5)">
+    <p style="flex:1 1 260px;font-size:14px;color:#A0A0A0;margin:0">We use essential cookies to run this site, and — with your consent — analytics cookies to understand traffic. <a href="/legal/cookies" style="color:#FF5A3C">Cookie Policy</a>.</p>
+    <div style="display:flex;gap:8px">
+      <button id="cc-e" style="cursor:pointer;border:1px solid #2A2A2A;background:none;border-radius:8px;padding:8px 12px;font-size:14px;font-weight:500;color:#fff">Essential only</button>
+      <button id="cc-a" style="cursor:pointer;border:0;background:#DA291C;border-radius:8px;padding:8px 12px;font-size:14px;font-weight:500;color:#fff">Accept all</button>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var KEY="velox:cookie-consent";
+  function get(){try{return localStorage.getItem(KEY)}catch(e){return null}}
+  function beacon(){
+    try{
+      if(get()!=="all")return;
+      var id;try{id=localStorage.getItem("vx_sid");if(!id){id=crypto.randomUUID();localStorage.setItem("vx_sid",id)}}catch(e){id="anon"}
+      var ua=navigator.userAgent;
+      var device=/Mobi|Android|iPhone/i.test(ua)?"mobile":/iPad|Tablet/i.test(ua)?"tablet":"desktop";
+      var browser=/Edg/.test(ua)?"Edge":/OPR|Opera/.test(ua)?"Opera":/Chrome/.test(ua)?"Chrome":/Firefox/.test(ua)?"Firefox":/Safari/.test(ua)?"Safari":"Other";
+      var p=new URLSearchParams(location.search),ref="";
+      try{if(document.referrer&&new URL(document.referrer).host!==location.host)ref=new URL(document.referrer).host}catch(e){}
+      fetch("https://qmzfuadxcnweiwbrsutn.supabase.co/functions/v1/track",{method:"POST",headers:{"Content-Type":"application/json"},keepalive:true,
+        body:JSON.stringify({source:"marketing",event:"page_view",path:location.pathname,sessionId:id,
+          props:{device:device,browser:browser,referrer:ref,utm_source:p.get("utm_source")||"",utm_medium:p.get("utm_medium")||"",utm_campaign:p.get("utm_campaign")||""}})}).catch(function(){});
+    }catch(e){}
+  }
+  if(get()){beacon();return}
+  var el=document.getElementById("cc");if(!el)return;el.hidden=false;
+  function choose(v){try{localStorage.setItem(KEY,v);if(v!=="all")localStorage.removeItem("vx_sid")}catch(e){}el.hidden=true;beacon()}
+  document.getElementById("cc-a").addEventListener("click",function(){choose("all")});
+  document.getElementById("cc-e").addEventListener("click",function(){choose("essential")});
+})();
+</script>`;
+
 const nav = () => `
 <header class="nav"><div class="nav-in">
   <a class="logo" href="/" aria-label="Velox House home"><img src="/velox-lockup-dark.png" alt="Velox House" /></a>
@@ -310,6 +349,7 @@ ${nav()}
   </div>
 </section>
 ${footer()}
+${ANALYTICS}
 </body>
 </html>`;
 
@@ -377,6 +417,7 @@ ${nav()}
   </div>
 </section>
 ${footer()}
+${ANALYTICS}
 </body>
 </html>`;
 
