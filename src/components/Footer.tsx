@@ -20,6 +20,7 @@ const COLUMNS = [
     links: [
       { label: "All features", href: "/features" },
       { label: "Pricing", href: "/#pricing" },
+      { label: "Blog", href: "/blog/" },
       { label: "Free email check", href: "/tools" },
       { label: "Sign in", href: LOGIN_URL },
     ],

@@ -1,6 +1,6 @@
 # Velox House
 
-> AI cold email and multichannel outreach software for B2B teams. AI runs through the whole workflow: it plans your lead discovery, scores and ranks prospects by fit, researches each business, writes personalised cold emails and LinkedIn messages, tells you the next-best-actions to take, explains your analytics, and drafts replies — while automated email + LinkedIn sequences run from your own inbox, tracking every open, reply and booked meeting. There is a free forever plan (no credit card); paid plans start at £19.99/month.
+> AI outreach platform for B2B teams, run from a single prompt. Describe your ideal customer and Velox AI plans the whole campaign: it finds and verifies matching decision-makers, researches each business, writes personalised cold emails and LinkedIn messages, and sends them every day on goal-seeking autopilot — from your own inbox, tracking every open, reply and booked meeting. Every plan starts with a 21-day free trial; paid plans from £19.99/month.
 
 Website: https://veloxhouse.co.uk
 App / sign-up: https://hub.veloxhouse.co.uk/signup
@@ -9,45 +9,60 @@ Currency: GBP (£)
 
 ## What it does
 
-- **AI Discovery** — Describe your ideal customer and an AI query-planner expands it into dozens of targeted searches (role variants, industry codes, nearby locations), building a universe of hundreds of matching companies rather than a shallow first page. A "broaden the net" pass proposes adjacent niches and wider geography when a segment is thin. Every prospect is AI fit-scored and ranked, with a reason. "Find more like this" runs a lookalike search from any strong lead. Search companies or people; filter by role, seniority, department, industry, size and location; verified email discovery.
-- **AI Copilot** — App-wide AI guidance, not a bolt-on chatbot: dashboard next-best-actions (2–3 specific things to do now), "explain my numbers" plain-English analytics reads, one-click campaign autopsies with next-round tweaks, and inbox reply suggestions that read the objection/tone and draft a response.
+- **Velox AI (campaigns from a prompt)** — Describe who you want to reach in plain English; Velox AI plans the entire campaign, finds and verifies the leads, writes the email and LinkedIn messages, and — once you approve — launches and sends across both channels on autopilot. Set a goal like "50 replies a week" and it keeps finding and sending daily until it's hit. Nothing else lets you launch outbound from a single prompt.
+- **AI Discovery** — An AI query-planner expands your ideal-customer profile into dozens of targeted searches (role variants, industry codes, nearby locations), building a ranked market of hundreds of matching companies. Every prospect is AI fit-scored with a reason. Search companies or people; filter by role, seniority, department, industry, size and location. Every contact is SMTP-verified before import, so you don't pay for bounces.
 - **AI Research** — Every prospect is researched automatically: business, pain points, angles and fit, so each message is personalised rather than templated.
-- **AI Messaging** — The AI writes personalised cold emails, LinkedIn connection notes and follow-ups. You review and send.
-- **Sequences** — Multi-step email + LinkedIn follow-up that runs on a schedule from your own inbox and pauses automatically the moment a prospect replies. Human-paced, staggered sending inside safe daily windows (Europe/London), with the next send time shown. Sub-day delays supported.
-- **Campaigns** — Role-based or business-based targeting; run multichannel (email + LinkedIn) or LinkedIn-only.
+- **AI Messaging** — Personalised cold emails, LinkedIn connection notes and follow-ups written for you. You review and send.
+- **AI Copilot** — App-wide guidance: dashboard next-best-actions, "explain my numbers" analytics reads, one-click campaign autopsies, and inbox reply suggestions that read the objection and draft a response.
+- **Sequences** — Multi-step email + LinkedIn follow-up that runs on a schedule from your own inbox and pauses the moment a prospect replies. Human-paced, staggered sending inside safe daily windows (Europe/London).
 - **Pipeline & Inbox** — Every reply and deal stage in one place, from first touch to closed.
-- **Analytics** — Live tracking of opens, replies, meetings booked and pipeline value, with an AI "explain my numbers" read and per-campaign autopsies.
-- **Deliverability** — SPF/DKIM/DMARC checks, domain reputation and bounce monitoring, a pre-send spam checker, and own-mailbox sending (Google, Microsoft 365 or any SMTP) so email comes from your own domain.
+- **Analytics** — Live tracking of opens, replies, meetings booked and pipeline value, with an AI read of the numbers.
+- **Deliverability** — SPF/DKIM/DMARC checks, a pre-send spam checker, and own-mailbox sending (Google, Microsoft 365 or any SMTP) so email comes from your own domain.
 
 ## Key facts
 
-- AI is woven through the whole app (not one feature): discovery planning, fit-scoring/ranking, per-prospect research, message writing, next-best-actions, analytics explanations, campaign autopsies and inbox reply drafting.
-- Sending is unlimited and free on every plan, because email is sent through the customer's own connected mailbox.
+- AI is woven through the whole app: discovery planning, fit-scoring, per-prospect research, message writing, next-best-actions, analytics explanations, campaign autopsies and inbox reply drafting.
+- Email sending is unlimited on every plan, because email is sent through the customer's own connected mailbox.
 - Two metered allowances: **Contacts** (verified prospect discoveries) and **AI credits** (research and content generation).
-- Every paid plan includes a LinkedIn seat; the free plan is email-only.
-- No contracts; cancel anytime. No credit card required to start.
+- Growth, Scale and Agency each include one LinkedIn seat free; Starter is email-only. Extra LinkedIn seats are £19.99/month each.
+- Every plan starts with a 21-day free trial of the full product — you're not charged until the trial ends, and you can cancel any time before then. No contract.
 
-## Pricing (GBP / month)
+## Pricing (GBP / month, all with a 21-day free trial)
 
-- **Free** — £0: 100 contacts/mo, 50 AI credits, unlimited email sending, 1 mailbox, email-only, no card.
-- **Starter** — £19.99: 300 contacts/mo, 300 AI credits, email + LinkedIn (1 seat), 1 seat, 2 mailboxes.
-- **Growth** — £49.99 (most popular): 1,500 contacts/mo, 1,000 AI credits, email + LinkedIn (1 seat), 3 seats, 5 mailboxes.
-- **Scale** — £99.99: 4,000 contacts/mo, 2,500 AI credits, email + LinkedIn (1 seat), 5 seats, 10 mailboxes.
-- **Agency** — £179.99: 10,000 contacts/mo, 5,000 AI credits, email + LinkedIn (2 seats), 10 seats, 25 mailboxes, priority support.
-- **Add-ons** — Extra contacts: +500 for £20 or +2,000 for £60. Extra LinkedIn seat: £20/mo each.
+- **Starter** — £19.99: 300 contacts/mo, 300 AI credits, unlimited email sending, 2 mailboxes. Email-only (LinkedIn from Growth up).
+- **Growth** — £49.99 (most popular): 1,000 contacts/mo, 1,000 AI credits, 1 LinkedIn seat included free, 3 seats, 5 mailboxes.
+- **Scale** — £79.99 (best value per contact): 1,750 contacts/mo, 2,500 AI credits, 1 LinkedIn seat included free, 5 seats, 10 mailboxes.
+- **Agency** — £179.99: 4,000 contacts/mo, 5,000 AI credits, 1 LinkedIn seat included free, 10 seats, 25 mailboxes, priority support.
+- **Add-ons** — Extra contacts: +500 for £25 or +2,000 for £80. Extra LinkedIn seats (Growth and up): £19.99/mo each.
 
 ## Who it's for
 
-Founders, B2B sales teams and agencies who want consistent, personalised cold outreach across email and LinkedIn without paying for expensive per-seat tools or sending from a shared service.
+Founders, B2B sales teams and agencies — especially in the UK — who want consistent, personalised cold outreach across email and LinkedIn without paying per-seat prices or sending from a shared service.
 
 ## Free tools
 
-- Email deliverability / domain health checker: https://veloxhouse.co.uk/tools
+- Email deliverability / domain health checker (SPF, DKIM, DMARC — no sign-up): https://veloxhouse.co.uk/tools
+
+## Blog — guides on cold outreach
+
+- Blog home: https://veloxhouse.co.uk/blog/
+- Is cold email legal in the UK? (PECR & UK GDPR): https://veloxhouse.co.uk/blog/is-cold-email-legal-uk/
+- Cold email deliverability guide (SPF/DKIM/DMARC, warm-up, volume): https://veloxhouse.co.uk/blog/cold-email-deliverability-guide/
+- How many cold emails per day: https://veloxhouse.co.uk/blog/how-many-cold-emails-per-day/
+- Cold email templates that get replies: https://veloxhouse.co.uk/blog/cold-email-templates-that-get-replies/
+- What is an AI SDR: https://veloxhouse.co.uk/blog/what-is-an-ai-sdr/
+- Cold email vs LinkedIn outreach: https://veloxhouse.co.uk/blog/cold-email-vs-linkedin-outreach/
+- Best cold email software 2026 (UK guide): https://veloxhouse.co.uk/blog/best-cold-email-software-2026/
+- Instantly.ai alternatives: https://veloxhouse.co.uk/blog/instantly-alternatives/
+- Lemlist alternatives: https://veloxhouse.co.uk/blog/lemlist-alternatives/
+- Apollo.io alternatives for UK teams: https://veloxhouse.co.uk/blog/apollo-alternatives-uk/
 
 ## Links
 
 - Home: https://veloxhouse.co.uk/
 - Features (full detail): https://veloxhouse.co.uk/features
+- Pricing: https://veloxhouse.co.uk/#pricing
+- Blog: https://veloxhouse.co.uk/blog/
 - Free tools: https://veloxhouse.co.uk/tools
-- Start free: https://hub.veloxhouse.co.uk/signup
+- Start free trial: https://hub.veloxhouse.co.uk/signup
 - Log in: https://hub.veloxhouse.co.uk/login

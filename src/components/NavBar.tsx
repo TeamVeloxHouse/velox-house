@@ -9,6 +9,7 @@ const NAV_LINKS = [
   { label: "Features", href: "/features" },
   { label: "How it works", href: "/#how" },
   { label: "Pricing", href: "/#pricing" },
+  { label: "Blog", href: "/blog/" },
   { label: "Free email check", href: "/tools" },
 ];
 
@@ -26,6 +27,11 @@ export default function NavBar() {
 
   const handleNav = (href: string) => {
     setOpen(false);
+    if (href.startsWith("/blog")) {
+      // The blog is static HTML outside the SPA — full page load.
+      window.location.href = href;
+      return;
+    }
     if (href.startsWith("/#")) {
       const id = href.slice(2);
       if (window.location.pathname !== "/") {

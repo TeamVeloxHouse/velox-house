@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build && node -e \"require('fs').rmSync('dist/_redirects',{force:true})\"",
+    "build": "tsc && vite build && node scripts/build-blog.mjs && node -e \"require('fs').rmSync('dist/_redirects',{force:true})\"",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -21,6 +21,7 @@
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.0",
     "autoprefixer": "^10.4.20",
+    "marked": "^18.0.7",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.0",
     "typescript": "^5.5.0",
