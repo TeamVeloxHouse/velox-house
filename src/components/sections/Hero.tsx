@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { SIGNUP_URL } from "../../lib/utils";
-import HeroVideo from "./HeroVideo";
+import HeroDemo from "./HeroDemo";
 
 const STATS = [
   { value: "One prompt", label: "Build & launch a whole campaign" },
@@ -98,8 +98,8 @@ export default function Hero() {
           </div>
         </motion.div>
 
-        {/* Product preview */}
-        <HeroVideo />
+        {/* Try-it-yourself Velox AI simulation */}
+        <HeroDemo />
       </div>
     </section>
   );

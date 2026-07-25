@@ -1,4 +1,5 @@
 import Hero from "../components/sections/Hero";
+import ProductFilm from "../components/sections/ProductFilm";
 import SocialProof from "../components/sections/SocialProof";
 import ProductTiles from "../components/sections/ProductTiles";
 import AiEverywhere from "../components/sections/AiEverywhere";
@@ -15,6 +16,7 @@ export default function Home() {
   return (
     <>
       <Hero />
+      <ProductFilm />
       <SocialProof />
       <ProductTiles />
       <AiEverywhere />

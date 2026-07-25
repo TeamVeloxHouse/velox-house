@@ -177,3 +177,12 @@ h4 {
   border: 1px solid rgba(218, 41, 28, 0.3);
   box-shadow: inset 0 0 20px -8px rgba(255, 90, 60, 0.6);
 }
+
+/* Typing indicator for the hero Velox AI demo */
+@keyframes typing-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-3px); opacity: 1; }
+}
+.typing-dot {
+  animation: typing-bounce 1s ease-in-out infinite;
+}
