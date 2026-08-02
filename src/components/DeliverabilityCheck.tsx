@@ -222,6 +222,7 @@ export default function DeliverabilityCheck() {
   return (
     <section
       id="free-tools"
+      data-vx-section="deliverability-tool"
       className="relative overflow-hidden border-b border-[#1A1A1A] bg-[#0A0A0A] pt-32 pb-24 md:pt-40 md:pb-32"
     >
       {/* subtle red radial + dot grid */}

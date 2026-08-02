@@ -74,7 +74,7 @@ export default function ProblemsSolver() {
   const current = active !== null ? PROBLEMS[active] : null;
 
   return (
-    <section className="bg-[#0A0A0A] py-24 md:py-32">
+    <section data-vx-section="problems" className="bg-[#0A0A0A] py-24 md:py-32">
       <div className="mx-auto max-w-7xl px-6 md:px-12">
         {/* Heading */}
         <motion.div

@@ -229,7 +229,7 @@ export default function StackBuilder() {
   };
 
   return (
-    <section id="stack-builder" className="border-t border-[#1A1A1A] bg-[#0A0A0A] py-24 md:py-32">
+    <section id="stack-builder" data-vx-section="stack-builder" className="border-t border-[#1A1A1A] bg-[#0A0A0A] py-24 md:py-32">
       <div className="mx-auto max-w-7xl px-6 md:px-12">
         {/* Heading */}
         <motion.div

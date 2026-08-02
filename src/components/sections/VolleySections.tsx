@@ -239,7 +239,7 @@ function VolleyRow({ volley }: { volley: Volley }) {
 
 export default function VolleySections() {
   return (
-    <section id="how" className="bg-[#0A0A0A] py-24 md:py-32">
+    <section id="how" data-vx-section="how-it-works" className="bg-[#0A0A0A] py-24 md:py-32">
       <div className="mx-auto max-w-7xl space-y-32 px-6 md:px-12">
         {VOLLEYS.map((v) => (
           <VolleyRow key={v.eyebrow} volley={v} />

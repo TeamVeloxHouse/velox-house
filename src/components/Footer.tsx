@@ -1,4 +1,5 @@
 import Logo from "./Logo";
+import { openCookieSettings } from "./CookieConsent";
 import { SIGNUP_URL, LOGIN_URL } from "../lib/utils";
 
 // Real destinations only — feature links deep-link into the Features page,
@@ -73,6 +74,9 @@ export default function Footer() {
           <a href="/legal/privacy" className="transition-colors hover:text-white">Privacy Policy</a>
           <a href="/legal/cookies" className="transition-colors hover:text-white">Cookie Policy</a>
           <a href="/legal/terms" className="transition-colors hover:text-white">Terms of Use</a>
+          <button onClick={openCookieSettings} className="transition-colors hover:text-white">
+            Cookie settings
+          </button>
         </div>
 
         {/* Bottom row */}

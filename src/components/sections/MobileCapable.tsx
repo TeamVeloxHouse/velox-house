@@ -25,7 +25,7 @@ const POINTS = [
 
 export default function MobileCapable() {
   return (
-    <section className="surface-sunken relative overflow-hidden border-y border-[#161616] py-24 md:py-32">
+    <section data-vx-section="mobile" className="surface-sunken relative overflow-hidden border-y border-[#161616] py-24 md:py-32">
       <div className="glow-top pointer-events-none absolute inset-0 opacity-70" />
 
       <div className="relative mx-auto max-w-7xl px-6 md:px-12">

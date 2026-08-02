@@ -51,7 +51,7 @@ export default function FinalCTA() {
   };
 
   return (
-    <section id="seat" className="border-t border-[#1A1A1A] bg-[#0A0A0A] py-24 md:py-32">
+    <section id="seat" data-vx-section="final-cta" className="border-t border-[#1A1A1A] bg-[#0A0A0A] py-24 md:py-32">
       <div className="mx-auto max-w-7xl px-6 md:px-12">
         <motion.div
           initial={{ opacity: 0, y: 16 }}

@@ -47,7 +47,7 @@ const TILES = [
 
 export default function ProductTiles() {
   return (
-    <section id="product" className="surface-sunken relative py-24 md:py-32">
+    <section id="product" data-vx-section="product-tiles" className="surface-sunken relative py-24 md:py-32">
       <div className="mx-auto max-w-7xl px-6 md:px-12">
         {/* Heading block */}
         <motion.div

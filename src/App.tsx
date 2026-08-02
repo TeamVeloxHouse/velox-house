@@ -8,17 +8,22 @@ import Features from "./pages/Features";
 import Tools from "./pages/Tools";
 import Legal from "./pages/Legal";
 import { trackPageView } from "./lib/track";
+import { initEngagement, startPage } from "./lib/engagement";
 import { applyRouteMeta } from "./lib/seo";
 
 // Records a page_view on every route + hash change (so /#pricing etc. are tracked),
-// and swaps the per-route SEO tags (title/description/canonical).
+// swaps the per-route SEO tags (title/description/canonical), and restarts the
+// engagement clock (time on page, scroll depth, per-section dwell).
 function RouteTracker() {
   const loc = useLocation();
+  useEffect(() => { initEngagement(); }, []);
   useEffect(() => {
+    applyRouteMeta(loc.pathname); // set the title before page_view reports it
     trackPageView(loc.pathname + loc.hash);
-    applyRouteMeta(loc.pathname);
     // Land new pages at the top; leave in-page hash anchors to the browser.
+    // (Before startPage, so the new page's scroll depth starts from where it lands.)
     if (!loc.hash) window.scrollTo(0, 0);
+    startPage(loc.pathname + loc.hash);
   }, [loc.pathname, loc.hash]);
   return null;
 }

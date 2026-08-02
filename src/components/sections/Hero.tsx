@@ -11,7 +11,7 @@ const STATS = [
 
 export default function Hero() {
   return (
-    <section className="relative flex min-h-screen items-center overflow-hidden bg-[#0A0A0A] pt-16">
+    <section data-vx-section="hero" className="relative flex min-h-screen items-center overflow-hidden bg-[#0A0A0A] pt-16">
       {/* Dot grid texture */}
       <div className="dot-grid pointer-events-none absolute inset-0 opacity-50" />
       {/* Subtle red radial at top */}

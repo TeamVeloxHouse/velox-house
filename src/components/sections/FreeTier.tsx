@@ -1,7 +1,6 @@
 import { motion } from "framer-motion";
 import { Check, Infinity as InfinityIcon } from "lucide-react";
 import { inViewport, SIGNUP_URL } from "../../lib/utils";
-import { track } from "../../lib/track";
 
 // The 21-day free trial is the top-of-funnel acquisition lever, so it gets its
 // own section that makes the "try the whole product, no crippled trial" case.
@@ -19,7 +18,7 @@ const INCLUDED = [
 
 export default function FreeTier() {
   return (
-    <section id="free" className="surface-sunken relative overflow-hidden py-24 md:py-32">
+    <section id="free" data-vx-section="free-tier" className="surface-sunken relative overflow-hidden py-24 md:py-32">
       {/* Atmospherics */}
       <div className="glow-top pointer-events-none absolute inset-0 opacity-80" />
       <div className="dot-grid pointer-events-none absolute inset-0 opacity-30" />
@@ -53,7 +52,6 @@ export default function FreeTier() {
             <div className="mt-8 flex flex-wrap items-center gap-4">
               <a
                 href={SIGNUP_URL}
-                onClick={() => track("cta_click", { label: "Free tier — Start free" })}
                 className="rounded-md bg-[#DA291C] px-6 py-3.5 text-sm font-semibold text-white shadow-cta transition-all hover:bg-[#FF3B2D] hover:shadow-glow-lg"
               >
                 Start your free trial →

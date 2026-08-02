@@ -82,6 +82,7 @@ export default function FeatureDetail({
   return (
     <div
       id={feature.slug}
+      data-vx-section={feature.slug}
       className="scroll-mt-24 grid items-center gap-12 md:grid-cols-2 lg:gap-20"
     >
       {copy}

@@ -1,19 +1,39 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { getCookieConsent, setCookieConsent } from "../lib/consent";
+import { trackPageView } from "../lib/track";
+import { startPage } from "../lib/engagement";
+import { gaDeny, gaLoad } from "../lib/ga";
+
+// Re-open the banner from anywhere (the "Cookie settings" link in the footer).
+const REOPEN = "velox:cookie-settings";
+export function openCookieSettings() {
+  window.dispatchEvent(new Event(REOPEN));
+}
 
 // PECR-compliant consent banner: non-essential (analytics) cookies stay OFF until the
-// visitor accepts. Choice is remembered.
+// visitor accepts. Choice is remembered. Accepting starts analytics immediately —
+// GA4 loads, and the page view they're on is backfilled rather than lost.
 export default function CookieConsent() {
   const [show, setShow] = useState(false);
   useEffect(() => {
     setShow(getCookieConsent() === null);
+    const onReopen = () => setShow(true);
+    window.addEventListener(REOPEN, onReopen);
+    return () => window.removeEventListener(REOPEN, onReopen);
   }, []);
   if (!show) return null;
 
   function choose(v: "all" | "essential") {
     setCookieConsent(v);
     setShow(false);
+    if (v === "all") {
+      gaLoad(false); // GA4 gets the page view from trackPageView below
+      trackPageView();
+      startPage(location.pathname + location.hash);
+    } else {
+      gaDeny();
+    }
   }
 
   return (

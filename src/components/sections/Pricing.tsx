@@ -82,7 +82,7 @@ const PLANS: Plan[] = [
 
 export default function Pricing() {
   return (
-    <section id="pricing" className="border-t border-[#1A1A1A] bg-[#0A0A0A] py-24 md:py-32">
+    <section id="pricing" data-vx-section="pricing" className="border-t border-[#1A1A1A] bg-[#0A0A0A] py-24 md:py-32">
       <div className="mx-auto max-w-7xl px-6 md:px-12">
         <motion.div
           initial={{ opacity: 0, y: 16 }}

@@ -16,7 +16,7 @@ const STACK = [
 
 export default function SocialProof() {
   return (
-    <section className="surface-raised relative border-y border-[#1A1A1A] py-16">
+    <section data-vx-section="social-proof" className="surface-raised relative border-y border-[#1A1A1A] py-16">
       <div className="mx-auto max-w-7xl px-6 md:px-12">
         <motion.p
           initial={{ opacity: 0, y: 12 }}

@@ -2,13 +2,12 @@ import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { FEATURES, PLATFORM_TRUTHS } from "../lib/features";
 import { inViewport, SIGNUP_URL } from "../lib/utils";
-import { track } from "../lib/track";
 import FeatureDetail, { FeatureListCTA } from "../components/sections/FeatureDetail";
 import FinalCTA from "../components/sections/FinalCTA";
 
 function FeaturesHero() {
   return (
-    <section className="relative overflow-hidden bg-[#0A0A0A] pt-32 pb-20 md:pt-40 md:pb-24">
+    <section data-vx-section="features-hero" className="relative overflow-hidden bg-[#0A0A0A] pt-32 pb-20 md:pt-40 md:pb-24">
       <div className="glow-top pointer-events-none absolute inset-0 opacity-90" />
       <div className="dot-grid pointer-events-none absolute inset-0 opacity-40" />
 
@@ -70,7 +69,6 @@ function FeaturesHero() {
         >
           <a
             href={SIGNUP_URL}
-            onClick={() => track("cta_click", { label: "Features hero — Start free" })}
             className="inline-flex items-center gap-2 rounded-md bg-[#DA291C] px-6 py-3.5 text-sm font-semibold text-white shadow-cta transition-all hover:bg-[#FF3B2D] hover:shadow-glow-lg"
           >
             Start free trial <ArrowRight size={16} />
@@ -83,7 +81,7 @@ function FeaturesHero() {
 
 function PlatformTruths() {
   return (
-    <section className="surface-raised relative overflow-hidden border-y border-[#161616] py-24 md:py-28">
+    <section data-vx-section="features-band" className="surface-raised relative overflow-hidden border-y border-[#161616] py-24 md:py-28">
       <div className="glow-corner pointer-events-none absolute inset-0" />
       <div className="relative mx-auto max-w-7xl px-6 md:px-12">
         <motion.div
@@ -123,6 +121,7 @@ export default function Features() {
     <>
       <FeaturesHero />
 
+      {/* No data-vx-section here — each FeatureDetail inside carries its own. */}
       <section className="bg-[#0A0A0A] py-24 md:py-28">
         <div className="mx-auto max-w-7xl space-y-28 px-6 md:px-12">
           {FEATURES.map((f, i) => (

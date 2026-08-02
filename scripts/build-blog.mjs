@@ -141,9 +141,16 @@ footer a:hover{color:#fff}
 @media(max-width:720px){.nav-links{display:none}}
 `;
 
-// Consent banner + first-party page_view beacon for the static pages. Mirrors the
-// SPA exactly: same localStorage key/values (src/lib/consent.ts), same track edge
-// function and payload shape (src/lib/track.ts) — analytics only after "Accept all".
+// Google Analytics 4 measurement ID, baked in at build time (same env var the SPA
+// reads). Unset = GA4 simply off; the first-party analytics still run.
+const GA_ID = (process.env.VITE_GA4_ID || "").trim();
+
+// Consent banner + analytics for the static pages. Mirrors the SPA (src/lib/consent.ts,
+// track.ts, engagement.ts, ga.ts): same localStorage key/values, same track edge
+// function and payload shape, same GA4 Consent Mode gate — nothing runs until the
+// visitor clicks "Accept all". Blog posts are a top entry point, so they measure the
+// same things the app-side dashboard expects: page views, how far people read, how
+// long they stayed, and every click through to the app.
 const ANALYTICS = `
 <div id="cc" hidden style="position:fixed;left:0;right:0;bottom:0;z-index:60;display:flex;justify-content:center;padding:0 16px 16px">
   <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;width:100%;max-width:768px;border:1px solid #222;background:#0F0F0F;border-radius:12px;padding:16px;box-shadow:0 20px 50px rgba(0,0,0,.5)">
@@ -156,25 +163,101 @@ const ANALYTICS = `
 </div>
 <script>
 (function(){
-  var KEY="velox:cookie-consent";
+  var KEY="velox:cookie-consent", GA=${JSON.stringify(GA_ID)},
+      TRACK="https://qmzfuadxcnweiwbrsutn.supabase.co/functions/v1/track", APP="hub.veloxhouse.co.uk";
   function get(){try{return localStorage.getItem(KEY)}catch(e){return null}}
-  function beacon(){
+  function ok(){return get()==="all"}
+  function sid(){try{var i=localStorage.getItem("vx_sid");if(!i){i=crypto.randomUUID();localStorage.setItem("vx_sid",i)}return i}catch(e){return "anon"}}
+
+  /* ---- GA4, behind Consent Mode v2 ---- */
+  window.dataLayer=window.dataLayer||[];
+  function gtag(){window.dataLayer.push(arguments)}
+  if(GA)gtag("consent","default",{ad_storage:"denied",ad_user_data:"denied",ad_personalization:"denied",analytics_storage:"denied",functionality_storage:"granted",security_storage:"granted"});
+  var gaOn=false;
+  function ga(){
+    if(!GA||gaOn||!ok())return;gaOn=true;
+    var s=document.createElement("script");s.async=true;s.src="https://www.googletagmanager.com/gtag/js?id="+encodeURIComponent(GA);document.head.appendChild(s);
+    gtag("js",new Date());gtag("consent","update",{analytics_storage:"granted"});
+    gtag("config",GA,{linker:{domains:["veloxhouse.co.uk","www.veloxhouse.co.uk","hub.veloxhouse.co.uk"],accept_incoming:true}});
+  }
+
+  /* ---- first-party events ---- */
+  function post(events,beacon){
+    if(!ok()||!events.length)return;
+    var id=sid();
+    var body=JSON.stringify({events:events.map(function(e){return {source:"marketing",event:e.event,path:location.pathname,label:e.label,sessionId:id,props:e.props}})});
+    if(beacon){try{if(navigator.sendBeacon&&navigator.sendBeacon(TRACK,new Blob([body],{type:"application/json"})))return}catch(e){}}
+    fetch(TRACK,{method:"POST",headers:{"Content-Type":"application/json"},keepalive:true,body:body}).catch(function(){});
+  }
+  function firstTouch(){
     try{
-      if(get()!=="all")return;
-      var id;try{id=localStorage.getItem("vx_sid");if(!id){id=crypto.randomUUID();localStorage.setItem("vx_sid",id)}}catch(e){id="anon"}
-      var ua=navigator.userAgent;
-      var device=/Mobi|Android|iPhone/i.test(ua)?"mobile":/iPad|Tablet/i.test(ua)?"tablet":"desktop";
-      var browser=/Edg/.test(ua)?"Edge":/OPR|Opera/.test(ua)?"Opera":/Chrome/.test(ua)?"Chrome":/Firefox/.test(ua)?"Firefox":/Safari/.test(ua)?"Safari":"Other";
+      var s=sessionStorage.getItem("vx_first_touch");if(s)return JSON.parse(s);
       var p=new URLSearchParams(location.search),ref="";
       try{if(document.referrer&&new URL(document.referrer).host!==location.host)ref=new URL(document.referrer).host}catch(e){}
-      fetch("https://qmzfuadxcnweiwbrsutn.supabase.co/functions/v1/track",{method:"POST",headers:{"Content-Type":"application/json"},keepalive:true,
-        body:JSON.stringify({source:"marketing",event:"page_view",path:location.pathname,sessionId:id,
-          props:{device:device,browser:browser,referrer:ref,utm_source:p.get("utm_source")||"",utm_medium:p.get("utm_medium")||"",utm_campaign:p.get("utm_campaign")||""}})}).catch(function(){});
+      var t={utm_source:p.get("utm_source")||"",utm_medium:p.get("utm_medium")||"",utm_campaign:p.get("utm_campaign")||"",referrer:ref,landing:location.pathname};
+      sessionStorage.setItem("vx_first_touch",JSON.stringify(t));return t;
+    }catch(e){return {}}
+  }
+  function pageView(){
+    if(!ok())return;
+    var ua=navigator.userAgent, t=firstTouch();
+    var device=/Mobi|Android|iPhone/i.test(ua)?"mobile":/iPad|Tablet/i.test(ua)?"tablet":"desktop";
+    var browser=/Edg/.test(ua)?"Edge":/OPR|Opera/.test(ua)?"Opera":/Chrome/.test(ua)?"Chrome":/Firefox/.test(ua)?"Firefox":/Safari/.test(ua)?"Safari":"Other";
+    var p=new URLSearchParams(location.search);
+    post([{event:"page_view",props:{device:device,browser:browser,referrer:t.referrer||"",
+      utm_source:p.get("utm_source")||t.utm_source||"",utm_medium:p.get("utm_medium")||t.utm_medium||"",utm_campaign:p.get("utm_campaign")||t.utm_campaign||""}}],false);
+  }
+
+  /* ---- how far they read, how long they stayed ---- */
+  var activeMs=0, since=Date.now(), maxScroll=0, reached={}, pending=[], queued=false;
+  function measure(){
+    queued=false;
+    var h=document.documentElement.scrollHeight-window.innerHeight;
+    var pct=h<=0?100:Math.round(window.scrollY/h*100);
+    maxScroll=Math.min(100,Math.max(maxScroll,pct));
+    [25,50,75,100].forEach(function(m){if(maxScroll>=m&&!reached[m]){reached[m]=1;pending.push({event:"scroll_depth",label:String(m)})}});
+  }
+  function onScroll(){if(!queued){queued=true;requestAnimationFrame(measure)}}
+  function flush(){
+    if(since){activeMs+=Date.now()-since;since=0}
+    var secs=Math.round(activeMs/1000), evs=pending;pending=[];
+    if(secs>=1){evs.unshift({event:"page_time",props:{seconds:secs,scroll_max:maxScroll}});activeMs=0}
+    post(evs,true);
+  }
+
+  /* ---- clicks into the app: carry the visit across the domain ---- */
+  function appLink(e){var a=e.target&&e.target.closest?e.target.closest("a[href]"):null;if(!a)return null;try{return new URL(a.href).host===APP?a:null}catch(err){return null}}
+  function decorate(a){
+    if(!ok())return;
+    try{var u=new URL(a.href),t=firstTouch();
+      if(!u.searchParams.has("vx_sid"))u.searchParams.set("vx_sid",sid());
+      u.searchParams.set("vx_c","all");
+      ["utm_source","utm_medium","utm_campaign"].forEach(function(k){if(t[k]&&!u.searchParams.has(k))u.searchParams.set(k,t[k])});
+      a.href=u.toString();
     }catch(e){}
   }
-  if(get()){beacon();return}
+
+  /* ---- wiring ---- */
+  function start(){
+    ga();pageView();measure();
+    window.addEventListener("scroll",onScroll,{passive:true});
+    window.addEventListener("resize",onScroll,{passive:true});
+    document.addEventListener("visibilitychange",function(){if(document.visibilityState==="hidden")flush();else if(!since)since=Date.now()});
+    window.addEventListener("pagehide",flush);
+  }
+  document.addEventListener("pointerdown",function(e){var a=appLink(e);if(a)decorate(a)},true);
+  document.addEventListener("click",function(e){
+    var a=appLink(e);if(!a)return;decorate(a);
+    try{var u=new URL(a.href);
+      var dest=u.pathname.indexOf("/signup")===0?"signup":u.pathname.indexOf("/login")===0?"login":"app";
+      var text=(a.getAttribute("aria-label")||a.textContent||"").replace(/\\s+/g," ").trim().slice(0,60);
+      post([{event:"cta_click",label:"blog — "+text,props:{destination:dest,section:"blog",text:text,scroll_at:maxScroll}}],false);
+    }catch(err){}
+  },true);
+
+  if(get()){start();return}
   var el=document.getElementById("cc");if(!el)return;el.hidden=false;
-  function choose(v){try{localStorage.setItem(KEY,v);if(v!=="all")localStorage.removeItem("vx_sid")}catch(e){}el.hidden=true;beacon()}
+  function choose(v){try{localStorage.setItem(KEY,v);if(v!=="all")localStorage.removeItem("vx_sid")}catch(e){}el.hidden=true;if(v==="all")start()}
   document.getElementById("cc-a").addEventListener("click",function(){choose("all")});
   document.getElementById("cc-e").addEventListener("click",function(){choose("essential")});
 })();

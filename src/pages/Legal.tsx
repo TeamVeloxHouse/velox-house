@@ -46,8 +46,12 @@ const DOCS: Record<string, Doc> = {
     intro: `How ${ENTITY.trading} uses cookies and similar technologies on this website. Manage non-essential cookies via the banner.`,
     sections: [
       { h: "1. Essential", body: ["Needed for the site to work (security, load balancing, remembering your cookie choice). Always on."] },
-      { h: "2. Analytics (consent)", body: ["Help us understand traffic so we can improve. A random session identifier and page-view events are set only after you accept."] },
-      { h: "3. Managing cookies", body: ["Use the banner to accept or reject non-essential cookies. You can also block cookies in your browser. Rejecting turns analytics off and clears the analytics identifier."] },
+      { h: "2. Analytics (consent)", body: [
+        "Help us understand traffic so we can improve. A random session identifier, page views, and engagement measurements (time on page, scroll depth, which sections you read, and clicks through to the app) are recorded only after you accept.",
+        "We use two analytics tools. Our own first-party measurement, which stores a random identifier on your device and sends events to our own servers; and Google Analytics 4, which sets its own cookies. Google Analytics is loaded only after you accept — until then it is blocked by Google Consent Mode and no data is sent to Google.",
+        "If you accept and then follow a link to the Velox House app (hub.veloxhouse.co.uk), your choice and the anonymous session identifier travel with you, so you are not asked twice and we can see the journey as one visit.",
+      ] },
+      { h: "3. Managing cookies", body: ["Use the banner — or the “Cookie settings” link in the footer — to accept or reject non-essential cookies. You can also block cookies in your browser. Rejecting turns analytics off and clears the analytics identifier."] },
     ],
   },
   terms: {

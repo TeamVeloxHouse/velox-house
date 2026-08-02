@@ -6,7 +6,7 @@ import HeroVideo from "./HeroVideo";
 // lives there now) into its own section directly below.
 export default function ProductFilm() {
   return (
-    <section className="border-t border-[#1A1A1A] bg-[#0A0A0A] py-24">
+    <section data-vx-section="product-film" className="border-t border-[#1A1A1A] bg-[#0A0A0A] py-24">
       <div className="mx-auto max-w-7xl px-6 md:px-12">
         <motion.div
           initial={{ opacity: 0, y: 16 }}

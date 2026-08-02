@@ -58,7 +58,7 @@ const STATS = [
 
 export default function StatsBar() {
   return (
-    <section className="border-y border-[#1A1A1A] bg-[#0A0A0A] py-24 md:py-32">
+    <section data-vx-section="stats" className="border-y border-[#1A1A1A] bg-[#0A0A0A] py-24 md:py-32">
       <div className="mx-auto max-w-7xl px-6 md:px-12">
         <div className="grid gap-12 md:grid-cols-3">
           {STATS.map((stat, i) => (
