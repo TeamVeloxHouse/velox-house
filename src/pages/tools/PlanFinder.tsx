@@ -5,7 +5,7 @@ export default function PlanFinder() {
     <>
       {/* The section below is built to sit mid-homepage, so this page supplies
           the h1 and the spacing that clears the fixed nav. */}
-      <section className="bg-[#0A0A0A] px-6 pt-32 text-center md:px-12 md:pt-40">
+      <section data-vx-section="plan-finder" className="bg-[#0A0A0A] px-6 pt-32 text-center md:px-12 md:pt-40">
         <div className="mx-auto max-w-2xl">
           <span className="text-sm font-semibold text-[#DA291C]">
             Free tool · 60 seconds
