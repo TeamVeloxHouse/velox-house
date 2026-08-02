@@ -6,7 +6,11 @@ import CookieConsent from "./components/CookieConsent";
 import Home from "./pages/Home";
 import Features from "./pages/Features";
 import Tools from "./pages/Tools";
+import EmailDeliverabilityCheck from "./pages/tools/EmailDeliverabilityCheck";
+import ColdEmailRoiCalculator from "./pages/tools/ColdEmailRoiCalculator";
+import PlanFinder from "./pages/tools/PlanFinder";
 import Legal from "./pages/Legal";
+import ExitIntent from "./components/ExitIntent";
 import { trackPageView } from "./lib/track";
 import { initEngagement, startPage } from "./lib/engagement";
 import { applyRouteMeta } from "./lib/seo";
@@ -38,11 +42,21 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/features" element={<Features />} />
           <Route path="/tools" element={<Tools />} />
+          <Route
+            path="/tools/email-deliverability-check"
+            element={<EmailDeliverabilityCheck />}
+          />
+          <Route
+            path="/tools/cold-email-roi-calculator"
+            element={<ColdEmailRoiCalculator />}
+          />
+          <Route path="/tools/plan-finder" element={<PlanFinder />} />
           <Route path="/legal/:slug" element={<Legal />} />
         </Routes>
       </main>
       <Footer />
       <CookieConsent />
+      <ExitIntent />
     </div>
   );
 }

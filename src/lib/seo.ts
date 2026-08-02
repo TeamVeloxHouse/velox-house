@@ -23,10 +23,28 @@ const ROUTE_META: Record<string, RouteMeta> = {
     path: "/features",
   },
   "/tools": {
-    title: "Free Email Deliverability Checker — Velox House",
+    title: "Free Cold Outreach Tools — Deliverability Check & ROI Calculator | Velox House",
     description:
-      "Free tools for cold outreach: check your domain's email deliverability (SPF, DKIM, DMARC) and get a personalised Velox House plan recommendation. No sign-up required.",
+      "Free tools for cold outreach: check your domain's email deliverability (SPF, DKIM, DMARC), forecast the pipeline your outbound should produce, and find the right Velox House plan. No sign-up required.",
     path: "/tools",
+  },
+  "/tools/email-deliverability-check": {
+    title: "Free Email Deliverability Checker — SPF, DKIM & DMARC Test | Velox House",
+    description:
+      "Check your domain's email deliverability free and instantly. We test your SPF, DKIM, DMARC and MX records live and score your sender reputation out of 100, with what to fix first. No sign-up.",
+    path: "/tools/email-deliverability-check",
+  },
+  "/tools/cold-email-roi-calculator": {
+    title: "Cold Email ROI Calculator — Forecast Meetings & Pipeline | Velox House",
+    description:
+      "Free cold email ROI calculator. Enter your monthly volume, reply rate, average deal value and close rate to see the conversations, deals and revenue your outbound should produce each month.",
+    path: "/tools/cold-email-roi-calculator",
+  },
+  "/tools/plan-finder": {
+    title: "Which Cold Outreach Plan Do You Need? Free Plan Finder | Velox House",
+    description:
+      "Answer five quick questions and get a personalised Velox House plan recommendation — matched to your outreach volume, budget and goals. Free, 60 seconds, no card.",
+    path: "/tools/plan-finder",
   },
 };
 

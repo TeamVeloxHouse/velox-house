@@ -17,19 +17,22 @@ const COLUMNS = [
     ],
   },
   {
-    title: "Company",
+    title: "Free tools",
     links: [
-      { label: "All features", href: "/features" },
-      { label: "Pricing", href: "/#pricing" },
+      { label: "Email deliverability check", href: "/tools/email-deliverability-check" },
+      { label: "Cold email ROI calculator", href: "/tools/cold-email-roi-calculator" },
+      { label: "Plan finder", href: "/tools/plan-finder" },
+      { label: "All free tools", href: "/tools" },
       { label: "Blog", href: "/blog/" },
-      { label: "Free email check", href: "/tools" },
-      { label: "Sign in", href: LOGIN_URL },
     ],
   },
   {
     title: "Get started",
     links: [
+      { label: "All features", href: "/features" },
+      { label: "Pricing", href: "/#pricing" },
       { label: "How it works", href: "/#how" },
+      { label: "Sign in", href: LOGIN_URL },
       { label: "Start free trial", href: SIGNUP_URL },
     ],
   },

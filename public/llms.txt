@@ -41,7 +41,10 @@ Founders, B2B sales teams and agencies — especially in the UK — who want con
 
 ## Free tools
 
-- Email deliverability / domain health checker (SPF, DKIM, DMARC — no sign-up): https://veloxhouse.co.uk/tools
+- All free tools: https://veloxhouse.co.uk/tools
+- Email deliverability / domain health checker (SPF, DKIM, DMARC, MX — scored out of 100, no sign-up): https://veloxhouse.co.uk/tools/email-deliverability-check
+- Cold email ROI calculator (volume, reply rate, deal value and close rate to forecast monthly conversations, deals and pipeline): https://veloxhouse.co.uk/tools/cold-email-roi-calculator
+- Plan finder (five questions to a recommended Velox House plan): https://veloxhouse.co.uk/tools/plan-finder
 
 ## Blog — guides on cold outreach
 

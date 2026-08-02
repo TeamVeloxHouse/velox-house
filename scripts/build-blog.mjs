@@ -25,6 +25,31 @@ const DIST = path.join(ROOT, "dist");
 const SITE = "https://veloxhouse.co.uk";
 const SIGNUP = "https://hub.veloxhouse.co.uk/signup";
 
+// Supabase endpoint for the in-article lead capture. `inbound-lead` is deployed
+// public (no JWT verification), so the project URL is enough; the anon key is
+// sent only if the build environment happens to provide one. Vite injects these
+// into the SPA from import.meta.env — this script is plain Node, so read the CI
+// environment and fall back to the local .env the same way `vite build` would.
+function envVar(key, fallback = "") {
+  if (process.env[key]) return process.env[key];
+  try {
+    const line = fs
+      .readFileSync(path.join(ROOT, ".env"), "utf8")
+      .split(/\r?\n/)
+      .find((l) => l.startsWith(`${key}=`));
+    if (line) return line.slice(key.length + 1).trim().replace(/^["']|["']$/g, "");
+  } catch {
+    /* no .env — CI provides the vars, or capture stays off */
+  }
+  return fallback;
+}
+
+const SUPABASE_URL = envVar(
+  "VITE_SUPABASE_URL",
+  "https://qmzfuadxcnweiwbrsutn.supabase.co"
+).replace(/\/$/, "");
+const SUPABASE_ANON_KEY = envVar("VITE_SUPABASE_ANON_KEY");
+
 marked.setOptions({ gfm: true });
 
 // ---------------------------------------------------------------- helpers
@@ -123,6 +148,32 @@ h1{font-family:Sora,Inter,sans-serif;font-size:clamp(30px,5vw,44px);font-weight:
 .cta-box{margin:44px 0;border:1px solid #2A2A2A;border-radius:16px;padding:28px;background:linear-gradient(140deg,#141414,#191010)}
 .cta-box h3{font-family:Sora,Inter,sans-serif;color:#fff;font-size:20px;margin-bottom:8px}
 .cta-box p{color:#A0A0A0;font-size:15px;margin-bottom:18px}
+.lead-box{margin:44px 0;border:1px solid rgba(218,41,28,.35);border-radius:16px;padding:28px;background:linear-gradient(140deg,#121212,#1B0F0E)}
+.lead-kicker{display:block;font-size:12px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:#FF5A3C;margin-bottom:12px}
+.lead-box h3{font-family:Sora,Inter,sans-serif;color:#fff;font-size:21px;line-height:1.25;margin-bottom:8px}
+.lead-box p{color:#A0A0A0;font-size:15px;margin-bottom:18px}
+.lead-row{display:flex;gap:10px;flex-wrap:wrap}
+.lead-row input{flex:1 1 240px;min-width:0;border:1px solid #2A2A2A;background:#141414;border-radius:8px;padding:13px 15px;font:inherit;font-size:15px;color:#fff}
+.lead-row input::placeholder{color:#666}
+.lead-row input:focus{outline:none;border-color:#DA291C}
+.lead-row button{cursor:pointer;border:0;background:#DA291C;color:#fff;border-radius:8px;padding:13px 22px;font:inherit;font-size:15px;font-weight:500;transition:background .15s}
+.lead-row button:hover{background:#FF3B2D}
+.lead-row button:disabled{opacity:.6;cursor:default}
+.lead-note{font-size:12.5px;color:#666;margin:12px 0 0!important}
+.lead-note.err{color:#FF5A3C}
+.lead-score{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin:24px 0 18px}
+.lead-score .num{font-family:Sora,Inter,sans-serif;font-size:52px;font-weight:800;line-height:1;color:#fff}
+.lead-score .cap{font-size:14px;color:#666;padding-bottom:5px}
+.lead-score .badge{font-size:14px;font-weight:600;color:#FF5A3C;border:1px solid rgba(218,41,28,.4);border-radius:6px;padding:2px 9px;margin-bottom:5px}
+.lead-check{display:flex;gap:12px;align-items:flex-start;border-bottom:1px solid #1A1A1A;padding:12px 0}
+.lead-check:last-of-type{border-bottom:0}
+.lead-check span.ok{color:#DA291C}
+.lead-check span.no{color:#555}
+.lead-check strong{display:block;color:#fff;font-size:14.5px;font-weight:500}
+.lead-check em{display:block;color:#777;font-size:13px;font-style:normal;margin-top:2px}
+.lead-cta{margin-top:22px;border:1px solid rgba(218,41,28,.3);border-radius:12px;padding:22px;background:#0A0A0A}
+.lead-cta h4{font-family:Sora,Inter,sans-serif;color:#fff;font-size:17px;margin-bottom:8px}
+.lead-cta p{font-size:14.5px;margin-bottom:16px}
 .related{max-width:1120px;margin:0 auto;padding:0 24px 72px}
 .related h2{font-family:Sora,Inter,sans-serif;color:#fff;font-size:22px;margin-bottom:20px}
 .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px}
@@ -270,7 +321,7 @@ const nav = () => `
     <a href="/features">Features</a>
     <a href="/#pricing">Pricing</a>
     <a class="on" href="/blog/">Blog</a>
-    <a href="/tools">Free email check</a>
+    <a href="/tools">Free tools</a>
   </nav>
   <a class="cta-btn" href="${SIGNUP}">Start free trial</a>
 </div></header>`;
@@ -279,7 +330,7 @@ const footer = () => `
 <footer>
   <div>
     <a href="/">Home</a><a href="/features">Features</a><a href="/blog/">Blog</a>
-    <a href="/tools">Free email check</a><a href="/legal/privacy">Privacy</a><a href="/legal/terms">Terms</a>
+    <a href="/tools">Free tools</a><a href="/legal/privacy">Privacy</a><a href="/legal/terms">Terms</a>
   </div>
   <div style="margin-top:14px">© ${new Date().getFullYear()} Velox House. AI outreach from a single prompt — built for ambitious UK businesses.</div>
 </footer>`;
@@ -290,6 +341,97 @@ const ctaBox = () => `
   <p>Describe your ideal customer in one prompt. Velox AI finds the leads, verifies their emails, writes personalised email + LinkedIn messages, and sends every day from your own inbox. Plans from £19.99/mo.</p>
   <a class="cta-btn" href="${SIGNUP}">Start your 21-day free trial</a>
 </div>`;
+
+// In-article lead capture: the same free SPF/DKIM/DMARC check as the SPA
+// (src/components/DeliverabilityWidget.tsx + src/lib/deliverability.ts), written
+// in vanilla JS so it works on these static pages. Keep the scoring in step with
+// the React version. The email is required, which is what makes the free report
+// a capture; the lead is posted to the same `inbound-lead` edge function.
+const leadBox = () => `
+<div class="lead-box" id="vx-check">
+  <span class="lead-kicker">Free tool · instant report</span>
+  <h3>Are your emails actually reaching the inbox?</h3>
+  <p>We'll check your domain's SPF, DKIM, DMARC and MX records live and score your sender reputation out of 100 — free, no sign-up.</p>
+  <div class="lead-row">
+    <input id="vx-email" type="email" autocomplete="email" placeholder="you@yourbusiness.co.uk" aria-label="Your work email" />
+    <button id="vx-go" type="button">Check my domain</button>
+  </div>
+  <p class="lead-note" id="vx-note">We'll run your report instantly. We may follow up with tips to fix any issues — no spam, unsubscribe anytime.</p>
+  <div id="vx-out" hidden></div>
+</div>`;
+
+const LEAD_SCRIPT = `
+<script>
+(function(){
+  var box=document.getElementById("vx-check");if(!box)return;
+  var input=document.getElementById("vx-email"),btn=document.getElementById("vx-go"),
+      note=document.getElementById("vx-note"),out=document.getElementById("vx-out");
+  var SELECTORS=["google","selector1","selector2","k1","default","dkim","mail"];
+  var ANON=${JSON.stringify(SUPABASE_ANON_KEY)};
+  function dns(name,type){
+    return fetch("https://dns.google/resolve?name="+encodeURIComponent(name)+"&type="+type)
+      .then(function(r){return r.json()})
+      .then(function(d){return (d.Answer||[]).map(function(a){return a.data.replace(/^"|"$/g,"").replace(/" "/g,"")})})
+      .catch(function(){return []});
+  }
+  function grade(s){return s>=90?"A":s>=80?"B":s>=65?"C":s>=50?"D":"F"}
+  function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+  function row(r){
+    return '<div class="lead-check"><span class="'+(r.pass?"ok":"no")+'">'+(r.pass?"&#10003;":"&#10007;")+
+      '</span><div><strong>'+esc(r.label)+'</strong><em>'+esc(r.detail)+'</em></div></div>';
+  }
+  function run(){
+    var email=(input.value||"").trim().toLowerCase();
+    if(!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email)){note.textContent="Enter your work email, e.g. you@yourbusiness.co.uk";note.className="lead-note err";return}
+    var d=email.split("@")[1];
+    note.className="lead-note";note.textContent="We'll run your report instantly. We may follow up with tips to fix any issues — no spam, unsubscribe anytime.";
+    btn.disabled=true;btn.textContent="Checking…";
+    Promise.all([dns(d,"MX"),dns(d,"TXT"),dns("_dmarc."+d,"TXT")]).then(function(res){
+      var mx=res[0],txt=res[1],dm=res[2];
+      // Null MX (RFC 7505, target ".") means the domain accepts no mail — not a pass.
+      var hosts=mx.map(function(r){return r.split(" ").pop()||""}).filter(function(h){return h&&h!=="."});
+      var hasMx=hosts.length>0;
+      var hasSpf=txt.some(function(r){return r.toLowerCase().indexOf("v=spf1")>-1});
+      var rec=null;dm.forEach(function(r){if(r.toLowerCase().indexOf("v=dmarc1")>-1)rec=r});
+      var enforced=!!rec&&/p=(quarantine|reject)/i.test(rec);
+      return Promise.all(SELECTORS.map(function(s){return dns(s+"._domainkey."+d,"TXT")})).then(function(ks){
+        // "p=" with nothing after it is a revoked key, so require real base64.
+        var hasDkim=ks.some(function(a){return a.some(function(r){return /p=[A-Za-z0-9+/]{40,}/.test(r)})});
+        var rows=[
+          {label:"Mail server configured (MX)",detail:hasMx?("Receiving mail via "+hosts[0].replace(/\\.$/,"")):(mx.length>0?"Null MX — this domain explicitly accepts no email":"No MX record — this domain can't receive email"),pass:hasMx},
+          {label:"SPF record",detail:hasSpf?"SPF found — authorises who can send as you":"Missing SPF — a top cause of spam-foldering",pass:hasSpf},
+          {label:"DMARC policy",detail:rec?(enforced?"DMARC enforced (quarantine/reject) — strong":"DMARC present but set to p=none (monitoring only)"):"No DMARC — leaves your domain open to spoofing",pass:enforced},
+          {label:"DKIM signing",detail:hasDkim?"DKIM key detected on a common selector":"No DKIM found on common selectors — emails may look unsigned",pass:hasDkim}
+        ];
+        var w=[25,30,25,20],score=0;rows.forEach(function(r,i){if(r.pass)score+=w[i]});
+        out.hidden=false;
+        out.innerHTML='<div class="lead-score"><span class="num">'+score+'</span><span class="cap">deliverability</span><span class="badge">Grade '+grade(score)+'</span></div>'+
+          rows.map(row).join("")+
+          '<div class="lead-cta"><h4>Fix it — and keep it fixed — inside Velox House.</h4>'+
+          '<p>Guided SPF, DKIM and DMARC, domain warming, safe sending schedules, bounce monitoring and a pre-send spam checker — so you land in the inbox every time.</p>'+
+          '<a class="cta-btn" href="${SIGNUP}">Protect my sender reputation</a></div>';
+        var h={"Content-Type":"application/json"};if(ANON)h.Authorization="Bearer "+ANON;
+        fetch("${SUPABASE_URL}/functions/v1/inbound-lead",{method:"POST",headers:h,
+          body:JSON.stringify({name:"",email:email,businessName:d,chipTier:"Deliverability "+grade(score)+" ("+score+"/100)",
+            message:"Ran the free deliverability check from the blog ("+location.pathname+") for "+d+" — scored "+score+"/100 (grade "+grade(score)+"). "+
+              rows.map(function(r){return r.label+": "+(r.pass?"pass":"fail")}).join("; "),
+            source:"blog_deliverability_check"})}).catch(function(){});
+        try{
+          if(localStorage.getItem("velox:cookie-consent")==="all"){
+            var id=localStorage.getItem("vx_sid")||"anon";
+            fetch("${SUPABASE_URL}/functions/v1/track",{method:"POST",headers:{"Content-Type":"application/json"},keepalive:true,
+              body:JSON.stringify({source:"marketing",event:"lead_capture",path:location.pathname,label:"blog_deliverability_check",sessionId:id,props:{score:score}})}).catch(function(){});
+          }
+        }catch(e){}
+      });
+    }).catch(function(){
+      note.className="lead-note err";note.textContent="Couldn't run the check — please try again.";
+    }).then(function(){btn.disabled=false;btn.textContent="Check my domain"});
+  }
+  btn.addEventListener("click",run);
+  input.addEventListener("keydown",function(e){if(e.key==="Enter")run()});
+})();
+</script>`;
 
 const head = ({ title, description, url, ogType = "article", jsonld }) => `<!doctype html>
 <html lang="en-GB">
@@ -390,12 +532,18 @@ for (const post of posts) {
     });
   }
 
-  // Insert the CTA box roughly mid-article (before the 4th h2) and at the end.
+  // Two in-article breaks: the free-check capture roughly a third of the way in
+  // (while attention is highest), the product CTA later and again at the end.
   let html = post.html;
   const h2s = [...html.matchAll(/<h2/g)];
   if (h2s.length >= 5) {
-    const at = h2s[3].index;
-    html = html.slice(0, at) + ctaBox() + html.slice(at);
+    // Splice from the back so the earlier offset stays valid.
+    html = html.slice(0, h2s[3].index) + ctaBox() + html.slice(h2s[3].index);
+    html = html.slice(0, h2s[1].index) + leadBox() + html.slice(h2s[1].index);
+  } else if (h2s.length >= 2) {
+    html = html.slice(0, h2s[1].index) + leadBox() + html.slice(h2s[1].index);
+  } else {
+    html = leadBox() + html;
   }
 
   const page = `${head({ title: `${post.title} | Velox House Blog`, description: post.description, url: post.url, jsonld })}
@@ -433,6 +581,7 @@ ${nav()}
 </section>
 ${footer()}
 ${ANALYTICS}
+${LEAD_SCRIPT}
 </body>
 </html>`;
 
@@ -485,6 +634,7 @@ ${nav()}
   <h1>Outbound that actually lands.</h1>
   <p>Practical guides on cold email, deliverability, LinkedIn outreach and AI-powered lead generation — written by the team building Velox House.</p>
 </div>
+<div style="max-width:760px;margin:0 auto;padding:0 24px">${leadBox()}</div>
 <section class="related" style="padding-top:8px">
   <div class="cards">
     ${posts
@@ -501,11 +651,13 @@ ${nav()}
 </section>
 ${footer()}
 ${ANALYTICS}
+${LEAD_SCRIPT}
 </body>
 </html>`;
 
 fs.mkdirSync(path.join(DIST, "blog"), { recursive: true });
 fs.writeFileSync(path.join(DIST, "blog", "index.html"), indexPage);
+
 
 // ----------------------------------------------------------------- RSS
 
@@ -541,6 +693,9 @@ const staticRoutes = [
   { loc: `${SITE}/features`, lastmod: today, changefreq: "monthly", priority: "0.9" },
   { loc: `${SITE}/blog/`, lastmod: posts[0]?.date || today, changefreq: "weekly", priority: "0.9" },
   { loc: `${SITE}/tools`, lastmod: today, changefreq: "monthly", priority: "0.7" },
+  { loc: `${SITE}/tools/email-deliverability-check`, lastmod: today, changefreq: "monthly", priority: "0.8" },
+  { loc: `${SITE}/tools/cold-email-roi-calculator`, lastmod: today, changefreq: "monthly", priority: "0.8" },
+  { loc: `${SITE}/tools/plan-finder`, lastmod: today, changefreq: "monthly", priority: "0.6" },
   { loc: `${SITE}/legal/privacy`, lastmod: "2026-07-05", changefreq: "yearly", priority: "0.2" },
   { loc: `${SITE}/legal/cookies`, lastmod: "2026-07-05", changefreq: "yearly", priority: "0.2" },
   { loc: `${SITE}/legal/terms`, lastmod: "2026-07-05", changefreq: "yearly", priority: "0.2" },
