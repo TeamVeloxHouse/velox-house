@@ -18,8 +18,15 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { marked } from "marked";
+import { loadEnv } from "vite";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+// This script runs as plain Node, so it doesn't get Vite's import.meta.env — read the
+// same .env files Vite just used, so a local production build bakes the same analytics
+// config into the static pages as the SPA. Real environment variables win, matching
+// Vite's own precedence (and how Cloudflare Builds supplies them).
+const ENV = { ...loadEnv("production", ROOT, "VITE_"), ...process.env };
 const CONTENT_DIR = path.join(ROOT, "content", "blog");
 const DIST = path.join(ROOT, "dist");
 const SITE = "https://veloxhouse.co.uk";
@@ -194,7 +201,14 @@ footer a:hover{color:#fff}
 
 // Google Analytics 4 measurement ID, baked in at build time (same env var the SPA
 // reads). Unset = GA4 simply off; the first-party analytics still run.
-const GA_ID = (process.env.VITE_GA4_ID || "").trim();
+const GA_ID = (ENV.VITE_GA4_ID || "").trim();
+
+// Cloudflare Web Analytics — cookieless, so it counts every visitor rather than only the
+// ones who accept cookies. Mirrors src/lib/cf-analytics.ts. Unset = no beacon.
+const CF_BEACON = (ENV.VITE_CF_BEACON_TOKEN || "").trim();
+const CF_TAG = CF_BEACON
+  ? `\n<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='${JSON.stringify({ token: CF_BEACON })}'></script>`
+  : "";
 
 // Consent banner + analytics for the static pages. Mirrors the SPA (src/lib/consent.ts,
 // track.ts, engagement.ts, ga.ts): same localStorage key/values, same track edge
@@ -580,7 +594,7 @@ ${nav()}
   </div>
 </section>
 ${footer()}
-${ANALYTICS}
+${ANALYTICS}${CF_TAG}
 ${LEAD_SCRIPT}
 </body>
 </html>`;
@@ -650,7 +664,7 @@ ${nav()}
   </div>
 </section>
 ${footer()}
-${ANALYTICS}
+${ANALYTICS}${CF_TAG}
 ${LEAD_SCRIPT}
 </body>
 </html>`;

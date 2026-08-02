@@ -51,7 +51,10 @@ const DOCS: Record<string, Doc> = {
         "We use two analytics tools. Our own first-party measurement, which stores a random identifier on your device and sends events to our own servers; and Google Analytics 4, which sets its own cookies. Google Analytics is loaded only after you accept — until then it is blocked by Google Consent Mode and no data is sent to Google.",
         "If you accept and then follow a link to the Velox House app (hub.veloxhouse.co.uk), your choice and the anonymous session identifier travel with you, so you are not asked twice and we can see the journey as one visit.",
       ] },
-      { h: "3. Managing cookies", body: ["Use the banner — or the “Cookie settings” link in the footer — to accept or reject non-essential cookies. You can also block cookies in your browser. Rejecting turns analytics off and clears the analytics identifier."] },
+      { h: "3. Cookieless traffic counting", body: [
+        "We use Cloudflare Web Analytics to count visits. It sets no cookies, stores nothing on your device, and does not identify or track individual people or follow them across sites — it only tells us how many visits each page received and roughly where in the world they came from. Because it doesn't store or read anything on your device, it isn't a cookie and runs whatever you choose above.",
+      ] },
+      { h: "4. Managing cookies", body: ["Use the banner — or the “Cookie settings” link in the footer — to accept or reject non-essential cookies. You can also block cookies in your browser. Rejecting turns analytics off and clears the analytics identifier."] },
     ],
   },
   terms: {
