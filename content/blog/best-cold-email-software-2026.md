@@ -12,7 +12,7 @@ Almost every guide ranking cold email tools is published by a US vendor, priced 
 
 | Tool | Entry price (from) | What's typically charged extra | LinkedIn built in? | UK angle |
 |---|---|---|---|---|
-| **Velox House** | £19.99/mo | Extra LinkedIn seats (£19.99), contact top-ups | Yes — seat included from Growth (£49.99) | UK company, GBP pricing, PECR-aware, 21-day trial |
+| **Velox House** | £19.99/mo | Extra LinkedIn seats (£19.99), contact top-ups | Yes — seat included from Growth (£49.99) | UK company, GBP pricing, PECR-aware, no contract |
 | Instantly.ai | ~$37/mo | Lead database, verification, higher sending tiers | No | USD; users report real spend often $180+/mo |
 | Lemlist | ~$79/user/mo | Enrichment credits, add-ons | Partial (tasks/steps) | USD, per-user pricing adds up |
 | Smartlead | ~$39/mo | Lead data, higher volume tiers | No | USD; email-only |
@@ -28,11 +28,11 @@ Three patterns recur in G2 and Trustpilot reviews across this category, regardle
 
 Velox House is an AI outreach platform run from a single prompt: describe your ideal customer, and Velox AI plans the campaign, finds and SMTP-verifies matching decision-makers, researches each business, writes personalised cold emails and LinkedIn messages, and — once approved — sends daily on autopilot from your own Google, Microsoft 365 or SMTP inbox. Set a goal like "50 replies a week" and it keeps sourcing leads and sending until the target is hit.
 
-**Strengths:** flat GBP pricing with a 21-day free trial and unlimited email sending on every plan; verified-before-import contacts (directly attacking the data-accuracy complaint that plagues this category); email + LinkedIn in one tool, with a LinkedIn seat included from the £49.99 Growth plan rather than sold separately; built-in SPF/DKIM/DMARC checks and a pre-send spam checker; and an AI Copilot that explains analytics in plain English and drafts replies. No other tool here launches a full multichannel campaign from one prompt.
+**Strengths:** flat GBP pricing with unlimited email sending on every plan and no contract; verified-before-import contacts (directly attacking the data-accuracy complaint that plagues this category); email + LinkedIn in one tool, with a LinkedIn seat included from the £49.99 Growth plan rather than sold separately; built-in SPF/DKIM/DMARC checks and a pre-send spam checker; and an AI Copilot that explains analytics in plain English and drafts replies. No other tool here launches a full multichannel campaign from one prompt.
 
 **Weaknesses:** honestly assessed — Velox is built for UK/European SMB outreach, not for teams needing a giant US database (Apollo's territory), and it's not a Clay-style enrichment workbench for elaborate data waterfalls. Contact allowances are plan-based (Starter includes 300/month), so high-volume agencies should size up the Agency tier (£179.99, 4,000 contacts) before assuming it fits.
 
-Pricing: Starter £19.99 · Growth £49.99 · Scale £79.99 · Agency £179.99, all with unlimited sending and no contract. Details at [/#pricing](/#pricing), or [start a 21-day free trial](https://hub.veloxhouse.co.uk/signup).
+Pricing: Starter £19.99 · Growth £49.99 · Scale £79.99 · Agency £179.99, all with unlimited sending and no contract. Details at [/#pricing](/#pricing), or [get started](https://hub.veloxhouse.co.uk/signup).
 
 ## 2. Instantly.ai — best for high-volume inbox rotation
 

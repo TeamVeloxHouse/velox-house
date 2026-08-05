@@ -6,7 +6,7 @@ import { submitLead } from "../../lib/supabase";
 const PLAN_OPTIONS = ["Not sure yet", "Starter", "Growth", "Scale", "Agency"];
 
 const REASSURANCE = [
-  "21-day free trial — cancel anytime.",
+  "Plans from £19.99/mo — cancel anytime.",
   "Unlimited email sending on every plan.",
   "Set up and sending in minutes.",
 ];
@@ -67,10 +67,10 @@ export default function FinalCTA() {
             Start sending in the next five minutes.
           </h2>
           <p className="mx-auto mt-6 max-w-xl text-lg text-[#A0A0A0]">
-            Start your 21-day free trial, describe your ideal customer in one prompt,
-            and watch Velox AI find the leads, write the messages and send them across
-            email + LinkedIn — the whole product, every feature. Pick your plan up front;
-            cancel anytime before day 21 and you won't be charged.
+            Pick your plan, describe your ideal customer in one prompt, and watch
+            Velox AI find the leads, write the messages and send them across
+            email + LinkedIn — the whole product, every feature. Plans from
+            £19.99/mo, monthly rolling, cancel anytime.
           </p>
 
           {/* Primary self-serve CTA */}
@@ -79,7 +79,7 @@ export default function FinalCTA() {
               href={SIGNUP_URL}
               className="inline-block rounded-md bg-[#DA291C] px-8 py-4 text-sm font-semibold text-white transition-colors hover:bg-[#FF3B2D]"
             >
-              Start Free Trial →
+              Get Started →
             </a>
           </div>
 

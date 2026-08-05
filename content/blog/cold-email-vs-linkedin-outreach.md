@@ -93,7 +93,7 @@ The fix is treating the prospect — not the channel — as the unit of work. Ev
 
 This is where the maths surprises people. LinkedIn automation tools are typically priced per seat, per month — commonly somewhere between £40 and £90 per seat — and that usually *excludes* your email tooling, your lead data and often a required Sales Navigator subscription on top. Stack a lead database, an email sender and a LinkedIn tool and a one-person outbound motion easily runs well past £150/month across three tools that don't talk to each other.
 
-For comparison, Velox House's Growth plan is **£49.99/month** and includes a LinkedIn seat, unlimited email sending, 1,000 verified contacts and the AI that writes and runs the sequences — one bill, one inbox, one sequence engine. Every plan carries a 21-day free trial with no contract ([pricing here](/#pricing)). If you're weighing up the alternatives, our [best cold email software for 2026](/blog/best-cold-email-software-2026/) round-up compares the wider market honestly.
+For comparison, Velox House's Growth plan is **£49.99/month** and includes a LinkedIn seat, unlimited email sending, 1,000 verified contacts and the AI that writes and runs the sequences — one bill, one inbox, one sequence engine. Every plan is monthly rolling with no contract ([pricing here](/#pricing)). If you're weighing up the alternatives, our [best cold email software for 2026](/blog/best-cold-email-software-2026/) round-up compares the wider market honestly.
 
 Whatever stack you choose, get the email foundation right first — run your domain through our [free deliverability checker](/tools) (no signup) before you send anything, because a multichannel sequence with broken email is just an expensive LinkedIn tool.
 

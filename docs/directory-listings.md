@@ -44,13 +44,13 @@ Velox House is an AI-powered outbound platform for founders, B2B sales teams and
 
 Set a goal like "50 replies a week" and the autopilot keeps finding leads and sending until it's hit. An AI copilot explains your numbers, runs campaign autopsies and drafts replies in your shared inbox. Deliverability tooling (SPF/DKIM/DMARC checks and a pre-send spam checker) keeps your domain safe, and email sending is unlimited on every plan.
 
-Velox House is UK-built with GBP pricing: plans from £19.99/month, a LinkedIn seat included from the £49.99 Growth plan, and a 21-day free trial on everything. No contracts.
+Velox House is UK-built with GBP pricing: plans from £19.99/month, a LinkedIn seat included from the £49.99 Growth plan, and every feature on every plan. Monthly rolling, no contracts.
 
 ### Key features list (for feature checkboxes/fields)
 Campaign creation from a single prompt · AI lead discovery with SMTP-verified emails · AI per-prospect research · AI-written personalised email + LinkedIn messages · Goal-seeking autopilot · Multichannel sequences (email + LinkedIn) · Own-inbox sending (Google/M365/SMTP) · Unlimited email sending · Shared inbox & pipeline · Open/reply/meeting analytics with AI explanations · SPF/DKIM/DMARC + spam checks
 
 ### Pricing summary (for pricing fields)
-Free trial: 21 days, all plans. Starter £19.99/mo · Growth £49.99/mo (includes LinkedIn seat) · Scale £79.99/mo · Agency £179.99/mo. Unlimited email sending on every plan. No contract.
+No free trial — billed from day one, monthly rolling. Starter £19.99/mo · Growth £49.99/mo (includes LinkedIn seat) · Scale £79.99/mo · Agency £179.99/mo. Unlimited email sending on every plan. No contract.
 
 ### Facts & assets
 - Website: https://veloxhouse.co.uk · Sign-up: https://hub.veloxhouse.co.uk/signup
@@ -62,7 +62,7 @@ Free trial: 21 days, all plans. Starter £19.99/mo · Growth £49.99/mo (include
 
 ### Product Hunt launch blurb (tagline ≤60 chars)
 Tagline: "Launch a full outbound campaign from one prompt"
-First comment: tell the founder story — built because existing tools stack per-seat fees and still leave you doing the work; Velox is the single-prompt version. Mention the 21-day trial and answer questions live on launch day.
+First comment: tell the founder story — built because existing tools stack per-seat fees and still leave you doing the work; Velox is the single-prompt version. Mention the £19.99 entry price and no-contract billing, and answer questions live on launch day.
 
 ## Review generation (the part that compounds)
 Directories only pay off with reviews. After launch: add a post-win in-app prompt or a

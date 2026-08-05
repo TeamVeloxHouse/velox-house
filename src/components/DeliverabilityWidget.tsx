@@ -212,7 +212,7 @@ export default function DeliverabilityWidget({
               Protect my sender reputation <ArrowRight size={15} />
             </a>
             <p className="mt-3 text-xs text-[#666]">
-              21-day free trial · Cancel anytime
+              Plans from £19.99/mo · Cancel anytime
             </p>
           </div>
         </motion.div>

@@ -136,7 +136,7 @@ function recommend(answers: (string | null)[]): Plan {
     return PLANS.growth;
   }
   // Everything else — including testing, starting from scratch, or the lowest
-  // budget — starts on Starter and its 21-day free trial.
+  // budget — starts on Starter.
   return PLANS.starter;
 }
 
@@ -380,7 +380,7 @@ export default function StackBuilder() {
                     href={SIGNUP_URL}
                     className="mt-4 block text-center text-sm text-[#A0A0A0] transition-colors hover:text-white"
                   >
-                    Or start your free trial right now →
+                    Or get started right now →
                   </a>
                 </motion.div>
               )}
@@ -404,7 +404,7 @@ export default function StackBuilder() {
                     href={SIGNUP_URL}
                     className="mt-6 inline-block rounded-md bg-[#DA291C] px-6 py-3.5 text-sm font-medium text-white transition-colors hover:bg-[#FF3B2D]"
                   >
-                    Start Free Trial →
+                    Get Started →
                   </a>
                 </motion.div>
               )}

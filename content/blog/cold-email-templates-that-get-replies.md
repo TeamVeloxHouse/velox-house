@@ -225,7 +225,7 @@ Here is the uncomfortable truth about every template on this page: the {{placeho
 
 This is the exact problem [Velox House](/features) was built to remove. You describe your ideal customer in one prompt; Velox AI plans the campaign, finds matching decision-makers, SMTP-verifies every address before import, then researches each business individually and writes a personalised email — the specific first line included — for every single prospect. You approve the approach once, and it sends daily on autopilot from your own Google, Microsoft 365 or SMTP inbox, staggered in safe windows, stopping the moment someone replies. You can even set a goal like "50 replies a week" and let it keep working until it is hit.
 
-If you would rather keep it manual, these templates plus a disciplined research habit will genuinely work. If you want the research and writing done for you at scale, there is a [21-day free trial](https://hub.veloxhouse.co.uk/signup) with plans from £19.99/month ([pricing here](/#pricing)) — or compare the wider market in our [best cold email software guide](/blog/best-cold-email-software-2026/).
+If you would rather keep it manual, these templates plus a disciplined research habit will genuinely work. If you want the research and writing done for you at scale, there is a [plans from £19.99/month](https://hub.veloxhouse.co.uk/signup) with plans from £19.99/month ([pricing here](/#pricing)) — or compare the wider market in our [best cold email software guide](/blog/best-cold-email-software-2026/).
 
 ## Frequently asked questions
 

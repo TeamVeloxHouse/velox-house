@@ -52,12 +52,12 @@ Full disclosure up front: this is our product, so weigh this section accordingly
 Velox House is an AI outreach platform run from a single prompt: describe your ideal customer, and Velox AI plans the campaign, finds matching decision-makers, researches each business, writes personalised cold emails and LinkedIn messages, and — once you approve — sends daily on autopilot from your own inbox (Google, Microsoft 365 or SMTP). Three things matter for the Apollo comparison:
 
 - **Every contact is SMTP-verified before import.** You never pay for an address that was going to bounce — which directly attacks the stale-EMEA-data problem, and protects your sender reputation (see our [deliverability guide](/blog/cold-email-deliverability-guide/) for why bounces compound).
-- **GBP pricing with no credit-overage surprises.** Plans start at £19.99/month with unlimited email sending on every tier, a 21-day free trial, no contract. Contacts and AI credits are fixed per plan with transparent top-ups — the price on the [pricing page](/#pricing) is the price.
+- **GBP pricing with no credit-overage surprises.** Plans start at £19.99/month with unlimited email sending on every tier and no contract. Contacts and AI credits are fixed per plan with transparent top-ups — the price on the [pricing page](/#pricing) is the price.
 - **UK company, UK-relevant data sourcing.** Built for UK founders and small B2B teams, invoiced in pounds.
 
 LinkedIn sequencing is included from the Growth plan (£49.99/month, one LinkedIn seat bundled), so multichannel doesn't need a second tool.
 
-**Verdict:** the closest UK-native equivalent to Apollo's find-and-send model, minus the credit maths. Not the right pick if you need US enterprise database depth or a built-in dialler. [Start a free trial](https://hub.veloxhouse.co.uk/signup) or test your current setup with the [free deliverability checker](/tools).
+**Verdict:** the closest UK-native equivalent to Apollo's find-and-send model, minus the credit maths. Not the right pick if you need US enterprise database depth or a built-in dialler. [Get started](https://hub.veloxhouse.co.uk/signup) or test your current setup with the [free deliverability checker](/tools).
 
 ### 2. Cognism — best UK/EU data, at a price
 
@@ -109,7 +109,7 @@ Whichever tool you pick, a few things matter specifically for UK teams:
 
 ## How to choose
 
-Start from your data problem, not the feature list. If your Apollo exports for UK SMEs were bouncing, a cheaper sender won't fix that — you need better-sourced, verified contacts (Velox House or Cognism, depending on budget). If your data was fine and the bill was the problem, a dedicated sender plus Hunter for finding will cut costs. And if you want the whole find-verify-write-send loop handled from one prompt, in pounds, with a 21-day free trial — that's the gap [Velox House](/features) was built to fill.
+Start from your data problem, not the feature list. If your Apollo exports for UK SMEs were bouncing, a cheaper sender won't fix that — you need better-sourced, verified contacts (Velox House or Cognism, depending on budget). If your data was fine and the bill was the problem, a dedicated sender plus Hunter for finding will cut costs. And if you want the whole find-verify-write-send loop handled from one prompt, in pounds, from £19.99/month with no contract — that's the gap [Velox House](/features) was built to fill.
 
 ## Frequently asked questions
 

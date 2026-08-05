@@ -278,7 +278,7 @@ export default function HeroDemo() {
                   onClick={() => track("demo_cta_click", { label: prompt })}
                   className="mt-4 inline-block rounded-md bg-[#DA291C] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#FF3B2D]"
                 >
-                  Run it for real — 21-day free trial →
+                  Run it for real — from £19.99/mo →
                 </a>
               </motion.div>
             );

@@ -13,7 +13,7 @@ const ROUTE_META: Record<string, RouteMeta> = {
   "/": {
     title: "Velox House — Launch Lead-Gen Campaigns From a Single Prompt | AI Cold Email & Outreach",
     description:
-      "The AI outreach platform you run from a single prompt. Describe your ideal customer and Velox AI finds the leads, writes personalised email + LinkedIn messages, and sends them every day on autopilot — from your own inbox. 21-day free trial, then plans from £19.99/mo.",
+      "The AI outreach platform you run from a single prompt. Describe your ideal customer and Velox AI finds the leads, writes personalised email + LinkedIn messages, and sends them every day on autopilot — from your own inbox. Plans from £19.99/mo, cancel anytime.",
     path: "/",
   },
   "/features": {

@@ -73,7 +73,7 @@ Where it fits less well: solo founders who find $109/month steep for multichanne
 
 Disclosure: we make Velox House, so weigh this section accordingly — but the arithmetic is straightforward to check.
 
-Velox House prices per plan, not per user. The Growth plan is £49.99/month and includes 3 team seats and 1 LinkedIn seat, with unlimited email sending, 1,000 verified contacts and 1,000 AI credits a month. Compare that with a three-person team on lemlist Multichannel at roughly $327/month billed monthly (~£250 or so, exchange-rate dependent) — the flat plan is in the region of a fifth of the cost, before lemlist's credit top-ups. Even against lemlist's annual rate (~$261/month for three users), the gap remains large, and Velox has no annual lock-in: it is monthly, cancel anytime, with a 21-day free trial.
+Velox House prices per plan, not per user. The Growth plan is £49.99/month and includes 3 team seats and 1 LinkedIn seat, with unlimited email sending, 1,000 verified contacts and 1,000 AI credits a month. Compare that with a three-person team on lemlist Multichannel at roughly $327/month billed monthly (~£250 or so, exchange-rate dependent) — the flat plan is in the region of a fifth of the cost, before lemlist's credit top-ups. Even against lemlist's annual rate (~$261/month for three users), the gap remains large, and Velox has no annual lock-in: it is monthly, cancel anytime, with no contract.
 
 The products are not identical — lemlist has deeper image/video personalisation and a native dialler; Velox House is built around an AI layer that plans the campaign from one prompt, finds and SMTP-verifies decision-makers before import, writes the personalised emails and LinkedIn messages, and then runs daily on autopilot towards a goal like "50 replies a week". Every contact is verified before it enters your campaign, which protects the deliverability you can check for free with our [deliverability tester](/tools) (no signup needed).
 
@@ -84,9 +84,9 @@ The products are not identical — lemlist has deeper image/video personalisatio
 | LinkedIn outreach | Included, per-user pricing | 1 LinkedIn seat included (extra seats £19.99/mo) |
 | Email verification | Credit-based ($0.05/email typical) | Included — every contact SMTP-verified |
 | Billing currency | USD | GBP |
-| Trial | 14 days | 21 days |
+| Commitment | Annual discount, monthly available | Monthly rolling, cancel anytime |
 
-You can see the full plan line-up at [our pricing page](/#pricing) or [start a trial](https://hub.veloxhouse.co.uk/signup) directly. If you are comparing several tools' invoices side by side, our [Instantly pricing](/blog/instantly-pricing/) and [Apollo pricing](/blog/apollo-pricing/) teardowns follow the same format.
+You can see the full plan line-up at [our pricing page](/#pricing) or [get started](https://hub.veloxhouse.co.uk/signup) directly. If you are comparing several tools' invoices side by side, our [Instantly pricing](/blog/instantly-pricing/) and [Apollo pricing](/blog/apollo-pricing/) teardowns follow the same format.
 
 ## Frequently asked questions
 

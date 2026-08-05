@@ -93,7 +93,7 @@ Your home market allows compliant cold outreach at meaningful scale — partly w
 
 B2B cold email is legal in the UK — but "legal" assumes you do it properly: corporate subscribers only, honest identity, working opt-out, a recorded legitimate-interests basis, and accurate, relevant data. That happens to be the exact recipe for outreach that lands in inboxes and gets replies.
 
-If you'd rather have the compliant mechanics handled for you — verified contacts, own-inbox sending, automatic reply-stopping, deliverability checks — [Velox House](/features) runs the whole workflow from a single prompt, with a [21-day free trial](https://hub.veloxhouse.co.uk/signup) and plans from £19.99/month.
+If you'd rather have the compliant mechanics handled for you — verified contacts, own-inbox sending, automatic reply-stopping, deliverability checks — [Velox House](/features) runs the whole workflow from a single prompt, with a [plans from £19.99/month](https://hub.veloxhouse.co.uk/signup) and plans from £19.99/month.
 
 ## Frequently asked questions
 

@@ -39,7 +39,7 @@ Prices are indicative at the time of writing and move around — always confirm 
 
 [Velox House](/features) takes a different approach from lemlist's build-it-yourself sequences: you describe your ideal customer in one prompt, and the AI plans the campaign, finds and verifies matching decision-makers (every contact is SMTP-verified before import, which keeps bounces down), researches each business, writes personalised emails and LinkedIn messages, and — once you approve — sends daily on autopilot from your own inbox (Google, Microsoft 365 or SMTP). You can set a goal like "50 replies a week" and it keeps sourcing leads and sending until it's hit.
 
-The pricing contrast with lemlist is structural, not marginal. Plans are flat, in GBP, with unlimited email sending on every tier: Starter at £19.99/mo (300 contacts, email only), Growth at £49.99/mo with **three seats and a LinkedIn seat included**, Scale at £79.99/mo (five seats), and Agency at £179.99/mo (ten seats, 25 mailboxes). Extra LinkedIn seats are £19.99/mo. Every plan has a 21-day free trial and no contract — see [pricing](/#pricing) or [start a trial](https://hub.veloxhouse.co.uk/signup).
+The pricing contrast with lemlist is structural, not marginal. Plans are flat, in GBP, with unlimited email sending on every tier: Starter at £19.99/mo (300 contacts, email only), Growth at £49.99/mo with **three seats and a LinkedIn seat included**, Scale at £79.99/mo (five seats), and Agency at £179.99/mo (ten seats, 25 mailboxes). Extra LinkedIn seats are £19.99/mo. Every plan is monthly rolling with no contract — see [pricing](/#pricing) or [get started](https://hub.veloxhouse.co.uk/signup).
 
 **Verdict:** the strongest fit if you're a UK founder or small team who wants the campaign built and run for you rather than assembled by hand — and the obvious pick if per-user pricing is what's driving you off lemlist.
 
@@ -135,4 +135,4 @@ For solo users who lean heavily on image and video personalisation, lemlist is s
 
 ### Do these alternatives offer free trials?
 
-Most do. Velox House offers a 21-day free trial on every plan with no contract; Instantly, Smartlead and Saleshandy offer trials or free tiers; Apollo has a permanent free plan. Trial two tools against the same small lead list — reply rate and deliverability, not feature lists, should decide it.
+Most do. Instantly, Smartlead and Saleshandy offer trials or free tiers, and Apollo has a permanent free plan. Velox House doesn't run a trial — it's £19.99/month to start, monthly rolling with no contract, so a month's subscription is the cheapest honest test. Run two tools against the same small lead list — reply rate and deliverability, not feature lists, should decide it.

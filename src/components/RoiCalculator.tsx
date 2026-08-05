@@ -326,7 +326,7 @@ export default function RoiCalculator({
                   href={SIGNUP_URL}
                   className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-[#DA291C] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#FF3B2D]"
                 >
-                  Start my 21-day free trial <ArrowRight size={15} />
+                  Get started from £19.99/mo <ArrowRight size={15} />
                 </a>
               </div>
             ) : (

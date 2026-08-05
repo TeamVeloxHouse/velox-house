@@ -69,7 +69,7 @@ The legitimate version of warm-up is just **gradual real sending to people who a
 
 **5. Let engagement set the pace.** Replies are the strongest positive signal a mailbox provider sees. If your early sends are getting replies, you've earned the right to ramp faster; if they're getting silence and deletes, more volume just accelerates the damage — fix the targeting and the message first (our [cold email templates guide](/blog/cold-email-templates-that-get-replies/) is the place to start).
 
-This is the model Velox House is built around: every contact is SMTP-verified before import, sending is staggered at a natural human pace in safe windows from your own mailbox, and sequences stop the moment a prospect replies. It's the sustainable version of what warm-up pools fake — reputation earned from real recipients doing real things. See how the full flow works at [/features](/features) or [start a 21-day free trial](https://hub.veloxhouse.co.uk/signup).
+This is the model Velox House is built around: every contact is SMTP-verified before import, sending is staggered at a natural human pace in safe windows from your own mailbox, and sequences stop the moment a prospect replies. It's the sustainable version of what warm-up pools fake — reputation earned from real recipients doing real things. See how the full flow works at [/features](/features) or [get started](https://hub.veloxhouse.co.uk/signup).
 
 ## When a short warm-up period is still pragmatic
 

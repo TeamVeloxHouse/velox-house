@@ -133,7 +133,7 @@ Run through this before your first campaign — most of it is one-time setup:
 | 9 | Google Postmaster Tools connected | postmaster.google.com |
 | 10 | Test send to your own Gmail/Outlook — check headers show SPF, DKIM, DMARC all pass | "Show original" in Gmail |
 
-If you'd rather not manage all this by hand, this is the layer Velox House handles for you: it checks your SPF/DKIM/DMARC, runs a pre-send spam check on every email, verifies every contact before import, and sends at a naturally paced daily cadence from your own Google, Microsoft 365 or SMTP inbox. Plans start at £19.99/month with a 21-day free trial ([pricing](/#pricing)), and the [deliverability checker](/tools) is free either way. For a wider look at tooling, see the [best cold email software for 2026](/blog/best-cold-email-software-2026/) roundup.
+If you'd rather not manage all this by hand, this is the layer Velox House handles for you: it checks your SPF/DKIM/DMARC, runs a pre-send spam check on every email, verifies every contact before import, and sends at a naturally paced daily cadence from your own Google, Microsoft 365 or SMTP inbox. Plans start at £19.99/month, monthly rolling ([pricing](/#pricing)), and the [deliverability checker](/tools) is free either way. For a wider look at tooling, see the [best cold email software for 2026](/blog/best-cold-email-software-2026/) roundup.
 
 ## Frequently asked questions
 

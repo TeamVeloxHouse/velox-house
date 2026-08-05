@@ -86,7 +86,7 @@ export default function MobileCapable() {
             href={SIGNUP_URL}
             className="inline-flex items-center rounded-md bg-[#DA291C] px-6 py-3.5 text-sm font-medium text-white transition-colors hover:bg-[#FF3B2D]"
           >
-            Try it on your phone — free for 21 days →
+            Try it on your phone — from £19.99/mo →
           </a>
         </motion.div>
       </div>

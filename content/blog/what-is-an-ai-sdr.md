@@ -71,7 +71,7 @@ The economics are stark, but read them carefully. An AI SDR doesn't replace a gr
 
 Hiring a UK SDR realistically means a £30–40k base salary before commission, plus the data and sequencing tools they need, plus a manager's time, plus several months before they're productive. All-in, the first year of a single SDR seat comfortably exceeds £45–50k for most teams.
 
-AI SDR software spans a wide price range. At the top end, "AI employee" products aimed at funded startups run to hundreds or thousands of pounds a month. In the mid-market, most credible tools land between £50 and £200/month. At the accessible end, [Velox House](/features) starts at £19.99/month for an email-only plan with 300 verified contacts, rising to £49.99/month for multichannel email + LinkedIn — with a 21-day free trial and no contract. (See how that compares with [Instantly](/blog/instantly-alternatives/), [Lemlist](/blog/lemlist-alternatives/) and [Apollo](/blog/apollo-alternatives-uk/).)
+AI SDR software spans a wide price range. At the top end, "AI employee" products aimed at funded startups run to hundreds or thousands of pounds a month. In the mid-market, most credible tools land between £50 and £200/month. At the accessible end, [Velox House](/features) starts at £19.99/month for an email-only plan with 300 verified contacts, rising to £49.99/month for multichannel email + LinkedIn — with no contract. (See how that compares with [Instantly](/blog/instantly-alternatives/), [Lemlist](/blog/lemlist-alternatives/) and [Apollo](/blog/apollo-alternatives-uk/).)
 
 The right comparison isn't "AI SDR vs SDR salary" — it's "what does a qualified conversation cost me each way?" For most small UK teams, software wins that maths by an order of magnitude at low volumes. Humans win it back the moment conversations need judgement, which is exactly where you should spend the salary budget.
 
@@ -104,7 +104,7 @@ If a vendor can't answer "whose inbox does this send from?" and "what happens wh
 
 Velox House is an AI SDR you run from a single prompt. Describe your ideal customer in plain English — "operations directors at UK logistics firms with 20–200 staff" — and Velox AI plans the campaign, finds and SMTP-verifies matching decision-makers before import, researches each business individually, and writes personalised cold emails and LinkedIn messages for your approval. Once approved, it sends daily on autopilot from your own inbox, staggered within safe sending windows, and stops the moment a prospect replies.
 
-The goal-seeking autopilot is the part that behaves most like a rep: set a target such as "50 replies a week" and it keeps sourcing leads and sending until the goal is hit, while the AI Copilot explains your analytics in plain English, runs campaign autopsies, and drafts replies in your inbox. Plans start at £19.99/month with a 21-day free trial and no contract — [start a trial](https://hub.veloxhouse.co.uk/signup) or see [pricing](/#pricing).
+The goal-seeking autopilot is the part that behaves most like a rep: set a target such as "50 replies a week" and it keeps sourcing leads and sending until the goal is hit, while the AI Copilot explains your analytics in plain English, runs campaign autopsies, and drafts replies in your inbox. Plans start at £19.99/month with no contract — [get started](https://hub.veloxhouse.co.uk/signup) or see [pricing](/#pricing).
 
 ## Frequently asked questions
 
@@ -118,7 +118,7 @@ No. AI SDRs excel at research, personalisation and follow-up consistency at scal
 
 ### How much does an AI SDR cost compared with hiring?
 
-A UK SDR typically costs £30–40k in base salary before commission, tools, management time and a 3–6 month ramp. AI SDR software mostly runs from roughly £20 to a few hundred pounds per month depending on volume and channels — Velox House starts at £19.99/month with a 21-day free trial. For small teams, the cost per qualified conversation is usually far lower with software.
+A UK SDR typically costs £30–40k in base salary before commission, tools, management time and a 3–6 month ramp. AI SDR software mostly runs from roughly £20 to a few hundred pounds per month depending on volume and channels — Velox House starts at £19.99/month with no contract. For small teams, the cost per qualified conversation is usually far lower with software.
 
 ### Are AI SDRs legal in the UK?
 

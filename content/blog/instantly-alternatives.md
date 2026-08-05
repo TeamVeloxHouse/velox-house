@@ -35,20 +35,20 @@ All competitor prices are approximate, billed annually where cheapest, and chang
 
 ## 1. Velox House — best for UK teams who want the campaign run for them
 
-Full disclosure: Velox House is our tool, so read this section knowing that — but the difference in approach is easy to verify on a free trial.
+Full disclosure: Velox House is our tool, so read this section knowing that — but the difference in approach is easy to verify for a month's subscription.
 
 Every other tool on this list gives you a faster way to do the work yourself: find leads, verify them, write sequences, schedule sends. Velox House starts from a different premise — you describe your ideal customer in one prompt, and Velox AI plans the campaign, finds matching decision-makers, verifies every contact by live SMTP check before import, researches each business, writes personalised emails and LinkedIn messages, and (once you approve) sends daily on autopilot from your own inbox. You can also set a goal — "50 replies a week" — and it keeps sourcing leads and sending until it hits it.
 
 That design answers the Instantly complaints directly:
 
-- **Cost:** pricing is all-in. Starter is £19.99/month with 300 verified contacts and 300 AI credits included — no separate database subscription, no verification add-on. Growth (£49.99) includes 1,000 contacts and a LinkedIn seat; Scale is £79.99 and Agency £179.99. Every plan has unlimited email sending and a 21-day free trial. See [full pricing](/#pricing).
+- **Cost:** pricing is all-in. Starter is £19.99/month with 300 verified contacts and 300 AI credits included — no separate database subscription, no verification add-on. Growth (£49.99) includes 1,000 contacts and a LinkedIn seat; Scale is £79.99 and Agency £179.99. Every plan has unlimited email sending, monthly rolling with no contract. See [full pricing](/#pricing).
 - **Warm-up:** sending goes through your own Google, Microsoft 365 or SMTP mailbox at naturally paced, staggered intervals in safe windows — no shared warm-up pool to worry about.
 - **Lead quality:** contacts are SMTP-verified before they ever enter your campaign, which is the single biggest lever on bounce rate.
 - **Deliverability tooling:** built-in SPF/DKIM/DMARC checks and a pre-send spam checker; there's also a [free deliverability checker](/tools) you can use without signing up.
 
 **Weaknesses:** it's built for SMBs running outbound as a growth channel, not for agencies juggling 50 sending domains per client — Smartlead is stronger there. And if you want granular manual control over every sequence step, a traditional sequencer may feel more familiar.
 
-**Verdict:** best for UK founders and small B2B teams who want results without becoming cold-email specialists. [Start a free trial](https://hub.veloxhouse.co.uk/signup).
+**Verdict:** best for UK founders and small B2B teams who want results without becoming cold-email specialists. [Get started](https://hub.veloxhouse.co.uk/signup).
 
 ## 2. Smartlead — best for agencies
 

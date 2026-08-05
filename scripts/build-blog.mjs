@@ -337,7 +337,7 @@ const nav = () => `
     <a class="on" href="/blog/">Blog</a>
     <a href="/tools">Free tools</a>
   </nav>
-  <a class="cta-btn" href="${SIGNUP}">Start free trial</a>
+  <a class="cta-btn" href="${SIGNUP}">Get started</a>
 </div></header>`;
 
 const footer = () => `
@@ -353,7 +353,7 @@ const ctaBox = () => `
 <div class="cta-box">
   <h3>Put your outbound on autopilot</h3>
   <p>Describe your ideal customer in one prompt. Velox AI finds the leads, verifies their emails, writes personalised email + LinkedIn messages, and sends every day from your own inbox. Plans from £19.99/mo.</p>
-  <a class="cta-btn" href="${SIGNUP}">Start your 21-day free trial</a>
+  <a class="cta-btn" href="${SIGNUP}">Get started — from £19.99/mo</a>
 </div>`;
 
 // In-article lead capture: the same free SPF/DKIM/DMARC check as the SPA

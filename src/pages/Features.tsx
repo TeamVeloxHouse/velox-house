@@ -71,7 +71,7 @@ function FeaturesHero() {
             href={SIGNUP_URL}
             className="inline-flex items-center gap-2 rounded-md bg-[#DA291C] px-6 py-3.5 text-sm font-semibold text-white shadow-cta transition-all hover:bg-[#FF3B2D] hover:shadow-glow-lg"
           >
-            Start free trial <ArrowRight size={16} />
+            Get started <ArrowRight size={16} />
           </a>
         </motion.div>
       </div>

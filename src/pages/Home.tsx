@@ -10,7 +10,6 @@ import ProblemsSolver from "../components/sections/ProblemsSolver";
 import DeliverabilityCheck from "../components/DeliverabilityCheck";
 import RoiCalculator from "../components/RoiCalculator";
 import StackBuilder from "../components/sections/StackBuilder";
-import FreeTier from "../components/sections/FreeTier";
 import Pricing from "../components/sections/Pricing";
 import FinalCTA from "../components/sections/FinalCTA";
 
@@ -21,7 +20,7 @@ export default function Home() {
       <ProductFilm />
       <SocialProof />
       {/* Free instant-value tool, early — it captures the visitors who aren't
-          ready to start a trial yet. */}
+          ready to buy yet. */}
       <DeliverabilityCheck variant="home" />
       <ProductTiles />
       <AiEverywhere />
@@ -32,7 +31,6 @@ export default function Home() {
       {/* "What's it worth?" sits between the problem and the price. */}
       <RoiCalculator variant="home" />
       <StackBuilder />
-      <FreeTier />
       <Pricing />
       <FinalCTA />
     </>

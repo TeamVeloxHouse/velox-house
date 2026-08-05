@@ -1,6 +1,6 @@
 # Velox House
 
-> AI outreach platform for B2B teams, run from a single prompt. Describe your ideal customer and Velox AI plans the whole campaign: it finds and verifies matching decision-makers, researches each business, writes personalised cold emails and LinkedIn messages, and sends them every day on goal-seeking autopilot — from your own inbox, tracking every open, reply and booked meeting. Every plan starts with a 21-day free trial; paid plans from £19.99/month.
+> AI outreach platform for B2B teams, run from a single prompt. Describe your ideal customer and Velox AI plans the whole campaign: it finds and verifies matching decision-makers, researches each business, writes personalised cold emails and LinkedIn messages, and sends them every day on goal-seeking autopilot — from your own inbox, tracking every open, reply and booked meeting. Plans from £19.99/month, monthly rolling, cancel anytime. There is no free trial.
 
 Website: https://veloxhouse.co.uk
 App / sign-up: https://hub.veloxhouse.co.uk/signup
@@ -25,9 +25,9 @@ Currency: GBP (£)
 - Email sending is unlimited on every plan, because email is sent through the customer's own connected mailbox.
 - Two metered allowances: **Contacts** (verified prospect discoveries) and **AI credits** (research and content generation).
 - Growth, Scale and Agency each include one LinkedIn seat free; Starter is email-only. Extra LinkedIn seats are £19.99/month each.
-- Every plan starts with a 21-day free trial of the full product — you're not charged until the trial ends, and you can cancel any time before then. No contract.
+- There is no free trial. You pick a plan at signup and are billed from day one. Every plan is the full product, monthly rolling, no contract — change plan or cancel anytime.
 
-## Pricing (GBP / month, all with a 21-day free trial)
+## Pricing (GBP / month, billed from day one, monthly rolling)
 
 - **Starter** — £19.99: 300 contacts/mo, 300 AI credits, unlimited email sending, 2 mailboxes. Email-only (LinkedIn from Growth up).
 - **Growth** — £49.99 (most popular): 1,000 contacts/mo, 1,000 AI credits, 1 LinkedIn seat included free, 3 seats, 5 mailboxes.
@@ -74,5 +74,5 @@ Founders, B2B sales teams and agencies — especially in the UK — who want con
 - Pricing: https://veloxhouse.co.uk/#pricing
 - Blog: https://veloxhouse.co.uk/blog/
 - Free tools: https://veloxhouse.co.uk/tools
-- Start free trial: https://hub.veloxhouse.co.uk/signup
+- Sign up: https://hub.veloxhouse.co.uk/signup
 - Log in: https://hub.veloxhouse.co.uk/login

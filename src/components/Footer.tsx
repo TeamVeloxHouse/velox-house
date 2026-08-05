@@ -33,7 +33,7 @@ const COLUMNS = [
       { label: "Pricing", href: "/#pricing" },
       { label: "How it works", href: "/#how" },
       { label: "Sign in", href: LOGIN_URL },
-      { label: "Start free trial", href: SIGNUP_URL },
+      { label: "Create an account", href: SIGNUP_URL },
     ],
   },
 ];

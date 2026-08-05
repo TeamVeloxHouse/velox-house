@@ -6,7 +6,7 @@ const STATS = [
   { value: "One prompt", label: "Build & launch a whole campaign" },
   { value: "Every day", label: "Finds & sends on autopilot" },
   { value: "Email + LinkedIn", label: "One multichannel flow" },
-  { value: "21-day", label: "Free trial, full product" },
+  { value: "From £19.99", label: "Per month, cancel anytime" },
 ];
 
 export default function Hero() {
@@ -55,7 +55,8 @@ export default function Hero() {
           Describe who you want to reach. Velox AI builds the whole campaign,
           finds and verifies the leads, writes the emails and LinkedIn messages,
           and sends them across both channels — every day, on autopilot. The fastest
-          way to fill your pipeline without lifting a finger. Start with a 21-day free trial.
+          way to fill your pipeline without lifting a finger. Plans from £19.99/mo,
+          cancel anytime.
         </motion.p>
 
         {/* CTAs */}
@@ -69,7 +70,7 @@ export default function Hero() {
             href={SIGNUP_URL}
             className="rounded-md bg-[#DA291C] px-6 py-3.5 text-sm font-medium text-white transition-colors hover:bg-[#FF3B2D]"
           >
-            Start Free Trial →
+            Get Started →
           </a>
           <a
             href="#how"
