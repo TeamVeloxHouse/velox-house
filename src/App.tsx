@@ -13,6 +13,7 @@ import Legal from "./pages/Legal";
 import ExitIntent from "./components/ExitIntent";
 import { trackPageView } from "./lib/track";
 import { initEngagement, startPage } from "./lib/engagement";
+import { adoptOptOutParam } from "./lib/optout";
 import { applyRouteMeta } from "./lib/seo";
 
 // Records a page_view on every route + hash change (so /#pricing etc. are tracked),
@@ -20,7 +21,9 @@ import { applyRouteMeta } from "./lib/seo";
 // engagement clock (time on page, scroll depth, per-section dwell).
 function RouteTracker() {
   const loc = useLocation();
-  useEffect(() => { initEngagement(); }, []);
+  // Honour ?vx_optout= before anything is measured, so the very first page view of an
+  // opted-out browser is excluded too.
+  useEffect(() => { adoptOptOutParam(); initEngagement(); }, []);
   useEffect(() => {
     applyRouteMeta(loc.pathname); // set the title before page_view reports it
     trackPageView(loc.pathname + loc.hash);

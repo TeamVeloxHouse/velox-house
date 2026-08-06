@@ -8,6 +8,7 @@
 // never break the site or delay a navigation.
 
 import { analyticsAllowed } from "./consent";
+import { isOptedOut } from "./optout";
 import { gaEvent, gaPageView } from "./ga";
 
 const TRACK_URL =
@@ -118,7 +119,7 @@ export function track(
   opts: { path?: string; label?: string; props?: Record<string, unknown> } = {}
 ) {
   // No analytics or identifier until the visitor accepts non-essential cookies (PECR).
-  if (!analyticsAllowed()) return;
+  if (!analyticsAllowed() || isOptedOut()) return;
   try {
     const path = opts.path ?? (typeof location !== "undefined" ? location.pathname + location.hash : undefined);
     const props = event === "page_view" ? { ...context(), ...(opts.props ?? {}) } : opts.props;
@@ -147,7 +148,7 @@ export function track(
  * GA4 gets them individually; gtag does its own batching.
  */
 export function trackBatch(events: TrackEvent[]) {
-  if (!analyticsAllowed() || !events.length) return;
+  if (!analyticsAllowed() || isOptedOut() || !events.length) return;
   try {
     const sid = sessionId();
     post(

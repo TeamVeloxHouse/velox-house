@@ -45,7 +45,10 @@ const DOCS: Record<string, Doc> = {
     updated: "[Date]",
     intro: `How ${ENTITY.trading} uses cookies and similar technologies on this website. Manage non-essential cookies via the banner.`,
     sections: [
-      { h: "1. Essential", body: ["Needed for the site to work (security, load balancing, remembering your cookie choice). Always on."] },
+      { h: "1. Essential", body: [
+        "Needed for the site to work (security, load balancing, remembering your cookie choice). Always on.",
+        "If you give us your name and email in a form here and then go on to create an account, we store those details briefly in a cookie so the sign-up form opens already filled in instead of asking you for them a second time. It is cleared as soon as the form reads it, and holds nothing you have not already given us.",
+      ] },
       { h: "2. Analytics (consent)", body: [
         "Help us understand traffic so we can improve. A random session identifier, page views, and engagement measurements (time on page, scroll depth, which sections you read, and clicks through to the app) are recorded only after you accept.",
         "We use two analytics tools. Our own first-party measurement, which stores a random identifier on your device and sends events to our own servers; and Google Analytics 4, which sets its own cookies. Google Analytics is loaded only after you accept — until then it is blocked by Google Consent Mode and no data is sent to Google.",
