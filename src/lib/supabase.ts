@@ -9,6 +9,8 @@
  * with VITE_SUPABASE_URL (and optionally VITE_SUPABASE_ANON_KEY) in .env.
  */
 
+import { setPrefill } from "./prefill";
+
 const BASE_URL =
   ((import.meta.env.VITE_SUPABASE_URL as string | undefined)?.replace(/\/$/, "") ||
     "https://qmzfuadxcnweiwbrsutn.supabase.co");
@@ -36,4 +38,10 @@ export async function submitLead(payload: LeadPayload): Promise<void> {
   if (!res.ok) {
     throw new Error(`Lead submission failed with status ${res.status}`);
   }
+
+  // They've just given us their name and email — carry it to the app so that if they go
+  // on to sign up, the form is already filled in. Done here rather than at each call site
+  // so every capture surface (final CTA, ROI calculator, deliverability checker, stack
+  // builder, and anything added later) gets it for free.
+  setPrefill({ name: payload.name, email: payload.email });
 }
