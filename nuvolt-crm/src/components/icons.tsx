@@ -245,6 +245,25 @@ export const Robot = (p: IconProps) => (
     <circle cx="12" cy="4" r="1" />
   </Base>
 )
+export const Sun = (p: IconProps) => (
+  <Base {...p}>
+    <circle cx="12" cy="12" r="4.2" />
+    <path d="M12 2v2.5M12 19.5V22M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2 12h2.5M19.5 12H22M4.2 19.8l1.8-1.8M18 6l1.8-1.8" />
+  </Base>
+)
+export const Radar = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M12 12l7-4M12 21a9 9 0 1 1 6.7-3" />
+    <circle cx="12" cy="12" r="1.6" />
+    <path d="M12 12a5 5 0 0 1 4-2" opacity=".5" />
+  </Base>
+)
+export const Grid2 = (p: IconProps) => (
+  <Base {...p}>
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <path d="M3 9h18M9 3v18" />
+  </Base>
+)
 export const Play = (p: IconProps) => (
   <Base {...p}>
     <path d="M7 4l13 8-13 8z" />

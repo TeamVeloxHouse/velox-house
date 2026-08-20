@@ -20,6 +20,8 @@ import { Settings } from './pages/Settings'
 import { SimplrAI } from './pages/SimplrAI'
 import { Meetings } from './pages/Meetings'
 import { Agents } from './pages/Agents'
+import { Prospector } from './pages/Prospector'
+import { ReachOverview, Finders, SolarFinder, Outreach, ReachAnalytics } from './pages/reach'
 
 export const router = createBrowserRouter([
   {
@@ -46,6 +48,13 @@ export const router = createBrowserRouter([
       { path: 'automation', element: <Automation /> },
       { path: 'documents', element: <Documents /> },
       { path: 'settings', element: <Settings /> },
+      // Simplr Reach — prospecting & outreach workspace
+      { path: 'reach', element: <ReachOverview /> },
+      { path: 'reach/finders', element: <Finders /> },
+      { path: 'reach/solar', element: <SolarFinder /> },
+      { path: 'reach/prospects', element: <Prospector /> },
+      { path: 'reach/outreach', element: <Outreach /> },
+      { path: 'reach/analytics', element: <ReachAnalytics /> },
     ],
   },
 ])
