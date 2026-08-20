@@ -201,6 +201,35 @@ export interface Sequence {
   replyRate: number
 }
 
+export interface LinkedInThread {
+  id: ID
+  name: string
+  company: string
+  headline: string
+  kind: 'message' | 'connection'
+  status: 'unread' | 'open' | 'pending' | 'accepted'
+  preview: string
+  time: string
+  createdAt: number
+  personId?: ID
+  sequence?: string
+}
+
+export type ChannelStatus = 'pending' | 'due' | 'sent' | 'opened' | 'replied' | 'bounced' | 'connected' | 'skipped'
+export interface Enrolment {
+  id: ID
+  sequenceId: ID
+  name: string
+  company: string
+  channel: 'Email' | 'LinkedIn'
+  stepIndex: number
+  totalSteps: number
+  stepLabel: string
+  status: ChannelStatus
+  nextDue: string
+  personId?: ID
+}
+
 export type AutoStepKind = 'trigger' | 'condition' | 'email' | 'task' | 'notify' | 'stage' | 'wait'
 export interface AutoStep {
   id: ID
@@ -239,6 +268,8 @@ export interface State {
   socialPosts: SocialPost[]
   sequences: Sequence[]
   automations: Automation[]
+  linkedinThreads: LinkedInThread[]
+  enrolments: Enrolment[]
   customFields: CustomField[]
   toasts: Toast[]
   railExpanded: boolean

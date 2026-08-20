@@ -3,7 +3,7 @@ import { buildSeed } from './seed'
 import type { State, Deal, Person, Lead, Org, Activity, EmailMsg, Toast, ID } from './types'
 import type { StageName } from '../data/mock'
 
-const KEY = 'simplr.state.v6'
+const KEY = 'simplr.state.v7'
 let idc = 1000
 export const uid = (p = 'x') => `${p}${Date.now().toString(36)}${idc++}`
 
@@ -46,6 +46,8 @@ type Action =
   | { type: 'ADD_SEQUENCE'; seq: import('./types').Sequence }
   | { type: 'TOGGLE_SEQUENCE'; id: ID }
   | { type: 'UPDATE_AUTOMATION'; id: ID; patch: Partial<import('./types').Automation> }
+  | { type: 'LI_UPDATE'; id: ID; patch: Partial<import('./types').LinkedInThread>; activity?: Activity }
+  | { type: 'ADVANCE_ENROLMENT'; id: ID; patch: Partial<import('./types').Enrolment>; activity?: Activity }
   | { type: 'RESET' }
 
 function reducer(state: State, action: Action): State {
@@ -152,6 +154,18 @@ function reducer(state: State, action: Action): State {
       return { ...state, sequences: state.sequences.map((s) => (s.id === action.id ? { ...s, active: !s.active } : s)) }
     case 'UPDATE_AUTOMATION':
       return { ...state, automations: state.automations.map((a) => (a.id === action.id ? { ...a, ...action.patch } : a)) }
+    case 'LI_UPDATE':
+      return {
+        ...state,
+        linkedinThreads: state.linkedinThreads.map((t) => (t.id === action.id ? { ...t, ...action.patch } : t)),
+        activities: action.activity ? [action.activity, ...state.activities] : state.activities,
+      }
+    case 'ADVANCE_ENROLMENT':
+      return {
+        ...state,
+        enrolments: state.enrolments.map((e) => (e.id === action.id ? { ...e, ...action.patch } : e)),
+        activities: action.activity ? [action.activity, ...state.activities] : state.activities,
+      }
     case 'RESET':
       return buildSeed()
     default:
@@ -396,6 +410,22 @@ export function useActions() {
     toggleSequence: (id: ID, active: boolean) => { dispatch({ type: 'TOGGLE_SEQUENCE', id }); toast(active ? 'Sequence paused' : 'Sequence activated', active ? 'warning' : 'positive') },
     updateAutomation: (id: ID, patch: Partial<import('./types').Automation>) => dispatch({ type: 'UPDATE_AUTOMATION', id, patch }),
     saveAutomation: (id: ID, patch: Partial<import('./types').Automation>) => { dispatch({ type: 'UPDATE_AUTOMATION', id, patch }); toast('Automation saved') },
+    liReply: (t: import('./types').LinkedInThread, body: string) => {
+      const activity: Activity = { id: uid('act'), type: 'note', subject: `LinkedIn message to ${t.name}`, body, personId: t.personId, done: true, who: 'Jordan Miles', createdAt: Date.now(), source: 'manual' }
+      dispatch({ type: 'LI_UPDATE', id: t.id, patch: { status: 'open', preview: body, time: 'Just now', createdAt: Date.now() }, activity })
+      toast(`LinkedIn message sent to ${t.name}`)
+    },
+    liAccept: (t: import('./types').LinkedInThread) => {
+      const activity: Activity = { id: uid('act'), type: 'note', subject: `LinkedIn connection accepted — ${t.name}`, personId: t.personId, done: true, who: 'System', createdAt: Date.now(), source: 'manual' }
+      dispatch({ type: 'LI_UPDATE', id: t.id, patch: { status: 'accepted', kind: 'message', preview: 'Connected. Send a first message.' }, activity })
+      toast(`Connected with ${t.name}`)
+    },
+    advanceEnrolment: (e: import('./types').Enrolment) => {
+      const done = e.stepIndex + 1 >= e.totalSteps
+      const activity: Activity = { id: uid('act'), type: e.channel === 'Email' ? 'email' : 'note', subject: `${e.channel} step sent: ${e.stepLabel}`, personId: e.personId, done: true, who: 'Jordan Miles', createdAt: Date.now(), source: 'ai' }
+      dispatch({ type: 'ADVANCE_ENROLMENT', id: e.id, patch: { status: 'sent', stepIndex: Math.min(e.stepIndex + 1, e.totalSteps), nextDue: done ? 'Complete' : 'in 2 days' }, activity })
+      toast(`${e.channel} step sent to ${e.name}`)
+    },
     reset: () => {
       dispatch({ type: 'RESET' })
       toast('Demo data reset')

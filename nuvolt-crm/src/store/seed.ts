@@ -1,5 +1,5 @@
 import { deals as mDeals, people as mPeople, orgs as mOrgs, leads as mLeads } from '../data/mock'
-import type { State, Deal, Person, Activity, EmailMsg, Meeting, Agent, AgentRun, Connection, CustomField, Webhook, ApiKey, Integration, SocialPost, Sequence, Automation } from './types'
+import type { State, Deal, Person, Activity, EmailMsg, Meeting, Agent, AgentRun, Connection, CustomField, Webhook, ApiKey, Integration, SocialPost, Sequence, Automation, LinkedInThread, Enrolment } from './types'
 
 const now = Date.now()
 const mins = (m: number) => now - m * 60_000
@@ -206,6 +206,24 @@ export function buildSeed(): State {
     ] },
   ]
 
+  const linkedinThreads: LinkedInThread[] = [
+    { id: 'li1', name: 'Elena Voss', company: 'Meridian Power', headline: 'Facilities Director', kind: 'message', status: 'unread', preview: 'Happy to connect — send me the survey details and I’ll take a look.', time: '11:20', createdAt: mins(35), personId: 'p1', sequence: 'Solar site owners' },
+    { id: 'li2', name: 'Tom Reyes', company: 'Harbour Logistics', headline: 'Operations Lead', kind: 'connection', status: 'pending', preview: 'Connection request sent · “Hi Tom, we help logistics firms electrify fleets…”', time: '09:05', createdAt: hrs(4), sequence: 'Facilities directors — energy' },
+    { id: 'li3', name: 'Callum Reed', company: 'Cirrus Hosting', headline: 'CTO', kind: 'message', status: 'accepted', preview: 'Thanks for connecting. Let’s line up that call re: the UPS refresh.', time: 'Yesterday', createdAt: days(1), personId: 'p2' },
+    { id: 'li4', name: 'Sam Idris', company: 'Fenwick University', headline: 'Sustainability Lead', kind: 'connection', status: 'accepted', preview: 'Connection accepted', time: 'Mon', createdAt: days(3), personId: 'p3', sequence: 'Solar site owners' },
+    { id: 'li5', name: 'Nadia Frost', company: 'Northgate Rail', headline: 'Project Manager', kind: 'message', status: 'open', preview: 'Not the right time for us, but check back in Q1.', time: 'Mon', createdAt: days(3), personId: 'p6' },
+  ]
+
+  const enrolments: Enrolment[] = [
+    { id: 'en1', sequenceId: 'sq1', name: 'Elena Voss', company: 'Meridian Power', channel: 'LinkedIn', stepIndex: 3, totalSteps: 6, stepLabel: 'LinkedIn connect + note', status: 'replied', nextDue: 'Replied', personId: 'p1' },
+    { id: 'en2', sequenceId: 'sq1', name: 'Owen Pryce', company: 'St. Aidan Hospital', channel: 'Email', stepIndex: 2, totalSteps: 6, stepLabel: 'Follow-up — case study', status: 'opened', nextDue: 'Today', personId: 'p4' },
+    { id: 'en3', sequenceId: 'sq1', name: 'Dana Kirk', company: 'Brightleaf Farms', channel: 'Email', stepIndex: 1, totalSteps: 6, stepLabel: 'Intro email', status: 'sent', nextDue: 'in 2 days', personId: 'p5' },
+    { id: 'en4', sequenceId: 'sq1', name: 'Tom Reyes', company: 'Harbour Logistics', channel: 'LinkedIn', stepIndex: 3, totalSteps: 6, stepLabel: 'LinkedIn connect + note', status: 'due', nextDue: 'Today', },
+    { id: 'en5', sequenceId: 'sq2', name: 'Sam Idris', company: 'Fenwick University', channel: 'Email', stepIndex: 3, totalSteps: 4, stepLabel: 'ROI follow-up', status: 'due', nextDue: 'Today', personId: 'p3' },
+    { id: 'en6', sequenceId: 'sq2', name: 'Ruth Bello', company: 'Cavendish Retail', channel: 'Email', stepIndex: 1, totalSteps: 4, stepLabel: 'Problem/insight opener', status: 'bounced', nextDue: 'Fix email', personId: 'p7' },
+    { id: 'en7', sequenceId: 'sq2', name: 'Nadia Frost', company: 'Northgate Rail', channel: 'LinkedIn', stepIndex: 2, totalSteps: 4, stepLabel: 'LinkedIn connect', status: 'connected', nextDue: 'in 1 day', personId: 'p6' },
+  ]
+
   const customFields: CustomField[] = [
     { id: 'cf1', entity: 'deal', label: 'Contract length', type: 'select', options: ['1 year', '2 years', '3 years', '5 years'] },
     { id: 'cf2', entity: 'deal', label: 'Region', type: 'text' },
@@ -215,5 +233,5 @@ export function buildSeed(): State {
   deals[0].custom = { cf1: '2 years', cf2: 'London' }
   people[1].custom = { cf3: 'linkedin.com/in/callumreed' }
 
-  return { deals, people, orgs, leads, activities, emails, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, customFields, toasts: [], railExpanded: true }
+  return { deals, people, orgs, leads, activities, emails, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, linkedinThreads, enrolments, customFields, toasts: [], railExpanded: true }
 }

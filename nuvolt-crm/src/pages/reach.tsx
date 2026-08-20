@@ -5,7 +5,8 @@ import { PageBody } from '../components/Page'
 import { Button, Kpi, Chip, Avatar, Progress } from '../components/ui'
 import { Table, Row, Cell } from '../components/Table'
 import { Sun, Radar, Search, Send, Sparkle, Plus, Check, Envelope, Person, Bolt, Building } from '../components/icons'
-import { useActions } from '../store/store'
+import { useActions, useState_ } from '../store/store'
+import type { ChannelStatus, Enrolment } from '../store/types'
 import { money, classNames } from '../lib/format'
 
 /* ============================ Overview ============================ */
@@ -193,61 +194,117 @@ export function SolarFinder() {
   )
 }
 
-/* ============================ Outreach ============================ */
-const outreachSeqs = [
-  { id: 'o1', name: 'Solar site owners — multichannel', channels: ['Email', 'LinkedIn'], enrolled: 240, sent: 612, replies: 44, meetings: 12, active: true, steps: [
-    { d: 0, ch: 'Email', label: 'Intro: “we measured your roof”' },
-    { d: 1, ch: 'LinkedIn', label: 'Connect + personalised note' },
-    { d: 3, ch: 'Email', label: 'Savings estimate + case study' },
-    { d: 6, ch: 'LinkedIn', label: 'Message: offer a free survey' },
-    { d: 9, ch: 'Email', label: 'Break-up' },
-  ] },
-  { id: 'o2', name: 'Facilities directors — energy', channels: ['Email', 'LinkedIn'], enrolled: 180, sent: 430, replies: 31, meetings: 8, active: true, steps: [
-    { d: 0, ch: 'Email', label: 'Problem/insight opener' },
-    { d: 2, ch: 'LinkedIn', label: 'Connect' },
-    { d: 4, ch: 'Email', label: 'ROI follow-up' },
-    { d: 7, ch: 'Email', label: 'Break-up' },
-  ] },
-]
+/* ============================ Outreach (multichannel cockpit) ============================ */
 const chColor: Record<string, string> = { Email: '#1D4ED8', LinkedIn: '#0A66C2' }
+const statusTone: Record<ChannelStatus, { fg: string; bg: string; label: string }> = {
+  pending: { fg: '#7A8494', bg: '#F1F3F7', label: 'Pending' },
+  due: { fg: '#C2410C', bg: '#FDF1E7', label: 'Due now' },
+  sent: { fg: '#1D4ED8', bg: '#EEF2FB', label: 'Sent' },
+  opened: { fg: '#3A67E4', bg: '#EEF2FB', label: 'Opened' },
+  replied: { fg: '#0E7C66', bg: '#E9F5F1', label: 'Replied' },
+  connected: { fg: '#0A66C2', bg: '#E7EFFA', label: 'Connected' },
+  bounced: { fg: '#B01B4F', bg: '#FDECEF', label: 'Bounced' },
+  skipped: { fg: '#7A8494', bg: '#F1F3F7', label: 'Skipped' },
+}
 
 export function Outreach() {
   const act = useActions()
+  const { sequences, enrolments } = useState_()
+  const [selSeq, setSelSeq] = useState<string>('sq1')
+  const seq = sequences.find((s) => s.id === selSeq) ?? sequences[0]
+  const dueNow = enrolments.filter((e) => e.status === 'due')
+  const rows = enrolments.filter((e) => e.sequenceId === (seq?.id ?? ''))
+  const template = '1.8fr 1fr 1.4fr 1fr 1fr 0.8fr'
+
   return (
     <>
-      <TopBar title="Outreach" crumbs={['Reach', 'Multichannel']} actions={<><Button icon={<Sparkle size={16} />} onClick={() => act.toast('AI wrote a 5-step sequence from your ICP', 'accent')}>AI sequence</Button><Button variant="primary" icon={<Plus size={16} />} onClick={() => act.toast('Sequence builder (demo)', 'accent')}>New sequence</Button></>} />
+      <TopBar title="Outreach" crumbs={['Reach', 'Multichannel']} actions={<><Button icon={<Sparkle size={16} />} onClick={() => act.toast('AI wrote a 5-step email + LinkedIn sequence from your ICP', 'accent')}>AI sequence</Button><Button variant="primary" icon={<Plus size={16} />} onClick={() => act.toast('Sequence builder (demo)', 'accent')}>New sequence</Button></>} />
       <PageBody>
         <div className="grid grid-cols-4 gap-4">
-          <Kpi variant="blue" label="Enrolled" value="420" delta="Across 2 sequences" deltaTone="muted" />
-          <Kpi label="Messages sent" value="1,042" delta="Email + LinkedIn" deltaTone="muted" />
+          <Kpi variant="blue" label="Enrolled" value={String(enrolments.length)} delta={`${sequences.length} sequences`} deltaTone="muted" />
+          <Kpi variant="deep" label="Due now" value={String(dueNow.length)} delta="Across channels" />
+          <Kpi label="Replied" value={String(enrolments.filter((e) => e.status === 'replied').length)} delta="Awaiting your reply" />
           <Kpi label="Reply rate" value="19%" delta="+3 pts" />
-          <Kpi variant="deep" label="Meetings" value="20" delta="From outreach" />
         </div>
-        {outreachSeqs.map((s) => (
-          <div key={s.id} className="bg-surface border border-border rounded-card p-5">
+
+        {/* Due-now work queue — the daily multichannel to-do */}
+        <div className="bg-surface border border-border rounded-card overflow-hidden">
+          <div className="px-5 py-3 border-b border-border flex items-center gap-2"><div className="text-[15px] font-semibold text-ink">Today’s outreach queue</div><Chip tone="warning" dot>{dueNow.length} due</Chip><span className="ml-auto text-[12px] text-muted-2">Each action is logged to the contact automatically</span></div>
+          {dueNow.length === 0 && <div className="px-5 py-6 text-center text-[13px] text-muted-2">Queue clear — nothing due right now.</div>}
+          {dueNow.map((e) => (
+            <div key={e.id} className="flex items-center gap-3 px-5 py-3 border-b border-divider-row last:border-0">
+              <span className="w-7 h-7 rounded-lg flex items-center justify-center text-white shrink-0" style={{ background: chColor[e.channel] }}>{e.channel === 'Email' ? <Envelope size={14} /> : <Person size={14} />}</span>
+              <div className="min-w-0 flex-1">
+                <div className="text-[13px] font-semibold text-ink-2">{e.name} · <span className="text-muted-2 font-normal">{e.company}</span></div>
+                <div className="text-[12px] text-muted-2">{e.channel} · step {e.stepIndex + 1}/{e.totalSteps}: {e.stepLabel}</div>
+              </div>
+              <Button onClick={() => act.advanceEnrolment(e)} variant="primary" icon={e.channel === 'Email' ? <Send size={15} /> : <Person size={15} />}>{e.channel === 'Email' ? 'Send email' : 'Do LinkedIn step'}</Button>
+              <button onClick={() => act.toast(`${e.name} skipped`, 'warning')} className="text-[12px] text-muted-b hover:text-ink-3 font-medium">Skip</button>
+            </div>
+          ))}
+        </div>
+
+        {/* Sequence staging */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {sequences.map((s) => (
+            <button key={s.id} onClick={() => setSelSeq(s.id)} className={classNames('h-9 px-3.5 rounded-lg text-[13px] font-medium border transition-colors', selSeq === s.id ? 'bg-accent text-white border-accent' : 'bg-surface border-border text-muted-b hover:bg-control')}>{s.name}</button>
+          ))}
+        </div>
+        {seq && (
+          <div className="bg-surface border border-border rounded-card p-5">
             <div className="flex items-center gap-3 mb-4">
               <div>
-                <div className="text-[15px] font-semibold text-ink flex items-center gap-2">{s.name}{s.channels.map((c) => (<span key={c} className="text-[10px] font-bold text-white px-1.5 py-0.5 rounded" style={{ background: chColor[c] }}>{c}</span>))}</div>
-                <div className="text-[12px] text-muted-2 mt-0.5">{s.enrolled} enrolled · {s.sent} sent · {s.replies} replies · {s.meetings} meetings</div>
+                <div className="text-[15px] font-semibold text-ink">{seq.name}</div>
+                <div className="text-[12px] text-muted-2 mt-0.5">{seq.enrolled} enrolled · {seq.replyRate}% reply · {seq.steps.length} steps across email &amp; LinkedIn</div>
               </div>
-              <div className="ml-auto flex items-center gap-3">
-                <div className="text-right"><div className="text-[16px] font-bold text-positive">{Math.round((s.replies / s.sent) * 100)}%</div><div className="text-[11px] text-muted-2">reply</div></div>
-                <button className={classNames('w-11 h-6 rounded-full flex items-center px-0.5', s.active ? 'bg-accent justify-end' : 'bg-input-border justify-start')}><span className="w-5 h-5 rounded-full bg-white shadow" /></button>
+              <div className="ml-auto flex items-center gap-1.5">
+                {[...new Set(seq.steps.map((st) => st.type === 'linkedin' ? 'LinkedIn' : st.type === 'email' ? 'Email' : null).filter(Boolean))].map((c) => (<span key={c as string} className="text-[10px] font-bold text-white px-1.5 py-0.5 rounded" style={{ background: chColor[c as string] }}>{c}</span>))}
+                <button onClick={() => act.toggleSequence(seq.id, seq.active)} className={classNames('ml-1 w-11 h-6 rounded-full flex items-center px-0.5', seq.active ? 'bg-accent justify-end' : 'bg-input-border justify-start')}><span className="w-5 h-5 rounded-full bg-white shadow" /></button>
               </div>
             </div>
-            <div className="flex items-stretch gap-2 overflow-x-auto pb-1">
-              {s.steps.map((st, i) => (
-                <div key={i} className="flex items-center gap-2 shrink-0">
-                  <div className="rounded-lg border border-border bg-surface-tint px-3 py-2 min-w-[170px]">
-                    <div className="flex items-center gap-1.5"><span className="w-5 h-5 rounded-md flex items-center justify-center text-white" style={{ background: chColor[st.ch] }}>{st.ch === 'Email' ? <Envelope size={12} /> : <Person size={12} />}</span><span className="text-[11px] font-semibold uppercase tracking-wide text-muted-2">Day {st.d}</span></div>
-                    <div className="text-[12.5px] text-ink-2 font-medium mt-1 leading-snug">{st.label}</div>
+            {/* step rail */}
+            <div className="flex items-stretch gap-2 overflow-x-auto pb-3 mb-3 border-b border-divider">
+              {seq.steps.map((st, i) => {
+                const ch = st.type === 'linkedin' ? 'LinkedIn' : st.type === 'email' ? 'Email' : null
+                return (
+                  <div key={st.id} className="flex items-center gap-2 shrink-0">
+                    <div className="rounded-lg border border-border bg-surface-tint px-3 py-2 min-w-[160px]">
+                      <div className="flex items-center gap-1.5">{ch ? <span className="w-5 h-5 rounded-md flex items-center justify-center text-white" style={{ background: chColor[ch] }}>{ch === 'Email' ? <Envelope size={12} /> : <Person size={12} />}</span> : <span className="w-5 h-5 rounded-md bg-control flex items-center justify-center text-muted-2 text-[10px]">⏱</span>}<span className="text-[11px] font-semibold uppercase tracking-wide text-muted-2">Day {st.day}</span></div>
+                      <div className="text-[12.5px] text-ink-2 font-medium mt-1 leading-snug">{st.label}</div>
+                    </div>
+                    {i < seq.steps.length - 1 && <div className="w-4 h-px bg-border" />}
                   </div>
-                  {i < s.steps.length - 1 && <div className="w-4 h-px bg-border" />}
-                </div>
-              ))}
+                )
+              })}
             </div>
+            {/* enrolment staging table */}
+            <div className="text-[13px] font-semibold text-ink mb-2">Enrolled prospects · staged</div>
+            <Table
+              template={template}
+              columns={[{ key: 'p', header: 'Prospect' }, { key: 'ch', header: 'Channel' }, { key: 'prog', header: 'Progress' }, { key: 'step', header: 'Current step' }, { key: 'st', header: 'Status' }, { key: 'due', header: 'Next' }]}
+              footer={<span>{rows.length} enrolled in this sequence</span>}
+            >
+              {rows.map((e: Enrolment) => {
+                const s = statusTone[e.status]
+                return (
+                  <Row key={e.id} template={template}>
+                    <Cell><div className="flex items-center gap-2.5"><Avatar name={e.name} size={28} /><div className="min-w-0"><div className="font-semibold text-ink-2 truncate">{e.name}</div><div className="text-[12px] text-muted-2 truncate">{e.company}</div></div></div></Cell>
+                    <Cell><span className="inline-flex items-center gap-1.5 text-[12px] font-semibold" style={{ color: chColor[e.channel] }}>{e.channel === 'Email' ? <Envelope size={13} /> : <Person size={13} />}{e.channel}</span></Cell>
+                    <Cell>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 max-w-[90px] h-1.5 rounded-full bg-control overflow-hidden"><div className="h-full rounded-full bg-accent" style={{ width: `${(e.stepIndex / e.totalSteps) * 100}%` }} /></div>
+                        <span className="text-[12px] text-muted-2 tabular-nums">{e.stepIndex}/{e.totalSteps}</span>
+                      </div>
+                    </Cell>
+                    <Cell muted>{e.stepLabel}</Cell>
+                    <Cell><span className="inline-flex items-center gap-1.5 px-2 py-[3px] rounded-chip text-[12px] font-semibold" style={{ background: s.bg, color: s.fg }}><span className="w-1.5 h-1.5 rounded-full" style={{ background: s.fg }} />{s.label}</span></Cell>
+                    <Cell muted>{e.status === 'due' ? <button onClick={() => act.advanceEnrolment(e)} className="text-accent font-semibold">Send now</button> : e.nextDue}</Cell>
+                  </Row>
+                )
+              })}
+            </Table>
           </div>
-        ))}
+        )}
       </PageBody>
     </>
   )

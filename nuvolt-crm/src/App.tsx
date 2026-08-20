@@ -21,6 +21,7 @@ import { SimplrAI } from './pages/SimplrAI'
 import { Meetings } from './pages/Meetings'
 import { Agents } from './pages/Agents'
 import { Prospector } from './pages/Prospector'
+import { LinkedInInbox } from './pages/LinkedInInbox'
 import { ReachOverview, Finders, SolarFinder, Outreach, ReachAnalytics } from './pages/reach'
 
 export const router = createBrowserRouter([
@@ -40,6 +41,7 @@ export const router = createBrowserRouter([
       { path: 'organisations', element: <Organisations /> },
       { path: 'activities', element: <Activities /> },
       { path: 'inbox', element: <Inbox /> },
+      { path: 'linkedin', element: <LinkedInInbox /> },
       { path: 'insights', element: <Insights /> },
       { path: 'forecast', element: <Forecast /> },
       { path: 'products', element: <Products /> },
@@ -54,6 +56,8 @@ export const router = createBrowserRouter([
       { path: 'reach/solar', element: <SolarFinder /> },
       { path: 'reach/prospects', element: <Prospector /> },
       { path: 'reach/outreach', element: <Outreach /> },
+      { path: 'reach/email', element: <Inbox /> },
+      { path: 'reach/linkedin', element: <LinkedInInbox /> },
       { path: 'reach/analytics', element: <ReachAnalytics /> },
     ],
   },

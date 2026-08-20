@@ -27,6 +27,7 @@ const crmGroups: Group[] = [
     { to: '/activities', icon: Calendar, label: 'Activities', badge: 6 },
     { to: '/meetings', icon: Video, label: 'Meetings' },
     { to: '/inbox', icon: Envelope, label: 'Sales Inbox' },
+    { to: '/linkedin', icon: Person, label: 'LinkedIn' },
     { to: '/campaigns', icon: Megaphone, label: 'Campaigns' },
     { to: '/automation', icon: Layers, label: 'Automation' },
   ] },
@@ -45,7 +46,11 @@ const reachGroups: Group[] = [
     { to: '/reach/solar', icon: Sun, label: 'Solar finder' },
     { to: '/reach/prospects', icon: Search, label: 'B2B prospects' },
   ] },
-  { label: 'Engage', items: [{ to: '/reach/outreach', icon: Send, label: 'Outreach' }] },
+  { label: 'Engage', items: [
+    { to: '/reach/outreach', icon: Send, label: 'Outreach' },
+    { to: '/reach/email', icon: Envelope, label: 'Email' },
+    { to: '/reach/linkedin', icon: Person, label: 'LinkedIn' },
+  ] },
   { label: 'Measure', items: [{ to: '/reach/analytics', icon: Pie, label: 'Analytics' }] },
 ]
 
