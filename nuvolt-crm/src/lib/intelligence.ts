@@ -116,6 +116,30 @@ export function personSummary(person: Person, activities: Activity[], dealCount:
   }. ${person.labels.length ? `Labelled ${person.labels.join(', ').toLowerCase()}.` : ''}`
 }
 
+export type Coaching = {
+  meetings: number
+  talkRatio: number // % rep talk time
+  sentiment: 'Positive' | 'Neutral' | 'Mixed'
+  topics: string[]
+  momentum: 'Building' | 'Steady' | 'Cooling'
+  tips: string[]
+}
+/** Conversation intelligence rolled up from a deal's recorded meetings. */
+export function dealCoaching(deal: Deal, meetingCount: number, score: number): Coaching {
+  const seed = deal.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
+  const talkRatio = 42 + (seed % 26) // 42–67%
+  const sentiment = score >= 70 ? 'Positive' : score >= 50 ? 'Neutral' : 'Mixed'
+  const allTopics = ['Pricing', 'Timeline', 'Liability caps', 'Rollout', 'Support', 'Competitors', 'Budget', 'Security']
+  const topics = allTopics.filter((_, i) => (seed >> i) & 1).slice(0, 4)
+  const momentum = score >= 65 ? 'Building' : score >= 45 ? 'Steady' : 'Cooling'
+  const tips: string[] = []
+  if (talkRatio > 55) tips.push(`You spoke ${talkRatio}% of the time — ask more discovery questions to draw out concerns.`)
+  else tips.push(`Good listen ratio (${talkRatio}% talk). Keep the customer talking about impact.`)
+  if (deal.chips.some((c) => /redline|legal|budget/i.test(c.label))) tips.push('A commercial blocker came up — bring the decision-maker into the next call.')
+  if (momentum === 'Cooling') tips.push('Energy is dropping across calls — propose a concrete next milestone to re-engage.')
+  return { meetings: meetingCount, talkRatio, sentiment, topics: topics.length ? topics : ['Pricing', 'Timeline'], momentum, tips }
+}
+
 export const bandColor: Record<Band, { fg: string; bg: string }> = {
   Hot: { fg: '#0E7C66', bg: '#E9F5F1' },
   Warm: { fg: '#1D4ED8', bg: '#EEF2FB' },

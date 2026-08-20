@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { Sparkle, Check } from './icons'
 import { classNames } from '../lib/format'
-import { bandColor, type Score, type Risk, type Action } from '../lib/intelligence'
+import { bandColor, type Score, type Risk, type Action, type Coaching } from '../lib/intelligence'
 import { useActions } from '../store/store'
 import type { Activity } from '../store/types'
+import { Chip } from './ui'
 
 /** Compact AI score pill with a hover breakdown of the signals. */
 export function ScorePill({ score, size = 'md' }: { score: Score; size?: 'sm' | 'md' }) {
@@ -84,6 +85,40 @@ export function NextBestAction({ action, dealId, personId }: { action: Action; d
       >
         {done ? <><Check size={13} /> Added</> : <><Sparkle size={13} /> Do it</>}
       </button>
+    </div>
+  )
+}
+
+/** Conversation intelligence panel — talk ratio, topics, sentiment, coaching. */
+export function ConversationIntel({ coaching, onOpenMeetings }: { coaching: Coaching; onOpenMeetings?: () => void }) {
+  const sentTone = coaching.sentiment === 'Positive' ? 'positive' : coaching.sentiment === 'Mixed' ? 'warning' : 'neutral'
+  const momTone = coaching.momentum === 'Building' ? 'positive' : coaching.momentum === 'Cooling' ? 'warning' : 'neutral'
+  return (
+    <div className="rounded-card bg-surface border border-border p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-1.5 text-[12px] font-semibold text-accent-700"><Sparkle size={13} /> Conversation intelligence</div>
+        {onOpenMeetings && <button onClick={onOpenMeetings} className="text-[12px] text-accent font-semibold">{coaching.meetings} calls →</button>}
+      </div>
+      <div className="mb-3">
+        <div className="flex items-center justify-between text-[11px] mb-1">
+          <span className="text-muted-2">Talk ratio · you</span>
+          <span className="font-semibold text-ink-2 tabular-nums">{coaching.talkRatio}% / {100 - coaching.talkRatio}%</span>
+        </div>
+        <div className="h-2 rounded-full overflow-hidden flex bg-control">
+          <div style={{ width: `${coaching.talkRatio}%`, background: coaching.talkRatio > 55 ? '#C2410C' : '#1D4ED8' }} />
+          <div style={{ width: `${100 - coaching.talkRatio}%`, background: '#C7D3F2' }} />
+        </div>
+      </div>
+      <div className="flex items-center gap-2 mb-3">
+        <Chip tone={sentTone} dot>{coaching.sentiment}</Chip>
+        <Chip tone={momTone} dot>{coaching.momentum}</Chip>
+      </div>
+      <div className="flex flex-wrap gap-1.5 mb-3">
+        {coaching.topics.map((t) => (<span key={t} className="text-[11px] font-medium text-ink-3 bg-control rounded-chip px-2 py-0.5">{t}</span>))}
+      </div>
+      <div className="border-t border-divider pt-2.5 flex flex-col gap-1.5">
+        {coaching.tips.map((tip, i) => (<div key={i} className="text-[12px] text-ink-3 leading-snug flex gap-1.5"><Sparkle size={12} className="text-accent shrink-0 mt-0.5" />{tip}</div>))}
+      </div>
     </div>
   )
 }

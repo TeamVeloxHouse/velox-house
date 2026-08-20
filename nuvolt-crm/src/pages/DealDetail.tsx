@@ -5,9 +5,9 @@ import { PageBody } from '../components/Page'
 import { Button, Chip } from '../components/ui'
 import { Modal, Field, Input, Select } from '../components/overlays'
 import { Note, Envelope, Phone, Meeting, Task, File, Check, Sparkle } from '../components/icons'
-import { NextBestAction, RecordSummary, ScorePill } from '../components/ai-widgets'
+import { NextBestAction, RecordSummary, ScorePill, ConversationIntel } from '../components/ai-widgets'
 import { CustomFieldRows } from '../components/CustomFields'
-import { dealScore, dealRisk, nextBestAction, dealSummary } from '../lib/intelligence'
+import { dealScore, nextBestAction, dealSummary, dealCoaching } from '../lib/intelligence'
 import { stages, type StageName } from '../data/mock'
 import { useSelectors, useActions, useState_ } from '../store/store'
 import type { Activity } from '../store/types'
@@ -22,7 +22,7 @@ export function DealDetail() {
   const nav = useNavigate()
   const sel = useSelectors()
   const act = useActions()
-  const { activities: allActivities, people: allPeople } = useState_()
+  const { activities: allActivities, people: allPeople, meetings: allMeetings } = useState_()
   const deal = sel.dealById(id)
   const [tab, setTab] = useState<(typeof composerTabs)[number]>('Note')
   const [draft, setDraft] = useState('')
@@ -44,6 +44,7 @@ export function DealDetail() {
   const contacts = sel.peopleForDeal(deal)
   const score = dealScore(deal, allActivities)
   const nba = nextBestAction(deal, allActivities)
+  const dealMeetings = allMeetings.filter((m) => m.dealId === deal.id && m.status === 'recorded')
 
   function save() {
     if (!draft.trim() && tab !== 'File') return
@@ -176,6 +177,7 @@ export function DealDetail() {
           <div className="flex flex-col gap-4">
             <RecordSummary summary={dealSummary(deal, allActivities, allPeople)} ask={`Summarise the ${deal.org} deal and what's blocking it`} />
             <NextBestAction action={nba} dealId={deal.id} personId={contacts[0]?.id} />
+            {dealMeetings.length > 0 && <ConversationIntel coaching={dealCoaching(deal, dealMeetings.length, score.score)} onOpenMeetings={() => nav('/meetings')} />}
             <Panel title={`Open activities · ${openTasks.length}`}>
               {openTasks.length === 0 && <div className="text-[12px] text-muted-2">Nothing open. Nice.</div>}
               {openTasks.map((t) => (
