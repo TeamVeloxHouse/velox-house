@@ -173,6 +173,8 @@ export interface Integration {
   installed: boolean
   color: string
   initials: string
+  domain?: string
+  popular?: boolean
 }
 
 export interface SocialPost {

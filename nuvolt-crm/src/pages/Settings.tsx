@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { TopBar } from '../components/TopBar'
 import { Button, Kpi, Chip, Avatar, type ChipTone } from '../components/ui'
 import { Table, Row, Cell } from '../components/Table'
-import { Plus, Check, Sparkle, Envelope, Video, Megaphone, Link as LinkIcon } from '../components/icons'
+import { Plus, Check, Sparkle, Envelope, Video, Megaphone, Link as LinkIcon, Search } from '../components/icons'
 import { Modal, Field, Input, Select } from '../components/overlays'
+import { BrandLogo } from '../components/BrandLogo'
 import { useActions, useState_ } from '../store/store'
 import type { CustomEntity, CustomField } from '../store/types'
 import { classNames } from '../lib/format'
@@ -124,6 +125,12 @@ export function Settings() {
   )
 }
 
+const providerDomain: Record<string, string> = {
+  'Microsoft 365': 'microsoft.com', Outlook: 'outlook.com', Gmail: 'google.com', Teams: 'microsoft.com',
+  'Google Meet': 'meet.google.com', Zoom: 'zoom.us', LinkedIn: 'linkedin.com', X: 'x.com',
+  Facebook: 'facebook.com', Instagram: 'instagram.com',
+}
+
 /* ---------- Email, calendar & social connections ---------- */
 function ConnectionsPanel() {
   const { connections } = useState_()
@@ -140,7 +147,7 @@ function ConnectionsPanel() {
       <div className="bg-surface border border-border rounded-card divide-y divide-divider">
         {items.map((c) => (
           <div key={c.id} className="flex items-center gap-3 px-4 py-3">
-            <span className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-[11px] font-bold shrink-0" style={{ background: c.color }}>{c.provider.slice(0, 2)}</span>
+            <BrandLogo domain={providerDomain[c.provider]} name={c.provider} color={c.color} initials={c.provider.slice(0, 2)} size={32} radius={8} />
             <div className="min-w-0 flex-1">
               <div className="text-[13px] font-semibold text-ink-2">{c.provider}{c.protocol && <span className="ml-2 text-[10px] uppercase tracking-wide text-muted-3 font-semibold">{c.protocol}</span>}</div>
               <div className="text-[12px] text-muted-2 truncate">{c.account ?? (c.connected ? 'Connected' : 'Not connected')}</div>
@@ -191,41 +198,64 @@ function ImapModal({ open, onClose, onConnect }: { open: boolean; onClose: () =>
 function MarketplacePanel() {
   const { integrations } = useState_()
   const act = useActions()
-  const cats = [...new Set(integrations.map((i) => i.category))]
+  const [q, setQ] = useState('')
+  const [cat, setCat] = useState('All')
+  const cats = ['All', 'Installed', 'Popular', ...[...new Set(integrations.map((i) => i.category))]]
+
+  const filtered = integrations.filter((i) => {
+    if (q && !(i.name + i.desc + i.category).toLowerCase().includes(q.toLowerCase())) return false
+    if (cat === 'Installed') return i.installed
+    if (cat === 'Popular') return i.popular
+    if (cat === 'All') return true
+    return i.category === cat
+  })
+  const installedCount = integrations.filter((i) => i.installed).length
+
+  const Card = (i: (typeof integrations)[number]) => (
+    <div className="bg-surface border border-border rounded-card p-4 flex items-start gap-3">
+      <BrandLogo domain={i.domain} name={i.name} color={i.color} initials={i.initials} size={40} />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5"><div className="text-[13.5px] font-semibold text-ink-2 truncate">{i.name}</div>{i.popular && <span className="text-[9px] uppercase tracking-wide font-bold text-accent bg-accent-wash px-1 py-0.5 rounded">Popular</span>}</div>
+        <div className="text-[12px] text-muted-2 leading-snug mt-0.5">{i.desc}</div>
+        <button onClick={() => act.toggleIntegration(i.id, i.name, i.installed)} className={classNames('mt-2 h-7 px-2.5 rounded-lg text-[12px] font-semibold', i.installed ? 'bg-positive-wash text-positive' : 'bg-accent-wash text-accent hover:bg-[#E4ECFB]')}>
+          {i.installed ? <span className="flex items-center gap-1"><Check size={12} /> Connected</span> : 'Connect'}
+        </button>
+      </div>
+    </div>
+  )
+
   return (
     <>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
           <div className="text-[16px] font-bold text-ink">Marketplace</div>
-          <div className="text-[13px] text-muted-b mt-0.5">Native integrations for the tools you use — plus Zapier, Make and webhooks to connect thousands more.</div>
+          <div className="text-[13px] text-muted-b mt-0.5">{integrations.length} integrations · {installedCount} connected. Plus Zapier, Make &amp; webhooks for thousands more.</div>
+        </div>
+        <div className="w-[260px] h-9 border border-border rounded-control flex items-center gap-2 px-3 bg-surface shrink-0">
+          <Search size={15} className="text-muted-3" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search integrations" className="bg-transparent outline-none flex-1 text-[13px] text-ink-2 placeholder:text-muted-3" />
         </div>
       </div>
+
       <div className="rounded-card bg-deep-panel p-4 flex items-start gap-3">
         <span className="w-9 h-9 rounded-[10px] bg-white/10 text-white flex items-center justify-center shrink-0"><Sparkle size={18} /></span>
         <div className="flex-1">
           <div className="text-[13px] font-semibold text-white">Don’t see your tool? Connect anything.</div>
-          <div className="text-[12.5px] mt-1 leading-relaxed" style={{ color: '#C7D3F2' }}>Simplr exposes a full REST API, webhooks, and native Zapier + Make connectors — so the long tail of apps connects without a bespoke build.</div>
+          <div className="text-[12.5px] mt-1 leading-relaxed" style={{ color: '#C7D3F2' }}>A full REST API, webhooks, and native Zapier + Make connectors mean the long tail of apps connects without a bespoke build.</div>
         </div>
       </div>
-      {cats.map((cat) => (
-        <div key={cat}>
-          <div className="eyebrow text-muted-3 mb-2">{cat}</div>
-          <div className="grid grid-cols-2 gap-3">
-            {integrations.filter((i) => i.category === cat).map((i) => (
-              <div key={i.id} className="bg-surface border border-border rounded-card p-4 flex items-start gap-3">
-                <span className="w-10 h-10 rounded-[10px] flex items-center justify-center text-white text-[13px] font-bold shrink-0" style={{ background: i.color }}>{i.initials}</span>
-                <div className="min-w-0 flex-1">
-                  <div className="text-[13.5px] font-semibold text-ink-2">{i.name}</div>
-                  <div className="text-[12px] text-muted-2 leading-snug mt-0.5">{i.desc}</div>
-                  <button onClick={() => act.toggleIntegration(i.id, i.name, i.installed)} className={classNames('mt-2 h-7 px-2.5 rounded-lg text-[12px] font-semibold', i.installed ? 'bg-positive-wash text-positive' : 'bg-accent-wash text-accent hover:bg-[#E4ECFB]')}>
-                    {i.installed ? <span className="flex items-center gap-1"><Check size={12} /> Connected</span> : 'Connect'}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
+
+      <div className="flex items-center gap-1.5 flex-wrap sticky top-0 bg-canvas/0 z-10">
+        {cats.map((c) => (
+          <button key={c} onClick={() => setCat(c)} className={classNames('h-8 px-3 rounded-lg text-[12.5px] font-medium transition-colors', cat === c ? 'bg-accent text-white' : 'text-muted-b bg-surface border border-border hover:bg-control')}>
+            {c}{c === 'Installed' && ` · ${installedCount}`}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        {filtered.map((i) => <div key={i.id}>{Card(i)}</div>)}
+      </div>
+      {filtered.length === 0 && <div className="text-[13px] text-muted-2 text-center py-8">No integrations match “{q}”. You can still connect it via Zapier or the API.</div>}
     </>
   )
 }

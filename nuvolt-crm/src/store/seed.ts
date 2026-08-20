@@ -103,16 +103,69 @@ export function buildSeed(): State {
     { id: 'ak1', label: 'Production', key: 'sk_live_9f2a…c71b', created: 'Aug 2, 2026' },
     { id: 'ak2', label: 'Zapier', key: 'sk_live_4d8e…22aa', created: 'Aug 14, 2026' },
   ]
+  const mk = (id: string, name: string, category: string, desc: string, color: string, domain: string, installed = false, popular = false): Integration => ({
+    id, name, category, desc, color, domain, installed, popular, initials: name.replace(/[^A-Za-z ]/g, '').split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase(),
+  })
   const integrations: Integration[] = [
-    { id: 'in1', name: 'Slack', category: 'Messaging', desc: 'Deal alerts & @mentions in channels', installed: true, color: '#4A154B', initials: 'Sl' },
-    { id: 'in2', name: 'Zapier', category: 'Automation', desc: 'Connect 6,000+ apps, no code', installed: true, color: '#FF4A00', initials: 'Zp' },
-    { id: 'in3', name: 'Make', category: 'Automation', desc: 'Visual multi-step scenarios', installed: false, color: '#6D00CC', initials: 'Mk' },
-    { id: 'in4', name: 'Nylas', category: 'Email & calendar', desc: 'Unified email/calendar for any provider', installed: true, color: '#0068FF', initials: 'Ny' },
-    { id: 'in5', name: 'Ayrshare', category: 'Social', desc: 'Post to every social network via one API', installed: true, color: '#1DA1F2', initials: 'Ay' },
-    { id: 'in6', name: 'Stripe', category: 'Billing', desc: 'Sync payments & subscriptions', installed: false, color: '#635BFF', initials: 'St' },
-    { id: 'in7', name: 'DocuSign', category: 'Documents', desc: 'E-signature for quotes & contracts', installed: false, color: '#D5001C', initials: 'Ds' },
-    { id: 'in8', name: 'HubSpot', category: 'Migration', desc: 'Two-way sync via unified API', installed: false, color: '#FF7A59', initials: 'Hs' },
-    { id: 'in9', name: 'Merge.dev', category: 'Unified API', desc: 'One integration, dozens of CRMs/tools', installed: false, color: '#0B1220', initials: 'Mg' },
+    // Messaging & collaboration
+    mk('in1', 'Slack', 'Messaging', 'Deal alerts & @mentions in channels', '#4A154B', 'slack.com', true, true),
+    mk('in2', 'Microsoft Teams', 'Messaging', 'Notifications & meeting sync', '#5059C9', 'microsoft.com', true),
+    mk('in3', 'WhatsApp Business', 'Messaging', 'Two-way chat linked to contacts', '#25D366', 'whatsapp.com'),
+    mk('in4', 'Intercom', 'Messaging', 'Sync conversations & tickets', '#1F8DED', 'intercom.com'),
+    mk('in5', 'Discord', 'Messaging', 'Community & team alerts', '#5865F2', 'discord.com'),
+    // Automation & unified API
+    mk('in6', 'Zapier', 'Automation', 'Connect 8,000+ apps, no code', '#FF4A00', 'zapier.com', true, true),
+    mk('in7', 'Make', 'Automation', 'Visual multi-step scenarios', '#6D00CC', 'make.com'),
+    mk('in8', 'n8n', 'Automation', 'Open-source workflow automation', '#EA4B71', 'n8n.io'),
+    mk('in9', 'Merge.dev', 'Unified API', 'One integration, dozens of CRMs/tools', '#3B5CCC', 'merge.dev'),
+    mk('in10', 'Paragon', 'Unified API', 'Embedded native integrations', '#6C5CE7', 'useparagon.com'),
+    mk('in11', 'Nango', 'Unified API', 'Open-source unified API', '#0B1220', 'nango.dev'),
+    // Email & calendar
+    mk('in12', 'Gmail', 'Email & calendar', 'Send & sync from Google Workspace', '#EA4335', 'google.com', true, true),
+    mk('in13', 'Outlook', 'Email & calendar', 'Send & sync from Microsoft 365', '#0078D4', 'outlook.com', true, true),
+    mk('in14', 'Nylas', 'Email & calendar', 'Unified email/calendar for any provider', '#0068FF', 'nylas.com', true),
+    mk('in15', 'Unipile', 'Email & calendar', 'Email, calendar & LinkedIn in one API', '#1D4ED8', 'unipile.com'),
+    mk('in16', 'Calendly', 'Email & calendar', 'Meeting scheduling links', '#006BFF', 'calendly.com', false, true),
+    mk('in17', 'Google Calendar', 'Email & calendar', 'Two-way calendar sync', '#4285F4', 'calendar.google.com'),
+    // Meetings & calls
+    mk('in18', 'Zoom', 'Meetings & calls', 'Video meetings + notetaker', '#2D8CFF', 'zoom.us', false, true),
+    mk('in19', 'Google Meet', 'Meetings & calls', 'Video meetings + notetaker', '#00897B', 'meet.google.com', true),
+    mk('in20', 'Gong', 'Meetings & calls', 'Conversation intelligence & coaching', '#8039DF', 'gong.io'),
+    mk('in21', 'Aircall', 'Meetings & calls', 'Cloud phone with click-to-dial', '#00B388', 'aircall.io'),
+    mk('in22', 'Twilio', 'Meetings & calls', 'Programmable SMS & voice', '#F22F46', 'twilio.com'),
+    // Data & enrichment (the prospecting layer)
+    mk('in23', 'Apollo.io', 'Data & enrichment', 'B2B database & sequences', '#5A2FF5', 'apollo.io', false, true),
+    mk('in24', 'Clay', 'Data & enrichment', 'Waterfall enrichment, 100+ sources', '#1A1A1A', 'clay.com'),
+    mk('in25', 'People Data Labs', 'Data & enrichment', 'Person & company data API', '#0B1220', 'peopledatalabs.com'),
+    mk('in26', 'Cognism', 'Data & enrichment', 'Phone-verified B2B data', '#3B29CC', 'cognism.com'),
+    mk('in27', 'Hunter', 'Data & enrichment', 'Find & verify email addresses', '#FA5A32', 'hunter.io', true),
+    mk('in28', 'Clearbit', 'Data & enrichment', 'Company & contact enrichment', '#4E5BF2', 'clearbit.com'),
+    mk('in29', 'Companies House', 'Data & enrichment', 'UK firmographics & filings (free)', '#0B0C0C', 'gov.uk'),
+    // Marketing & social
+    mk('in30', 'Ayrshare', 'Marketing & social', 'Post to every network via one API', '#1DA1F2', 'ayrshare.com', true),
+    mk('in31', 'LinkedIn', 'Marketing & social', 'Social selling & outreach', '#0A66C2', 'linkedin.com', true, true),
+    mk('in32', 'Mailchimp', 'Marketing & social', 'Email marketing & audiences', '#FFE01B', 'mailchimp.com'),
+    mk('in33', 'Meta Ads', 'Marketing & social', 'Lead ads → straight to Leads', '#0866FF', 'meta.com'),
+    mk('in34', 'Google Ads', 'Marketing & social', 'Ad performance & lead sync', '#4285F4', 'ads.google.com'),
+    // Billing & documents
+    mk('in35', 'Stripe', 'Billing', 'Sync payments & subscriptions', '#635BFF', 'stripe.com', false, true),
+    mk('in36', 'QuickBooks', 'Billing', 'Invoices & accounting sync', '#2CA01C', 'quickbooks.intuit.com'),
+    mk('in37', 'Xero', 'Billing', 'Accounting & invoicing', '#13B5EA', 'xero.com'),
+    mk('in38', 'DocuSign', 'Documents', 'E-signature for quotes & contracts', '#D5001C', 'docusign.com', false, true),
+    mk('in39', 'PandaDoc', 'Documents', 'Proposals, quotes & e-sign', '#25C16F', 'pandadoc.com'),
+    mk('in40', 'Google Drive', 'Documents', 'Attach & sync files to records', '#1FA463', 'drive.google.com'),
+    mk('in41', 'Dropbox', 'Documents', 'File storage & sharing', '#0061FF', 'dropbox.com'),
+    // Productivity & PM
+    mk('in42', 'Notion', 'Productivity', 'Sync notes & docs', '#0B0C0C', 'notion.so'),
+    mk('in43', 'Asana', 'Productivity', 'Turn won deals into projects', '#F06A6A', 'asana.com'),
+    mk('in44', 'Jira', 'Productivity', 'Link deals to delivery tickets', '#0052CC', 'atlassian.com'),
+    mk('in45', 'Trello', 'Productivity', 'Board sync for delivery', '#0079BF', 'trello.com'),
+    mk('in46', 'Google Sheets', 'Productivity', 'Export & two-way sync', '#0F9D58', 'sheets.google.com'),
+    // Support
+    mk('in47', 'Zendesk', 'Support', 'Tickets on the contact timeline', '#03363D', 'zendesk.com'),
+    mk('in48', 'HubSpot', 'Migration', 'Two-way sync via unified API', '#FF7A59', 'hubspot.com'),
+    mk('in49', 'Salesforce', 'Migration', 'Import & sync from Salesforce', '#00A1E0', 'salesforce.com'),
+    mk('in50', 'Segment', 'Data & enrichment', 'Customer data pipeline', '#52BD94', 'segment.com'),
   ]
   const socialPosts: SocialPost[] = [
     { id: 'sp1', channels: ['LinkedIn', 'X'], body: 'Thrilled to power the next generation of energy infrastructure. New case study on the Cirrus data-centre UPS refresh 👇', when: 'Tomorrow · 09:00', status: 'scheduled' },
