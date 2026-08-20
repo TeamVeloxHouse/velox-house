@@ -3,7 +3,7 @@ import { buildSeed } from './seed'
 import type { State, Deal, Person, Lead, Org, Activity, EmailMsg, Toast, ID } from './types'
 import type { StageName } from '../data/mock'
 
-const KEY = 'simplr.state.v4'
+const KEY = 'simplr.state.v5'
 let idc = 1000
 export const uid = (p = 'x') => `${p}${Date.now().toString(36)}${idc++}`
 
@@ -43,6 +43,9 @@ type Action =
   | { type: 'REVOKE_APIKEY'; id: ID }
   | { type: 'TOGGLE_INTEGRATION'; id: ID }
   | { type: 'SCHEDULE_POST'; post: import('./types').SocialPost }
+  | { type: 'ADD_SEQUENCE'; seq: import('./types').Sequence }
+  | { type: 'TOGGLE_SEQUENCE'; id: ID }
+  | { type: 'UPDATE_AUTOMATION'; id: ID; patch: Partial<import('./types').Automation> }
   | { type: 'RESET' }
 
 function reducer(state: State, action: Action): State {
@@ -143,6 +146,12 @@ function reducer(state: State, action: Action): State {
       return { ...state, integrations: state.integrations.map((i) => (i.id === action.id ? { ...i, installed: !i.installed } : i)) }
     case 'SCHEDULE_POST':
       return { ...state, socialPosts: [action.post, ...state.socialPosts] }
+    case 'ADD_SEQUENCE':
+      return { ...state, sequences: [action.seq, ...state.sequences] }
+    case 'TOGGLE_SEQUENCE':
+      return { ...state, sequences: state.sequences.map((s) => (s.id === action.id ? { ...s, active: !s.active } : s)) }
+    case 'UPDATE_AUTOMATION':
+      return { ...state, automations: state.automations.map((a) => (a.id === action.id ? { ...a, ...action.patch } : a)) }
     case 'RESET':
       return buildSeed()
     default:
@@ -380,6 +389,13 @@ export function useActions() {
       dispatch({ type: 'SCHEDULE_POST', post: { id: uid('sp'), channels, body, when, status: 'scheduled' } })
       toast(`Post scheduled to ${channels.join(', ')}`)
     },
+    addSequence: (name: string, steps: import('./types').SeqStep[]) => {
+      dispatch({ type: 'ADD_SEQUENCE', seq: { id: uid('sq'), name, steps, enrolled: 0, active: true, replyRate: 0 } })
+      toast(`Sequence “${name}” created`)
+    },
+    toggleSequence: (id: ID, active: boolean) => { dispatch({ type: 'TOGGLE_SEQUENCE', id }); toast(active ? 'Sequence paused' : 'Sequence activated', active ? 'warning' : 'positive') },
+    updateAutomation: (id: ID, patch: Partial<import('./types').Automation>) => dispatch({ type: 'UPDATE_AUTOMATION', id, patch }),
+    saveAutomation: (id: ID, patch: Partial<import('./types').Automation>) => { dispatch({ type: 'UPDATE_AUTOMATION', id, patch }); toast('Automation saved') },
     reset: () => {
       dispatch({ type: 'RESET' })
       toast('Demo data reset')

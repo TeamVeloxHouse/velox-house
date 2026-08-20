@@ -2,8 +2,11 @@ import { useState } from 'react'
 import { TopBar } from '../components/TopBar'
 import { Button, Segmented, Progress } from '../components/ui'
 import { SubSidebar } from '../components/chrome'
-import { Plus, Grid, Target, Bars } from '../components/icons'
-import { useActions } from '../store/store'
+import { Modal, Select, Field } from '../components/overlays'
+import { Plus, Grid, Target, Bars, Sparkle } from '../components/icons'
+import { useActions, useState_ } from '../store/store'
+import { stages, stageColors, owners } from '../data/mock'
+import { money } from '../lib/format'
 
 const revenue = [
   { m: 'Apr', v: 210, t: 180 },
@@ -43,6 +46,7 @@ export function Insights() {
   const act = useActions()
   const [view, setView] = useState('Performance')
   const [report, setReport] = useState('Sales performance')
+  const [builder, setBuilder] = useState(false)
   const maxRev = 280
   return (
     <>
@@ -53,7 +57,7 @@ export function Insights() {
           <>
             <Button>This quarter</Button>
             <Button>All teams</Button>
-            <Button variant="primary" icon={<Plus size={16} />} onClick={() => act.toast('New report builder (demo)', 'accent')}>New report</Button>
+            <Button variant="primary" icon={<Plus size={16} />} onClick={() => setBuilder(true)}>New report</Button>
           </>
         }
       />
@@ -160,6 +164,98 @@ export function Insights() {
         </div>
         </main>
       </div>
+      <ReportBuilder open={builder} onClose={() => setBuilder(false)} />
     </>
+  )
+}
+
+function ReportBuilder({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { deals } = useState_()
+  const act = useActions()
+  const [metric, setMetric] = useState('Open value')
+  const [groupBy, setGroupBy] = useState('Stage')
+  const [chart, setChart] = useState('Bar')
+
+  const active = deals.filter((d) => !d.lost)
+  const buckets = groupBy === 'Stage' ? stages.slice() : owners.slice()
+  const data = buckets.map((b, i) => {
+    const rows = active.filter((d) => (groupBy === 'Stage' ? d.stage === b : d.owner === b))
+    const val =
+      metric === 'Deal count' ? rows.length :
+      metric === 'Won value' ? rows.filter((d) => d.won).reduce((s, d) => s + d.value, 0) :
+      metric === 'Weighted value' ? Math.round(rows.reduce((s, d) => s + d.value * (d.probability / 100), 0)) :
+      rows.reduce((s, d) => s + d.value, 0)
+    return { label: b, val, color: groupBy === 'Stage' ? stageColors[i] : ['#1D4ED8', '#3A67E4', '#5B85F0', '#8FB0FF'][i % 4] }
+  })
+  const max = Math.max(1, ...data.map((d) => d.val))
+  const total = data.reduce((s, d) => s + d.val, 0)
+  const fmt = (v: number) => (metric === 'Deal count' ? String(v) : money(v, { compact: true }))
+
+  return (
+    <Modal open={open} onClose={onClose} title="Build a report" subtitle="Live from your pipeline — pick a metric, dimension and chart" width={640}
+      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" onClick={() => { act.toast(`Report “${metric} by ${groupBy}” saved to dashboard`); onClose() }}>Save to dashboard</Button></>}>
+      <div className="grid grid-cols-3 gap-3">
+        <Field label="Metric"><Select value={metric} onChange={(e) => setMetric(e.target.value)}>{['Open value', 'Weighted value', 'Won value', 'Deal count'].map((m) => (<option key={m}>{m}</option>))}</Select></Field>
+        <Field label="Group by"><Select value={groupBy} onChange={(e) => setGroupBy(e.target.value)}>{['Stage', 'Owner'].map((m) => (<option key={m}>{m}</option>))}</Select></Field>
+        <Field label="Chart"><Select value={chart} onChange={(e) => setChart(e.target.value)}>{['Bar', 'Donut', 'Table'].map((m) => (<option key={m}>{m}</option>))}</Select></Field>
+      </div>
+
+      <div className="rounded-card border border-border bg-surface-tint p-4">
+        <div className="flex items-center gap-1.5 text-[12px] font-semibold text-accent-700 mb-3"><Sparkle size={13} /> {metric} by {groupBy}</div>
+        {chart === 'Bar' && (
+          <div className="flex items-end gap-4 h-[180px]">
+            {data.map((d) => (
+              <div key={d.label} className="flex-1 flex flex-col items-center gap-2 justify-end">
+                <div className="text-[11px] font-semibold text-ink-2 tabular-nums">{fmt(d.val)}</div>
+                <div className="w-full rounded-t" style={{ height: `${(d.val / max) * 130}px`, background: d.color, minHeight: 3 }} />
+                <div className="text-[10.5px] text-muted-2 text-center leading-tight">{d.label}</div>
+              </div>
+            ))}
+          </div>
+        )}
+        {chart === 'Donut' && (
+          <div className="flex items-center gap-5">
+            <Donut data={data} total={total} />
+            <div className="flex flex-col gap-1.5">
+              {data.map((d) => (
+                <div key={d.label} className="flex items-center gap-2 text-[12px]">
+                  <span className="w-2.5 h-2.5 rounded-sm" style={{ background: d.color }} />
+                  <span className="text-ink-3 flex-1">{d.label}</span>
+                  <span className="font-semibold text-ink-2 tabular-nums">{fmt(d.val)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {chart === 'Table' && (
+          <div className="flex flex-col">
+            {data.map((d) => (
+              <div key={d.label} className="flex items-center justify-between py-1.5 border-b border-divider last:border-0 text-[13px]">
+                <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-sm" style={{ background: d.color }} />{d.label}</span>
+                <span className="font-semibold text-ink-2 tabular-nums">{fmt(d.val)}</span>
+              </div>
+            ))}
+            <div className="flex items-center justify-between pt-2 mt-1 text-[13px] font-bold text-ink"><span>Total</span><span className="tabular-nums">{fmt(total)}</span></div>
+          </div>
+        )}
+      </div>
+    </Modal>
+  )
+}
+
+function Donut({ data, total }: { data: { label: string; val: number; color: string }[]; total: number }) {
+  let acc = 0
+  const r = 42, c = 2 * Math.PI * r
+  return (
+    <svg width="110" height="110" viewBox="0 0 110 110">
+      <circle cx="55" cy="55" r={r} fill="none" stroke="#EEF0F4" strokeWidth="16" />
+      {data.map((d) => {
+        const frac = total > 0 ? d.val / total : 0
+        const dash = frac * c
+        const el = <circle key={d.label} cx="55" cy="55" r={r} fill="none" stroke={d.color} strokeWidth="16" strokeDasharray={`${dash} ${c - dash}`} strokeDashoffset={-acc * c} transform="rotate(-90 55 55)" />
+        acc += frac
+        return el
+      })}
+    </svg>
   )
 }

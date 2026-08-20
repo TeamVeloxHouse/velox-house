@@ -3,10 +3,14 @@ import { TopBar } from '../components/TopBar'
 import { PageBody } from '../components/Page'
 import { Button, Segmented, Kpi, Chip, type ChipTone } from '../components/ui'
 import { Table, Row, Cell } from '../components/Table'
-import { Plus, Users, Megaphone, Sparkle, Send } from '../components/icons'
+import { Plus, Users, Megaphone, Sparkle, Send, Envelope, Clock, Phone, Task, Person } from '../components/icons'
 import { Modal, Field, Input, Textarea } from '../components/overlays'
 import { useActions, useState_ } from '../store/store'
+import type { SeqStepType } from '../store/types'
 import { classNames } from '../lib/format'
+
+const seqStepIcon: Record<SeqStepType, any> = { email: Envelope, wait: Clock, call: Phone, task: Task, linkedin: Person }
+const seqStepColor: Record<SeqStepType, string> = { email: '#1D4ED8', wait: '#7A8494', call: '#0E7C66', task: '#C2410C', linkedin: '#0A66C2' }
 
 type Status = 'Sending' | 'Live' | 'Complete' | 'Draft'
 const statusTone: Record<Status, ChipTone> = { Sending: 'accent', Live: 'positive', Complete: 'neutral', Draft: 'warning' }
@@ -21,7 +25,7 @@ const campaigns: { name: string; type: string; sent: number; opens: number; clic
 
 export function Campaigns() {
   const act = useActions()
-  const { connections, socialPosts } = useState_()
+  const { connections, socialPosts, sequences } = useState_()
   const [view, setView] = useState('All')
   const [post, setPost] = useState(false)
   const socialChannels = connections.filter((c) => c.kind === 'social' && c.connected)
@@ -40,7 +44,41 @@ export function Campaigns() {
         }
       />
       <PageBody>
-        {view === 'Social' ? (
+        {view === 'Sequences' ? (
+          <>
+            <div className="flex items-center justify-between">
+              <div className="text-[13px] text-muted-b">Multi-step, multichannel outreach — email, LinkedIn, calls and tasks with automatic waits.</div>
+              <Button variant="primary" icon={<Plus size={16} />} onClick={() => act.toast('Sequence builder — drag steps to reorder (demo)', 'accent')}>New sequence</Button>
+            </div>
+            {sequences.map((s) => (
+              <div key={s.id} className="bg-surface border border-border rounded-card p-5">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="min-w-0">
+                    <div className="text-[15px] font-semibold text-ink">{s.name}</div>
+                    <div className="text-[12px] text-muted-2">{s.steps.length} steps · {s.enrolled} enrolled · {s.replyRate}% reply rate</div>
+                  </div>
+                  <button onClick={() => act.toggleSequence(s.id, s.active)} className={classNames('ml-auto w-11 h-6 rounded-full flex items-center px-0.5 transition-colors', s.active ? 'bg-accent justify-end' : 'bg-input-border justify-start')}><span className="w-5 h-5 rounded-full bg-white shadow" /></button>
+                  <Chip tone={s.active ? 'positive' : 'neutral'} dot>{s.active ? 'Active' : 'Paused'}</Chip>
+                </div>
+                <div className="flex items-stretch gap-2 overflow-x-auto pb-1">
+                  {s.steps.map((st, i) => {
+                    const Icon = seqStepIcon[st.type]
+                    return (
+                      <div key={st.id} className="flex items-center gap-2 shrink-0">
+                        <div className="rounded-lg border border-border bg-surface-tint px-3 py-2 min-w-[150px]">
+                          <div className="flex items-center gap-1.5"><span className="w-5 h-5 rounded-md flex items-center justify-center text-white" style={{ background: seqStepColor[st.type] }}><Icon size={12} /></span><span className="text-[11px] font-semibold uppercase tracking-wide text-muted-2">Day {st.day}</span></div>
+                          <div className="text-[12.5px] text-ink-2 font-medium mt-1 leading-snug">{st.label}</div>
+                        </div>
+                        {i < s.steps.length - 1 && <div className="w-4 h-px bg-border" />}
+                      </div>
+                    )
+                  })}
+                  <button onClick={() => act.toast('Add step (demo)', 'accent')} className="shrink-0 rounded-lg border border-dashed border-input-border px-3 min-w-[52px] text-muted-2 hover:border-accent hover:text-accent flex items-center justify-center"><Plus size={16} /></button>
+                </div>
+              </div>
+            ))}
+          </>
+        ) : view === 'Social' ? (
           <>
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[13px] text-muted-b mr-1">Connected channels:</span>

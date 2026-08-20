@@ -1,5 +1,5 @@
 import { deals as mDeals, people as mPeople, orgs as mOrgs, leads as mLeads } from '../data/mock'
-import type { State, Deal, Person, Activity, EmailMsg, Meeting, Agent, AgentRun, Connection, CustomField, Webhook, ApiKey, Integration, SocialPost } from './types'
+import type { State, Deal, Person, Activity, EmailMsg, Meeting, Agent, AgentRun, Connection, CustomField, Webhook, ApiKey, Integration, SocialPost, Sequence, Automation } from './types'
 
 const now = Date.now()
 const mins = (m: number) => now - m * 60_000
@@ -126,6 +126,33 @@ export function buildSeed(): State {
 
   const leads = mLeads.map((l) => ({ ...l }))
 
+  const sequences: Sequence[] = [
+    { id: 'sq1', name: 'Renewables outbound', enrolled: 42, active: true, replyRate: 18, steps: [
+      { id: 'ss1', type: 'email', label: 'Intro email — problem/insight', day: 0 },
+      { id: 'ss2', type: 'wait', label: 'Wait 2 days', day: 2 },
+      { id: 'ss3', type: 'linkedin', label: 'LinkedIn connect + note', day: 2 },
+      { id: 'ss4', type: 'email', label: 'Follow-up — case study', day: 4 },
+      { id: 'ss5', type: 'call', label: 'Call attempt', day: 6 },
+      { id: 'ss6', type: 'email', label: 'Break-up email', day: 9 },
+    ] },
+    { id: 'sq2', name: 'Inbound lead nurture', enrolled: 68, active: true, replyRate: 31, steps: [
+      { id: 'ss7', type: 'email', label: 'Thanks + book a call', day: 0 },
+      { id: 'ss8', type: 'wait', label: 'Wait 1 day', day: 1 },
+      { id: 'ss9', type: 'task', label: 'Rep reviews & personalises', day: 1 },
+      { id: 'ss10', type: 'email', label: 'Value follow-up', day: 3 },
+    ] },
+  ]
+
+  const automations: Automation[] = [
+    { id: 'au1', name: 'Qualified deal handoff', active: true, steps: [
+      { id: 'as1', kind: 'trigger', title: 'Deal enters "Demo Scheduled"', subtitle: 'When a deal is moved into the stage' },
+      { id: 'as2', kind: 'condition', title: 'Value is over $50,000', subtitle: 'Only run for higher-value opportunities' },
+      { id: 'as3', kind: 'email', title: 'Send intro email from owner', subtitle: 'Template: "Qualified — next steps"' },
+      { id: 'as4', kind: 'task', title: 'Create follow-up task', subtitle: 'Due 2 business days after entry' },
+      { id: 'as5', kind: 'notify', title: 'Notify sales manager', subtitle: 'Slack #deals channel' },
+    ] },
+  ]
+
   const customFields: CustomField[] = [
     { id: 'cf1', entity: 'deal', label: 'Contract length', type: 'select', options: ['1 year', '2 years', '3 years', '5 years'] },
     { id: 'cf2', entity: 'deal', label: 'Region', type: 'text' },
@@ -135,5 +162,5 @@ export function buildSeed(): State {
   deals[0].custom = { cf1: '2 years', cf2: 'London' }
   people[1].custom = { cf3: 'linkedin.com/in/callumreed' }
 
-  return { deals, people, orgs, leads, activities, emails, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, customFields, toasts: [], railExpanded: true }
+  return { deals, people, orgs, leads, activities, emails, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, customFields, toasts: [], railExpanded: true }
 }

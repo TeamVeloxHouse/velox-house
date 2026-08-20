@@ -183,6 +183,36 @@ export interface SocialPost {
   status: 'scheduled' | 'posted' | 'draft'
 }
 
+export type SeqStepType = 'email' | 'wait' | 'call' | 'task' | 'linkedin'
+export interface SeqStep {
+  id: ID
+  type: SeqStepType
+  label: string
+  day: number
+}
+export interface Sequence {
+  id: ID
+  name: string
+  steps: SeqStep[]
+  enrolled: number
+  active: boolean
+  replyRate: number
+}
+
+export type AutoStepKind = 'trigger' | 'condition' | 'email' | 'task' | 'notify' | 'stage' | 'wait'
+export interface AutoStep {
+  id: ID
+  kind: AutoStepKind
+  title: string
+  subtitle: string
+}
+export interface Automation {
+  id: ID
+  name: string
+  active: boolean
+  steps: AutoStep[]
+}
+
 export interface Toast {
   id: ID
   text: string
@@ -205,6 +235,8 @@ export interface State {
   apiKeys: ApiKey[]
   integrations: Integration[]
   socialPosts: SocialPost[]
+  sequences: Sequence[]
+  automations: Automation[]
   customFields: CustomField[]
   toasts: Toast[]
   railExpanded: boolean
