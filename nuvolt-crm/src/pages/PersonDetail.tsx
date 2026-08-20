@@ -5,9 +5,9 @@ import { PageBody } from '../components/Page'
 import { Button, Avatar, Chip } from '../components/ui'
 import { Note, Phone, Envelope, Plus, ChevronDown, Meeting, Task, Sparkle } from '../components/icons'
 import { useSelectors, useActions, useState_ } from '../store/store'
-import { RecordSummary } from '../components/ai-widgets'
+import { RecordSummary, CompletenessMeter } from '../components/ai-widgets'
 import { CustomFieldRows } from '../components/CustomFields'
-import { personSummary } from '../lib/intelligence'
+import { personSummary, personCompleteness } from '../lib/intelligence'
 import type { Activity } from '../store/types'
 import { money, classNames } from '../lib/format'
 
@@ -19,7 +19,7 @@ export function PersonDetail() {
   const nav = useNavigate()
   const sel = useSelectors()
   const act = useActions()
-  const { deals, people } = useState_()
+  const { deals, people, customFields } = useState_()
   const p = sel.personById(id)
   const [tab, setTab] = useState<(typeof composerTabs)[number]>('Note')
   const [draft, setDraft] = useState('')
@@ -72,6 +72,7 @@ export function PersonDetail() {
               <div className="text-[16px] font-bold text-ink mt-3">{p.name}</div>
               <div className="text-[13px] text-muted-b">{p.role || 'Contact'}</div>
               <div className="text-[13px] text-accent font-semibold mt-0.5">{p.org}</div>
+              <div className="mt-3 pt-3 border-t border-divider w-full flex items-center justify-center gap-2 text-[11px] text-muted-2">Profile <CompletenessMeter {...personCompleteness(p, customFields)} /></div>
             </div>
             <Panel title="Contact">
               <FieldRow label="Email" value={p.email || '—'} />

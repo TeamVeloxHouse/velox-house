@@ -89,6 +89,23 @@ export function NextBestAction({ action, dealId, personId }: { action: Action; d
   )
 }
 
+/** Data completeness meter for a record header. */
+export function CompletenessMeter({ pct, missing }: { pct: number; missing: string[] }) {
+  const color = pct >= 80 ? '#0E7C66' : pct >= 50 ? '#1D4ED8' : '#C2410C'
+  return (
+    <span className="relative group inline-flex items-center gap-2">
+      <span className="w-16 h-1.5 rounded-full bg-control overflow-hidden inline-block"><span className="block h-full rounded-full" style={{ width: `${pct}%`, background: color }} /></span>
+      <span className="text-[11px] font-semibold tabular-nums" style={{ color }}>{pct}%</span>
+      {missing.length > 0 && (
+        <span className="pointer-events-none absolute z-50 top-full left-0 mt-1.5 w-48 bg-ink text-white rounded-lg p-2.5 shadow-modal opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-150">
+          <span className="block text-[11px] font-semibold mb-1 text-white/70">Missing</span>
+          {missing.map((m) => (<span key={m} className="block text-[11.5px] text-white/85">• {m}</span>))}
+        </span>
+      )}
+    </span>
+  )
+}
+
 /** Conversation intelligence panel — talk ratio, topics, sentiment, coaching. */
 export function ConversationIntel({ coaching, onOpenMeetings }: { coaching: Coaching; onOpenMeetings?: () => void }) {
   const sentTone = coaching.sentiment === 'Positive' ? 'positive' : coaching.sentiment === 'Mixed' ? 'warning' : 'neutral'

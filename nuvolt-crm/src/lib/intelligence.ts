@@ -140,6 +140,30 @@ export function dealCoaching(deal: Deal, meetingCount: number, score: number): C
   return { meetings: meetingCount, talkRatio, sentiment, topics: topics.length ? topics : ['Pricing', 'Timeline'], momentum, tips }
 }
 
+export type Completeness = { pct: number; missing: string[] }
+export function dealCompleteness(deal: Deal, customFields: { id: string; entity: string; label: string }[]): Completeness {
+  const checks: [string, boolean][] = [
+    ['Value', deal.value > 0],
+    ['Close date', !!deal.closeDate && deal.closeDate !== 'This quarter'],
+    ['Contact linked', deal.personIds.length > 0],
+    ['Description', !!deal.subtitle],
+    ...customFields.filter((f) => f.entity === 'deal').map((f) => [f.label, !!deal.custom?.[f.id]] as [string, boolean]),
+  ]
+  const done = checks.filter(([, ok]) => ok).length
+  return { pct: Math.round((done / checks.length) * 100), missing: checks.filter(([, ok]) => !ok).map(([l]) => l) }
+}
+export function personCompleteness(person: Person, customFields: { id: string; entity: string; label: string }[]): Completeness {
+  const checks: [string, boolean][] = [
+    ['Email', !!person.email],
+    ['Phone', !!person.phone],
+    ['Role', !!person.role],
+    ['Labels', person.labels.length > 0],
+    ...customFields.filter((f) => f.entity === 'person').map((f) => [f.label, !!person.custom?.[f.id]] as [string, boolean]),
+  ]
+  const done = checks.filter(([, ok]) => ok).length
+  return { pct: Math.round((done / checks.length) * 100), missing: checks.filter(([, ok]) => !ok).map(([l]) => l) }
+}
+
 export const bandColor: Record<Band, { fg: string; bg: string }> = {
   Hot: { fg: '#0E7C66', bg: '#E9F5F1' },
   Warm: { fg: '#1D4ED8', bg: '#EEF2FB' },

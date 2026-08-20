@@ -143,11 +143,44 @@ export interface AgentRun {
 
 export interface Connection {
   id: ID
-  kind: 'email' | 'meeting'
+  kind: 'email' | 'meeting' | 'social'
   provider: string
   account?: string
   connected: boolean
   color: string
+  protocol?: 'oauth' | 'imap' | 'api'
+}
+
+export interface Webhook {
+  id: ID
+  url: string
+  events: string[]
+  active: boolean
+}
+
+export interface ApiKey {
+  id: ID
+  label: string
+  key: string
+  created: string
+}
+
+export interface Integration {
+  id: ID
+  name: string
+  category: string
+  desc: string
+  installed: boolean
+  color: string
+  initials: string
+}
+
+export interface SocialPost {
+  id: ID
+  channels: string[]
+  body: string
+  when: string
+  status: 'scheduled' | 'posted' | 'draft'
 }
 
 export interface Toast {
@@ -168,6 +201,10 @@ export interface State {
   agents: Agent[]
   agentRuns: AgentRun[]
   connections: Connection[]
+  webhooks: Webhook[]
+  apiKeys: ApiKey[]
+  integrations: Integration[]
+  socialPosts: SocialPost[]
   customFields: CustomField[]
   toasts: Toast[]
   railExpanded: boolean

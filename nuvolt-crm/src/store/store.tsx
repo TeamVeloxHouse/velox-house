@@ -3,7 +3,7 @@ import { buildSeed } from './seed'
 import type { State, Deal, Person, Lead, Org, Activity, EmailMsg, Toast, ID } from './types'
 import type { StageName } from '../data/mock'
 
-const KEY = 'simplr.state.v3'
+const KEY = 'simplr.state.v4'
 let idc = 1000
 export const uid = (p = 'x') => `${p}${Date.now().toString(36)}${idc++}`
 
@@ -36,6 +36,13 @@ type Action =
   | { type: 'REMOVE_FIELD'; id: ID }
   | { type: 'SET_CUSTOM'; entity: 'deal' | 'person' | 'org'; id: ID; fieldId: ID; value: string }
   | { type: 'ENRICH_ORG'; id: ID; patch: Partial<Org> }
+  | { type: 'ADD_CONNECTION'; conn: import('./types').Connection }
+  | { type: 'ADD_WEBHOOK'; webhook: import('./types').Webhook }
+  | { type: 'REMOVE_WEBHOOK'; id: ID }
+  | { type: 'ADD_APIKEY'; key: import('./types').ApiKey }
+  | { type: 'REVOKE_APIKEY'; id: ID }
+  | { type: 'TOGGLE_INTEGRATION'; id: ID }
+  | { type: 'SCHEDULE_POST'; post: import('./types').SocialPost }
   | { type: 'RESET' }
 
 function reducer(state: State, action: Action): State {
@@ -122,6 +129,20 @@ function reducer(state: State, action: Action): State {
     }
     case 'ENRICH_ORG':
       return { ...state, orgs: state.orgs.map((o) => (o.id === action.id ? { ...o, ...action.patch, enriched: true } : o)) }
+    case 'ADD_CONNECTION':
+      return { ...state, connections: [...state.connections, action.conn] }
+    case 'ADD_WEBHOOK':
+      return { ...state, webhooks: [...state.webhooks, action.webhook] }
+    case 'REMOVE_WEBHOOK':
+      return { ...state, webhooks: state.webhooks.filter((w) => w.id !== action.id) }
+    case 'ADD_APIKEY':
+      return { ...state, apiKeys: [...state.apiKeys, action.key] }
+    case 'REVOKE_APIKEY':
+      return { ...state, apiKeys: state.apiKeys.filter((k) => k.id !== action.id) }
+    case 'TOGGLE_INTEGRATION':
+      return { ...state, integrations: state.integrations.map((i) => (i.id === action.id ? { ...i, installed: !i.installed } : i)) }
+    case 'SCHEDULE_POST':
+      return { ...state, socialPosts: [action.post, ...state.socialPosts] }
     case 'RESET':
       return buildSeed()
     default:
@@ -335,6 +356,29 @@ export function useActions() {
     enrichOrg: (id: ID, name: string) => {
       dispatch({ type: 'ENRICH_ORG', id, patch: {} })
       toast(`Enriched ${name} — firmographics + stakeholders added`)
+    },
+    connectEmail: (provider: string, account: string, protocol: 'oauth' | 'imap') => {
+      dispatch({ type: 'ADD_CONNECTION', conn: { id: uid('cn'), kind: 'email', provider, account, connected: true, color: '#1D4ED8', protocol } })
+      toast(`${account} connected — you can now send from this address`)
+    },
+    addWebhook: (url: string, events: string[]) => {
+      dispatch({ type: 'ADD_WEBHOOK', webhook: { id: uid('wh'), url, events, active: true } })
+      toast('Webhook added')
+    },
+    removeWebhook: (id: ID) => { dispatch({ type: 'REMOVE_WEBHOOK', id }); toast('Webhook removed', 'warning') },
+    createApiKey: (label: string) => {
+      const key = `sk_live_${Math.random().toString(36).slice(2, 6)}…${Math.random().toString(36).slice(2, 6)}`
+      dispatch({ type: 'ADD_APIKEY', key: { id: uid('ak'), label, key, created: 'Just now' } })
+      toast(`API key “${label}” created`)
+    },
+    revokeApiKey: (id: ID, label: string) => { dispatch({ type: 'REVOKE_APIKEY', id }); toast(`Key “${label}” revoked`, 'warning') },
+    toggleIntegration: (id: ID, name: string, installed: boolean) => {
+      dispatch({ type: 'TOGGLE_INTEGRATION', id })
+      toast(installed ? `${name} removed` : `${name} connected`, installed ? 'warning' : 'positive')
+    },
+    schedulePost: (channels: string[], body: string, when: string) => {
+      dispatch({ type: 'SCHEDULE_POST', post: { id: uid('sp'), channels, body, when, status: 'scheduled' } })
+      toast(`Post scheduled to ${channels.join(', ')}`)
     },
     reset: () => {
       dispatch({ type: 'RESET' })

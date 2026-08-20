@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { TopBar } from '../components/TopBar'
 import { Button, Kpi, Chip, Avatar, type ChipTone } from '../components/ui'
 import { Table, Row, Cell } from '../components/Table'
-import { Plus } from '../components/icons'
+import { Plus, Check, Sparkle, Envelope, Video, Megaphone, Link as LinkIcon } from '../components/icons'
 import { Modal, Field, Input, Select } from '../components/overlays'
 import { useActions, useState_ } from '../store/store'
 import type { CustomEntity, CustomField } from '../store/types'
@@ -72,6 +72,12 @@ export function Settings() {
         <main className="flex-1 overflow-y-auto p-7 flex flex-col gap-5">
           {active === 'Custom fields' ? (
             <CustomFieldsPanel />
+          ) : active === 'Email & calendar' ? (
+            <ConnectionsPanel />
+          ) : active === 'Marketplace' ? (
+            <MarketplacePanel />
+          ) : active === 'API & webhooks' ? (
+            <ApiPanel />
           ) : (
             <>
               <div className="grid grid-cols-3 gap-4">
@@ -115,6 +121,177 @@ export function Settings() {
         </main>
       </div>
     </>
+  )
+}
+
+/* ---------- Email, calendar & social connections ---------- */
+function ConnectionsPanel() {
+  const { connections } = useState_()
+  const act = useActions()
+  const [imap, setImap] = useState(false)
+  const email = connections.filter((c) => c.kind === 'email')
+  const meeting = connections.filter((c) => c.kind === 'meeting')
+  const social = connections.filter((c) => c.kind === 'social')
+
+  const Section = ({ title, sub, items, icon: Icon }: { title: string; sub: string; items: typeof connections; icon: any }) => (
+    <div>
+      <div className="flex items-center gap-2 mb-2"><Icon size={16} className="text-accent" /><div className="text-[14px] font-bold text-ink">{title}</div></div>
+      <div className="text-[12.5px] text-muted-b mb-2.5">{sub}</div>
+      <div className="bg-surface border border-border rounded-card divide-y divide-divider">
+        {items.map((c) => (
+          <div key={c.id} className="flex items-center gap-3 px-4 py-3">
+            <span className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-[11px] font-bold shrink-0" style={{ background: c.color }}>{c.provider.slice(0, 2)}</span>
+            <div className="min-w-0 flex-1">
+              <div className="text-[13px] font-semibold text-ink-2">{c.provider}{c.protocol && <span className="ml-2 text-[10px] uppercase tracking-wide text-muted-3 font-semibold">{c.protocol}</span>}</div>
+              <div className="text-[12px] text-muted-2 truncate">{c.account ?? (c.connected ? 'Connected' : 'Not connected')}</div>
+            </div>
+            {c.connected ? (
+              <>
+                <Chip tone="positive" dot>Connected</Chip>
+                <button onClick={() => act.toggleConnection(c.id, c.provider, true)} className="text-[12px] text-muted-b hover:text-negative font-medium">Disconnect</button>
+              </>
+            ) : (
+              <Button onClick={() => (c.protocol === 'imap' ? setImap(true) : act.toggleConnection(c.id, c.provider, false))}>Connect</Button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+
+  return (
+    <>
+      <div>
+        <div className="text-[16px] font-bold text-ink">Connections</div>
+        <div className="text-[13px] text-muted-b mt-0.5">Connect any email, calendar or social account. Simplr uses OAuth for Google &amp; Microsoft, generic IMAP/SMTP for everything else, and a unified social API — so any address works.</div>
+      </div>
+      <Section title="Email" sub="Send and sync from any address. Add unlimited accounts per user." items={email} icon={Envelope} />
+      <button onClick={() => setImap(true)} className="self-start text-[13px] text-accent font-semibold flex items-center gap-1.5"><Plus size={15} /> Add another email account</button>
+      <Section title="Calendar & meetings" sub="Two-way calendar sync and the AI notetaker join link." items={meeting} icon={Video} />
+      <Section title="Social channels" sub="Schedule posts to every network through one unified API (Ayrshare / Unipile)." items={social} icon={Megaphone} />
+
+      <ImapModal open={imap} onClose={() => setImap(false)} onConnect={(email, protocol) => { act.connectEmail('IMAP / SMTP', email, protocol); setImap(false) }} />
+    </>
+  )
+}
+
+function ImapModal({ open, onClose, onConnect }: { open: boolean; onClose: () => void; onConnect: (email: string, protocol: 'imap') => void }) {
+  const [email, setEmail] = useState('')
+  const [server, setServer] = useState('')
+  return (
+    <Modal open={open} onClose={onClose} title="Connect via IMAP / SMTP" subtitle="Works with any provider — Fastmail, Zoho, cPanel, custom domains" footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" onClick={() => email.trim() && onConnect(email, 'imap')}>Connect</Button></>}>
+      <Field label="Email address"><Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@yourdomain.com" autoFocus /></Field>
+      <Field label="IMAP server"><Input value={server} onChange={(e) => setServer(e.target.value)} placeholder="imap.yourdomain.com" /></Field>
+      <div className="text-[12px] text-muted-2">In production this hands off to a secure OAuth or credential flow — no passwords touch Simplr’s servers in plain text.</div>
+    </Modal>
+  )
+}
+
+/* ---------- Marketplace ---------- */
+function MarketplacePanel() {
+  const { integrations } = useState_()
+  const act = useActions()
+  const cats = [...new Set(integrations.map((i) => i.category))]
+  return (
+    <>
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="text-[16px] font-bold text-ink">Marketplace</div>
+          <div className="text-[13px] text-muted-b mt-0.5">Native integrations for the tools you use — plus Zapier, Make and webhooks to connect thousands more.</div>
+        </div>
+      </div>
+      <div className="rounded-card bg-deep-panel p-4 flex items-start gap-3">
+        <span className="w-9 h-9 rounded-[10px] bg-white/10 text-white flex items-center justify-center shrink-0"><Sparkle size={18} /></span>
+        <div className="flex-1">
+          <div className="text-[13px] font-semibold text-white">Don’t see your tool? Connect anything.</div>
+          <div className="text-[12.5px] mt-1 leading-relaxed" style={{ color: '#C7D3F2' }}>Simplr exposes a full REST API, webhooks, and native Zapier + Make connectors — so the long tail of apps connects without a bespoke build.</div>
+        </div>
+      </div>
+      {cats.map((cat) => (
+        <div key={cat}>
+          <div className="eyebrow text-muted-3 mb-2">{cat}</div>
+          <div className="grid grid-cols-2 gap-3">
+            {integrations.filter((i) => i.category === cat).map((i) => (
+              <div key={i.id} className="bg-surface border border-border rounded-card p-4 flex items-start gap-3">
+                <span className="w-10 h-10 rounded-[10px] flex items-center justify-center text-white text-[13px] font-bold shrink-0" style={{ background: i.color }}>{i.initials}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[13.5px] font-semibold text-ink-2">{i.name}</div>
+                  <div className="text-[12px] text-muted-2 leading-snug mt-0.5">{i.desc}</div>
+                  <button onClick={() => act.toggleIntegration(i.id, i.name, i.installed)} className={classNames('mt-2 h-7 px-2.5 rounded-lg text-[12px] font-semibold', i.installed ? 'bg-positive-wash text-positive' : 'bg-accent-wash text-accent hover:bg-[#E4ECFB]')}>
+                    {i.installed ? <span className="flex items-center gap-1"><Check size={12} /> Connected</span> : 'Connect'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </>
+  )
+}
+
+/* ---------- API & webhooks ---------- */
+function ApiPanel() {
+  const { apiKeys, webhooks } = useState_()
+  const act = useActions()
+  const [addHook, setAddHook] = useState(false)
+  return (
+    <>
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="text-[16px] font-bold text-ink">API &amp; webhooks</div>
+          <div className="text-[13px] text-muted-b mt-0.5">Build your own integrations against the Simplr REST API, or push events anywhere with webhooks.</div>
+        </div>
+        <Button variant="primary" icon={<Plus size={16} />} onClick={() => act.createApiKey('New key')}>New API key</Button>
+      </div>
+
+      <div>
+        <div className="eyebrow text-muted-3 mb-2">API keys</div>
+        <div className="bg-surface border border-border rounded-card divide-y divide-divider">
+          {apiKeys.map((k) => (
+            <div key={k.id} className="flex items-center gap-3 px-4 py-3">
+              <div className="min-w-0 flex-1">
+                <div className="text-[13px] font-semibold text-ink-2">{k.label}</div>
+                <div className="text-[12px] text-muted-2 font-mono">{k.key} · created {k.created}</div>
+              </div>
+              <button onClick={() => act.revokeApiKey(k.id, k.label)} className="text-[12px] text-negative font-medium hover:underline">Revoke</button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <div className="eyebrow text-muted-3">Webhooks</div>
+          <button onClick={() => setAddHook(true)} className="text-[13px] text-accent font-semibold flex items-center gap-1.5"><Plus size={14} /> Add webhook</button>
+        </div>
+        <div className="bg-surface border border-border rounded-card divide-y divide-divider">
+          {webhooks.map((w) => (
+            <div key={w.id} className="flex items-center gap-3 px-4 py-3">
+              <LinkIcon size={16} className="text-muted-2 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <div className="text-[13px] font-medium text-ink-2 font-mono truncate">{w.url}</div>
+                <div className="text-[12px] text-muted-2">{w.events.join(', ')}</div>
+              </div>
+              <Chip tone={w.active ? 'positive' : 'neutral'} dot>{w.active ? 'Active' : 'Paused'}</Chip>
+              <button onClick={() => act.removeWebhook(w.id)} className="text-[12px] text-negative font-medium hover:underline">Delete</button>
+            </div>
+          ))}
+        </div>
+      </div>
+      <AddWebhookModal open={addHook} onClose={() => setAddHook(false)} onAdd={(url, events) => { act.addWebhook(url, events); setAddHook(false) }} />
+    </>
+  )
+}
+
+function AddWebhookModal({ open, onClose, onAdd }: { open: boolean; onClose: () => void; onAdd: (url: string, events: string[]) => void }) {
+  const [url, setUrl] = useState('')
+  const [events, setEvents] = useState('deal.won')
+  return (
+    <Modal open={open} onClose={onClose} title="Add webhook" subtitle="Simplr will POST the event payload to this URL" footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" onClick={() => url.trim() && onAdd(url, events.split(',').map((s) => s.trim()).filter(Boolean))}>Add webhook</Button></>}>
+      <Field label="Payload URL"><Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…" autoFocus /></Field>
+      <Field label="Events (comma-separated)"><Input value={events} onChange={(e) => setEvents(e.target.value)} placeholder="deal.won, lead.created" /></Field>
+    </Modal>
   )
 }
 

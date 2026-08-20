@@ -5,9 +5,9 @@ import { PageBody } from '../components/Page'
 import { Button, Chip } from '../components/ui'
 import { Modal, Field, Input, Select } from '../components/overlays'
 import { Note, Envelope, Phone, Meeting, Task, File, Check, Sparkle } from '../components/icons'
-import { NextBestAction, RecordSummary, ScorePill, ConversationIntel } from '../components/ai-widgets'
+import { NextBestAction, RecordSummary, ScorePill, ConversationIntel, CompletenessMeter } from '../components/ai-widgets'
 import { CustomFieldRows } from '../components/CustomFields'
-import { dealScore, nextBestAction, dealSummary, dealCoaching } from '../lib/intelligence'
+import { dealScore, nextBestAction, dealSummary, dealCoaching, dealCompleteness } from '../lib/intelligence'
 import { stages, type StageName } from '../data/mock'
 import { useSelectors, useActions, useState_ } from '../store/store'
 import type { Activity } from '../store/types'
@@ -22,7 +22,7 @@ export function DealDetail() {
   const nav = useNavigate()
   const sel = useSelectors()
   const act = useActions()
-  const { activities: allActivities, people: allPeople, meetings: allMeetings } = useState_()
+  const { activities: allActivities, people: allPeople, meetings: allMeetings, customFields } = useState_()
   const deal = sel.dealById(id)
   const [tab, setTab] = useState<(typeof composerTabs)[number]>('Note')
   const [draft, setDraft] = useState('')
@@ -76,6 +76,7 @@ export function DealDetail() {
           <Chip tone="accent">{money(deal.value)}</Chip>
           {deal.won && <Chip tone="positive" dot>Won</Chip>}
           {deal.lost && <Chip tone="warning" dot>Lost · {deal.lostReason}</Chip>}
+          <span className="ml-auto flex items-center gap-2 text-[12px] text-muted-2">Record complete <CompletenessMeter {...dealCompleteness(deal, customFields)} /></span>
         </div>
 
         {/* stage bar — click to advance */}

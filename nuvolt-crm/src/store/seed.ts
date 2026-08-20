@@ -1,5 +1,5 @@
 import { deals as mDeals, people as mPeople, orgs as mOrgs, leads as mLeads } from '../data/mock'
-import type { State, Deal, Person, Activity, EmailMsg, Meeting, Agent, AgentRun, Connection, CustomField } from './types'
+import type { State, Deal, Person, Activity, EmailMsg, Meeting, Agent, AgentRun, Connection, CustomField, Webhook, ApiKey, Integration, SocialPost } from './types'
 
 const now = Date.now()
 const mins = (m: number) => now - m * 60_000
@@ -83,11 +83,40 @@ export function buildSeed(): State {
   ]
 
   const connections: Connection[] = [
-    { id: 'cn1', kind: 'email', provider: 'Outlook', account: 'jordan@simplr.io', connected: true, color: '#0078D4' },
-    { id: 'cn2', kind: 'email', provider: 'Gmail', account: 'j.miles@gmail.com', connected: true, color: '#EA4335' },
-    { id: 'cn3', kind: 'meeting', provider: 'Teams', account: 'jordan@simplr.io', connected: true, color: '#5059C9' },
-    { id: 'cn4', kind: 'meeting', provider: 'Google Meet', account: 'jordan@simplr.io', connected: true, color: '#00897B' },
-    { id: 'cn5', kind: 'meeting', provider: 'Zoom', connected: false, color: '#2D8CFF' },
+    { id: 'cn1', kind: 'email', provider: 'Microsoft 365', account: 'jordan@simplr.io', connected: true, color: '#0078D4', protocol: 'oauth' },
+    { id: 'cn2', kind: 'email', provider: 'Gmail', account: 'j.miles@gmail.com', connected: true, color: '#EA4335', protocol: 'oauth' },
+    { id: 'cn3', kind: 'email', provider: 'IMAP / SMTP', connected: false, color: '#5D6878', protocol: 'imap' },
+    { id: 'cn4', kind: 'meeting', provider: 'Teams', account: 'jordan@simplr.io', connected: true, color: '#5059C9', protocol: 'oauth' },
+    { id: 'cn5', kind: 'meeting', provider: 'Google Meet', account: 'jordan@simplr.io', connected: true, color: '#00897B', protocol: 'oauth' },
+    { id: 'cn6', kind: 'meeting', provider: 'Zoom', connected: false, color: '#2D8CFF', protocol: 'oauth' },
+    { id: 'cn7', kind: 'social', provider: 'LinkedIn', account: 'Simplr', connected: true, color: '#0A66C2', protocol: 'api' },
+    { id: 'cn8', kind: 'social', provider: 'X', account: '@simplrhq', connected: true, color: '#0B1220', protocol: 'api' },
+    { id: 'cn9', kind: 'social', provider: 'Facebook', connected: false, color: '#1877F2', protocol: 'api' },
+    { id: 'cn10', kind: 'social', provider: 'Instagram', connected: false, color: '#E4405F', protocol: 'api' },
+  ]
+
+  const webhooks: Webhook[] = [
+    { id: 'wh1', url: 'https://hooks.zapier.com/hooks/catch/8241/a3f9', events: ['deal.won', 'deal.stage_changed'], active: true },
+    { id: 'wh2', url: 'https://api.acme.co/simplr/leads', events: ['lead.created'], active: true },
+  ]
+  const apiKeys: ApiKey[] = [
+    { id: 'ak1', label: 'Production', key: 'sk_live_9f2a…c71b', created: 'Aug 2, 2026' },
+    { id: 'ak2', label: 'Zapier', key: 'sk_live_4d8e…22aa', created: 'Aug 14, 2026' },
+  ]
+  const integrations: Integration[] = [
+    { id: 'in1', name: 'Slack', category: 'Messaging', desc: 'Deal alerts & @mentions in channels', installed: true, color: '#4A154B', initials: 'Sl' },
+    { id: 'in2', name: 'Zapier', category: 'Automation', desc: 'Connect 6,000+ apps, no code', installed: true, color: '#FF4A00', initials: 'Zp' },
+    { id: 'in3', name: 'Make', category: 'Automation', desc: 'Visual multi-step scenarios', installed: false, color: '#6D00CC', initials: 'Mk' },
+    { id: 'in4', name: 'Nylas', category: 'Email & calendar', desc: 'Unified email/calendar for any provider', installed: true, color: '#0068FF', initials: 'Ny' },
+    { id: 'in5', name: 'Ayrshare', category: 'Social', desc: 'Post to every social network via one API', installed: true, color: '#1DA1F2', initials: 'Ay' },
+    { id: 'in6', name: 'Stripe', category: 'Billing', desc: 'Sync payments & subscriptions', installed: false, color: '#635BFF', initials: 'St' },
+    { id: 'in7', name: 'DocuSign', category: 'Documents', desc: 'E-signature for quotes & contracts', installed: false, color: '#D5001C', initials: 'Ds' },
+    { id: 'in8', name: 'HubSpot', category: 'Migration', desc: 'Two-way sync via unified API', installed: false, color: '#FF7A59', initials: 'Hs' },
+    { id: 'in9', name: 'Merge.dev', category: 'Unified API', desc: 'One integration, dozens of CRMs/tools', installed: false, color: '#0B1220', initials: 'Mg' },
+  ]
+  const socialPosts: SocialPost[] = [
+    { id: 'sp1', channels: ['LinkedIn', 'X'], body: 'Thrilled to power the next generation of energy infrastructure. New case study on the Cirrus data-centre UPS refresh 👇', when: 'Tomorrow · 09:00', status: 'scheduled' },
+    { id: 'sp2', channels: ['LinkedIn'], body: 'We’re hiring account executives across the North West. Come build the future of clean power with us.', when: 'Fri · 12:00', status: 'scheduled' },
   ]
 
   // silence unused helpers referenced only conditionally
@@ -106,5 +135,5 @@ export function buildSeed(): State {
   deals[0].custom = { cf1: '2 years', cf2: 'London' }
   people[1].custom = { cf3: 'linkedin.com/in/callumreed' }
 
-  return { deals, people, orgs, leads, activities, emails, meetings, agents, agentRuns, connections, customFields, toasts: [], railExpanded: true }
+  return { deals, people, orgs, leads, activities, emails, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, customFields, toasts: [], railExpanded: true }
 }

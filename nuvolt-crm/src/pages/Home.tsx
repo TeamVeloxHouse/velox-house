@@ -29,6 +29,10 @@ export function Home() {
 
   const open = deals.filter((d) => !d.won && !d.lost)
   const openValue = open.reduce((s, d) => s + d.value, 0)
+  const wonValue = deals.filter((d) => d.won).reduce((s, d) => s + d.value, 0)
+  const quota = 1_100_000
+  const quotaPct = Math.round((wonValue / quota) * 100)
+  const expectedPct = 74 // pace target for day of quarter
   const tasks = sel.openTasks().slice(0, 5)
   const closing = open.slice(0, 5)
 
@@ -66,6 +70,22 @@ export function Home() {
             </div>
           </div>
           <button onClick={() => nav('/ai')} className="shrink-0 h-8 px-3 rounded-lg bg-white/10 hover:bg-white/15 text-white text-[12.5px] font-semibold flex items-center gap-1.5 transition-colors"><Sparkle size={14} /> Open Simplr AI</button>
+        </div>
+
+        {/* quota pacing */}
+        <div className="bg-surface border border-border rounded-card p-5">
+          <div className="flex items-center justify-between mb-2.5">
+            <div className="text-[15px] font-semibold text-ink">Q3 quota</div>
+            <div className="text-[13px] text-muted-b"><span className="font-bold text-ink-2">{money(wonValue, { compact: true })}</span> of {money(quota, { compact: true })} · <span className={quotaPct >= expectedPct ? 'text-positive font-semibold' : 'text-warning font-semibold'}>{quotaPct >= expectedPct ? 'on pace' : `${expectedPct - quotaPct}pts behind pace`}</span></div>
+          </div>
+          <div className="relative h-3 rounded-full bg-control overflow-hidden">
+            <div className="absolute inset-y-0 left-0 rounded-full bg-accent-gradient" style={{ width: `${Math.min(100, quotaPct)}%` }} />
+            <div className="absolute inset-y-0 w-0.5 bg-ink" style={{ left: `${expectedPct}%` }} title="Pace target" />
+          </div>
+          <div className="flex items-center justify-between mt-1.5 text-[11px] text-muted-2">
+            <span>{quotaPct}% attained</span>
+            <span>Pace target {expectedPct}% · 24 days left</span>
+          </div>
         </div>
 
         <div className="grid grid-cols-4 gap-4">
