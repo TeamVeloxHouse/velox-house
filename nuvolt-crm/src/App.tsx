@@ -1,0 +1,51 @@
+import { createBrowserRouter } from 'react-router-dom'
+import { Layout } from './components/Layout'
+import { Home } from './pages/Home'
+import { DealsBoard } from './pages/DealsBoard'
+import { DealDetail } from './pages/DealDetail'
+import { Leads } from './pages/Leads'
+import { People } from './pages/People'
+import { PersonDetail } from './pages/PersonDetail'
+import { Organisations } from './pages/Organisations'
+import { Activities } from './pages/Activities'
+import { Inbox } from './pages/Inbox'
+import { Insights } from './pages/Insights'
+import { Forecast } from './pages/Forecast'
+import { Products } from './pages/Products'
+import { Projects } from './pages/Projects'
+import { Campaigns } from './pages/Campaigns'
+import { Automation } from './pages/Automation'
+import { Documents } from './pages/Documents'
+import { Settings } from './pages/Settings'
+import { SimplrAI } from './pages/SimplrAI'
+import { Meetings } from './pages/Meetings'
+import { Agents } from './pages/Agents'
+
+export const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <Layout />,
+    children: [
+      { index: true, element: <Home /> },
+      { path: 'ai', element: <SimplrAI /> },
+      { path: 'agents', element: <Agents /> },
+      { path: 'meetings', element: <Meetings /> },
+      { path: 'deals', element: <DealsBoard /> },
+      { path: 'deals/:id', element: <DealDetail /> },
+      { path: 'leads', element: <Leads /> },
+      { path: 'people', element: <People /> },
+      { path: 'people/:id', element: <PersonDetail /> },
+      { path: 'organisations', element: <Organisations /> },
+      { path: 'activities', element: <Activities /> },
+      { path: 'inbox', element: <Inbox /> },
+      { path: 'insights', element: <Insights /> },
+      { path: 'forecast', element: <Forecast /> },
+      { path: 'products', element: <Products /> },
+      { path: 'projects', element: <Projects /> },
+      { path: 'campaigns', element: <Campaigns /> },
+      { path: 'automation', element: <Automation /> },
+      { path: 'documents', element: <Documents /> },
+      { path: 'settings', element: <Settings /> },
+    ],
+  },
+])
