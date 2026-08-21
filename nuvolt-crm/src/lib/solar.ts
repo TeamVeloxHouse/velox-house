@@ -67,8 +67,11 @@ export function analyseRoof(address: string): RoofAnalysis {
   return { segments, usableArea: Math.round(usableArea), specificYield, maxPanels, panelWatts: PANEL_W, source: 'model' }
 }
 
-/** Build a full design from a roof analysis; `panelOverride` lets the UI add/remove panels live. */
-export function designFrom(a: RoofAnalysis, address: string, panelOverride?: number): SolarDesign {
+export type Pricing = { costPerKwp: number; baseCost: number; perPanel: number; marginPct: number; vatPct: number }
+
+/** Build a full design from a roof analysis; `panelOverride` lets the UI add/remove panels live.
+ *  `pricing` is the contractor's own calculator config (falls back to sensible defaults). */
+export function designFrom(a: RoofAnalysis, address: string, panelOverride?: number, pricing?: Pricing): SolarDesign {
   const { segments, usableArea, specificYield, maxPanels } = a
   const panelWatts = a.panelWatts || PANEL_W
   const panels = Math.max(4, Math.min(maxPanels, panelOverride ?? Math.round(maxPanels * 0.82)))
@@ -85,7 +88,10 @@ export function designFrom(a: RoofAnalysis, address: string, panelOverride?: num
   const annualSavings = Math.round(annualProduction * (SELF_USE * IMPORT_RATE + (1 - SELF_USE) * EXPORT_RATE))
   const typicalBill = 1400 // £/yr household electricity
   const billOffsetPct = Math.min(100, Math.round(((annualProduction * SELF_USE * IMPORT_RATE) / typicalBill) * 100))
-  const systemCost = Math.round((systemKwp * COST_PER_KWP + BASE_COST) / 50) * 50
+  // Contractor's own pricing (falls back to defaults)
+  const p = pricing ?? { costPerKwp: COST_PER_KWP, baseCost: BASE_COST, perPanel: 0, marginPct: 0, vatPct: 0 }
+  const rawCost = systemKwp * p.costPerKwp + p.baseCost + panels * (p.perPanel || 0)
+  const systemCost = Math.round((rawCost * (1 + p.marginPct / 100) * (1 + p.vatPct / 100)) / 50) * 50
   const payback = +(systemCost / annualSavings).toFixed(1)
   const lifetimeSavings = Math.round(annualSavings * 25 * 0.9 - systemCost)
   const co2PerYear = +(annualProduction * CO2_PER_KWH).toFixed(2)
@@ -94,8 +100,8 @@ export function designFrom(a: RoofAnalysis, address: string, panelOverride?: num
 }
 
 /** Offline convenience: analyse + design in one call. */
-export function designFor(address: string, panelOverride?: number): SolarDesign {
-  return designFrom(analyseRoof(address), address, panelOverride)
+export function designFor(address: string, panelOverride?: number, pricing?: Pricing): SolarDesign {
+  return designFrom(analyseRoof(address), address, panelOverride, pricing)
 }
 
 /** Live: ask the backend for a Google Solar analysis; fall back to the offline model. */
@@ -113,3 +119,11 @@ export async function analyseRoofLive(address: string): Promise<RoofAnalysis> {
 }
 
 export const gbp = (n: number) => `£${Math.round(n).toLocaleString('en-GB')}`
+
+/** Monthly payment for a finance product on a given system cost (standard amortisation). */
+export function monthlyPayment(systemCost: number, apr: number, termMonths: number, depositPct: number): number {
+  const principal = systemCost * (1 - depositPct / 100)
+  const r = apr / 100 / 12
+  if (r === 0) return Math.round(principal / termMonths)
+  return Math.round((principal * r) / (1 - Math.pow(1 + r, -termMonths)))
+}

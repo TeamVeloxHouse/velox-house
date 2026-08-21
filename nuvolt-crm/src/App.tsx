@@ -26,6 +26,7 @@ import { ReachOverview, Finders, SolarFinder, Outreach, ReachAnalytics, ReachCam
 import { DesignStudio } from './pages/DesignStudio'
 import { Proposal } from './pages/Proposal'
 import { StudioOverview, ProposalsList, StudioAnalytics, StudioTemplates } from './pages/studio'
+import { StudioPricing } from './pages/StudioPricing'
 
 export const router = createBrowserRouter([
   {
@@ -64,6 +65,7 @@ export const router = createBrowserRouter([
       { path: 'studio/proposal/:id', element: <Proposal /> },
       { path: 'studio/proposals', element: <ProposalsList /> },
       { path: 'studio/analytics', element: <StudioAnalytics /> },
+      { path: 'studio/pricing', element: <StudioPricing /> },
       { path: 'studio/templates', element: <StudioTemplates /> },
       { path: 'reach/prospects', element: <Prospector /> },
       { path: 'reach/outreach', element: <Outreach /> },

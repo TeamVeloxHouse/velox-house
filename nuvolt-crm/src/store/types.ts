@@ -20,6 +20,31 @@ export interface Activity {
   source?: 'manual' | 'ai' | 'meeting' | 'email'
 }
 
+export interface FinanceProduct {
+  id: ID
+  name: string
+  provider: string
+  apr: number // %
+  termMonths: number
+  depositPct: number
+  type: 'loan' | 'lease' | 'ppa' | 'buy-now-pay-later'
+}
+export interface Adder {
+  id: ID
+  name: string
+  amount: number // £
+}
+export interface StudioConfig {
+  costPerKwp: number
+  baseCost: number
+  perPanel: number
+  marginPct: number
+  vatPct: number
+  adders: Adder[]
+  finance: FinanceProduct[]
+  currency: string
+}
+
 export type CustomEntity = 'deal' | 'person' | 'org'
 export interface CustomField {
   id: ID
@@ -298,6 +323,7 @@ export interface State {
   enrolments: Enrolment[]
   reachCampaigns: ReachCampaign[]
   scheduledTasks: ScheduledTask[]
+  studioConfig: StudioConfig
   customFields: CustomField[]
   toasts: Toast[]
   railExpanded: boolean

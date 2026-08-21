@@ -1,5 +1,5 @@
 import { deals as mDeals, people as mPeople, orgs as mOrgs, leads as mLeads } from '../data/mock'
-import type { State, Deal, Person, Activity, EmailMsg, Meeting, Agent, AgentRun, Connection, CustomField, Webhook, ApiKey, Integration, SocialPost, Sequence, Automation, LinkedInThread, Enrolment, ReachCampaign, ScheduledTask } from './types'
+import type { State, Deal, Person, Activity, EmailMsg, Meeting, Agent, AgentRun, Connection, CustomField, Webhook, ApiKey, Integration, SocialPost, Sequence, Automation, LinkedInThread, Enrolment, ReachCampaign, ScheduledTask, StudioConfig } from './types'
 
 const now = Date.now()
 const mins = (m: number) => now - m * 60_000
@@ -234,6 +234,26 @@ export function buildSeed(): State {
     { id: 'st3', prompt: 'Draft a LinkedIn post from this week’s won deals', cadence: 'Every Friday · 15:00', nextRun: 'Fri 15:00', active: false, createdAt: days(2) },
   ]
 
+  const studioConfig: StudioConfig = {
+    costPerKwp: 1350,
+    baseCost: 1800,
+    perPanel: 0,
+    marginPct: 18,
+    vatPct: 0, // 0% VAT on UK domestic solar
+    currency: '£',
+    adders: [
+      { id: 'ad1', name: 'Battery storage (5 kWh)', amount: 3200 },
+      { id: 'ad2', name: 'EV charger', amount: 900 },
+      { id: 'ad3', name: 'Bird protection', amount: 350 },
+      { id: 'ad4', name: 'Scaffolding (3-storey)', amount: 600 },
+    ],
+    finance: [
+      { id: 'fin1', name: 'Green Energy Loan', provider: 'GoodLeap', apr: 6.9, termMonths: 120, depositPct: 0, type: 'loan' },
+      { id: 'fin2', name: '0% for 12 months', provider: 'Sunlight', apr: 0, termMonths: 12, depositPct: 10, type: 'buy-now-pay-later' },
+      { id: 'fin3', name: 'Solar Lease', provider: 'Dividend', apr: 4.5, termMonths: 240, depositPct: 0, type: 'lease' },
+    ],
+  }
+
   const customFields: CustomField[] = [
     { id: 'cf1', entity: 'deal', label: 'Contract length', type: 'select', options: ['1 year', '2 years', '3 years', '5 years'] },
     { id: 'cf2', entity: 'deal', label: 'Region', type: 'text' },
@@ -243,5 +263,5 @@ export function buildSeed(): State {
   deals[0].custom = { cf1: '2 years', cf2: 'London' }
   people[1].custom = { cf3: 'linkedin.com/in/callumreed' }
 
-  return { deals, people, orgs, leads, activities, emails, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, linkedinThreads, enrolments, reachCampaigns, scheduledTasks, customFields, toasts: [], railExpanded: true }
+  return { deals, people, orgs, leads, activities, emails, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, linkedinThreads, enrolments, reachCampaigns, scheduledTasks, studioConfig, customFields, toasts: [], railExpanded: true }
 }

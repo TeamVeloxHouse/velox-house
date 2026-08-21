@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   Grid, Bars, Bolt, Person, Building, Calendar, Envelope, Pie, Gear, ChevronRight, ChevronDown,
-  Box, Flow, Megaphone, Sparkle, Video, Robot, Target, Layers, File, Sun, Radar, Search, Send, Check, Clock,
+  Box, Flow, Megaphone, Sparkle, Video, Robot, Target, Layers, File, Sun, Radar, Search, Send, Check, Clock, Dollar,
 } from './icons'
 import { classNames } from '../lib/format'
 
@@ -66,6 +66,7 @@ const studioGroups: Group[] = [
   ] },
   { label: 'Sell', items: [
     { to: '/studio/proposals', icon: Layers, label: 'Proposals' },
+    { to: '/studio/pricing', icon: Dollar, label: 'Pricing & finance' },
   ] },
   { label: 'Measure', items: [{ to: '/studio/analytics', icon: Pie, label: 'Analytics' }] },
 ]

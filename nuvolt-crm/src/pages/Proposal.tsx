@@ -4,8 +4,8 @@ import { TopBar } from '../components/TopBar'
 import { PageBody } from '../components/Page'
 import { Button, Chip } from '../components/ui'
 import { Sun, Sparkle, Check, Send, Play, File } from '../components/icons'
-import { useSelectors, useActions } from '../store/store'
-import { designFrom, gbp, type RoofAnalysis } from '../lib/solar'
+import { useSelectors, useActions, useState_ } from '../store/store'
+import { designFrom, gbp, monthlyPayment, type RoofAnalysis } from '../lib/solar'
 import { RoofRender } from './DesignStudio'
 
 const inclusions = [
@@ -50,6 +50,7 @@ export function Proposal() {
   const nav = useNavigate()
   const sel = useSelectors()
   const act = useActions()
+  const { studioConfig } = useState_()
   const deal = sel.dealById(id)
   const [panels, setPanels] = useState<number | undefined>(undefined)
 
@@ -59,11 +60,11 @@ export function Proposal() {
 
   const base = deal.solar
   const analysis: RoofAnalysis = { segments: base.segments, usableArea: base.usableArea, specificYield: base.specificYield, maxPanels: base.maxPanels, panelWatts: base.panelWatts, source: base.source }
-  const design = designFrom(analysis, base.address, panels ?? base.panels)
+  const design = designFrom(analysis, base.address, panels ?? base.panels, studioConfig)
 
   function persist(next: number) {
     setPanels(next)
-    const d = designFrom(analysis, base.address, next)
+    const d = designFrom(analysis, base.address, next, studioConfig)
     act.updateDeal(deal!.id, { solar: d, value: d.systemCost, subtitle: `${d.systemKwp} kWp · ${d.panels} panels` })
   }
   function accept() {
@@ -139,8 +140,32 @@ export function Proposal() {
               <div className="flex items-center justify-between py-1"><span className="text-[13px] text-muted-b">System &amp; installation</span><span className="text-[13px] font-semibold text-ink-2">{gbp(design.systemCost)}</span></div>
               <div className="flex items-center justify-between py-1"><span className="text-[13px] text-muted-b">VAT (0% on domestic solar)</span><span className="text-[13px] font-semibold text-positive">£0</span></div>
               <div className="flex items-center justify-between pt-2.5 mt-1 border-t border-divider"><span className="text-[15px] font-bold text-ink">Total</span><span className="text-[22px] font-bold text-ink">{gbp(design.systemCost)}</span></div>
-              <div className="mt-2 rounded-lg bg-accent-wash-3 border border-[#D3E0FA] px-3 py-2 text-[12.5px] text-accent-700 flex items-center gap-2"><Sparkle size={14} /> Or from <b>{gbp(Math.round(design.systemCost / 120))}/mo</b> · finance options land in Phase 3</div>
             </div>
+
+            {/* Finance — the contractor's own products */}
+            {studioConfig.finance.length > 0 && (
+              <div className="bg-surface border border-border rounded-card p-5">
+                <div className="flex items-center justify-between mb-2.5">
+                  <div className="text-[14px] font-semibold text-ink">Spread the cost</div>
+                  <button onClick={() => nav('/studio/pricing')} className="text-[12px] text-accent font-semibold">Your finance ↗</button>
+                </div>
+                <div className="flex flex-col gap-2">
+                  {studioConfig.finance.map((f) => {
+                    const m = monthlyPayment(design.systemCost, f.apr, f.termMonths, f.depositPct)
+                    return (
+                      <div key={f.id} className="flex items-center gap-3 rounded-lg border border-border px-3 py-2.5">
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[13px] font-semibold text-ink-2">{f.name} <span className="text-muted-3 font-normal">· {f.provider}</span></div>
+                          <div className="text-[11.5px] text-muted-2">{f.apr}% APR · {f.termMonths / 12} yrs{f.depositPct ? ` · ${f.depositPct}% deposit` : ' · no deposit'}</div>
+                        </div>
+                        <div className="text-right shrink-0"><div className="text-[17px] font-bold text-ink">{gbp(m)}</div><div className="text-[11px] text-muted-3">/mo</div></div>
+                      </div>
+                    )
+                  })}
+                </div>
+                <div className="text-[11px] text-muted-3 mt-2 leading-snug">Illustration only. Finance is provided and configured by the installer; subject to status. (UK: finance display may require FCA authorisation.)</div>
+              </div>
+            )}
             <div className="bg-surface border-2 border-positive-border rounded-card p-5 text-center">
               <div className="text-[14px] font-semibold text-ink">Ready to go solar?</div>
               <div className="text-[12.5px] text-muted-b mt-0.5 mb-3">Accept to lock in this price and book your survey.</div>

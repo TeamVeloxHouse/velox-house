@@ -53,6 +53,7 @@ type Action =
   | { type: 'ADD_SCHEDULED'; task: import('./types').ScheduledTask }
   | { type: 'TOGGLE_SCHEDULED'; id: ID }
   | { type: 'REMOVE_SCHEDULED'; id: ID }
+  | { type: 'UPDATE_STUDIO_CONFIG'; patch: Partial<import('./types').StudioConfig> }
   | { type: 'RESET' }
 
 function reducer(state: State, action: Action): State {
@@ -181,6 +182,8 @@ function reducer(state: State, action: Action): State {
       return { ...state, scheduledTasks: state.scheduledTasks.map((t) => (t.id === action.id ? { ...t, active: !t.active } : t)) }
     case 'REMOVE_SCHEDULED':
       return { ...state, scheduledTasks: state.scheduledTasks.filter((t) => t.id !== action.id) }
+    case 'UPDATE_STUDIO_CONFIG':
+      return { ...state, studioConfig: { ...state.studioConfig, ...action.patch } }
     case 'RESET':
       return buildSeed()
     default:
@@ -385,6 +388,30 @@ export function useActions() {
       toast(connected ? `${provider} disconnected` : `${provider} connected`, connected ? 'warning' : 'positive')
     },
     setRail: (expanded: boolean) => dispatch({ type: 'SET_RAIL', expanded }),
+    updateStudioConfig: (patch: Partial<import('./types').StudioConfig>) => dispatch({ type: 'UPDATE_STUDIO_CONFIG', patch }),
+    addAdder: (name: string, amount: number) => {
+      const cur = live.state?.studioConfig.adders ?? []
+      dispatch({ type: 'UPDATE_STUDIO_CONFIG', patch: { adders: [...cur, { id: uid('ad'), name, amount }] } })
+      toast(`Adder “${name}” added`)
+    },
+    removeAdder: (id: ID) => {
+      const cur = live.state?.studioConfig.adders ?? []
+      dispatch({ type: 'UPDATE_STUDIO_CONFIG', patch: { adders: cur.filter((a) => a.id !== id) } })
+    },
+    addFinance: (f: Omit<import('./types').FinanceProduct, 'id'>) => {
+      const cur = live.state?.studioConfig.finance ?? []
+      dispatch({ type: 'UPDATE_STUDIO_CONFIG', patch: { finance: [...cur, { id: uid('fin'), ...f }] } })
+      toast(`Finance product “${f.name}” added`)
+    },
+    removeFinance: (id: ID) => {
+      const cur = live.state?.studioConfig.finance ?? []
+      dispatch({ type: 'UPDATE_STUDIO_CONFIG', patch: { finance: cur.filter((f) => f.id !== id) } })
+    },
+    aiBuildCalculator: (filename: string) => {
+      // Simulated: a real backend runs Claude over the uploaded file to extract pricing.
+      dispatch({ type: 'UPDATE_STUDIO_CONFIG', patch: { costPerKwp: 1290, marginPct: 22 } })
+      toast(`Calculator built from “${filename}” — review the extracted values`)
+    },
     addField: (entity: 'deal' | 'person' | 'org', label: string, type: import('./types').CustomField['type'], options?: string[]) => {
       dispatch({ type: 'ADD_FIELD', field: { id: uid('cf'), entity, label, type, options } })
       toast(`Field “${label}” added`)
