@@ -1,0 +1,36 @@
+# Simplr × Artemis — Energy & Roofing Platform Plan
+
+Business direction: build an **artemispower.com-style** platform — address → AI 3D solar
+design → priced, lender-financed proposal → close (Sales Mode) → deliver to PTO — on top
+of Simplr. Our edge vs Artemis: we also **find the site** (Reach Solar finder) and **reach
+the owner** (AI operator), so we own the whole funnel. Visual plan: artifact "The Artemis Playbook".
+
+(Note: helloartemis.com is a *different* company — an AI outreach agent. artemispower.com is
+the energy/roofing design-and-sell platform, which is the one this plan targets.)
+
+## Phase 0 — have it
+Reach Solar finder, AI operator, full CRM, Midas Solar House (Google Solar API + proposal/deck),
+multichannel outreach, marketing-site lead capture.
+
+## Phases
+1. **Instant design engine** (L) — address → roof model + auto panel layout + kWp + production +
+   savings + live price; editable canvas. Data: Google Solar API (start), NREL PVWatts,
+   Genability/OpenEI tariffs, Nearmap/Vexcel later. Maps: upgrade `/reach/solar` → `/design`; reuse Midas Solar wiring.
+2. **Interactive proposal & Sales Mode** (M) — branded, live-editable proposal to close on;
+   e-sign + deposit; view tracking. Maps: extend Documents/quotes + Midas proposal gen → `/proposal/:id`.
+3. **Integrated financing** (M) — cash/loan/lease/PPA, live monthly payment, soft-credit prequal.
+   Data: GoodLeap/Sunlight/Dividend/Sungage (each a partnership integration).
+4. **Storefronts** (M) — embeddable widget: homeowner self-designs on contractor's site → pre-qualified
+   lead into `/leads`. Reuse Velox lead-capture pattern + public design API.
+5. **Operations → PTO** (M) — Sold→Design→Permit→Install→Inspect→PTO pipeline; SolarAPP+ permitting;
+   crew scheduling; customer portal. Maps: reuse Projects board grammar.
+6. **Multi-product + AI operator everywhere** (L) — battery/HVAC/roofing on same engine; operator
+   extends from prospecting/outreach to design/quote/ops ("Artie" equivalent). Needs Claude API + backend.
+
+## Data stack (start-with)
+Imagery: Google Solar API · Production: PVWatts · Tariffs: OpenEI (free) · Finance: one lender ·
+E-sign/pay: Stripe + Dropbox Sign · Permitting: SolarAPP+ · Operator: Claude API + backend runner.
+
+## Recommended first move
+Phase 1 on the Google Solar API — we're closest to it (Reach Solar finder + Midas already use it).
+Turn it into address → editable design → savings → price. Everything else bolts on.
