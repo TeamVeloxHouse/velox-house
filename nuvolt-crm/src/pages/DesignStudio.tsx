@@ -7,7 +7,7 @@ import { Sun, Sparkle, Building } from '../components/icons'
 import { useActions } from '../store/store'
 import { designFrom, analyseRoofLive, gbp, type SolarDesign, type RoofAnalysis } from '../lib/solar'
 
-function RoofRender({ design }: { design: SolarDesign }) {
+export function RoofRender({ design }: { design: SolarDesign }) {
   const cols = 8
   const rows = Math.ceil(design.panels / cols)
   const maxRows = Math.ceil(design.maxPanels / cols)
@@ -68,8 +68,8 @@ export function DesignStudio() {
   }
   function generateProposal() {
     if (!design) return
-    const d = act.addDeal({ name: `Solar install — ${design.address}`, org: design.address, value: design.systemCost, stage: 'Demo Scheduled', subtitle: `${design.systemKwp} kWp · ${design.panels} panels`, chips: [{ label: 'Solar', tone: 'accent' }, { label: `${design.billOffsetPct}% offset`, tone: 'positive' }] })
-    nav(`/deals/${d.id}`)
+    const d = act.addDeal({ name: `Solar install — ${design.address}`, org: design.address, value: design.systemCost, stage: 'Demo Scheduled', subtitle: `${design.systemKwp} kWp · ${design.panels} panels`, chips: [{ label: 'Solar', tone: 'accent' }, { label: `${design.billOffsetPct}% offset`, tone: 'positive' }], solar: design })
+    nav(`/reach/proposal/${d.id}`)
   }
 
   return (

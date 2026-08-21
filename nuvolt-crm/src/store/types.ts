@@ -47,6 +47,7 @@ export interface Deal {
   lost?: boolean
   lostReason?: string
   custom?: Record<string, string>
+  solar?: import('../lib/solar').SolarDesign
 }
 
 export interface Person {
