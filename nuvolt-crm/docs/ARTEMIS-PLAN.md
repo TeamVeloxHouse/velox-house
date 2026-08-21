@@ -13,9 +13,12 @@ Reach Solar finder, AI operator, full CRM, Midas Solar House (Google Solar API +
 multichannel outreach, marketing-site lead capture.
 
 ## Phases
-1. **Instant design engine** (L) — address → roof model + auto panel layout + kWp + production +
-   savings + live price; editable canvas. Data: Google Solar API (start), NREL PVWatts,
-   Genability/OpenEI tariffs, Nearmap/Vexcel later. Maps: upgrade `/reach/solar` → `/design`; reuse Midas Solar wiring.
+1. **Instant design engine** (L) — ✅ **BUILT (simulated)** at `/reach/design` (Design Studio):
+   address → roof-plane detection → panel layout → kWp + production + savings + bill offset +
+   payback + CO₂ + live price; editable panel slider recomputes everything; "Generate proposal"
+   creates a real solar deal. Model in `src/lib/solar.ts` (deterministic; swap `analyseRoof()` for
+   Google Solar API roof segments + NREL PVWatts production behind a backend — same return shape).
+   Still TODO to go LIVE: backend + Google Solar API key + real address geocoding.
 2. **Interactive proposal & Sales Mode** (M) — branded, live-editable proposal to close on;
    e-sign + deposit; view tracking. Maps: extend Documents/quotes + Midas proposal gen → `/proposal/:id`.
 3. **Integrated financing** (M) — cash/loan/lease/PPA, live monthly payment, soft-credit prequal.
