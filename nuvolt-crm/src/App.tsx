@@ -22,7 +22,7 @@ import { Meetings } from './pages/Meetings'
 import { Agents } from './pages/Agents'
 import { Prospector } from './pages/Prospector'
 import { LinkedInInbox } from './pages/LinkedInInbox'
-import { ReachOverview, Finders, SolarFinder, Outreach, ReachAnalytics } from './pages/reach'
+import { ReachOverview, Finders, SolarFinder, Outreach, ReachAnalytics, ReachCampaigns, ReachSchedules } from './pages/reach'
 
 export const router = createBrowserRouter([
   {
@@ -56,6 +56,8 @@ export const router = createBrowserRouter([
       { path: 'reach/solar', element: <SolarFinder /> },
       { path: 'reach/prospects', element: <Prospector /> },
       { path: 'reach/outreach', element: <Outreach /> },
+      { path: 'reach/campaigns', element: <ReachCampaigns /> },
+      { path: 'reach/schedules', element: <ReachSchedules /> },
       { path: 'reach/email', element: <Inbox /> },
       { path: 'reach/linkedin', element: <LinkedInInbox /> },
       { path: 'reach/analytics', element: <ReachAnalytics /> },

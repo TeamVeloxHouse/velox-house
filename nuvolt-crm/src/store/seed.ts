@@ -1,5 +1,5 @@
 import { deals as mDeals, people as mPeople, orgs as mOrgs, leads as mLeads } from '../data/mock'
-import type { State, Deal, Person, Activity, EmailMsg, Meeting, Agent, AgentRun, Connection, CustomField, Webhook, ApiKey, Integration, SocialPost, Sequence, Automation, LinkedInThread, Enrolment } from './types'
+import type { State, Deal, Person, Activity, EmailMsg, Meeting, Agent, AgentRun, Connection, CustomField, Webhook, ApiKey, Integration, SocialPost, Sequence, Automation, LinkedInThread, Enrolment, ReachCampaign, ScheduledTask } from './types'
 
 const now = Date.now()
 const mins = (m: number) => now - m * 60_000
@@ -224,6 +224,16 @@ export function buildSeed(): State {
     { id: 'en7', sequenceId: 'sq2', name: 'Nadia Frost', company: 'Northgate Rail', channel: 'LinkedIn', stepIndex: 2, totalSteps: 4, stepLabel: 'LinkedIn connect', status: 'connected', nextDue: 'in 1 day', personId: 'p6' },
   ]
 
+  const reachCampaigns: ReachCampaign[] = [
+    { id: 'rc1', name: 'Solar site owners — NW England', vertical: 'Solar', audience: 240, sequence: 'Renewables outbound', channels: ['Email', 'LinkedIn'], status: 'running', sent: 612, replies: 44, meetings: 12, createdBy: 'You', createdAt: days(6) },
+    { id: 'rc2', name: 'Facilities directors — energy retrofit', vertical: 'Utilities', audience: 180, sequence: 'Inbound lead nurture', channels: ['Email', 'LinkedIn'], status: 'running', sent: 430, replies: 31, meetings: 8, createdBy: 'AI', createdAt: days(3) },
+  ]
+  const scheduledTasks: ScheduledTask[] = [
+    { id: 'st1', prompt: 'Find 20 new solar-suitable sites in Manchester and add them to Leads', cadence: 'Every Monday · 08:00', nextRun: 'Mon 08:00', active: true, lastResult: '20 sites added', createdAt: days(1) },
+    { id: 'st2', prompt: 'Chase every prospect who opened but didn’t reply in the last 3 days', cadence: 'Daily · 07:30', nextRun: 'Tomorrow 07:30', active: true, lastResult: '14 follow-ups sent', createdAt: days(1) },
+    { id: 'st3', prompt: 'Draft a LinkedIn post from this week’s won deals', cadence: 'Every Friday · 15:00', nextRun: 'Fri 15:00', active: false, createdAt: days(2) },
+  ]
+
   const customFields: CustomField[] = [
     { id: 'cf1', entity: 'deal', label: 'Contract length', type: 'select', options: ['1 year', '2 years', '3 years', '5 years'] },
     { id: 'cf2', entity: 'deal', label: 'Region', type: 'text' },
@@ -233,5 +243,5 @@ export function buildSeed(): State {
   deals[0].custom = { cf1: '2 years', cf2: 'London' }
   people[1].custom = { cf3: 'linkedin.com/in/callumreed' }
 
-  return { deals, people, orgs, leads, activities, emails, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, linkedinThreads, enrolments, customFields, toasts: [], railExpanded: true }
+  return { deals, people, orgs, leads, activities, emails, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, linkedinThreads, enrolments, reachCampaigns, scheduledTasks, customFields, toasts: [], railExpanded: true }
 }

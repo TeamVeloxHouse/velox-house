@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   Grid, Bars, Bolt, Person, Building, Calendar, Envelope, Pie, Gear, ChevronRight, ChevronDown,
-  Box, Flow, Megaphone, Sparkle, Video, Robot, Target, Layers, File, Sun, Radar, Search, Send, Check,
+  Box, Flow, Megaphone, Sparkle, Video, Robot, Target, Layers, File, Sun, Radar, Search, Send, Check, Clock,
 } from './icons'
 import { classNames } from '../lib/format'
 
@@ -48,8 +48,12 @@ const reachGroups: Group[] = [
   ] },
   { label: 'Engage', items: [
     { to: '/reach/outreach', icon: Send, label: 'Outreach' },
+    { to: '/reach/campaigns', icon: Megaphone, label: 'Campaigns' },
     { to: '/reach/email', icon: Envelope, label: 'Email' },
     { to: '/reach/linkedin', icon: Person, label: 'LinkedIn' },
+  ] },
+  { label: 'Automate', items: [
+    { to: '/reach/schedules', icon: Clock, label: 'Scheduled tasks' },
   ] },
   { label: 'Measure', items: [{ to: '/reach/analytics', icon: Pie, label: 'Analytics' }] },
 ]

@@ -230,6 +230,31 @@ export interface Enrolment {
   personId?: ID
 }
 
+export interface ReachCampaign {
+  id: ID
+  name: string
+  vertical: string
+  audience: number
+  sequence: string
+  channels: string[]
+  status: 'running' | 'draft' | 'complete' | 'scheduled'
+  sent: number
+  replies: number
+  meetings: number
+  createdBy: 'AI' | 'You'
+  createdAt: number
+}
+
+export interface ScheduledTask {
+  id: ID
+  prompt: string
+  cadence: string
+  nextRun: string
+  active: boolean
+  lastResult?: string
+  createdAt: number
+}
+
 export type AutoStepKind = 'trigger' | 'condition' | 'email' | 'task' | 'notify' | 'stage' | 'wait'
 export interface AutoStep {
   id: ID
@@ -270,6 +295,8 @@ export interface State {
   automations: Automation[]
   linkedinThreads: LinkedInThread[]
   enrolments: Enrolment[]
+  reachCampaigns: ReachCampaign[]
+  scheduledTasks: ScheduledTask[]
   customFields: CustomField[]
   toasts: Toast[]
   railExpanded: boolean

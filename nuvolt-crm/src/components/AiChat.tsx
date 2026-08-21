@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { answer, type AiBlock, type AiResponse } from '../lib/ai'
+import { answer, generateProspects, type AiBlock, type AiResponse, type RunPlan, type RunOp } from '../lib/ai'
 import { Avatar, Chip, type ChipTone } from './ui'
 import { Sparkle, Send, Check, Envelope, Play } from './icons'
 import { money, classNames } from '../lib/format'
@@ -91,6 +91,33 @@ function Block({ b }: { b: AiBlock }) {
         <div className="px-3.5 py-3 text-[13px] text-ink-2 whitespace-pre-wrap leading-relaxed max-h-[220px] overflow-y-auto">{b.body}</div>
       </div>
     )
+  if (b.type === 'workflow')
+    return (
+      <div className="rounded-card border border-border bg-surface-tint overflow-hidden">
+        <div className="px-3.5 py-2.5 border-b border-divider flex items-center gap-2 text-[12px] font-semibold text-accent-700">
+          <Sparkle size={13} /> {b.title}
+        </div>
+        <div className="py-1">
+          {b.steps.map((s, i) => (
+            <div key={i} className="flex items-start gap-2.5 px-3.5 py-2">
+              <span className="mt-0.5 shrink-0">
+                {s.status === 'done' ? (
+                  <span className="w-4 h-4 rounded-full bg-positive flex items-center justify-center"><Check size={11} className="text-white" strokeWidth={3} /></span>
+                ) : s.status === 'running' ? (
+                  <span className="w-4 h-4 rounded-full border-2 border-accent border-t-transparent animate-spin inline-block" />
+                ) : (
+                  <span className="w-4 h-4 rounded-full border-2 border-input-border inline-block" />
+                )}
+              </span>
+              <span className="min-w-0">
+                <span className={classNames('block text-[13px]', s.status === 'done' ? 'text-ink-2 font-medium' : s.status === 'running' ? 'text-ink-2 font-semibold' : 'text-muted-3')}>{s.label}{s.status === 'running' && <span className="text-muted-2 font-normal"> …</span>}</span>
+                {s.detail && s.status === 'done' && <span className="block text-[12px] text-positive mt-0.5">{s.detail}</span>}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
   if (b.type === 'actions')
     return (
       <div className="flex flex-wrap gap-2">
@@ -111,6 +138,17 @@ function AiActionButton({ label, primary }: { label: string; primary: boolean })
 
   const l = label.toLowerCase()
   function run() {
+    // Operator follow-ups
+    if (l.includes('email them') || l === 'now email them') {
+      window.dispatchEvent(new CustomEvent('simplr-ai-ask', { detail: 'Email the prospects I just found and launch a multichannel campaign' }))
+      return
+    }
+    if (l.includes('schedule') || l.includes('weekly') || l.includes('cadence')) {
+      window.dispatchEvent(new CustomEvent('simplr-ai-ask', { detail: 'Schedule this to find new prospects and email them every Monday' }))
+      return
+    }
+    if (l.includes('campaign')) { nav('/reach/campaigns'); return }
+    if (l.includes('scheduled task')) { nav('/reach/schedules'); return }
     // Re-ask the model for "show / which / what / why" style actions
     if (/^(show|which|what|why|my |high|accounts)/.test(l) || l.includes('go to')) {
       window.dispatchEvent(new CustomEvent('simplr-ai-ask', { detail: label }))
@@ -204,24 +242,83 @@ function SuggestChip({ label }: { label: string }) {
   )
 }
 
-/** Shared chat state + async "streaming" simulation. */
-export function useChat(seed?: ChatTurn[]) {
+/** Shared chat state with live, step-by-step operator execution.
+ *  `listen` (default true) subscribes to the global `simplr-ai-ask` event — keep it
+ *  true for exactly one instance (the floating assistant) to avoid double execution. */
+export function useChat(seed?: ChatTurn[], opts?: { listen?: boolean }) {
   const [turns, setTurns] = useState<ChatTurn[]>(seed ?? [])
+  const act = useActions()
   const busyRef = useRef(false)
+
+  // Mutate the most recent AI turn's response.
+  function updateLastAi(mut: (res: AiResponse) => AiResponse) {
+    setTurns((t) => {
+      const copy = [...t]
+      for (let i = copy.length - 1; i >= 0; i--) {
+        if (copy[i].role === 'ai' && copy[i].res) { copy[i] = { ...copy[i], res: mut(copy[i].res!) }; break }
+      }
+      return copy
+    })
+  }
+  function setStep(res: AiResponse, i: number, status: 'running' | 'done', detail?: string): AiResponse {
+    return { ...res, blocks: res.blocks.map((b) => (b.type === 'workflow' ? { ...b, steps: b.steps.map((s, si) => (si === i ? { ...s, status, detail: detail ?? s.detail } : s)) } : b)) }
+  }
+
+  function execOp(op: RunOp | undefined, plan: RunPlan, prospects: ReturnType<typeof generateProspects>): string | undefined {
+    switch (op) {
+      case 'search': return `${plan.count} ${plan.vertical === 'b2b' ? 'B2B' : plan.vertical} decision-makers across ${Math.max(1, Math.round(plan.count * 0.72))} companies`
+      case 'enrich': return `${plan.count} verified emails · ${Math.round(plan.count * 0.55)} direct dials`
+      case 'addLeads': act.bulkAddLeads(prospects.map((p) => ({ name: p.name, company: p.company, role: p.role, score: p.score }))); return `${plan.count} added to Leads`
+      case 'sequence': return 'Email + LinkedIn · 5 steps over 9 days'
+      case 'campaign': act.createReachCampaign(plan.campaignName, plan.vertical, prospects); return 'Live · first send 09:00 tomorrow'
+      case 'schedule': act.addScheduledTask(plan.campaignName, 'Weekly · Mon 08:00'); return 'Runs every Monday 08:00'
+      default: return undefined
+    }
+  }
+
+  function streamRun(plan: RunPlan) {
+    const prospects = generateProspects(plan.count, plan.vertical)
+    updateLastAi((r) => ({ ...r, blocks: [...r.blocks, { type: 'workflow', title: 'Working…', steps: plan.steps.map((s) => ({ ...s })) }] }))
+    let i = 0
+    const step = () => {
+      updateLastAi((r) => setStep(r, i, 'running'))
+      setTimeout(() => {
+        const detail = execOp(plan.steps[i].op, plan, prospects)
+        updateLastAi((r) => setStep(r, i, 'done', detail))
+        i += 1
+        if (i < plan.steps.length) step()
+        else finish()
+      }, 850 + Math.random() * 400)
+    }
+    step()
+
+    function finish() {
+      const hasCampaign = plan.steps.some((s) => s.op === 'campaign')
+      const hasSchedule = plan.steps.some((s) => s.op === 'schedule')
+      const closing: AiBlock[] = hasCampaign
+        ? [{ type: 'text', text: `✅ **Campaign live.** ${plan.count} prospects enrolled in *${plan.campaignName}* — first emails send at 09:00, LinkedIn steps queued. I’ll keep working the sequence and surface every reply.` }, { type: 'actions', items: [{ label: 'Show me the campaign' }, { label: 'Schedule this weekly' }] }]
+        : hasSchedule
+          ? [{ type: 'text', text: `✅ **Scheduled.** I’ll run this automatically and report the result each time.` }, { type: 'actions', items: [{ label: 'View scheduled tasks' }] }]
+          : [{ type: 'text', text: `✅ Added **${plan.count}** prospects to Leads, verified and scored. Want me to reach out?` }, { type: 'actions', items: [{ label: 'Now email them' }, { label: 'Schedule this weekly' }] }]
+      updateLastAi((r) => ({ ...r, blocks: [...r.blocks, ...closing] }))
+      busyRef.current = false
+    }
+  }
 
   function ask(text: string) {
     if (!text.trim() || busyRef.current) return
     busyRef.current = true
     const res = answer(text)
     setTurns((t) => [...t, { role: 'user', text }, { role: 'ai', res, pending: true }])
-    // simulate model latency, then reveal
     setTimeout(() => {
       setTurns((t) => t.map((x, i) => (i === t.length - 1 ? { ...x, pending: false } : x)))
-      busyRef.current = false
-    }, 750)
+      if (res.run) streamRun(res.run)
+      else busyRef.current = false
+    }, res.run ? 600 : 750)
   }
 
   useEffect(() => {
+    if (opts?.listen === false) return
     const h = (e: Event) => ask((e as CustomEvent).detail)
     window.addEventListener('simplr-ai-ask', h)
     return () => window.removeEventListener('simplr-ai-ask', h)

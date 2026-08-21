@@ -4,10 +4,56 @@ import { TopBar } from '../components/TopBar'
 import { PageBody } from '../components/Page'
 import { Button, Kpi, Chip, Avatar, Progress } from '../components/ui'
 import { Table, Row, Cell } from '../components/Table'
-import { Sun, Radar, Search, Send, Sparkle, Plus, Check, Envelope, Person, Bolt, Building } from '../components/icons'
+import { Sun, Radar, Search, Send, Sparkle, Plus, Check, Envelope, Person, Bolt, Building, Clock, Megaphone } from '../components/icons'
 import { useActions, useState_ } from '../store/store'
 import type { ChannelStatus, Enrolment } from '../store/types'
 import { money, classNames } from '../lib/format'
+import { useChat, AiMessage, AiComposer } from '../components/AiChat'
+import { useEffect, useRef } from 'react'
+
+/* ============================ AI Operator ============================ */
+const operatorPrompts = [
+  'Find 50 solar companies and their directors, then email them',
+  'Source 30 facilities directors in utilities and start a campaign',
+  'Find 20 data-centre operators and add them to Leads',
+  'Every Monday, find 20 new solar sites and email them',
+]
+
+export function OutreachOperator() {
+  const { turns, ask } = useChat(undefined, { listen: false })
+  const scroller = useRef<HTMLDivElement>(null)
+  useEffect(() => { scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: 'smooth' }) }, [turns])
+  const running = turns.length > 0
+
+  return (
+    <div className="rounded-card border border-[#D8D0FF] bg-gradient-to-br from-[#F6F3FF] to-white overflow-hidden">
+      <div className="px-5 py-3.5 flex items-center gap-2.5 border-b border-[#EAE4FF]">
+        <span className="w-8 h-8 rounded-[9px] text-white flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(180deg,#7C5CFF 0%,#5B29CC 100%)' }}><Sparkle size={17} /></span>
+        <div className="flex-1">
+          <div className="text-[14px] font-bold text-ink flex items-center gap-2">Simplr AI · Outreach operator <Chip tone="positive" dot>Live</Chip></div>
+          <div className="text-[12px] text-muted-b">Tell it what to do in plain English — it prospects, writes, and runs the campaign for you.</div>
+        </div>
+      </div>
+
+      {running && (
+        <div ref={scroller} className="max-h-[420px] overflow-y-auto px-5 py-4 flex flex-col gap-5 bg-white/60">
+          {turns.map((t, i) => (<AiMessage key={i} turn={t} />))}
+        </div>
+      )}
+
+      <div className="p-4">
+        {!running && (
+          <div className="flex flex-wrap gap-2 mb-3">
+            {operatorPrompts.map((p) => (
+              <button key={p} onClick={() => ask(p)} className="text-left text-[12.5px] text-[#5B29CC] bg-white border border-[#E0D8FF] rounded-lg px-3 py-2 hover:border-[#7C5CFF] transition-colors flex items-center gap-2"><Sparkle size={13} />{p}</button>
+            ))}
+          </div>
+        )}
+        <AiComposer onSend={ask} />
+      </div>
+    </div>
+  )
+}
 
 /* ============================ Overview ============================ */
 const funnel = [
@@ -220,6 +266,7 @@ export function Outreach() {
     <>
       <TopBar title="Outreach" crumbs={['Reach', 'Multichannel']} actions={<><Button icon={<Sparkle size={16} />} onClick={() => act.toast('AI wrote a 5-step email + LinkedIn sequence from your ICP', 'accent')}>AI sequence</Button><Button variant="primary" icon={<Plus size={16} />} onClick={() => act.toast('Sequence builder (demo)', 'accent')}>New sequence</Button></>} />
       <PageBody>
+        <OutreachOperator />
         <div className="grid grid-cols-4 gap-4">
           <Kpi variant="blue" label="Enrolled" value={String(enrolments.length)} delta={`${sequences.length} sequences`} deltaTone="muted" />
           <Kpi variant="deep" label="Due now" value={String(dueNow.length)} delta="Across channels" />
@@ -347,6 +394,80 @@ export function ReachAnalytics() {
             ))}
             <div className="mt-4 rounded-[10px] bg-accent-wash-3 border border-[#D3E0FA] p-3 text-[12px] text-accent-700 leading-relaxed"><Sparkle size={12} className="inline mr-1" />LinkedIn replies convert 1.6× better — the AI is shifting budget toward it.</div>
           </div>
+        </div>
+      </PageBody>
+    </>
+  )
+}
+
+/* ============================ Campaigns ============================ */
+const campStatusTone: Record<string, 'positive' | 'accent' | 'neutral' | 'warning'> = { running: 'positive', draft: 'neutral', complete: 'neutral', scheduled: 'accent' }
+
+export function ReachCampaigns() {
+  const nav = useNavigate()
+  const { reachCampaigns } = useState_()
+  const totalSent = reachCampaigns.reduce((s, c) => s + c.sent, 0)
+  const totalReplies = reachCampaigns.reduce((s, c) => s + c.replies, 0)
+  const totalMeetings = reachCampaigns.reduce((s, c) => s + c.meetings, 0)
+  return (
+    <>
+      <TopBar title="Campaigns" crumbs={['Reach', 'Multichannel']} actions={<><Button icon={<Sparkle size={16} />} onClick={() => nav('/reach/outreach')}>Ask AI to run one</Button><Button variant="primary" icon={<Plus size={16} />} onClick={() => nav('/reach/outreach')}>New campaign</Button></>} />
+      <PageBody>
+        <div className="grid grid-cols-4 gap-4">
+          <Kpi variant="blue" label="Active campaigns" value={String(reachCampaigns.filter((c) => c.status === 'running').length)} delta={`${reachCampaigns.length} total`} deltaTone="muted" />
+          <Kpi variant="deep" label="Touches sent" value={totalSent.toLocaleString()} delta="Email + LinkedIn" />
+          <Kpi label="Replies" value={String(totalReplies)} delta={`${Math.round((totalReplies / Math.max(1, totalSent)) * 100)}% reply rate`} />
+          <Kpi label="Meetings booked" value={String(totalMeetings)} delta="From outreach" />
+        </div>
+        <div className="flex flex-col gap-3">
+          {reachCampaigns.map((c) => (
+            <div key={c.id} className="bg-surface border border-border rounded-card p-5">
+              <div className="flex items-center gap-3">
+                <span className="w-9 h-9 rounded-[10px] bg-[#F1ECFF] text-[#5B29CC] flex items-center justify-center shrink-0"><Megaphone size={18} /></span>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2"><span className="text-[15px] font-semibold text-ink">{c.name}</span>{c.createdBy === 'AI' && <Chip tone="accent" dot>AI-built</Chip>}</div>
+                  <div className="text-[12px] text-muted-2">{c.vertical} · {c.audience} prospects · {c.sequence} · {c.channels.join(' + ')}</div>
+                </div>
+                <div className="ml-auto"><Chip tone={campStatusTone[c.status]} dot>{c.status}</Chip></div>
+              </div>
+              <div className="grid grid-cols-4 gap-3 mt-4">
+                {[['Audience', String(c.audience)], ['Sent', String(c.sent)], ['Replies', String(c.replies)], ['Meetings', String(c.meetings)]].map(([l, v]) => (
+                  <div key={l} className="rounded-lg bg-surface-tint border border-border px-3 py-2"><div className="text-[11px] text-muted-2">{l}</div><div className="text-[16px] font-bold text-ink-2">{v}</div></div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </PageBody>
+    </>
+  )
+}
+
+/* ============================ Scheduled tasks ============================ */
+export function ReachSchedules() {
+  const { scheduledTasks } = useState_()
+  const act = useActions()
+  return (
+    <>
+      <TopBar title="Scheduled tasks" crumbs={['Reach', 'Automate']} actions={<Button variant="primary" icon={<Plus size={16} />} onClick={() => act.addScheduledTask('Find 20 new prospects matching my ICP and email them', 'Weekly · Mon 08:00')}>New scheduled task</Button>} />
+      <PageBody>
+        <div className="rounded-card bg-gradient-to-br from-[#F6F3FF] to-white border border-[#E0D8FF] p-4 flex items-start gap-3">
+          <span className="w-9 h-9 rounded-[10px] text-white flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(180deg,#7C5CFF 0%,#5B29CC 100%)' }}><Clock size={18} /></span>
+          <div><div className="text-[13px] font-semibold text-ink-2">Set-and-forget outreach</div><div className="text-[12.5px] text-muted-b mt-0.5">Schedule any AI operator command to run on a cadence — Simplr prospects, writes and sends, then reports the result back to you each time.</div></div>
+        </div>
+        <div className="bg-surface border border-border rounded-card divide-y divide-divider">
+          {scheduledTasks.map((t) => (
+            <div key={t.id} className="flex items-start gap-3 px-5 py-4">
+              <span className={classNames('w-8 h-8 rounded-lg flex items-center justify-center shrink-0', t.active ? 'bg-[#F1ECFF] text-[#5B29CC]' : 'bg-control text-muted-2')}><Clock size={15} /></span>
+              <div className="min-w-0 flex-1">
+                <div className="text-[13.5px] font-semibold text-ink-2">{t.prompt}</div>
+                <div className="text-[12px] text-muted-2 mt-0.5">{t.cadence} · next run {t.nextRun}{t.lastResult ? ` · last: ${t.lastResult}` : ''}</div>
+              </div>
+              <Chip tone={t.active ? 'positive' : 'neutral'} dot>{t.active ? 'Active' : 'Paused'}</Chip>
+              <button onClick={() => act.toggleScheduled(t.id, t.active)} className={classNames('w-11 h-6 rounded-full flex items-center px-0.5 transition-colors shrink-0', t.active ? 'bg-[#7C5CFF] justify-end' : 'bg-input-border justify-start')}><span className="w-5 h-5 rounded-full bg-white shadow" /></button>
+              <button onClick={() => act.removeScheduled(t.id)} className="text-[12px] text-negative font-medium hover:underline shrink-0">Remove</button>
+            </div>
+          ))}
         </div>
       </PageBody>
     </>

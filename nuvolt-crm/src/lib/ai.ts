@@ -18,6 +18,10 @@ const getLeads = () => S().leads.filter((l) => !l.archived)
 const getPeople = () => S().people
 const getOrgs = () => S().orgs
 
+export type WfStatus = 'pending' | 'running' | 'done'
+export type WorkflowStep = { label: string; detail?: string; status: WfStatus; op?: RunOp }
+export type RunOp = 'search' | 'enrich' | 'addLeads' | 'sequence' | 'campaign' | 'schedule' | 'chase'
+
 export type AiBlock =
   | { type: 'text'; text: string }
   | { type: 'deals'; deals: Deal[] }
@@ -25,8 +29,40 @@ export type AiBlock =
   | { type: 'email'; to: string; subject: string; body: string }
   | { type: 'tasks'; items: { label: string; meta: string }[] }
   | { type: 'actions'; items: { label: string }[] }
+  | { type: 'workflow'; title: string; steps: WorkflowStep[] }
 
-export type AiResponse = { blocks: AiBlock[]; suggestions?: string[]; thinking?: string }
+export type RunPlan = { count: number; vertical: string; outreach: boolean; steps: WorkflowStep[]; campaignName: string }
+export type AiResponse = { blocks: AiBlock[]; suggestions?: string[]; thinking?: string; run?: RunPlan }
+
+/* ---- Prospect generation (mock; swap for a real data provider) ---- */
+const verticalCompanies: Record<string, string[]> = {
+  solar: ['Helios Solar', 'SunPeak Energy', 'Brightfield', 'Voltaic Renewables', 'SolarCrest', 'Lumen Power', 'Radiance Energy', 'Meridian Solar', 'GreenRoof Co', 'Photon Grid', 'Aurora Solar', 'SunHarvest'],
+  energy: ['Northwind Energy', 'Baseload Power', 'GridPoint', 'Ampere Utilities', 'Cinder Power', 'Volt Networks', 'Peak Grid', 'Currentworks'],
+  'data centre': ['CoreData Centres', 'Stackscale', 'Cirrus Hosting', 'RackNorth', 'Hyperbase', 'Latency Labs'],
+  logistics: ['Harbour Logistics', 'PortLink', 'FreightNorth', 'CargoWise UK', 'Palletline Co'],
+  b2b: ['Acme Industrial', 'Northgate Group', 'Cavendish Holdings', 'Kingsway Ltd', 'Fenwick Group', 'Ashford Co', 'Meridian Ltd', 'Brightleaf'],
+}
+const dirFirst = ['James', 'Sarah', 'David', 'Priya', 'Mark', 'Elena', 'Tom', 'Rachel', 'Owen', 'Nadia', 'Sam', 'Claire', 'Ben', 'Aisha', 'Paul', 'Grace']
+const dirLast = ['Whitfield', 'Barnes', 'Okoro', 'Sterling', 'Hughes', 'Voss', 'Reed', 'Marsh', 'Pryce', 'Frost', 'Idris', 'Bello', 'Kerr', 'Nash', 'Doyle', 'Lund']
+const dirTitles = ['Managing Director', 'Operations Director', 'Facilities Director', 'Head of Engineering', 'Sustainability Director', 'Estates Director', 'CTO', 'Energy Manager']
+
+export function generateProspects(count: number, vertical: string): { name: string; company: string; role: string; score: number }[] {
+  const key = Object.keys(verticalCompanies).find((k) => vertical.toLowerCase().includes(k)) ?? 'b2b'
+  const companies = verticalCompanies[key]
+  return Array.from({ length: count }, (_, i) => ({
+    name: `${dirFirst[i % dirFirst.length]} ${dirLast[(i * 3) % dirLast.length]}`,
+    company: `${companies[i % companies.length]}${i >= companies.length ? ` ${Math.floor(i / companies.length) + 1}` : ''}`,
+    role: dirTitles[(i * 5) % dirTitles.length],
+    score: 60 + ((i * 7) % 38),
+  }))
+}
+
+function detectVertical(q: string): string {
+  for (const k of Object.keys(verticalCompanies)) if (q.includes(k)) return k
+  if (/renewab/.test(q)) return 'solar'
+  if (/utilit|power|grid/.test(q)) return 'energy'
+  return 'b2b'
+}
 
 const totalOpen = () => getDeals().filter((d) => !d.won).reduce((s, d) => s + d.value, 0)
 const atRisk = () => getDeals().filter((d) => !d.won && (d.health === 'At risk' || d.health === 'Stalled' || d.health === 'No next step'))
@@ -51,6 +87,40 @@ export const starterPrompts = [
 
 export function answer(prompt: string): AiResponse {
   const q = prompt.toLowerCase().trim()
+
+  // 0. AI OPERATOR — prospect &/or run outreach ("find 50 solar directors and email them")
+  if (/\b(find|source|prospect|get me|build a list|scrape|search for)\b/.test(q) && /(compan|director|lead|prospect|people|contact|owner|site|business|firm)/.test(q)) {
+    const count = Math.min(200, Math.max(5, parseInt((q.match(/\b(\d{1,3})\b/) || [])[1] ?? '50', 10)))
+    const vertical = detectVertical(q)
+    const outreach = /(email|reach|outreach|contact them|message|sequence|campaign|send)/.test(q)
+    const vLabel = vertical === 'b2b' ? 'B2B' : vertical.charAt(0).toUpperCase() + vertical.slice(1)
+    const steps: WorkflowStep[] = [
+      { label: `Searching the ${vLabel.toLowerCase()} database`, status: 'pending', op: 'search' },
+      { label: 'Enriching verified emails & direct dials', status: 'pending', op: 'enrich' },
+      { label: 'Adding qualified prospects to Leads', status: 'pending', op: 'addLeads' },
+    ]
+    if (outreach) {
+      steps.push({ label: 'Drafting a 5-step email + LinkedIn sequence', status: 'pending', op: 'sequence' })
+      steps.push({ label: 'Launching campaign & scheduling first send', status: 'pending', op: 'campaign' })
+    }
+    return {
+      thinking: `Planning: ${count} ${vLabel} ${outreach ? 'prospects → outreach' : 'prospects'}…`,
+      blocks: [{ type: 'text', text: `On it. I’ll ${outreach ? `find **${count} ${vLabel} decision-makers**, add them to your CRM, then draft and launch a multichannel campaign` : `find **${count} ${vLabel} decision-makers** and add them to your CRM`}. Watch it run:` }],
+      run: { count, vertical, outreach, steps, campaignName: `${vLabel} outreach — AI ${new Date().toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })}` },
+      suggestions: outreach ? ['Schedule this to run weekly', 'Show me the campaign'] : ['Now email them', 'Schedule this weekly'],
+    }
+  }
+
+  // Schedule an operator task ("every monday find 20 solar sites")
+  if (/(every|each|daily|weekly|schedule|automate).*(find|prospect|chase|follow.?up|email|post)/.test(q) || /(schedule|automate) (this|that|it)/.test(q)) {
+    return {
+      blocks: [
+        { type: 'text', text: `Done — I’ll run that on a schedule and report back each time. You can manage it under **Scheduled tasks** in Reach.` },
+        { type: 'actions', items: [{ label: 'View scheduled tasks' }, { label: 'Change cadence' }] },
+      ],
+      run: { count: 0, vertical: 'b2b', outreach: false, steps: [{ label: 'Creating scheduled task', status: 'pending', op: 'schedule' }], campaignName: prompt.slice(0, 60) },
+    }
+  }
 
   // 1. Focus / priorities
   if (/(focus|today|priorit|what.*do|next step|morning)/.test(q)) {

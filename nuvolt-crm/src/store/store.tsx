@@ -3,7 +3,7 @@ import { buildSeed } from './seed'
 import type { State, Deal, Person, Lead, Org, Activity, EmailMsg, Toast, ID } from './types'
 import type { StageName } from '../data/mock'
 
-const KEY = 'simplr.state.v7'
+const KEY = 'simplr.state.v8'
 let idc = 1000
 export const uid = (p = 'x') => `${p}${Date.now().toString(36)}${idc++}`
 
@@ -48,6 +48,11 @@ type Action =
   | { type: 'UPDATE_AUTOMATION'; id: ID; patch: Partial<import('./types').Automation> }
   | { type: 'LI_UPDATE'; id: ID; patch: Partial<import('./types').LinkedInThread>; activity?: Activity }
   | { type: 'ADVANCE_ENROLMENT'; id: ID; patch: Partial<import('./types').Enrolment>; activity?: Activity }
+  | { type: 'BULK_ADD_LEADS'; leads: Lead[] }
+  | { type: 'ADD_REACH_CAMPAIGN'; campaign: import('./types').ReachCampaign; enrolments: import('./types').Enrolment[] }
+  | { type: 'ADD_SCHEDULED'; task: import('./types').ScheduledTask }
+  | { type: 'TOGGLE_SCHEDULED'; id: ID }
+  | { type: 'REMOVE_SCHEDULED'; id: ID }
   | { type: 'RESET' }
 
 function reducer(state: State, action: Action): State {
@@ -166,6 +171,16 @@ function reducer(state: State, action: Action): State {
         enrolments: state.enrolments.map((e) => (e.id === action.id ? { ...e, ...action.patch } : e)),
         activities: action.activity ? [action.activity, ...state.activities] : state.activities,
       }
+    case 'BULK_ADD_LEADS':
+      return { ...state, leads: [...action.leads, ...state.leads] }
+    case 'ADD_REACH_CAMPAIGN':
+      return { ...state, reachCampaigns: [action.campaign, ...state.reachCampaigns], enrolments: [...action.enrolments, ...state.enrolments] }
+    case 'ADD_SCHEDULED':
+      return { ...state, scheduledTasks: [action.task, ...state.scheduledTasks] }
+    case 'TOGGLE_SCHEDULED':
+      return { ...state, scheduledTasks: state.scheduledTasks.map((t) => (t.id === action.id ? { ...t, active: !t.active } : t)) }
+    case 'REMOVE_SCHEDULED':
+      return { ...state, scheduledTasks: state.scheduledTasks.filter((t) => t.id !== action.id) }
     case 'RESET':
       return buildSeed()
     default:
@@ -420,6 +435,25 @@ export function useActions() {
       dispatch({ type: 'LI_UPDATE', id: t.id, patch: { status: 'accepted', kind: 'message', preview: 'Connected. Send a first message.' }, activity })
       toast(`Connected with ${t.name}`)
     },
+    bulkAddLeads: (rows: { name: string; company: string; role: string; score: number }[]) => {
+      const leads: Lead[] = rows.map((r) => ({ id: uid('l'), name: r.name, role: r.role, company: r.company, source: 'Simplr AI', owner: 'Jordan Miles', created: 'Just now', score: r.score }))
+      dispatch({ type: 'BULK_ADD_LEADS', leads })
+      return leads
+    },
+    createReachCampaign: (name: string, vertical: string, rows: { name: string; company: string }[], sequence = 'AI multichannel') => {
+      const enrolments: import('./types').Enrolment[] = rows.slice(0, 12).map((r, i) => ({
+        id: uid('en'), sequenceId: 'sq1', name: r.name, company: r.company, channel: i % 3 === 0 ? 'LinkedIn' : 'Email', stepIndex: 0, totalSteps: 5, stepLabel: 'Intro — personalised', status: i < 3 ? 'due' : 'pending', nextDue: i < 3 ? 'Now' : 'Queued',
+      }))
+      const campaign: import('./types').ReachCampaign = { id: uid('rc'), name, vertical, audience: rows.length, sequence, channels: ['Email', 'LinkedIn'], status: 'running', sent: 0, replies: 0, meetings: 0, createdBy: 'AI', createdAt: Date.now() }
+      dispatch({ type: 'ADD_REACH_CAMPAIGN', campaign, enrolments })
+      return campaign
+    },
+    addScheduledTask: (prompt: string, cadence: string) => {
+      dispatch({ type: 'ADD_SCHEDULED', task: { id: uid('st'), prompt, cadence, nextRun: cadence, active: true, createdAt: Date.now() } })
+      toast('Scheduled task created')
+    },
+    toggleScheduled: (id: ID, active: boolean) => { dispatch({ type: 'TOGGLE_SCHEDULED', id }); toast(active ? 'Task paused' : 'Task activated', active ? 'warning' : 'positive') },
+    removeScheduled: (id: ID) => { dispatch({ type: 'REMOVE_SCHEDULED', id }); toast('Scheduled task removed', 'warning') },
     advanceEnrolment: (e: import('./types').Enrolment) => {
       const done = e.stepIndex + 1 >= e.totalSteps
       const activity: Activity = { id: uid('act'), type: e.channel === 'Email' ? 'email' : 'note', subject: `${e.channel} step sent: ${e.stepLabel}`, personId: e.personId, done: true, who: 'Jordan Miles', createdAt: Date.now(), source: 'ai' }
