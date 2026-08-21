@@ -1,7 +1,39 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
+import { googleSolarAnalysis } from './server/solarProvider.mjs'
 
-export default defineConfig({
-  plugins: [react()],
-  server: { port: 3010 },
+/** Dev-only backend for the Google Solar API — keeps the key server-side.
+ *  Set GOOGLE_MAPS_API_KEY in .env (Solar API + Geocoding API enabled) to go live;
+ *  without it, /api/solar returns { fallback: true } and the client uses the offline model. */
+function solarApi(env: Record<string, string>): Plugin {
+  const key = env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || ''
+  return {
+    name: 'solar-api',
+    configureServer(server) {
+      server.middlewares.use('/api/solar', (req, res) => {
+        if (req.method !== 'POST') { res.statusCode = 405; return res.end() }
+        let body = ''
+        req.on('data', (c) => (body += c))
+        req.on('end', async () => {
+          res.setHeader('Content-Type', 'application/json')
+          try {
+            const { address } = JSON.parse(body || '{}')
+            if (!key) return res.end(JSON.stringify({ fallback: true, reason: 'no-key' }))
+            const analysis = await googleSolarAnalysis(address, key)
+            res.end(JSON.stringify(analysis))
+          } catch (e) {
+            res.end(JSON.stringify({ fallback: true, reason: String((e as Error)?.message || e) }))
+          }
+        })
+      })
+    },
+  }
+}
+
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+  return {
+    plugins: [react(), solarApi(env)],
+    server: { port: 3010 },
+  }
 })

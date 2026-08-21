@@ -7,6 +7,14 @@
  */
 
 export type RoofSegment = { id: string; label: string; azimuth: string; pitch: number; maxPanels: number; irradiance: number }
+export type RoofAnalysis = {
+  segments: RoofSegment[]
+  usableArea: number // m²
+  specificYield: number // kWh/kWp/yr (location factor)
+  maxPanels: number
+  panelWatts: number
+  source: 'google' | 'model'
+}
 export type SolarDesign = {
   address: string
   segments: RoofSegment[]
@@ -23,6 +31,7 @@ export type SolarDesign = {
   payback: number // years
   lifetimeSavings: number // £ over 25y
   co2PerYear: number // tonnes
+  source: 'google' | 'model'
 }
 
 const PANEL_W = 440
@@ -40,8 +49,8 @@ function hash(s: string): number {
   return (h >>> 0)
 }
 
-/** Analyse a roof from an address (deterministic mock; swap for Google Solar API). */
-export function analyseRoof(address: string): { segments: RoofSegment[]; usableArea: number; specificYield: number } {
+/** Analyse a roof from an address (deterministic model; the Google provider returns the same shape). */
+export function analyseRoof(address: string): RoofAnalysis {
   const seed = hash(address.trim().toLowerCase() || 'default')
   const rand = (n: number, min: number, max: number) => min + (((seed >> n) & 0xff) / 255) * (max - min)
   const aspects = ['South', 'South-west', 'South-east', 'West', 'East']
@@ -54,13 +63,14 @@ export function analyseRoof(address: string): { segments: RoofSegment[]; usableA
   })
   const usableArea = segments.reduce((a, s) => a + s.maxPanels * PANEL_AREA, 0)
   const specificYield = Math.round(rand(7, 950, 1120)) // UK kWh/kWp/yr
-  return { segments, usableArea, specificYield }
+  const maxPanels = segments.reduce((a, s) => a + s.maxPanels, 0)
+  return { segments, usableArea: Math.round(usableArea), specificYield, maxPanels, panelWatts: PANEL_W, source: 'model' }
 }
 
-/** Build a full design; `panelOverride` lets the UI add/remove panels live. */
-export function designFor(address: string, panelOverride?: number): SolarDesign {
-  const { segments, usableArea, specificYield } = analyseRoof(address)
-  const maxPanels = segments.reduce((a, s) => a + s.maxPanels, 0)
+/** Build a full design from a roof analysis; `panelOverride` lets the UI add/remove panels live. */
+export function designFrom(a: RoofAnalysis, address: string, panelOverride?: number): SolarDesign {
+  const { segments, usableArea, specificYield, maxPanels } = a
+  const panelWatts = a.panelWatts || PANEL_W
   const panels = Math.max(4, Math.min(maxPanels, panelOverride ?? Math.round(maxPanels * 0.82)))
 
   // weight production by the segments the panels actually sit on (best aspects fill first)
@@ -70,7 +80,7 @@ export function designFor(address: string, panelOverride?: number): SolarDesign 
   for (const s of ordered) { const take = Math.min(left, s.maxPanels); irrWeighted += take * s.irradiance; left -= take; if (left <= 0) break }
   const avgIrr = panels > 0 ? irrWeighted / panels : 0.9
 
-  const systemKwp = (panels * PANEL_W) / 1000
+  const systemKwp = (panels * panelWatts) / 1000
   const annualProduction = Math.round(systemKwp * specificYield * avgIrr)
   const annualSavings = Math.round(annualProduction * (SELF_USE * IMPORT_RATE + (1 - SELF_USE) * EXPORT_RATE))
   const typicalBill = 1400 // £/yr household electricity
@@ -80,7 +90,26 @@ export function designFor(address: string, panelOverride?: number): SolarDesign 
   const lifetimeSavings = Math.round(annualSavings * 25 * 0.9 - systemCost)
   const co2PerYear = +(annualProduction * CO2_PER_KWH).toFixed(2)
 
-  return { address, segments, usableArea: Math.round(usableArea), panels, maxPanels, panelWatts: PANEL_W, systemKwp: +systemKwp.toFixed(2), specificYield, annualProduction, annualSavings, billOffsetPct, systemCost, payback, lifetimeSavings, co2PerYear }
+  return { address, segments, usableArea: Math.round(usableArea), panels, maxPanels, panelWatts, systemKwp: +systemKwp.toFixed(2), specificYield, annualProduction, annualSavings, billOffsetPct, systemCost, payback, lifetimeSavings, co2PerYear, source: a.source }
+}
+
+/** Offline convenience: analyse + design in one call. */
+export function designFor(address: string, panelOverride?: number): SolarDesign {
+  return designFrom(analyseRoof(address), address, panelOverride)
+}
+
+/** Live: ask the backend for a Google Solar analysis; fall back to the offline model. */
+export async function analyseRoofLive(address: string): Promise<RoofAnalysis> {
+  try {
+    const r = await fetch('/api/solar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ address }) })
+    if (r.ok) {
+      const j = await r.json()
+      if (j && !j.fallback && Array.isArray(j.segments) && j.segments.length) return j as RoofAnalysis
+    }
+  } catch {
+    /* network / no backend — fall through */
+  }
+  return analyseRoof(address)
 }
 
 export const gbp = (n: number) => `£${Math.round(n).toLocaleString('en-GB')}`

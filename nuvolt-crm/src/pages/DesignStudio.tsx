@@ -5,7 +5,7 @@ import { PageBody } from '../components/Page'
 import { Button } from '../components/ui'
 import { Sun, Sparkle, Building } from '../components/icons'
 import { useActions } from '../store/store'
-import { designFor, gbp, type SolarDesign } from '../lib/solar'
+import { designFrom, analyseRoofLive, gbp, type SolarDesign, type RoofAnalysis } from '../lib/solar'
 
 function RoofRender({ design }: { design: SolarDesign }) {
   const cols = 8
@@ -54,15 +54,17 @@ export function DesignStudio() {
   const act = useActions()
   const [address, setAddress] = useState('')
   const [committed, setCommitted] = useState('')
+  const [analysis, setAnalysis] = useState<RoofAnalysis | null>(null)
   const [analysing, setAnalysing] = useState(false)
   const [panels, setPanels] = useState<number | undefined>(undefined)
 
-  const design = committed ? designFor(committed, panels) : null
+  const design = analysis ? designFrom(analysis, committed, panels) : null
 
-  function run(addr: string) {
+  async function run(addr: string) {
     if (!addr.trim()) return
-    setAnalysing(true); setCommitted(''); setPanels(undefined)
-    setTimeout(() => { setCommitted(addr); setAnalysing(false) }, 1300)
+    setAnalysing(true); setAnalysis(null); setPanels(undefined)
+    const a = await analyseRoofLive(addr)
+    setCommitted(addr); setAnalysis(a); setAnalysing(false)
   }
   function generateProposal() {
     if (!design) return
@@ -81,6 +83,17 @@ export function DesignStudio() {
           </div>
           <Button variant="primary" icon={<Sun size={16} />} onClick={() => run(address)}>Design roof</Button>
         </div>
+
+        {design && !analysing && (
+          <div className="flex items-center gap-2.5 text-[12px]">
+            {design.source === 'google' ? (
+              <span className="inline-flex items-center gap-1.5 font-semibold text-positive bg-positive-wash px-2.5 py-1 rounded-full"><span className="w-1.5 h-1.5 rounded-full bg-positive" /> Live · Google Solar API</span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 font-semibold text-warning bg-warning-wash px-2.5 py-1 rounded-full"><span className="w-1.5 h-1.5 rounded-full bg-warning" /> Modelled estimate</span>
+            )}
+            <span className="text-muted-2">{committed}</span>
+          </div>
+        )}
 
         {analysing && (
           <div className="bg-surface border border-border rounded-card p-10 flex flex-col items-center gap-3">
