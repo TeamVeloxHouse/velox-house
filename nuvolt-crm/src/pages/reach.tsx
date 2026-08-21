@@ -473,3 +473,66 @@ export function ReachSchedules() {
     </>
   )
 }
+
+/* ============================ Reach AI (full-page operator) ============================ */
+export function ReachAI() {
+  const nav = useNavigate()
+  const { turns, ask } = useChat(undefined, { listen: false })
+  const scroller = useRef<HTMLDivElement>(null)
+  useEffect(() => { scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: 'smooth' }) }, [turns])
+  const empty = turns.length === 0
+
+  const caps = [
+    { icon: Search, title: 'Prospect anything', sub: 'Find companies + decision-makers by vertical, role, area' },
+    { icon: Send, title: 'Run outreach', sub: 'Draft, personalise and launch email + LinkedIn sequences' },
+    { icon: Sun, title: 'Work solar sites', sub: 'Scan roofs, qualify sites, and reach the owners' },
+    { icon: Sparkle, title: 'Do it on a schedule', sub: '“Every Monday, find 20 and email them”' },
+  ]
+
+  return (
+    <>
+      <TopBar title="Reach AI" crumbs={['Autonomous operator']} actions={<Button icon={<Sparkle size={16} />} onClick={() => nav('/reach/schedules')}>Scheduled tasks</Button>} />
+      <div className="flex-1 flex flex-col min-h-0">
+        <div ref={scroller} className="flex-1 overflow-y-auto">
+          {empty ? (
+            <div className="max-w-[760px] mx-auto px-7 py-12 flex flex-col gap-8">
+              <div className="flex flex-col items-center text-center gap-3">
+                <div className="w-14 h-14 rounded-2xl text-white flex items-center justify-center shadow-primary" style={{ background: 'linear-gradient(180deg,#7C5CFF 0%,#5B29CC 100%)' }}><Sparkle size={28} /></div>
+                <div>
+                  <div className="text-[24px] font-bold text-ink tracking-[-0.02em]">Your outreach, on autopilot</div>
+                  <div className="text-[14px] text-muted-b mt-1">Tell me who to reach and I’ll find them, write to them, and run it — you watch it happen. Attach a list or ICP to work from your own data.</div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {caps.map((c) => (
+                  <div key={c.title} className="bg-surface border border-border rounded-card p-4 flex items-start gap-3">
+                    <span className="w-9 h-9 rounded-[10px] bg-[#F1ECFF] text-[#5B29CC] flex items-center justify-center shrink-0"><c.icon size={18} /></span>
+                    <div><div className="text-[13.5px] font-semibold text-ink-2">{c.title}</div><div className="text-[12.5px] text-muted-2 mt-0.5">{c.sub}</div></div>
+                  </div>
+                ))}
+              </div>
+              <div>
+                <div className="eyebrow text-muted-3 mb-2.5">Try asking</div>
+                <div className="flex flex-col gap-2">
+                  {operatorPrompts.map((p) => (
+                    <button key={p} onClick={() => ask(p)} className="text-left bg-surface border border-border rounded-xl px-4 py-3 text-[13.5px] text-ink-3 hover:border-[#C9BCFF] hover:bg-[#FAF8FF] transition-colors flex items-center gap-2.5"><Sparkle size={15} className="text-[#5B29CC] shrink-0" />{p}</button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="max-w-[760px] mx-auto px-7 py-7 flex flex-col gap-6">
+              {turns.map((t, i) => (<AiMessage key={i} turn={t} />))}
+            </div>
+          )}
+        </div>
+        <div className="border-t border-border bg-canvas px-7 py-4">
+          <div className="max-w-[760px] mx-auto">
+            <AiComposer onSend={ask} placeholder="Tell Reach AI what to do — or attach a list of companies…" />
+            <div className="text-[11px] text-muted-3 text-center mt-2">Reach AI prospects, writes and sends on your behalf. It shows every step live and never sends without your rules.</div>
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}

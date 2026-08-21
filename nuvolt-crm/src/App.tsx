@@ -22,7 +22,7 @@ import { Meetings } from './pages/Meetings'
 import { Agents } from './pages/Agents'
 import { Prospector } from './pages/Prospector'
 import { LinkedInInbox } from './pages/LinkedInInbox'
-import { ReachOverview, Finders, SolarFinder, Outreach, ReachAnalytics, ReachCampaigns, ReachSchedules } from './pages/reach'
+import { ReachOverview, Finders, SolarFinder, Outreach, ReachAnalytics, ReachCampaigns, ReachSchedules, ReachAI } from './pages/reach'
 
 export const router = createBrowserRouter([
   {
@@ -52,6 +52,7 @@ export const router = createBrowserRouter([
       { path: 'settings', element: <Settings /> },
       // Simplr Reach — prospecting & outreach workspace
       { path: 'reach', element: <ReachOverview /> },
+      { path: 'reach/ai', element: <ReachAI /> },
       { path: 'reach/finders', element: <Finders /> },
       { path: 'reach/solar', element: <SolarFinder /> },
       { path: 'reach/prospects', element: <Prospector /> },

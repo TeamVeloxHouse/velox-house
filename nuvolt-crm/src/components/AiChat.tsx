@@ -327,35 +327,44 @@ export function useChat(seed?: ChatTurn[], opts?: { listen?: boolean }) {
   return { turns, ask, reset: () => setTurns([]) }
 }
 
-/** Input bar with send + affordances. */
-export function AiComposer({ onSend, compact }: { onSend: (t: string) => void; compact?: boolean }) {
+/** Input bar with send + file attach (Claude-like). */
+export function AiComposer({ onSend, compact, placeholder }: { onSend: (t: string) => void; compact?: boolean; placeholder?: string }) {
   const [v, setV] = useState('')
+  const [file, setFile] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
   function submit() {
-    onSend(v)
+    const prefix = file ? `Using the attached file “${file}”: ` : ''
+    onSend(prefix + v)
     setV('')
+    setFile(null)
   }
   return (
-    <div className={classNames('bg-surface border border-border rounded-2xl flex items-end gap-2 p-2', compact ? 'shadow-card' : 'shadow-card')}>
-      <textarea
-        value={v}
-        onChange={(e) => setV(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault()
-            submit()
-          }
-        }}
-        rows={1}
-        placeholder="Ask Simplr AI to analyse, draft, or do something…"
-        className="flex-1 resize-none outline-none bg-transparent text-[14px] text-ink-2 placeholder:text-muted-3 px-2 py-1.5 max-h-32"
-      />
-      <button
-        onClick={submit}
-        disabled={!v.trim()}
-        className="w-9 h-9 rounded-xl bg-accent-gradient text-white flex items-center justify-center shadow-primary disabled:opacity-40 disabled:shadow-none transition-opacity shrink-0"
-      >
-        <Send size={16} />
-      </button>
+    <div className={classNames('bg-surface border border-border rounded-2xl flex flex-col gap-1 p-2 shadow-card')}>
+      {file && (
+        <div className="flex items-center gap-2 mx-1 px-2.5 py-1.5 rounded-lg bg-accent-wash border border-border-blue text-[12px] text-accent-700 self-start">
+          <Envelope size={13} /> {file}
+          <button onClick={() => setFile(null)} className="text-accent/60 hover:text-accent ml-1 text-[14px] leading-none">×</button>
+        </div>
+      )}
+      <div className="flex items-end gap-2">
+        <input ref={fileRef} type="file" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) setFile(f.name); e.currentTarget.value = '' }} />
+        <button onClick={() => fileRef.current?.click()} title="Attach a file (CSV, ICP, list)" className="w-9 h-9 rounded-xl border border-border text-muted-b hover:text-ink-3 hover:bg-control flex items-center justify-center shrink-0 text-[18px] leading-none">+</button>
+        <textarea
+          value={v}
+          onChange={(e) => setV(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit() } }}
+          rows={1}
+          placeholder={placeholder ?? 'Ask Simplr AI to analyse, draft, or do something…'}
+          className="flex-1 resize-none outline-none bg-transparent text-[14px] text-ink-2 placeholder:text-muted-3 px-2 py-1.5 max-h-32"
+        />
+        <button
+          onClick={submit}
+          disabled={!v.trim() && !file}
+          className="w-9 h-9 rounded-xl bg-accent-gradient text-white flex items-center justify-center shadow-primary disabled:opacity-40 disabled:shadow-none transition-opacity shrink-0"
+        >
+          <Send size={16} />
+        </button>
+      </div>
     </div>
   )
 }

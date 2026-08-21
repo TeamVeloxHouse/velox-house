@@ -153,6 +153,16 @@ export function Rail() {
         </NavLink>
       )}
 
+      {/* featured: Reach AI operator (Reach only) */}
+      {isReach && (
+        <NavLink to="/reach/ai" title={expanded ? undefined : 'Reach AI'} className={({ isActive }) => classNames('group relative flex items-center mb-3 transition-all duration-150', expanded ? 'h-10 rounded-[10px] px-2.5 gap-3' : 'w-11 h-11 rounded-[12px] justify-center', isActive ? 'text-white shadow-primary' : 'text-white bg-white/[0.06] hover:bg-white/10 ring-1 ring-inset ring-white/10')} style={({ isActive }) => (isActive ? { background: 'linear-gradient(180deg,#7C5CFF 0%,#5B29CC 100%)' } : {})}>
+          <Sparkle size={19} className="shrink-0" />
+          {expanded && <span className="text-[13.5px] font-semibold flex-1 truncate">Reach AI</span>}
+          {expanded && <span className="eyebrow text-[9px] bg-white/20 rounded px-1.5 py-0.5">Operator</span>}
+          {!expanded && <Tooltip label="Reach AI" />}
+        </NavLink>
+      )}
+
       {/* grouped nav */}
       <div className="flex-1 overflow-y-auto overflow-x-visible -mx-1 px-1 flex flex-col gap-0.5">
         {groups.map((g, gi) => {
