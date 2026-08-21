@@ -1,5 +1,6 @@
 import { deals as mDeals, people as mPeople, orgs as mOrgs, leads as mLeads } from '../data/mock'
-import type { State, Deal, Person, Activity, EmailMsg, Meeting, Agent, AgentRun, Connection, CustomField, Webhook, ApiKey, Integration, SocialPost, Sequence, Automation, LinkedInThread, Enrolment, ReachCampaign, ScheduledTask, StudioConfig } from './types'
+import type { State, Deal, Person, Activity, EmailMsg, Meeting, Agent, AgentRun, Connection, CustomField, Webhook, ApiKey, Integration, SocialPost, Sequence, Automation, LinkedInThread, Enrolment, ReachCampaign, ScheduledTask, StudioConfig, StudioProject } from './types'
+import { MILESTONES } from '../lib/delivery'
 
 const now = Date.now()
 const mins = (m: number) => now - m * 60_000
@@ -254,6 +255,19 @@ export function buildSeed(): State {
     ],
   }
 
+  const mkProject = (id: string, address: string, customer: string, value: number, kwp: number, mIdx: number, products: { name: string; detail: string; value: number }[], installDate?: string): StudioProject => ({
+    id, address, customer, owner: 'Jordan Miles', value, systemKwp: kwp, milestoneIndex: mIdx,
+    milestones: MILESTONES.map((m, i) => ({ ...m, done: i < mIdx })),
+    tasks: ['Book site survey', 'Complete MCS paperwork', 'Submit DNO / G99 application', 'Order panels & inverter', 'Book scaffolding', 'Book install team & electrician', 'Install & test', 'Building control / inspection', 'Issue MCS certificate', 'Submit for PTO', 'Handover pack to customer'].map((label, i) => ({ id: `t${i}`, label, done: i < mIdx })),
+    products, installDate, createdAt: days(mIdx + 2),
+  })
+  const projects: StudioProject[] = [
+    mkProject('pj1', '14 Brightleaf Way, Manchester', 'Dana Kirk', 12450, 5.28, 2, [{ name: 'Solar PV', detail: '12 panels · 5.28 kWp', value: 8950 }, { name: 'Battery storage', detail: '5 kWh', value: 3200 }, { name: 'EV charger', detail: '7 kW', value: 900 }]),
+    mkProject('pj2', '8 Meridian Road, Leeds', 'Elena Voss', 9200, 4.4, 4, [{ name: 'Solar PV', detail: '10 panels · 4.4 kWp', value: 8300 }, { name: 'Bird protection', detail: 'Full perimeter', value: 350 }], 'Tue 26 Aug'),
+    mkProject('pj3', 'Unit 4, Harbour Estate, Hull', 'Tom Reyes', 21800, 9.7, 6, [{ name: 'Solar PV', detail: '22 panels · 9.7 kWp', value: 17400 }, { name: 'Battery storage', detail: '10 kWh', value: 6400 }], 'Thu 14 Aug'),
+    mkProject('pj4', '31 Victoria St, Rochdale', 'Owen Pryce', 7600, 3.5, 1, [{ name: 'Solar PV', detail: '8 panels · 3.5 kWp', value: 7600 }]),
+  ]
+
   const customFields: CustomField[] = [
     { id: 'cf1', entity: 'deal', label: 'Contract length', type: 'select', options: ['1 year', '2 years', '3 years', '5 years'] },
     { id: 'cf2', entity: 'deal', label: 'Region', type: 'text' },
@@ -263,5 +277,5 @@ export function buildSeed(): State {
   deals[0].custom = { cf1: '2 years', cf2: 'London' }
   people[1].custom = { cf3: 'linkedin.com/in/callumreed' }
 
-  return { deals, people, orgs, leads, activities, emails, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, linkedinThreads, enrolments, reachCampaigns, scheduledTasks, studioConfig, customFields, toasts: [], railExpanded: true }
+  return { deals, people, orgs, leads, activities, emails, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, linkedinThreads, enrolments, reachCampaigns, scheduledTasks, studioConfig, projects, customFields, toasts: [], railExpanded: true }
 }

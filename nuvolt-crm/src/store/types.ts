@@ -20,6 +20,26 @@ export interface Activity {
   source?: 'manual' | 'ai' | 'meeting' | 'email'
 }
 
+export interface ProjectMilestone { key: string; label: string; done: boolean; date?: string }
+export interface ProjectTask { id: ID; label: string; done: boolean }
+export interface ProductLine { name: string; detail: string; value: number }
+export interface StudioProject {
+  id: ID
+  dealId?: ID
+  address: string
+  customer: string
+  owner: string
+  value: number
+  systemKwp?: number
+  milestoneIndex: number
+  milestones: ProjectMilestone[]
+  tasks: ProjectTask[]
+  products: ProductLine[]
+  installDate?: string
+  ptoDate?: string
+  createdAt: number
+}
+
 export interface FinanceProduct {
   id: ID
   name: string
@@ -324,6 +344,7 @@ export interface State {
   reachCampaigns: ReachCampaign[]
   scheduledTasks: ScheduledTask[]
   studioConfig: StudioConfig
+  projects: StudioProject[]
   customFields: CustomField[]
   toasts: Toast[]
   railExpanded: boolean

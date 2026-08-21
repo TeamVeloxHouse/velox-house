@@ -54,6 +54,8 @@ type Action =
   | { type: 'TOGGLE_SCHEDULED'; id: ID }
   | { type: 'REMOVE_SCHEDULED'; id: ID }
   | { type: 'UPDATE_STUDIO_CONFIG'; patch: Partial<import('./types').StudioConfig> }
+  | { type: 'ADD_PROJECT'; project: import('./types').StudioProject }
+  | { type: 'UPDATE_PROJECT'; id: ID; patch: Partial<import('./types').StudioProject> }
   | { type: 'RESET' }
 
 function reducer(state: State, action: Action): State {
@@ -184,6 +186,10 @@ function reducer(state: State, action: Action): State {
       return { ...state, scheduledTasks: state.scheduledTasks.filter((t) => t.id !== action.id) }
     case 'UPDATE_STUDIO_CONFIG':
       return { ...state, studioConfig: { ...state.studioConfig, ...action.patch } }
+    case 'ADD_PROJECT':
+      return { ...state, projects: [action.project, ...state.projects] }
+    case 'UPDATE_PROJECT':
+      return { ...state, projects: state.projects.map((p) => (p.id === action.id ? { ...p, ...action.patch } : p)) }
     case 'RESET':
       return buildSeed()
     default:
@@ -389,6 +395,25 @@ export function useActions() {
     },
     setRail: (expanded: boolean) => dispatch({ type: 'SET_RAIL', expanded }),
     updateStudioConfig: (patch: Partial<import('./types').StudioConfig>) => dispatch({ type: 'UPDATE_STUDIO_CONFIG', patch }),
+    startProject: (project: import('./types').StudioProject) => {
+      dispatch({ type: 'ADD_PROJECT', project })
+      toast(`Delivery started — ${project.address}`)
+      return project
+    },
+    advanceMilestone: (p: import('./types').StudioProject) => {
+      const next = Math.min(p.milestones.length - 1, p.milestoneIndex + 1)
+      const milestones = p.milestones.map((m, i) => ({ ...m, done: i < next, date: i === p.milestoneIndex ? new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : m.date }))
+      const patch: Partial<import('./types').StudioProject> = { milestoneIndex: next, milestones }
+      if (next === p.milestones.length - 1) patch.ptoDate = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+      dispatch({ type: 'UPDATE_PROJECT', id: p.id, patch })
+      toast(next === p.milestones.length - 1 ? `${p.address} — PTO reached 🎉` : `${p.address} → ${p.milestones[next].label}`)
+    },
+    setMilestone: (id: ID, milestones: import('./types').ProjectMilestone[], milestoneIndex: number) => dispatch({ type: 'UPDATE_PROJECT', id, patch: { milestones, milestoneIndex } }),
+    toggleProjectTask: (p: import('./types').StudioProject, taskId: ID) => {
+      const tasks = p.tasks.map((t) => (t.id === taskId ? { ...t, done: !t.done } : t))
+      dispatch({ type: 'UPDATE_PROJECT', id: p.id, patch: { tasks } })
+    },
+    updateProject: (id: ID, patch: Partial<import('./types').StudioProject>) => dispatch({ type: 'UPDATE_PROJECT', id, patch }),
     addAdder: (name: string, amount: number) => {
       const cur = live.state?.studioConfig.adders ?? []
       dispatch({ type: 'UPDATE_STUDIO_CONFIG', patch: { adders: [...cur, { id: uid('ad'), name, amount }] } })
