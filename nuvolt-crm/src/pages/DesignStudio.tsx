@@ -69,12 +69,12 @@ export function DesignStudio() {
   function generateProposal() {
     if (!design) return
     const d = act.addDeal({ name: `Solar install — ${design.address}`, org: design.address, value: design.systemCost, stage: 'Demo Scheduled', subtitle: `${design.systemKwp} kWp · ${design.panels} panels`, chips: [{ label: 'Solar', tone: 'accent' }, { label: `${design.billOffsetPct}% offset`, tone: 'positive' }], solar: design })
-    nav(`/reach/proposal/${d.id}`)
+    nav(`/studio/proposal/${d.id}`)
   }
 
   return (
     <>
-      <TopBar title="Design Studio" crumbs={['Reach', 'Instant solar design']} actions={design ? <Button variant="primary" icon={<Sparkle size={16} />} onClick={generateProposal}>Generate proposal</Button> : undefined} />
+      <TopBar title="Design Studio" crumbs={['Studio', 'Instant solar design']} actions={design ? <Button variant="primary" icon={<Sparkle size={16} />} onClick={generateProposal}>Generate proposal</Button> : undefined} />
       <PageBody>
         <div className="bg-surface border border-border rounded-card p-2 flex items-center gap-2">
           <div className="flex-1 flex items-center gap-2.5 px-3 text-muted-3">

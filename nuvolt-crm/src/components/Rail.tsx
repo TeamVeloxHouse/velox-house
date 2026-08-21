@@ -44,7 +44,6 @@ const reachGroups: Group[] = [
   { label: 'Find', items: [
     { to: '/reach/finders', icon: Radar, label: 'Finders' },
     { to: '/reach/solar', icon: Sun, label: 'Solar finder' },
-    { to: '/reach/design', icon: Target, label: 'Design Studio' },
     { to: '/reach/prospects', icon: Search, label: 'B2B prospects' },
   ] },
   { label: 'Engage', items: [
@@ -59,9 +58,22 @@ const reachGroups: Group[] = [
   { label: 'Measure', items: [{ to: '/reach/analytics', icon: Pie, label: 'Analytics' }] },
 ]
 
+const studioGroups: Group[] = [
+  { label: 'Overview', items: [{ to: '/studio', icon: Grid, label: 'Overview', end: true }] },
+  { label: 'Design', items: [
+    { to: '/studio/design', icon: Sun, label: 'Design Studio' },
+    { to: '/studio/templates', icon: File, label: 'Templates' },
+  ] },
+  { label: 'Sell', items: [
+    { to: '/studio/proposals', icon: Layers, label: 'Proposals' },
+  ] },
+  { label: 'Measure', items: [{ to: '/studio/analytics', icon: Pie, label: 'Analytics' }] },
+]
+
 const workspaces = [
   { id: 'crm', name: 'Simplr CRM', desc: 'Pipeline & customers', to: '/', icon: Bars, grad: 'linear-gradient(180deg,#3B6BF5 0%,#1D4ED8 100%)' },
   { id: 'reach', name: 'Simplr Reach', desc: 'Prospecting & outreach', to: '/reach', icon: Radar, grad: 'linear-gradient(180deg,#7C5CFF 0%,#5B29CC 100%)' },
+  { id: 'studio', name: 'Simplr Studio', desc: 'Design & proposals', to: '/studio', icon: Sun, grad: 'linear-gradient(180deg,#F5A623 0%,#E8721A 100%)' },
 ]
 
 function itemClasses(expanded: boolean, accent: string) {
@@ -83,9 +95,10 @@ export function Rail() {
   const location = useLocation()
   const nav = useNavigate()
   const isReach = location.pathname.startsWith('/reach')
-  const ws = isReach ? workspaces[1] : workspaces[0]
-  const groups = isReach ? reachGroups : crmGroups
-  const activeFill = isReach ? 'bg-[#5B29CC]/25' : 'bg-white/10'
+  const isStudio = location.pathname.startsWith('/studio')
+  const ws = isStudio ? workspaces[2] : isReach ? workspaces[1] : workspaces[0]
+  const groups = isStudio ? studioGroups : isReach ? reachGroups : crmGroups
+  const activeFill = isStudio ? 'bg-[#E8721A]/30' : isReach ? 'bg-[#5B29CC]/25' : 'bg-white/10'
 
   const [expanded, setExpanded] = useState(() => (typeof localStorage !== 'undefined' ? localStorage.getItem('simplr.rail') !== '0' : true))
   const [collapsed, setCollapsed] = useState<Set<string>>(() => {
@@ -145,7 +158,7 @@ export function Rail() {
       </div>
 
       {/* featured: Simplr AI (CRM only) */}
-      {!isReach && (
+      {!isReach && !isStudio && (
         <NavLink to="/ai" title={expanded ? undefined : 'Simplr AI'} className={({ isActive }) => classNames('group relative flex items-center mb-3 transition-all duration-150', expanded ? 'h-10 rounded-[10px] px-2.5 gap-3' : 'w-11 h-11 rounded-[12px] justify-center', isActive ? 'bg-accent-gradient text-white shadow-primary' : 'text-white bg-white/[0.06] hover:bg-white/10 ring-1 ring-inset ring-white/10')}>
           <Sparkle size={19} className="shrink-0" />
           {expanded && <span className="text-[13.5px] font-semibold flex-1 truncate">Simplr AI</span>}

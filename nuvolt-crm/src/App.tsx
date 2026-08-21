@@ -25,6 +25,7 @@ import { LinkedInInbox } from './pages/LinkedInInbox'
 import { ReachOverview, Finders, SolarFinder, Outreach, ReachAnalytics, ReachCampaigns, ReachSchedules, ReachAI } from './pages/reach'
 import { DesignStudio } from './pages/DesignStudio'
 import { Proposal } from './pages/Proposal'
+import { StudioOverview, ProposalsList, StudioAnalytics, StudioTemplates } from './pages/studio'
 
 export const router = createBrowserRouter([
   {
@@ -57,8 +58,13 @@ export const router = createBrowserRouter([
       { path: 'reach/ai', element: <ReachAI /> },
       { path: 'reach/finders', element: <Finders /> },
       { path: 'reach/solar', element: <SolarFinder /> },
-      { path: 'reach/design', element: <DesignStudio /> },
-      { path: 'reach/proposal/:id', element: <Proposal /> },
+      // Simplr Studio — design, proposals & analytics
+      { path: 'studio', element: <StudioOverview /> },
+      { path: 'studio/design', element: <DesignStudio /> },
+      { path: 'studio/proposal/:id', element: <Proposal /> },
+      { path: 'studio/proposals', element: <ProposalsList /> },
+      { path: 'studio/analytics', element: <StudioAnalytics /> },
+      { path: 'studio/templates', element: <StudioTemplates /> },
       { path: 'reach/prospects', element: <Prospector /> },
       { path: 'reach/outreach', element: <Outreach /> },
       { path: 'reach/campaigns', element: <ReachCampaigns /> },

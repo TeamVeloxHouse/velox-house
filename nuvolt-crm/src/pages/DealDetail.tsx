@@ -178,7 +178,7 @@ export function DealDetail() {
           {/* right */}
           <div className="flex flex-col gap-4">
             {deal.solar && (
-              <button onClick={() => nav(`/reach/proposal/${deal.id}`)} className="rounded-card p-4 text-left text-white transition-transform hover:-translate-y-0.5" style={{ background: 'linear-gradient(150deg,#1c3a72,#0c1b38)' }}>
+              <button onClick={() => nav(`/studio/proposal/${deal.id}`)} className="rounded-card p-4 text-left text-white transition-transform hover:-translate-y-0.5" style={{ background: 'linear-gradient(150deg,#1c3a72,#0c1b38)' }}>
                 <div className="flex items-center gap-1.5 text-[12px] font-semibold" style={{ color: '#F5B85C' }}><Sparkle size={13} /> Solar proposal</div>
                 <div className="text-[18px] font-bold mt-1">{deal.solar.systemKwp} kWp · {money(deal.solar.systemCost, { compact: true })}</div>
                 <div className="text-[12px] mt-0.5" style={{ color: '#8FB0FF' }}>{gbp(deal.solar.annualSavings)}/yr savings · open Sales Mode →</div>

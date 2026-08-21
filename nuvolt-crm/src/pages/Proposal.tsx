@@ -54,7 +54,7 @@ export function Proposal() {
   const [panels, setPanels] = useState<number | undefined>(undefined)
 
   if (!deal || !deal.solar) {
-    return (<><TopBar title="Proposal" /><PageBody><div className="text-muted-b">No proposal for this deal. <button onClick={() => nav('/reach/design')} className="text-accent font-semibold">Design one →</button></div></PageBody></>)
+    return (<><TopBar title="Proposal" /><PageBody><div className="text-muted-b">No proposal for this deal. <button onClick={() => nav('/studio/design')} className="text-accent font-semibold">Design one →</button></div></PageBody></>)
   }
 
   const base = deal.solar

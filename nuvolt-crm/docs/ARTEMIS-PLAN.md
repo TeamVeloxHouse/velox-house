@@ -19,8 +19,11 @@ multichannel outreach, marketing-site lead capture.
    creates a real solar deal. Model in `src/lib/solar.ts` (deterministic; swap `analyseRoof()` for
    Google Solar API roof segments + NREL PVWatts production behind a backend — same return shape).
    Still TODO to go LIVE: backend + Google Solar API key + real address geocoding.
-2. **Interactive proposal & Sales Mode** (M) — branded, live-editable proposal to close on;
-   e-sign + deposit; view tracking. Maps: extend Documents/quotes + Midas proposal gen → `/proposal/:id`.
+2. **Interactive proposal & Sales Mode** (M) — ✅ **BUILT** at `/reach/proposal/:id` (`pages/Proposal.tsx`):
+   Design Studio "Generate proposal" attaches the design to the deal and opens a presentable, live-editable
+   Sales Mode — roof render, panel tuner that recomputes + persists to the deal, cumulative-savings-vs-cost
+   chart w/ break-even, inclusions, price + finance teaser, Accept & sign → deal won. Deal detail links to it.
+   Still TODO: real e-sign + deposit (Stripe/Dropbox Sign), shareable public link + view tracking.
 3. **Integrated financing** (M) — cash/loan/lease/PPA, live monthly payment, soft-credit prequal.
    Data: GoodLeap/Sunlight/Dividend/Sungage (each a partnership integration).
 4. **Storefronts** (M) — embeddable widget: homeowner self-designs on contractor's site → pre-qualified
