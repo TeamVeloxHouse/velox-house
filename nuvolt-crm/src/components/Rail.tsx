@@ -44,6 +44,7 @@ const reachGroups: Group[] = [
   { label: 'Find', items: [
     { to: '/reach/finders', icon: Radar, label: 'Finders' },
     { to: '/reach/solar', icon: Sun, label: 'Solar finder' },
+    { to: '/reach/design', icon: Target, label: 'Design Studio' },
     { to: '/reach/prospects', icon: Search, label: 'B2B prospects' },
   ] },
   { label: 'Engage', items: [
