@@ -3,7 +3,7 @@ import { buildSeed } from './seed'
 import type { State, Deal, Person, Lead, Org, Activity, EmailMsg, Toast, ID } from './types'
 import type { StageName } from '../data/mock'
 
-const KEY = 'simplr.state.v10'
+const KEY = 'simplr.state.v11'
 let idc = 1000
 export const uid = (p = 'x') => `${p}${Date.now().toString(36)}${idc++}`
 
@@ -571,9 +571,9 @@ export function useActions() {
       return doc
     },
     updateDocument: (id: ID, patch: Partial<import('./types').CrmDocument>) => dispatch({ type: 'UPDATE_DOCUMENT', id, patch }),
-    addAgent: (name: string, desc: string) => {
-      dispatch({ type: 'ADD_AGENT', agent: { id: uid('ag'), name, desc, runs: 'Ready', on: true } })
-      toast(`Agent “${name}” created & switched on`)
+    addAgent: (name: string, desc: string, schedule = 'Realtime') => {
+      dispatch({ type: 'ADD_AGENT', agent: { id: uid('ag'), name, desc, runs: 'Ready', on: true, schedule } })
+      toast(`Agent “${name}” created${schedule ? ` · ${schedule}` : ''} & switched on`)
     },
     addLinkedInThread: (name: string, company: string, message: string) => {
       const thread: import('./types').LinkedInThread = {

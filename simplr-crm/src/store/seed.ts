@@ -77,11 +77,11 @@ export function buildSeed(): State {
   ]
 
   const agents: Agent[] = [
-    { id: 'ag1', name: 'Inbox triage', desc: 'Reads new email, links to deals, drafts replies', runs: '48 today', on: true },
-    { id: 'ag2', name: 'Deal-risk watch', desc: 'Flags stalls and suggests recovery plays', runs: '6 alerts', on: true },
-    { id: 'ag3', name: 'Meeting notetaker', desc: 'Joins calls, transcribes, updates cards', runs: '3 this week', on: true },
-    { id: 'ag4', name: 'Lead qualifier', desc: 'Scores & routes inbound leads', runs: '12 today', on: true },
-    { id: 'ag5', name: 'Follow-up chaser', desc: 'Nudges deals with no next step', runs: 'Paused', on: false },
+    { id: 'ag1', name: 'Inbox triage', desc: 'Reads new email, links to deals, drafts replies', runs: '48 today', on: true, schedule: 'Realtime' },
+    { id: 'ag2', name: 'Deal-risk watch', desc: 'Flags stalls and suggests recovery plays', runs: '6 alerts', on: true, schedule: 'Every hour' },
+    { id: 'ag3', name: 'Meeting notetaker', desc: 'Joins calls, transcribes, updates cards', runs: '3 this week', on: true, schedule: 'On meetings' },
+    { id: 'ag4', name: 'Lead qualifier', desc: 'Scores & routes inbound leads', runs: '12 today', on: true, schedule: 'Realtime' },
+    { id: 'ag5', name: 'Follow-up chaser', desc: 'Nudges deals with no next step', runs: 'Paused', on: false, schedule: 'Daily · 07:00' },
   ]
 
   const agentRuns: AgentRun[] = [
@@ -91,6 +91,13 @@ export function buildSeed(): State {
     { id: 'ar4', agent: 'Lead qualifier', kind: 'triage', title: 'Qualified & routed 3 new leads', detail: 'Scored Elena Voss (88), Callum Reed (91) and Sam Idris (82) as high-intent and assigned to Jordan.', when: hrs(5), status: 'approved' },
     { id: 'ar5', agent: 'Meeting notetaker', kind: 'summary', title: 'Summarised the Brightleaf kickoff', detail: 'Wrote notes + 3 action items to Brightleaf Farms after the recorded call.', when: days(1), status: 'approved', dealId: 'd3', personId: 'p5' },
     { id: 'ar6', agent: 'Inbox triage', kind: 'enrich', title: 'Enriched Cirrus Hosting', detail: 'Added firmographics (250 staff, £48M revenue) and 2 stakeholders from public sources.', when: days(1), status: 'approved', personId: 'p2' },
+    // more of today's activity, to make the log read like a real day
+    { id: 'ar7', agent: 'Inbox triage', kind: 'triage', title: 'Triaged 12 overnight emails', detail: 'Linked 9 to existing deals, flagged 2 as new leads, archived 1 newsletter.', when: mins(75), status: 'approved' },
+    { id: 'ar8', agent: 'Lead qualifier', kind: 'triage', title: 'Scored 5 new inbound leads', detail: 'Two above threshold (Aiko Retail 84, Dorset Homes 79) routed to Marcus.', when: mins(120), status: 'approved' },
+    { id: 'ar9', agent: 'Follow-up chaser', kind: 'draft', title: 'Drafted 3 re-engagement emails', detail: 'For deals with no next step in 5+ days. Awaiting your review before send.', when: mins(150), status: 'pending' },
+    { id: 'ar10', agent: 'Deal-risk watch', kind: 'risk', title: 'St. Aidan Hospital losing momentum', detail: 'No next step booked and last touch 8 days ago. Suggested a check-in call.', when: hrs(3), status: 'pending', dealId: 'd4', personId: 'p4' },
+    { id: 'ar11', agent: 'Inbox triage', kind: 'draft', title: 'Drafted reply to Elena Voss', detail: 'Re: site access — proposed Thursday morning for the survey.', when: hrs(4), status: 'dismissed', dealId: 'd1', personId: 'p1' },
+    { id: 'ar12', agent: 'Meeting notetaker', kind: 'summary', title: 'Summarised Northgate renewal check-in', detail: 'Notes + 2 action items written to the record after the recorded call.', when: hrs(6), status: 'approved', dealId: 'd6', personId: 'p6' },
   ]
 
   const connections: Connection[] = [

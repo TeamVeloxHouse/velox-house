@@ -320,6 +320,7 @@ export interface Agent {
   desc: string
   runs: string
   on: boolean
+  schedule?: string // e.g. 'Realtime', 'Every hour', 'Daily · 07:00'
 }
 
 export interface AgentRun {
