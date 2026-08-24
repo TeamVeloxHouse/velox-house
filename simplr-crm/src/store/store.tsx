@@ -56,6 +56,9 @@ type Action =
   | { type: 'UPDATE_STUDIO_CONFIG'; patch: Partial<import('./types').StudioConfig> }
   | { type: 'ADD_PROJECT'; project: import('./types').StudioProject }
   | { type: 'UPDATE_PROJECT'; id: ID; patch: Partial<import('./types').StudioProject> }
+  | { type: 'ADD_PLAYBOOK'; playbook: import('./types').Playbook }
+  | { type: 'UPDATE_PLAYBOOK'; id: ID; patch: Partial<import('./types').Playbook> }
+  | { type: 'REMOVE_PLAYBOOK'; id: ID }
   | { type: 'RESET' }
 
 function reducer(state: State, action: Action): State {
@@ -190,6 +193,12 @@ function reducer(state: State, action: Action): State {
       return { ...state, projects: [action.project, ...state.projects] }
     case 'UPDATE_PROJECT':
       return { ...state, projects: state.projects.map((p) => (p.id === action.id ? { ...p, ...action.patch } : p)) }
+    case 'ADD_PLAYBOOK':
+      return { ...state, playbooks: [action.playbook, ...state.playbooks] }
+    case 'UPDATE_PLAYBOOK':
+      return { ...state, playbooks: state.playbooks.map((p) => (p.id === action.id ? { ...p, ...action.patch, updatedAt: Date.now() } : p)) }
+    case 'REMOVE_PLAYBOOK':
+      return { ...state, playbooks: state.playbooks.filter((p) => p.id !== action.id) }
     case 'RESET':
       return buildSeed()
     default:
@@ -453,6 +462,14 @@ export function useActions() {
       if (!p) return
       dispatch({ type: 'UPDATE_PROJECT', id: projectId, patch: { invoices: (p.invoices ?? []).filter((i) => i.id !== invoiceId) } })
     },
+    // ── AI Context / playbooks (the agent "brain") ──
+    addPlaybook: (pb: Omit<import('./types').Playbook, 'id' | 'updatedAt'>) => {
+      dispatch({ type: 'ADD_PLAYBOOK', playbook: { ...pb, id: uid('pb'), updatedAt: Date.now() } })
+      toast(`Playbook added — ${pb.title}`)
+    },
+    updatePlaybook: (id: ID, patch: Partial<import('./types').Playbook>) => dispatch({ type: 'UPDATE_PLAYBOOK', id, patch }),
+    togglePlaybook: (id: ID, active: boolean) => dispatch({ type: 'UPDATE_PLAYBOOK', id, patch: { active } }),
+    removePlaybook: (id: ID, title: string) => { dispatch({ type: 'REMOVE_PLAYBOOK', id }); toast(`Playbook “${title}” removed`, 'warning') },
     addAdder: (name: string, amount: number) => {
       const cur = live.state?.studioConfig.adders ?? []
       dispatch({ type: 'UPDATE_STUDIO_CONFIG', patch: { adders: [...cur, { id: uid('ad'), name, amount }] } })

@@ -1,16 +1,17 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { TopBar } from '../components/TopBar'
 import { Button, Kpi, Chip, Avatar, type ChipTone } from '../components/ui'
 import { Table, Row, Cell } from '../components/Table'
-import { Plus, Check, Sparkle, Envelope, Video, Megaphone, Link as LinkIcon, Search } from '../components/icons'
-import { Modal, Field, Input, Select } from '../components/overlays'
+import { Plus, Check, Sparkle, Envelope, Video, Megaphone, Link as LinkIcon, Search, Robot, File as FileIcon } from '../components/icons'
+import { Modal, Field, Input, Textarea, Select } from '../components/overlays'
 import { BrandLogo } from '../components/BrandLogo'
 import { useActions, useState_ } from '../store/store'
-import type { CustomEntity, CustomField } from '../store/types'
+import type { CustomEntity, CustomField, Playbook, PlaybookScope } from '../store/types'
 import { classNames } from '../lib/format'
 
 const tree = [
   { group: 'Company', items: ['Users & permissions', 'Teams', 'Billing', 'Security'] },
+  { group: 'AI', items: ['AI Context'] },
   { group: 'Data', items: ['Pipelines & stages', 'Custom fields', 'Labels', 'Import & export'] },
   { group: 'Connected', items: ['Email & calendar', 'Marketplace', 'API & webhooks'] },
 ]
@@ -71,7 +72,9 @@ export function Settings() {
         </aside>
 
         <main className="flex-1 overflow-y-auto p-7 flex flex-col gap-5">
-          {active === 'Custom fields' ? (
+          {active === 'AI Context' ? (
+            <PlaybooksPanel />
+          ) : active === 'Custom fields' ? (
             <CustomFieldsPanel />
           ) : active === 'Email & calendar' ? (
             <ConnectionsPanel />
@@ -321,6 +324,125 @@ function AddWebhookModal({ open, onClose, onAdd }: { open: boolean; onClose: () 
     <Modal open={open} onClose={onClose} title="Add webhook" subtitle="Simplr will POST the event payload to this URL" footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" onClick={() => url.trim() && onAdd(url, events.split(',').map((s) => s.trim()).filter(Boolean))}>Add webhook</Button></>}>
       <Field label="Payload URL"><Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…" autoFocus /></Field>
       <Field label="Events (comma-separated)"><Input value={events} onChange={(e) => setEvents(e.target.value)} placeholder="deal.won, lead.created" /></Field>
+    </Modal>
+  )
+}
+
+/* ---------- AI Context (agent playbooks / "brain") ---------- */
+const SCOPE_META: Record<PlaybookScope, { label: string; hint: string }> = {
+  general: { label: 'General', hint: 'Every agent' },
+  sourcing: { label: 'Lead sourcing', hint: 'Find stage' },
+  outreach: { label: 'Outreach', hint: 'Engage stage' },
+  qualifying: { label: 'Qualifying', hint: 'Find / Engage' },
+  proposal: { label: 'Proposals', hint: 'Close stage' },
+  delivery: { label: 'Delivery', hint: 'Deliver stage' },
+}
+const SCOPE_ORDER: PlaybookScope[] = ['general', 'sourcing', 'qualifying', 'outreach', 'proposal', 'delivery']
+
+function Switch({ on, onClick }: { on: boolean; onClick: () => void }) {
+  return (
+    <button onClick={onClick} className={classNames('w-9 h-5 rounded-full relative transition-colors shrink-0', on ? 'bg-accent' : 'bg-border')} aria-pressed={on}>
+      <span className={classNames('absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-all', on ? 'left-[18px]' : 'left-0.5')} />
+    </button>
+  )
+}
+
+function PlaybooksPanel() {
+  const { playbooks } = useState_()
+  const act = useActions()
+  const [edit, setEdit] = useState<Playbook | 'new' | null>(null)
+  const activeCount = playbooks.filter((p) => p.active).length
+
+  return (
+    <>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <div className="text-[16px] font-bold text-ink">AI Context</div>
+          <div className="text-[13px] text-muted-b mt-0.5 max-w-[62ch]">Upload or write your company playbooks — how you qualify leads, your outreach tone, your proposal style. The agents read the relevant playbook before they act, so their work matches how <em>you</em> do it.</div>
+        </div>
+        <Button variant="primary" icon={<Plus size={16} />} onClick={() => setEdit('new')}>Add playbook</Button>
+      </div>
+
+      <div className="rounded-card bg-deep-panel p-4 flex items-start gap-3">
+        <span className="w-9 h-9 rounded-[10px] bg-white/10 text-white flex items-center justify-center shrink-0"><Robot size={18} /></span>
+        <div className="flex-1">
+          <div className="text-[13px] font-semibold text-white">{activeCount} active {activeCount === 1 ? 'playbook' : 'playbooks'} guiding your agents</div>
+          <div className="text-[12.5px] mt-1 leading-relaxed" style={{ color: '#C7D3F2' }}>Each playbook is scoped to a task. When an agent runs that task it applies the active playbooks for that scope — the same idea as giving a new hire your process docs on day one.</div>
+        </div>
+      </div>
+
+      {playbooks.length === 0 && <div className="text-[13px] text-muted-2 bg-surface border border-border rounded-card p-4 text-center">No playbooks yet. Add your first to start steering the agents.</div>}
+
+      {SCOPE_ORDER.filter((s) => playbooks.some((p) => p.scope === s)).map((scope) => (
+        <div key={scope}>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="eyebrow text-muted-3">{SCOPE_META[scope].label}</span>
+            <span className="text-[11px] text-muted-3">· {SCOPE_META[scope].hint}</span>
+          </div>
+          <div className="flex flex-col gap-2.5">
+            {playbooks.filter((p) => p.scope === scope).map((pb) => (
+              <div key={pb.id} className={classNames('bg-surface border rounded-card p-4', pb.active ? 'border-border' : 'border-dashed border-border opacity-70')}>
+                <div className="flex items-start gap-3">
+                  <span className="w-8 h-8 rounded-lg bg-accent-wash text-accent flex items-center justify-center shrink-0">{pb.source === 'uploaded' ? <FileIcon size={15} /> : <Sparkle size={15} />}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[13.5px] font-semibold text-ink-2">{pb.title}</span>
+                      {pb.source === 'uploaded' && pb.fileName && <span className="text-[11px] text-muted-3 font-mono truncate">{pb.fileName}</span>}
+                    </div>
+                    <div className="text-[12.5px] text-muted-b leading-snug mt-1 line-clamp-2">{pb.body}</div>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <Switch on={pb.active} onClick={() => act.togglePlaybook(pb.id, !pb.active)} />
+                    <button onClick={() => setEdit(pb)} className="text-[12px] text-accent font-semibold hover:underline">Edit</button>
+                    <button onClick={() => act.removePlaybook(pb.id, pb.title)} className="text-[12px] text-negative font-medium hover:underline">Remove</button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      {edit && <PlaybookModal initial={edit === 'new' ? null : edit} onClose={() => setEdit(null)} onSave={(data) => {
+        if (edit === 'new') act.addPlaybook({ ...data, active: true })
+        else act.updatePlaybook(edit.id, data)
+        setEdit(null)
+      }} />}
+    </>
+  )
+}
+
+function PlaybookModal({ initial, onClose, onSave }: { initial: Playbook | null; onClose: () => void; onSave: (data: { title: string; scope: PlaybookScope; body: string; source: 'written' | 'uploaded'; fileName?: string }) => void }) {
+  const [title, setTitle] = useState(initial?.title ?? '')
+  const [scope, setScope] = useState<PlaybookScope>(initial?.scope ?? 'general')
+  const [body, setBody] = useState(initial?.body ?? '')
+  const [fileName, setFileName] = useState<string | undefined>(initial?.fileName)
+  const [source, setSource] = useState<'written' | 'uploaded'>(initial?.source ?? 'written')
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const onFile = (f: File) => {
+    setFileName(f.name)
+    setSource('uploaded')
+    if (/\.(txt|md|csv)$/i.test(f.name)) { const r = new FileReader(); r.onload = () => setBody(String(r.result || '').slice(0, 8000)); r.readAsText(f) }
+    else if (!body) setBody(`Uploaded ${f.name}. Simplr AI will read this file when it runs ${SCOPE_META[scope].label.toLowerCase()} tasks.`)
+  }
+
+  return (
+    <Modal open onClose={onClose} title={initial ? 'Edit playbook' : 'Add playbook'} subtitle="Guidance the agents follow for a specific task" width={620}
+      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" onClick={() => title.trim() && body.trim() && onSave({ title: title.trim(), scope, body: body.trim(), source, fileName })}>{initial ? 'Save' : 'Add playbook'}</Button></>}>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Title"><Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Outreach tone & rules" autoFocus /></Field>
+        <Field label="Applies to"><Select value={scope} onChange={(e) => setScope(e.target.value as PlaybookScope)}>{SCOPE_ORDER.map((s) => <option key={s} value={s}>{SCOPE_META[s].label} · {SCOPE_META[s].hint}</option>)}</Select></Field>
+      </div>
+      <Field label="Playbook">
+        <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={7} placeholder="Write the guidance the agent should follow — rules, tone, checklists, do's and don'ts…" />
+      </Field>
+      <input ref={fileRef} type="file" accept=".txt,.md,.csv,.pdf,.docx" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.currentTarget.value = '' }} />
+      <div className="flex items-center gap-3">
+        <button onClick={() => fileRef.current?.click()} className="text-[13px] text-accent font-semibold flex items-center gap-1.5"><FileIcon size={14} /> Upload a document instead</button>
+        {fileName && <span className="text-[12px] text-muted-2 font-mono truncate">{fileName}</span>}
+      </div>
+      <div className="text-[11.5px] text-muted-3 leading-snug">Text files load inline; PDFs &amp; docs are stored and read by Simplr AI when the backend is connected.</div>
     </Modal>
   )
 }

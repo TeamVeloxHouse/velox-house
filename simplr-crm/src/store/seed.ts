@@ -288,6 +288,19 @@ export function buildSeed(): State {
     { id: 'in5', number: 'INV-PJ3-02', kind: 'final', amount: 15260, status: 'overdue', issuedDate: '14 Aug', dueDate: '21 Aug' },
   ]
 
+  const playbooks: import('./types').Playbook[] = [
+    { id: 'pb1', title: 'Ideal customer profile', scope: 'sourcing', source: 'written', active: true, updatedAt: days(20),
+      body: 'Target UK solar & renewables installers, 5–50 staff, MCS-certified, actively hiring installers or surveyors. Prioritise firms doing commercial + domestic. Avoid pure lead-gen resellers and single-person outfits.' },
+    { id: 'pb2', title: 'Outreach tone & rules', scope: 'outreach', source: 'written', active: true, updatedAt: days(12),
+      body: 'Warm, direct, no hype. Lead with a specific observation about their business. One clear ask (a 15-min call). Never mention price in a first touch. British spelling. Max 90 words. Always reference the research, never a generic template.' },
+    { id: 'pb3', title: 'Lead qualification checklist', scope: 'qualifying', source: 'written', active: true, updatedAt: days(8),
+      body: 'Qualified = (1) installs solar as a core service, (2) 5+ staff, (3) an identifiable decision-maker with contactable email, (4) a recent growth or hiring signal. Score fit 0–100 and always attach the "why now".' },
+    { id: 'pb4', title: 'Proposal style guide', scope: 'proposal', source: 'uploaded', fileName: 'Proposal-guidelines-2026.pdf', active: true, updatedAt: days(30),
+      body: 'Open with the customer\'s goal, not the company bio. Show savings before cost. Always include payback, 25-year saving and CO₂. Finance shown as monthly-from. Confident, plain English — no jargon, no pushy language.' },
+    { id: 'pb5', title: 'Install handover process', scope: 'delivery', source: 'written', active: false, updatedAt: days(45),
+      body: 'On PTO: issue MCS certificate + DNO confirmation, send the handover pack, book a 6-month service check, and trigger a referral ask 2 weeks after go-live once the customer has seen a bill.' },
+  ]
+
   const customFields: CustomField[] = [
     { id: 'cf1', entity: 'deal', label: 'Contract length', type: 'select', options: ['1 year', '2 years', '3 years', '5 years'] },
     { id: 'cf2', entity: 'deal', label: 'Region', type: 'text' },
@@ -297,5 +310,5 @@ export function buildSeed(): State {
   deals[0].custom = { cf1: '2 years', cf2: 'London' }
   people[1].custom = { cf3: 'linkedin.com/in/callumreed' }
 
-  return { deals, people, orgs, leads, activities, emails, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, linkedinThreads, enrolments, reachCampaigns, scheduledTasks, studioConfig, projects, customFields, toasts: [], railExpanded: true }
+  return { deals, people, orgs, leads, activities, emails, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, linkedinThreads, enrolments, reachCampaigns, scheduledTasks, studioConfig, projects, playbooks, customFields, toasts: [], railExpanded: true }
 }

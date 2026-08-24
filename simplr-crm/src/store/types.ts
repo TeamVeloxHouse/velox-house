@@ -93,6 +93,19 @@ export interface StudioConfig {
   currency: string
 }
 
+// AI Context — company playbooks that guide the agents on specific tasks (the "brain")
+export type PlaybookScope = 'general' | 'sourcing' | 'outreach' | 'qualifying' | 'proposal' | 'delivery'
+export interface Playbook {
+  id: ID
+  title: string
+  scope: PlaybookScope
+  body: string
+  source: 'written' | 'uploaded'
+  fileName?: string
+  active: boolean
+  updatedAt: number
+}
+
 export type CustomEntity = 'deal' | 'person' | 'org'
 export interface CustomField {
   id: ID
@@ -373,6 +386,7 @@ export interface State {
   scheduledTasks: ScheduledTask[]
   studioConfig: StudioConfig
   projects: StudioProject[]
+  playbooks: Playbook[]
   customFields: CustomField[]
   toasts: Toast[]
   railExpanded: boolean
