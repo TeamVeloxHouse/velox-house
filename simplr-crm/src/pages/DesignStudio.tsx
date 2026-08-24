@@ -6,48 +6,100 @@ import { Button } from '../components/ui'
 import { Sun, Sparkle, Building, Check } from '../components/icons'
 import { AiComposer } from '../components/AiChat'
 import { useActions, useState_ } from '../store/store'
-import { designFrom, analyseRoof, analyseRoofLive, gbp, type SolarDesign, type RoofAnalysis } from '../lib/solar'
+import { designFrom, analyseRoof, analyseRoofLive, gbp, PANEL_DIM, type SolarDesign, type RoofAnalysis, type RoofSegment } from '../lib/solar'
 
 type DMsg = { role: 'user' | 'ai'; text: string; steps?: { label: string; done: boolean }[] }
 
-export function RoofRender({ design }: { design: SolarDesign }) {
-  const cols = 8
-  const rows = Math.ceil(design.panels / cols)
-  const maxRows = Math.ceil(design.maxPanels / cols)
-  const pw = 30, ph = 20, gap = 3
-  const gridW = cols * (pw + gap)
-  const gridH = maxRows * (ph + gap)
-  const cells = []
-  for (let r = 0; r < maxRows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const idx = r * cols + c
-      if (idx >= design.maxPanels) continue
-      const filled = idx < design.panels
-      cells.push(
-        <rect key={idx} x={c * (pw + gap)} y={r * (ph + gap)} width={pw} height={ph} rx={2}
-          fill={filled ? '#1D4ED8' : 'none'} stroke={filled ? '#3B6BF5' : '#C3CBD8'} strokeWidth={filled ? 0.5 : 1}
-          strokeDasharray={filled ? undefined : '3 2'} opacity={filled ? 1 : 0.5} />,
-      )
-    }
+const IMG_W = 640, IMG_H = 400, ZOOM = 20
+const aspectColor = (irr: number) => (irr >= 0.92 ? '#1D4ED8' : irr >= 0.82 ? '#2E5AD8' : '#5B7FE0')
+
+/** Split the design's panels across roof planes, best aspect first (mirrors designFrom). */
+function allocate(design: SolarDesign): { seg: RoofSegment; count: number }[] {
+  const ordered = [...design.segments].sort((a, b) => b.irradiance - a.irradiance)
+  let left = design.panels
+  return ordered.map((seg) => {
+    const count = Math.min(left, seg.maxPanels)
+    left -= count
+    return { seg, count }
+  }).filter((s) => s.count > 0)
+}
+
+/** Pack `count` panels into a w×h rect at (x,y); returns panel <rect>s. */
+function packPanels(x: number, y: number, w: number, h: number, count: number, pw: number, ph: number, color: string, keyBase: string) {
+  const gap = Math.max(0.6, pw * 0.08)
+  const cols = Math.max(1, Math.floor((w + gap) / (pw + gap)))
+  const rects = []
+  for (let i = 0; i < count; i++) {
+    const r = Math.floor(i / cols), c = i % cols
+    const px = x + c * (pw + gap), py = y + r * (ph + gap)
+    if (py + ph > y + h + ph) break // ran out of vertical room
+    rects.push(<rect key={`${keyBase}-${i}`} x={px} y={py} width={pw} height={ph} rx={pw * 0.12} fill={color} stroke="#0b1220" strokeWidth={0.4} opacity={0.92} />)
   }
+  return rects
+}
+
+export function RoofRender({ design }: { design: SolarDesign }) {
+  const [imgOk, setImgOk] = useState(true)
+  const alloc = allocate(design)
+  const center = design.center
+  const hasImagery = !!center && imgOk
+  const geoPlaced = !!center && design.segments.some((s) => s.box)
+
+  // meters-per-pixel at this centre/zoom → panel size in logical px
+  const mpp = center ? (156543.03392 * Math.cos((center.lat * Math.PI) / 180)) / Math.pow(2, ZOOM) : 0.1
+  const pw = Math.max(6, PANEL_DIM.w / mpp), ph = Math.max(9, PANEL_DIM.h / mpp)
+  const toPx = (pt: { lat: number; lng: number }) => {
+    const scale = 256 * Math.pow(2, ZOOM)
+    const wx = ((pt.lng + 180) / 360) * scale
+    const s = Math.sin((pt.lat * Math.PI) / 180)
+    const wy = (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * scale
+    const cs = Math.sin((center!.lat * Math.PI) / 180)
+    const cwx = ((center!.lng + 180) / 360) * scale
+    const cwy = (0.5 - Math.log((1 + cs) / (1 - cs)) / (4 * Math.PI)) * scale
+    return { x: IMG_W / 2 + (wx - cwx), y: IMG_H / 2 + (wy - cwy) }
+  }
+
+  const panels: JSX.Element[] = []
+  if (geoPlaced) {
+    // Place panels inside each detected roof-segment box, on the real image.
+    for (const { seg, count } of alloc) {
+      if (!seg.box) continue
+      const a = toPx(seg.box.sw), b = toPx(seg.box.ne)
+      const x0 = Math.min(a.x, b.x), x1 = Math.max(a.x, b.x), y0 = Math.min(a.y, b.y), y1 = Math.max(a.y, b.y)
+      const inset = 3
+      panels.push(...packPanels(x0 + inset, y0 + inset, (x1 - x0) - inset * 2, (y1 - y0) - inset * 2, count, pw, ph, aspectColor(seg.irradiance), seg.id))
+    }
+  } else {
+    // Stylised: one tilted plane band per segment, panels packed on each.
+    const n = alloc.length || 1
+    const bandW = (IMG_W - 80) / n
+    alloc.forEach(({ seg, count }, i) => {
+      const bx = 40 + i * bandW
+      panels.push(<rect key={`bg-${seg.id}`} x={bx + 4} y={70} width={bandW - 12} height={IMG_H - 150} rx={6} fill="#38414f" opacity={0.9} />)
+      panels.push(...packPanels(bx + 14, 82, bandW - 32, IMG_H - 176, count, 15, 22, aspectColor(seg.irradiance), seg.id))
+    })
+  }
+
+  const imgSrc = center ? `/api/roof-image?lat=${center.lat}&lng=${center.lng}&z=${ZOOM}&size=${IMG_W}x${IMG_H}` : ''
+
   return (
-    <div className="rounded-card overflow-hidden relative" style={{ aspectRatio: '16/10', background: 'linear-gradient(180deg,#dbe9ff,#eef5ff)' }}>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <svg viewBox={`-20 -20 ${gridW + 40} ${gridH + 60}`} className="w-[86%]" style={{ filter: 'drop-shadow(0 12px 20px rgba(11,18,32,0.25))' }}>
-          <g transform="skewX(-16) translate(0 6)">
-            <rect x={-12} y={-12} width={gridW + 24} height={gridH + 24} rx={6} fill="#3a4657" />
-            <rect x={-12} y={-12} width={gridW + 24} height={gridH + 24} rx={6} fill="url(#roofsheen)" />
-            {cells}
-          </g>
-          <defs>
-            <linearGradient id="roofsheen" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#ffffff" stopOpacity="0.14" /><stop offset="1" stopColor="#000000" stopOpacity="0.12" />
-            </linearGradient>
-          </defs>
-        </svg>
+    <div className="rounded-card overflow-hidden relative" style={{ aspectRatio: `${IMG_W}/${IMG_H}`, background: 'linear-gradient(160deg,#43506a,#2b3446)' }}>
+      {hasImagery && (
+        <img src={imgSrc} alt="Roof satellite view" onError={() => setImgOk(false)} className="absolute inset-0 w-full h-full object-cover" />
+      )}
+      {!hasImagery && (
+        <div className="absolute inset-0" style={{ background: 'radial-gradient(120% 90% at 50% 20%, #566178, #333c4d 70%)' }}>
+          <div className="absolute left-1/2 top-[54px] -translate-x-1/2 rounded-md" style={{ width: '62%', height: '58%', background: 'linear-gradient(180deg,#4a5568,#3a4250)', boxShadow: '0 20px 40px -18px rgba(0,0,0,.6)' }} />
+        </div>
+      )}
+      <svg viewBox={`0 0 ${IMG_W} ${IMG_H}`} preserveAspectRatio="none" className="absolute inset-0 w-full h-full" style={{ filter: geoPlaced ? 'drop-shadow(0 2px 3px rgba(0,0,0,.4))' : 'none' }}>
+        {panels}
+      </svg>
+      <div className="absolute top-3 left-3 flex items-center gap-1.5 text-[11px] font-semibold text-white bg-black/45 px-2.5 py-1 rounded-full"><Sun size={13} /> {design.panels} panels · {alloc.length} plane{alloc.length === 1 ? '' : 's'}</div>
+      <div className="absolute bottom-3 right-3 text-[11px] font-semibold text-white bg-black/45 px-2.5 py-1 rounded-full">{design.systemKwp} kWp</div>
+      <div className="absolute bottom-3 left-3 text-[10px] font-semibold text-white px-2 py-1 rounded-full" style={{ background: hasImagery ? 'rgba(14,124,102,.8)' : 'rgba(0,0,0,.45)' }}>
+        {hasImagery ? (geoPlaced ? 'Live · Google imagery' : 'Live imagery') : 'Modelled — add Google Maps key for live imagery'}
       </div>
-      <div className="absolute top-3 left-3 flex items-center gap-1.5 text-[11px] font-semibold text-white bg-black/35 px-2.5 py-1 rounded-full"><Sun size={13} /> {design.panels} panels · {rows} rows</div>
-      <div className="absolute bottom-3 right-3 text-[11px] font-semibold text-white bg-black/35 px-2.5 py-1 rounded-full">{design.systemKwp} kWp</div>
     </div>
   )
 }

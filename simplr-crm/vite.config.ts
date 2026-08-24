@@ -2,6 +2,7 @@ import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { googleSolarAnalysis } from './server/solarProvider.mjs'
 import { pdlSearch } from './server/sourcingProvider.mjs'
+import { staticSatellite } from './server/roofImage.mjs'
 
 /** Dev-only backend for the Google Solar API — keeps the key server-side.
  *  Set GOOGLE_MAPS_API_KEY in .env (Solar API + Geocoding API enabled) to go live;
@@ -59,10 +60,29 @@ function sourcingApi(env: Record<string, string>): Plugin {
   }
 }
 
+/** Dev-only satellite-image proxy for the Design Studio roof view. */
+function roofImageApi(env: Record<string, string>): Plugin {
+  const key = env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || ''
+  return {
+    name: 'roof-image-api',
+    configureServer(server) {
+      server.middlewares.use('/api/roof-image', (req, res) => {
+        const u = new URL(req.url || '', 'http://localhost')
+        const lat = u.searchParams.get('lat'), lng = u.searchParams.get('lng')
+        const z = u.searchParams.get('z') || '20', size = u.searchParams.get('size') || '640x400'
+        if (!key || !lat || !lng) { res.statusCode = 404; return res.end() }
+        staticSatellite(lat, lng, z, size, key)
+          .then(({ buf, contentType }) => { res.setHeader('Content-Type', contentType); res.setHeader('Cache-Control', 'public, max-age=86400'); res.end(buf) })
+          .catch(() => { res.statusCode = 404; res.end() })
+      })
+    },
+  }
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   return {
-    plugins: [react(), solarApi(env), sourcingApi(env)],
+    plugins: [react(), solarApi(env), sourcingApi(env), roofImageApi(env)],
     server: { port: 3010 },
   }
 })

@@ -18,7 +18,13 @@
  */
 
 export type Occupancy = 'home_all_day' | 'in_half_day' | 'out_all_day'
-export type RoofSegment = { id: string; label: string; azimuth: string; pitch: number; maxPanels: number; irradiance: number }
+export type LatLng = { lat: number; lng: number }
+export type SegBox = { sw: LatLng; ne: LatLng }
+export type RoofSegment = {
+  id: string; label: string; azimuth: string; pitch: number; maxPanels: number; irradiance: number
+  azimuthDeg?: number // 0 = due south (model convention)
+  box?: SegBox // geographic bounding box of the plane (Google only) — enables on-image placement
+}
 export type RoofAnalysis = {
   segments: RoofSegment[]
   usableArea: number // m²
@@ -28,7 +34,10 @@ export type RoofAnalysis = {
   source: 'google' | 'model'
   region?: string // e.g. "South West England"
   shadeFactor?: number // SF, 0–1 (1 = unshaded)
+  center?: LatLng // building centre — used to fetch satellite imagery
 }
+// Physical panel dimensions (m) for on-roof placement — a standard 440W module.
+export const PANEL_DIM = { w: 1.13, h: 1.72 }
 export type SolarDesign = {
   address: string
   segments: RoofSegment[]
@@ -52,6 +61,7 @@ export type SolarDesign = {
   selfConsumptionPct?: number // 0–100, from MGD 003
   occupancy?: Occupancy
   annualDemand?: number // kWh/yr
+  center?: LatLng // building centre for satellite imagery
 }
 
 const PANEL_W = 440
@@ -204,6 +214,7 @@ export function analyseRoof(address: string): RoofAnalysis {
       pitch,
       maxPanels: Math.floor((area * 0.72) / PANEL_AREA),
       irradiance: orientationTiltFactor(ASPECT_AZIMUTH[az] ?? 0, pitch),
+      azimuthDeg: ASPECT_AZIMUTH[az] ?? 0,
     }
   })
   const usableArea = segments.reduce((a, s) => a + s.maxPanels * PANEL_AREA, 0)
@@ -259,7 +270,7 @@ export function designFrom(a: RoofAnalysis, address: string, panelOverride?: num
     address, segments, usableArea: Math.round(usableArea), panels, maxPanels, panelWatts,
     systemKwp: +systemKwp.toFixed(2), specificYield, annualProduction, annualSavings, billOffsetPct,
     systemCost, payback, lifetimeSavings, co2PerYear, source: a.source,
-    region: a.region, shadeFactor, selfConsumptionPct: Math.round(scRate * 100), occupancy, annualDemand,
+    region: a.region, shadeFactor, selfConsumptionPct: Math.round(scRate * 100), occupancy, annualDemand, center: a.center,
   }
 }
 

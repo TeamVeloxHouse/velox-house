@@ -74,6 +74,12 @@ export async function googleSolarAnalysis(address, key) {
       const share = area / totalArea
       const segMax = Math.round(maxPanels * share)
       assigned += segMax
+      const bb = s.boundingBox
+      const box = bb && bb.sw && bb.ne
+        ? { sw: { lat: bb.sw.latitude, lng: bb.sw.longitude }, ne: { lat: bb.ne.latitude, lng: bb.ne.longitude } }
+        : undefined
+      // Google azimuth is degrees from north; convert to model convention (0 = due south).
+      const azDeg = ((((s.azimuthDegrees || 180) - 180) % 360) + 360) % 360
       return {
         id: `s${i}`,
         label: `${aspectLabel(s.azimuthDegrees)}-facing plane`,
@@ -81,6 +87,8 @@ export async function googleSolarAnalysis(address, key) {
         pitch: Math.round(s.pitchDegrees || 30),
         maxPanels: segMax,
         irradiance: irradianceFactor(s.azimuthDegrees, s.pitchDegrees),
+        azimuthDeg: azDeg > 180 ? azDeg - 360 : azDeg,
+        box,
       }
     })
     .filter((s) => s.maxPanels > 0)
@@ -92,5 +100,6 @@ export async function googleSolarAnalysis(address, key) {
   if (!segments.length) throw new Error('no usable segments')
 
   const usableArea = Math.round(sp.maxArrayAreaMeters2 || totalArea)
-  return { segments, usableArea, specificYield, maxPanels, panelWatts, source: 'google' }
+  const center = sp.center ? { lat: sp.center.latitude, lng: sp.center.longitude } : { lat, lng }
+  return { segments, usableArea, specificYield, maxPanels, panelWatts, source: 'google', center }
 }
