@@ -67,7 +67,7 @@ export function Insights() {
           active={report}
           onSelect={setReport}
           top={
-            <button onClick={() => act.toast('Create dashboard or report (demo)', 'accent')} className="w-full h-9 rounded-control border border-border text-[13px] font-medium text-ink-3 flex items-center justify-center gap-1.5 hover:bg-control">
+            <button onClick={() => setBuilder(true)} className="w-full h-9 rounded-control border border-border text-[13px] font-medium text-ink-3 flex items-center justify-center gap-1.5 hover:bg-control">
               <Plus size={16} /> Create
             </button>
           }

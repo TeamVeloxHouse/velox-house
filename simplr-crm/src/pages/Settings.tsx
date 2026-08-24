@@ -42,7 +42,7 @@ export function Settings() {
         actions={
           <>
             <Button onClick={() => { if (confirm('Reset all demo data to its starting state?')) act.reset() }}>Reset demo data</Button>
-            <Button onClick={() => act.toast('Audit log (demo)', 'accent')}>Audit log</Button>
+            <Button onClick={() => act.toast('The audit trail records once actions run against a real backend', 'accent')}>Audit log</Button>
             <Button variant="primary" icon={<Plus size={16} />} onClick={() => setInvite(true)}>Invite user</Button>
           </>
         }
@@ -91,7 +91,7 @@ export function Settings() {
               </div>
               {active !== 'Users & permissions' && (
                 <div className="text-[13px] text-muted-b bg-surface border border-border rounded-card p-4">
-                  <b className="text-ink-2">{active}</b> — configured here. This panel is wired for demo; the users &amp; custom-fields panels are fully interactive.
+                  <b className="text-ink-2">{active}</b> — configured here. Users, AI Context, custom fields, connections, marketplace and API are fully interactive today; this panel finalises once the account backend is connected.
                 </div>
               )}
               <Table

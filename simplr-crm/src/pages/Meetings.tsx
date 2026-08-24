@@ -79,9 +79,9 @@ export function Meetings() {
             {active.status === 'live' ? (
               <Button variant="primary" color="#B01B4F" icon={<Waveform size={16} />} onClick={() => act.toast('Joined the call — recording', 'accent')}>Join · rec {active.duration}</Button>
             ) : active.status === 'upcoming' ? (
-              <Button variant="primary" icon={<Video size={16} />} onClick={() => act.toast('Joining meeting (demo)', 'accent')}>Join</Button>
+              <Button variant="primary" icon={<Video size={16} />} onClick={() => act.toast('Opens the meeting link once a calendar account is connected', 'accent')}>Join</Button>
             ) : (
-              <Button icon={<Play size={16} />} onClick={() => act.toast('Playing recording (demo)', 'accent')}>Play recording</Button>
+              <Button icon={<Play size={16} />} onClick={() => act.toast('Recording playback connects with the notetaker backend', 'accent')}>Play recording</Button>
             )}
           </div>
 

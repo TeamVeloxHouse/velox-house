@@ -28,7 +28,7 @@ export function Forecast() {
         actions={
           <>
             <Button>Roll-up: Team</Button>
-            <Button onClick={() => act.toast('Forecast history (demo)', 'accent')}>History</Button>
+            <Button onClick={() => act.toast('Historical snapshots need stored pipeline history (backend)', 'accent')}>History</Button>
             <Button variant="primary" onClick={() => act.toast('Forecast submitted — snapshot saved')}>Submit forecast</Button>
           </>
         }

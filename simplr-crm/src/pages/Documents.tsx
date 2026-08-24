@@ -122,7 +122,7 @@ export function Documents() {
               </div>
             </div>
             <div className="p-4 border-t border-border flex gap-2">
-              <Button className="flex-1 justify-center" onClick={() => act.toast('Quote downloaded (demo)')}>Download</Button>
+              <Button className="flex-1 justify-center" onClick={() => act.toast('PDF export connects with the document backend', 'accent')}>Download</Button>
               <Button className="flex-1 justify-center" onClick={() => act.toast('Quote duplicated')}>Duplicate</Button>
               <Button variant="primary" className="flex-1 justify-center" onClick={() => act.toast('Sent for e-signature to Callum Reed')}>Send for signature</Button>
             </div>
