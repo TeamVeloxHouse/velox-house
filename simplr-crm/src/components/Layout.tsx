@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom'
 import { Rail } from './Rail'
 import { CommandPalette } from './CommandPalette'
 import { AiAssistant } from './AiAssistant'
+import { Onboarding } from './Onboarding'
 import { Toaster } from './overlays'
 
 export function Layout() {
@@ -32,6 +33,7 @@ export function Layout() {
       </div>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <AiAssistant />
+      <Onboarding />
       <Toaster />
     </div>
   )

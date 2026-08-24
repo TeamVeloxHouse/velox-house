@@ -2,11 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   Grid, Bars, Bolt, Person, Building, Calendar, Envelope, Pie, Gear, ChevronRight, ChevronDown,
-  Box, Flow, Megaphone, Sparkle, Video, Robot, Target, Layers, File, Sun, Radar, Search, Send, Check, Clock, Dollar,
+  Box, Flow, Megaphone, Sparkle, Video, Robot, Target, Layers, File, Sun, Radar, Search, Send, Check, Clock, Dollar, Wrench,
 } from './icons'
 import { classNames } from '../lib/format'
+import { useState_ } from '../store/store'
+import type { FeatureKey } from '../store/types'
 
-type Item = { to: string; icon: (p: { size?: number; className?: string }) => JSX.Element; label: string; end?: boolean; badge?: number }
+type Item = { to: string; icon: (p: { size?: number; className?: string }) => JSX.Element; label: string; end?: boolean; badge?: number; feature?: FeatureKey }
 type Group = { label: string; items: Item[] }
 
 const crmGroups: Group[] = [
@@ -30,6 +32,9 @@ const crmGroups: Group[] = [
     { to: '/linkedin', icon: Person, label: 'LinkedIn' },
     { to: '/campaigns', icon: Megaphone, label: 'Campaigns' },
     { to: '/automation', icon: Layers, label: 'Automation' },
+  ] },
+  { label: 'Operations', items: [
+    { to: '/jobs', icon: Wrench, label: 'Jobs', feature: 'jobs' },
   ] },
   { label: 'Deliver', items: [
     { to: '/projects', icon: Flow, label: 'Projects' },
@@ -78,9 +83,9 @@ const studioGroups: Group[] = [
 ]
 
 const workspaces = [
-  { id: 'crm', name: 'Simplr CRM', desc: 'Pipeline & customers', to: '/', icon: Bars, grad: 'linear-gradient(180deg,#3B6BF5 0%,#1D4ED8 100%)' },
-  { id: 'reach', name: 'Simplr Reach', desc: 'Prospecting & outreach', to: '/reach', icon: Radar, grad: 'linear-gradient(180deg,#7C5CFF 0%,#5B29CC 100%)' },
-  { id: 'studio', name: 'Simplr Studio', desc: 'Design & proposals', to: '/studio', icon: Sun, grad: 'linear-gradient(180deg,#F5A623 0%,#E8721A 100%)' },
+  { id: 'crm', name: 'Simplr CRM', desc: 'Pipeline & customers', to: '/', icon: Bars, grad: 'linear-gradient(180deg,#3B6BF5 0%,#1D4ED8 100%)', feature: undefined as FeatureKey | undefined },
+  { id: 'reach', name: 'Simplr Reach', desc: 'Prospecting & outreach', to: '/reach', icon: Radar, grad: 'linear-gradient(180deg,#7C5CFF 0%,#5B29CC 100%)', feature: 'reach' as FeatureKey },
+  { id: 'studio', name: 'Simplr Studio', desc: 'Design & proposals', to: '/studio', icon: Sun, grad: 'linear-gradient(180deg,#F5A623 0%,#E8721A 100%)', feature: 'studio' as FeatureKey },
 ]
 
 function itemClasses(expanded: boolean, accent: string) {
@@ -101,10 +106,15 @@ function Tooltip({ label }: { label: string }) {
 export function Rail() {
   const location = useLocation()
   const nav = useNavigate()
+  const { features } = useState_()
   const isReach = location.pathname.startsWith('/reach')
   const isStudio = location.pathname.startsWith('/studio')
   const ws = isStudio ? workspaces[2] : isReach ? workspaces[1] : workspaces[0]
-  const groups = isStudio ? studioGroups : isReach ? reachGroups : crmGroups
+  // Trade profile decides which workspaces + nav items are switched on.
+  const availableWorkspaces = workspaces.filter((w) => !w.feature || features[w.feature])
+  const groups = (isStudio ? studioGroups : isReach ? reachGroups : crmGroups)
+    .map((g) => ({ ...g, items: g.items.filter((it) => !it.feature || features[it.feature]) }))
+    .filter((g) => g.items.length > 0)
   const activeFill = isStudio ? 'bg-[#E8721A]/30' : isReach ? 'bg-[#5B29CC]/25' : 'bg-white/10'
 
   const [expanded, setExpanded] = useState(() => (typeof localStorage !== 'undefined' ? localStorage.getItem('simplr.rail') !== '0' : true))
@@ -150,7 +160,7 @@ export function Rail() {
         {switcher && (
           <div className={classNames('absolute z-[60] mt-2 bg-surface rounded-overlay shadow-modal border border-border overflow-hidden', expanded ? 'left-0 right-0' : 'left-[52px] top-0 w-56')}>
             <div className="px-3 py-2 eyebrow text-muted-3 border-b border-divider">Switch workspace</div>
-            {workspaces.map((w) => {
+            {availableWorkspaces.map((w) => {
               const on = w.id === ws.id
               return (
                 <button key={w.id} onClick={() => { nav(w.to); setSwitcher(false) }} className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-control border-b border-divider last:border-0">

@@ -159,6 +159,58 @@ export interface CrmDocument {
   createdAt: number
 }
 
+// ── Trade profiles (the per-industry config layer) ──
+// One product, configured per trade. Selected at signup, editable in Settings.
+export type TradeKey = 'solar' | 'hvac' | 'roofing' | 'windows' | 'ev' | 'insulation' | 'general'
+// Modules that a trade profile can switch on/off for an account.
+export type FeatureKey = 'jobs' | 'studio' | 'reach' | 'compliance' | 'inventory'
+export type Features = Record<FeatureKey, boolean>
+
+// ── Jobs & Scheduling (the field-operations spine) ──
+export type JobKind = 'survey' | 'showroom' | 'install' | 'service' | 'remedial'
+export type JobStatus = 'unscheduled' | 'scheduled' | 'in-progress' | 'complete' | 'cancelled'
+export interface Engineer {
+  id: ID
+  name: string
+  skills: string // e.g. 'Lead installer · MCS' / 'Electrician' / 'Roofer'
+  color: string // hex, for the swimlane + card accents
+  initials: string
+}
+export interface Job {
+  id: ID
+  ref: string
+  kind: JobKind
+  title: string
+  customer: string
+  address: string
+  dealId?: ID
+  personId?: ID
+  crew: ID[] // engineer ids assigned
+  date?: string // ISO yyyy-mm-dd — undefined = unscheduled
+  start?: string // 'HH:MM'
+  durationMins: number
+  status: JobStatus
+  value?: number
+  notes?: string
+  createdAt: number
+}
+
+// A trade profile bundles the sensible defaults a given industry starts with.
+export interface TradeJobType { key: JobKind; label: string; defaultMins: number }
+export interface TradeProfile {
+  key: TradeKey
+  name: string
+  tagline: string
+  emoji: string
+  accent: string // hex
+  jobTypes: TradeJobType[]
+  surveyChecklist: string[]
+  compliance: string[]
+  productCategories: string[]
+  estimatorUnit: string // headline pricing unit, e.g. '£/kWp', '£/kW', '£/m²'
+  features: Features
+}
+
 export type CustomEntity = 'deal' | 'person' | 'org'
 export interface CustomField {
   id: ID
@@ -447,6 +499,12 @@ export interface State {
   documents: CrmDocument[]
   emailCampaigns: EmailCampaign[]
   customFields: CustomField[]
+  // Trade profile + field operations
+  activeTrade: TradeKey
+  features: Features
+  onboarded: boolean
+  engineers: Engineer[]
+  jobs: Job[]
   toasts: Toast[]
   railExpanded: boolean
 }

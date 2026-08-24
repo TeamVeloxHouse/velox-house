@@ -2,15 +2,16 @@ import { useState, useRef } from 'react'
 import { TopBar } from '../components/TopBar'
 import { Button, Kpi, Chip, Avatar, type ChipTone } from '../components/ui'
 import { Table, Row, Cell } from '../components/Table'
-import { Plus, Check, Sparkle, Envelope, Video, Megaphone, Link as LinkIcon, Search, Robot, File as FileIcon } from '../components/icons'
+import { Plus, Check, Sparkle, Envelope, Video, Megaphone, Link as LinkIcon, Search, Robot, File as FileIcon, Wrench, Sun, Radar, Box } from '../components/icons'
 import { Modal, Field, Input, Textarea, Select } from '../components/overlays'
 import { BrandLogo } from '../components/BrandLogo'
 import { useActions, useState_ } from '../store/store'
-import type { CustomEntity, CustomField, Playbook, PlaybookScope } from '../store/types'
+import type { CustomEntity, CustomField, Playbook, PlaybookScope, TradeKey, FeatureKey } from '../store/types'
+import { TRADE_PROFILES, tradeByKey } from '../lib/trades'
 import { classNames } from '../lib/format'
 
 const tree = [
-  { group: 'Company', items: ['Users & permissions', 'Teams', 'Billing', 'Security'] },
+  { group: 'Company', items: ['Users & permissions', 'Trade & modules', 'Teams', 'Billing', 'Security'] },
   { group: 'AI', items: ['AI Context'] },
   { group: 'Data', items: ['Pipelines & stages', 'Custom fields', 'Labels', 'Import & export'] },
   { group: 'Connected', items: ['Email & calendar', 'Marketplace', 'API & webhooks'] },
@@ -72,7 +73,9 @@ export function Settings() {
         </aside>
 
         <main className="flex-1 overflow-y-auto p-7 flex flex-col gap-5">
-          {active === 'AI Context' ? (
+          {active === 'Trade & modules' ? (
+            <TradeModulesPanel />
+          ) : active === 'AI Context' ? (
             <PlaybooksPanel />
           ) : active === 'Custom fields' ? (
             <CustomFieldsPanel />
@@ -516,5 +519,90 @@ function InviteModal({ open, onClose, onInvite }: { open: boolean; onClose: () =
         <Field label="Team"><Select value={team} onChange={(e) => setTeam(e.target.value)}><option>Enterprise</option><option>Mid-market</option><option>Ops</option></Select></Field>
       </div>
     </Modal>
+  )
+}
+
+const moduleMeta: { key: FeatureKey; icon: (p: { size?: number; className?: string }) => JSX.Element; label: string; desc: string }[] = [
+  { key: 'jobs', icon: Wrench, label: 'Jobs & scheduling', desc: 'Book surveys, showroom visits & installs against your crews' },
+  { key: 'studio', icon: Sun, label: 'Design studio', desc: 'Address → AI design → price (solar, battery & EV)' },
+  { key: 'reach', icon: Radar, label: 'Reach — find new work', desc: 'Prospecting & AI outreach to win more jobs' },
+  { key: 'compliance', icon: FileIcon, label: 'Compliance & certificates', desc: 'Per-job checklist for MCS, DNO, FENSA, Gas Safe…' },
+  { key: 'inventory', icon: Box, label: 'Stock & inventory', desc: 'Track stock and reserve materials against quotes' },
+]
+
+function TradeModulesPanel() {
+  const { activeTrade, features } = useState_()
+  const act = useActions()
+  const profile = tradeByKey(activeTrade)
+  return (
+    <>
+      <div className="rounded-card p-5 text-white relative overflow-hidden" style={{ background: 'linear-gradient(150deg,#1c3a72,#0c1b38)' }}>
+        <div className="flex items-center gap-4">
+          <span className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center text-[26px] shrink-0">{profile.emoji}</span>
+          <div className="flex-1">
+            <div className="text-[12px]" style={{ color: '#93A0B4' }}>Your trade profile</div>
+            <div className="text-[18px] font-bold">{profile.name}</div>
+            <div className="text-[12.5px]" style={{ color: '#c3ccdb' }}>{profile.tagline} · pricing in {profile.estimatorUnit}</div>
+          </div>
+          <label className="flex flex-col gap-1 items-end">
+            <span className="text-[11px]" style={{ color: '#93A0B4' }}>Change trade</span>
+            <select value={activeTrade} onChange={(e) => act.selectTrade(e.target.value as TradeKey, { ...tradeByKey(e.target.value as TradeKey).features })}
+              className="h-9 px-3 rounded-control bg-white/10 border border-white/20 text-white text-[13px] outline-none">
+              {TRADE_PROFILES.map((t) => (<option key={t.key} value={t.key} className="text-ink">{t.name}</option>))}
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div className="bg-surface border border-border rounded-card p-5">
+        <div className="text-[14px] font-semibold text-ink mb-1">Modules</div>
+        <div className="text-[12.5px] text-muted-b mb-3">Switched on to match {profile.name}. Turn anything on or off — nothing is locked, and changing trade resets these to sensible defaults.</div>
+        <div className="grid gap-2.5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
+          {moduleMeta.map((f) => {
+            const on = features[f.key]
+            return (
+              <button key={f.key} onClick={() => act.toggleFeature(f.key, on, f.label)}
+                className={classNames('flex items-start gap-3 rounded-card border p-3.5 text-left transition-colors', on ? 'border-border-blue bg-accent-wash-4' : 'border-border hover:bg-control')}>
+                <span className={classNames('w-9 h-9 rounded-lg flex items-center justify-center shrink-0', on ? 'bg-accent text-white' : 'bg-control text-muted-2')}><f.icon size={17} /></span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13.5px] font-semibold text-ink-2">{f.label}</div>
+                  <div className="text-[12px] text-muted-2 leading-snug">{f.desc}</div>
+                </div>
+                <span className={classNames('w-10 h-6 rounded-full flex items-center px-0.5 transition-colors shrink-0', on ? 'bg-accent justify-end' : 'bg-input-border justify-start')}><span className="w-5 h-5 rounded-full bg-white shadow" /></span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      <div className="grid gap-4" style={{ gridTemplateColumns: '1fr 1fr' }}>
+        <div className="bg-surface border border-border rounded-card p-5">
+          <div className="text-[13px] font-semibold text-ink mb-2.5">Job types</div>
+          <div className="flex flex-col gap-1.5">
+            {profile.jobTypes.map((j) => (
+              <div key={j.key} className="flex items-center justify-between text-[12.5px]"><span className="text-ink-3">{j.label}</span><span className="text-muted-2">{j.defaultMins % 60 === 0 ? `${j.defaultMins / 60}h` : `${(j.defaultMins / 60).toFixed(1)}h`}</span></div>
+            ))}
+          </div>
+        </div>
+        <div className="bg-surface border border-border rounded-card p-5">
+          <div className="text-[13px] font-semibold text-ink mb-2.5">Compliance checklist</div>
+          <div className="flex flex-wrap gap-1.5">
+            {profile.compliance.map((c) => (<span key={c} className="text-[11.5px] font-medium text-ink-3 bg-control rounded-md px-2 py-1">{c}</span>))}
+          </div>
+        </div>
+        <div className="bg-surface border border-border rounded-card p-5">
+          <div className="text-[13px] font-semibold text-ink mb-2.5">Survey template</div>
+          <div className="flex flex-wrap gap-1.5">
+            {profile.surveyChecklist.map((c) => (<span key={c} className="text-[11.5px] text-ink-3 bg-control rounded-md px-2 py-1">{c}</span>))}
+          </div>
+        </div>
+        <div className="bg-surface border border-border rounded-card p-5">
+          <div className="text-[13px] font-semibold text-ink mb-2.5">Product categories</div>
+          <div className="flex flex-wrap gap-1.5">
+            {profile.productCategories.map((c) => (<span key={c} className="text-[11.5px] text-ink-3 bg-control rounded-md px-2 py-1">{c}</span>))}
+          </div>
+        </div>
+      </div>
+    </>
   )
 }

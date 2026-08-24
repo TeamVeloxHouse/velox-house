@@ -1,11 +1,21 @@
 import { deals as mDeals, people as mPeople, orgs as mOrgs, leads as mLeads, products as mProducts } from '../data/mock'
-import type { State, Deal, Person, Activity, EmailMsg, Meeting, Agent, AgentRun, Connection, CustomField, Webhook, ApiKey, Integration, SocialPost, Sequence, Automation, LinkedInThread, Enrolment, ReachCampaign, ScheduledTask, StudioConfig, StudioProject } from './types'
+import type { State, Deal, Person, Activity, EmailMsg, Meeting, Agent, AgentRun, Connection, CustomField, Webhook, ApiKey, Integration, SocialPost, Sequence, Automation, LinkedInThread, Enrolment, ReachCampaign, ScheduledTask, StudioConfig, StudioProject, Engineer, Job } from './types'
 import { MILESTONES } from '../lib/delivery'
+import { tradeByKey } from '../lib/trades'
 
 const now = Date.now()
 const mins = (m: number) => now - m * 60_000
 const hrs = (h: number) => now - h * 3_600_000
 const days = (d: number) => now - d * 86_400_000
+// ISO date for the day `offset` days from today — keeps seeded jobs in the visible week.
+const isoDay = (offset: number) => {
+  const d = new Date()
+  d.setDate(d.getDate() + offset)
+  return d.toISOString().slice(0, 10)
+}
+// Monday-anchored offset so seeded jobs spread across the current working week.
+const dow = new Date().getDay() // 0=Sun..6=Sat
+const monOff = (weekday: number) => weekday - (dow === 0 ? 7 : dow) // weekday: 1=Mon..5=Fri
 
 function emailFor(name: string, org: string) {
   return `${name.split(' ')[0].toLowerCase()}@${org.split(' ')[0].toLowerCase().replace(/[^a-z]/g, '')}.com`
@@ -333,6 +343,29 @@ export function buildSeed(): State {
       body: 'On PTO: issue MCS certificate + DNO confirmation, send the handover pack, book a 6-month service check, and trigger a referral ask 2 weeks after go-live once the customer has seen a bill.' },
   ]
 
+  // ── Field operations: crew + a working-week schedule ──
+  const engineers: Engineer[] = [
+    { id: 'eng1', name: 'Ryan Cole', skills: 'Lead installer · MCS', color: '#1D4ED8', initials: 'RC' },
+    { id: 'eng2', name: 'Dev Sharma', skills: 'Electrician · Part P', color: '#0E9F6E', initials: 'DS' },
+    { id: 'eng3', name: 'Marek Nowak', skills: 'Installer · roofing', color: '#E8721A', initials: 'MN' },
+    { id: 'eng4', name: 'Chloe Adams', skills: 'Surveyor', color: '#7C5CFF', initials: 'CA' },
+  ]
+  const mkJob = (id: string, ref: string, kind: Job['kind'], title: string, customer: string, address: string, crew: string[], weekday: number, start: string, mins: number, status: Job['status'], extra: Partial<Job> = {}): Job => ({
+    id, ref, kind, title, customer, address, crew, date: isoDay(monOff(weekday)), start, durationMins: mins, status, createdAt: now, ...extra,
+  })
+  const jobs: Job[] = [
+    mkJob('job1', 'JOB-2041', 'survey', 'Site survey', 'Dana Kirk', '14 Brightleaf Way, Manchester', ['eng4'], 1, '09:30', 90, 'scheduled', { dealId: 'd3', personId: 'p5', value: 12450 }),
+    mkJob('job2', 'JOB-2042', 'install', 'Solar + battery install', 'Tom Reyes', 'Unit 4, Harbour Estate, Hull', ['eng1', 'eng2'], 1, '08:00', 480, 'scheduled', { value: 21800 }),
+    mkJob('job3', 'JOB-2043', 'showroom', 'Home consultation', 'Elena Voss', '8 Meridian Road, Leeds', ['eng4'], 2, '11:00', 60, 'scheduled', { dealId: 'd1', personId: 'p1' }),
+    mkJob('job4', 'JOB-2044', 'install', 'Panel install (10 panels)', 'Elena Voss', '8 Meridian Road, Leeds', ['eng1', 'eng3'], 3, '08:30', 420, 'scheduled', { value: 9200 }),
+    mkJob('job5', 'JOB-2045', 'service', 'Monitoring visit', 'Owen Pryce', '31 Victoria St, Rochdale', ['eng2'], 3, '14:00', 60, 'scheduled', { personId: 'p4' }),
+    mkJob('job6', 'JOB-2046', 'remedial', 'Inverter fault callback', 'Nadia Frost', 'Northgate Depot, Crewe', ['eng2'], 4, '10:00', 120, 'scheduled', { personId: 'p6' }),
+    mkJob('job7', 'JOB-2047', 'install', 'Battery retrofit', 'Callum Reed', 'Cirrus DC, Warrington', ['eng1', 'eng3'], 5, '08:00', 360, 'scheduled', { dealId: 'd9', personId: 'p2', value: 6400 }),
+    // Unassigned / unscheduled — the backlog the scheduler (and AI) fills
+    { id: 'job8', ref: 'JOB-2048', kind: 'survey', title: 'Site survey', customer: 'Owen Pryce', address: '31 Victoria St, Rochdale', crew: [], durationMins: 90, status: 'unscheduled', personId: 'p4', value: 7600, createdAt: now },
+    { id: 'job9', ref: 'JOB-2049', kind: 'showroom', title: 'Showroom appointment', customer: 'Sam Idris', address: 'Showroom — Deansgate', crew: [], durationMins: 60, status: 'unscheduled', personId: 'p3', createdAt: now },
+  ]
+
   const customFields: CustomField[] = [
     { id: 'cf1', entity: 'deal', label: 'Contract length', type: 'select', options: ['1 year', '2 years', '3 years', '5 years'] },
     { id: 'cf2', entity: 'deal', label: 'Region', type: 'text' },
@@ -342,5 +375,8 @@ export function buildSeed(): State {
   deals[0].custom = { cf1: '2 years', cf2: 'London' }
   people[1].custom = { cf3: 'linkedin.com/in/callumreed' }
 
-  return { deals, people, orgs, leads, activities, emails, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, linkedinThreads, enrolments, reachCampaigns, scheduledTasks, studioConfig, projects, playbooks, brandKit, docTemplates, brandDocs, products: mProducts, documents, emailCampaigns, customFields, toasts: [], railExpanded: true }
+  const activeTrade = 'solar' as const
+  const features = { ...tradeByKey(activeTrade).features }
+
+  return { deals, people, orgs, leads, activities, emails, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, linkedinThreads, enrolments, reachCampaigns, scheduledTasks, studioConfig, projects, playbooks, brandKit, docTemplates, brandDocs, products: mProducts, documents, emailCampaigns, customFields, activeTrade, features, onboarded: false, engineers, jobs, toasts: [], railExpanded: true }
 }

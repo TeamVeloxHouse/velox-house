@@ -275,3 +275,22 @@ export const Users = (p: IconProps) => (
     <path d="M3 20c0-3.3 2.7-5 6-5s6 1.7 6 5M16 5.2a3 3 0 0 1 0 5.8M21 20c0-2.6-1.5-4.2-4-4.7" />
   </Base>
 )
+export const Wrench = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M14.5 5.5a4 4 0 0 0-5.3 5.1L4 15.8a2 2 0 0 0 2.8 2.8l5.2-5.2a4 4 0 0 0 5.1-5.3l-2.4 2.4-2.3-.6-.6-2.3z" />
+  </Base>
+)
+export const Sliders = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h8M16 18h4" />
+    <circle cx="16" cy="6" r="2" />
+    <circle cx="8" cy="12" r="2" />
+    <circle cx="14" cy="18" r="2" />
+  </Base>
+)
+export const MapPin = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M12 21s-6.5-5.6-6.5-10.5A6.5 6.5 0 0 1 12 4a6.5 6.5 0 0 1 6.5 6.5C18.5 15.4 12 21 12 21z" />
+    <circle cx="12" cy="10.5" r="2.3" />
+  </Base>
+)

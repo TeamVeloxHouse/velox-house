@@ -12,6 +12,7 @@ import { Inbox } from './pages/Inbox'
 import { Insights } from './pages/Insights'
 import { Forecast } from './pages/Forecast'
 import { Products } from './pages/Products'
+import { Jobs } from './pages/Jobs'
 import { Projects } from './pages/Projects'
 import { Campaigns } from './pages/Campaigns'
 import { Automation } from './pages/Automation'
@@ -53,6 +54,7 @@ export const router = createBrowserRouter([
       { path: 'insights', element: <Insights /> },
       { path: 'forecast', element: <Forecast /> },
       { path: 'products', element: <Products /> },
+      { path: 'jobs', element: <Jobs /> },
       { path: 'projects', element: <Projects /> },
       { path: 'campaigns', element: <Campaigns /> },
       { path: 'automation', element: <Automation /> },

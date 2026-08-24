@@ -3,7 +3,7 @@ import { buildSeed } from './seed'
 import type { State, Deal, Person, Lead, Org, Activity, EmailMsg, Toast, ID } from './types'
 import type { StageName } from '../data/mock'
 
-const KEY = 'simplr.state.v9'
+const KEY = 'simplr.state.v10'
 let idc = 1000
 export const uid = (p = 'x') => `${p}${Date.now().toString(36)}${idc++}`
 
@@ -71,6 +71,12 @@ type Action =
   | { type: 'ADD_LITHREAD'; thread: import('./types').LinkedInThread }
   | { type: 'ADD_SEQSTEP'; seqId: ID; step: import('./types').SeqStep }
   | { type: 'ADD_EMAILCAMPAIGN'; campaign: import('./types').EmailCampaign }
+  | { type: 'SET_TRADE'; trade: import('./types').TradeKey; features: import('./types').Features }
+  | { type: 'SET_FEATURES'; patch: Partial<import('./types').Features> }
+  | { type: 'COMPLETE_ONBOARDING' }
+  | { type: 'ADD_JOB'; job: import('./types').Job }
+  | { type: 'UPDATE_JOB'; id: ID; patch: Partial<import('./types').Job> }
+  | { type: 'REMOVE_JOB'; id: ID }
   | { type: 'RESET' }
 
 function reducer(state: State, action: Action): State {
@@ -235,6 +241,18 @@ function reducer(state: State, action: Action): State {
       return { ...state, sequences: state.sequences.map((s) => (s.id === action.seqId ? { ...s, steps: [...s.steps, action.step] } : s)) }
     case 'ADD_EMAILCAMPAIGN':
       return { ...state, emailCampaigns: [action.campaign, ...state.emailCampaigns] }
+    case 'SET_TRADE':
+      return { ...state, activeTrade: action.trade, features: action.features }
+    case 'SET_FEATURES':
+      return { ...state, features: { ...state.features, ...action.patch } }
+    case 'COMPLETE_ONBOARDING':
+      return { ...state, onboarded: true }
+    case 'ADD_JOB':
+      return { ...state, jobs: [action.job, ...state.jobs] }
+    case 'UPDATE_JOB':
+      return { ...state, jobs: state.jobs.map((j) => (j.id === action.id ? { ...j, ...action.patch } : j)) }
+    case 'REMOVE_JOB':
+      return { ...state, jobs: state.jobs.filter((j) => j.id !== action.id) }
     case 'RESET':
       return buildSeed()
     default:
@@ -671,6 +689,42 @@ export function useActions() {
       dispatch({ type: 'ADVANCE_ENROLMENT', id: e.id, patch: { status: 'sent', stepIndex: Math.min(e.stepIndex + 1, e.totalSteps), nextDue: done ? 'Complete' : 'in 2 days' }, activity })
       toast(`${e.channel} step sent to ${e.name}`)
     },
+    // ── Trade profile + modules ──
+    selectTrade: (trade: import('./types').TradeKey, features: import('./types').Features, quiet = false) => {
+      dispatch({ type: 'SET_TRADE', trade, features })
+      if (!quiet) toast('Trade profile applied — your workspace is set up')
+    },
+    setFeatures: (patch: Partial<import('./types').Features>) => dispatch({ type: 'SET_FEATURES', patch }),
+    toggleFeature: (key: import('./types').FeatureKey, on: boolean, name: string) => {
+      dispatch({ type: 'SET_FEATURES', patch: { [key]: !on } })
+      toast(`${name} ${on ? 'switched off' : 'switched on'}`, on ? 'warning' : 'positive')
+    },
+    completeOnboarding: () => dispatch({ type: 'COMPLETE_ONBOARDING' }),
+
+    // ── Jobs & Scheduling ──
+    addJob: (partial: Partial<import('./types').Job> & { kind: import('./types').Job['kind']; title: string; customer: string }) => {
+      const n = (live.state?.jobs.length ?? 0) + 2050
+      const job: import('./types').Job = {
+        id: uid('job'), ref: `JOB-${n}`, address: partial.address ?? '', crew: partial.crew ?? [],
+        durationMins: partial.durationMins ?? 60, status: partial.date ? 'scheduled' : 'unscheduled', createdAt: Date.now(), ...partial,
+      }
+      dispatch({ type: 'ADD_JOB', job })
+      toast(`${job.ref} booked — ${job.title}`)
+      return job
+    },
+    updateJob: (id: ID, patch: Partial<import('./types').Job>) => dispatch({ type: 'UPDATE_JOB', id, patch }),
+    scheduleJob: (id: ID, date: string, start: string, crew: ID[]) =>
+      dispatch({ type: 'UPDATE_JOB', id, patch: { date, start, crew, status: 'scheduled' } }),
+    assignCrew: (id: ID, crew: ID[]) => dispatch({ type: 'UPDATE_JOB', id, patch: { crew } }),
+    setJobStatus: (job: import('./types').Job, status: import('./types').JobStatus) => {
+      dispatch({ type: 'UPDATE_JOB', id: job.id, patch: { status } })
+      if (status === 'complete' && job.dealId) {
+        dispatch({ type: 'ADD_ACTIVITY', activity: { id: uid('act'), type: 'change', subject: `${job.title} completed`, body: `${job.ref} · ${job.customer}`, dealId: job.dealId, personId: job.personId, done: true, who: 'Field team', createdAt: Date.now(), source: 'manual' } })
+      }
+      toast(status === 'complete' ? `${job.ref} marked complete` : `${job.ref} → ${status}`)
+    },
+    removeJob: (id: ID, ref: string) => { dispatch({ type: 'REMOVE_JOB', id }); toast(`${ref} removed`, 'warning') },
+
     reset: () => {
       dispatch({ type: 'RESET' })
       toast('Demo data reset')
