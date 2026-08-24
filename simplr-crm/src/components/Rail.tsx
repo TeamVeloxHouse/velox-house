@@ -68,6 +68,9 @@ const studioGroups: Group[] = [
     { to: '/studio/proposals', icon: Layers, label: 'Proposals' },
     { to: '/studio/pricing', icon: Dollar, label: 'Pricing & finance' },
   ] },
+  { label: 'Calculators', items: [
+    { to: '/studio/ev', icon: Bolt, label: 'EV charging' },
+  ] },
   { label: 'Deliver', items: [{ to: '/studio/delivery', icon: Flow, label: 'Delivery' }] },
   { label: 'Measure', items: [{ to: '/studio/analytics', icon: Pie, label: 'Analytics' }] },
 ]

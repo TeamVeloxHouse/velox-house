@@ -28,6 +28,7 @@ import { Proposal } from './pages/Proposal'
 import { StudioOverview, ProposalsList, StudioAnalytics, StudioTemplates } from './pages/studio'
 import { StudioPricing } from './pages/StudioPricing'
 import { Delivery, ProjectDetail } from './pages/Delivery'
+import { EvCalculator } from './pages/EvCalculator'
 
 export const router = createBrowserRouter([
   {
@@ -67,6 +68,7 @@ export const router = createBrowserRouter([
       { path: 'studio/proposals', element: <ProposalsList /> },
       { path: 'studio/analytics', element: <StudioAnalytics /> },
       { path: 'studio/pricing', element: <StudioPricing /> },
+      { path: 'studio/ev', element: <EvCalculator /> },
       { path: 'studio/delivery', element: <Delivery /> },
       { path: 'studio/delivery/:id', element: <ProjectDetail /> },
       { path: 'studio/templates', element: <StudioTemplates /> },
