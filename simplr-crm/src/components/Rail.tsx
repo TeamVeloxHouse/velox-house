@@ -63,6 +63,7 @@ const studioGroups: Group[] = [
   { label: 'Overview', items: [{ to: '/studio', icon: Grid, label: 'Overview', end: true }] },
   { label: 'Design', items: [
     { to: '/studio/design', icon: Sun, label: 'Design Studio' },
+    { to: '/studio/brand', icon: File, label: 'Brand & Documents' },
     { to: '/studio/templates', icon: File, label: 'Templates' },
   ] },
   { label: 'Sell', items: [

@@ -288,6 +288,22 @@ export function buildSeed(): State {
     { id: 'in5', number: 'INV-PJ3-02', kind: 'final', amount: 15260, status: 'overdue', issuedDate: '14 Aug', dueDate: '21 Aug' },
   ]
 
+  const brandKit: import('./types').BrandKit = {
+    company: 'Simplr Solar', primary: '#1D4ED8', accent: '#F5A623', font: 'Inter',
+    tone: 'Confident, warm and plain-English. Lead with the customer’s goal, show savings before cost, never pushy.',
+    logoName: 'logo-simplr-solar.svg',
+  }
+  const docTemplates: import('./types').DocTemplate[] = [
+    { id: 'dt1', name: 'Pitch deck', kind: 'deck', format: 'pptx', desc: '10–12 slide investor / sales deck — problem, solution, savings, proof, ask.' },
+    { id: 'dt2', name: 'Sales proposal', kind: 'proposal', format: 'pdf', desc: 'Customer-facing proposal — system, savings, finance, next steps.' },
+    { id: 'dt3', name: 'One-pager', kind: 'onepager', format: 'pdf', desc: 'Single-page overview to leave behind or attach to an email.' },
+    { id: 'dt4', name: 'Case study', kind: 'case-study', format: 'pdf', desc: 'A completed install told as a story — before, after, numbers.' },
+    { id: 'dt5', name: 'Cover letter', kind: 'letter', format: 'docx', desc: 'Branded letter to accompany a quote or contract.' },
+  ]
+  const brandDocs: import('./types').BrandDoc[] = [
+    { id: 'bd1', title: 'Brightleaf Way — Sales proposal', kind: 'proposal', format: 'pdf', source: 'template', createdAt: days(3) },
+  ]
+
   const playbooks: import('./types').Playbook[] = [
     { id: 'pb1', title: 'Ideal customer profile', scope: 'sourcing', source: 'written', active: true, updatedAt: days(20),
       body: 'Target UK solar & renewables installers, 5–50 staff, MCS-certified, actively hiring installers or surveyors. Prioritise firms doing commercial + domestic. Avoid pure lead-gen resellers and single-person outfits.' },
@@ -310,5 +326,5 @@ export function buildSeed(): State {
   deals[0].custom = { cf1: '2 years', cf2: 'London' }
   people[1].custom = { cf3: 'linkedin.com/in/callumreed' }
 
-  return { deals, people, orgs, leads, activities, emails, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, linkedinThreads, enrolments, reachCampaigns, scheduledTasks, studioConfig, projects, playbooks, customFields, toasts: [], railExpanded: true }
+  return { deals, people, orgs, leads, activities, emails, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, linkedinThreads, enrolments, reachCampaigns, scheduledTasks, studioConfig, projects, playbooks, brandKit, docTemplates, brandDocs, customFields, toasts: [], railExpanded: true }
 }

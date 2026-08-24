@@ -30,6 +30,7 @@ import { StudioPricing } from './pages/StudioPricing'
 import { Delivery, ProjectDetail } from './pages/Delivery'
 import { EvCalculator } from './pages/EvCalculator'
 import { PeopleFinder } from './pages/PeopleFinder'
+import { BrandDocuments } from './pages/BrandDocuments'
 
 export const router = createBrowserRouter([
   {
@@ -74,6 +75,7 @@ export const router = createBrowserRouter([
       { path: 'studio/delivery', element: <Delivery /> },
       { path: 'studio/delivery/:id', element: <ProjectDetail /> },
       { path: 'studio/templates', element: <StudioTemplates /> },
+      { path: 'studio/brand', element: <BrandDocuments /> },
       { path: 'reach/prospects', element: <Prospector /> },
       { path: 'reach/outreach', element: <Outreach /> },
       { path: 'reach/campaigns', element: <ReachCampaigns /> },

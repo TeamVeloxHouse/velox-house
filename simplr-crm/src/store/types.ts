@@ -93,6 +93,34 @@ export interface StudioConfig {
   currency: string
 }
 
+// Brand & Documents — a brand kit + templates that turn plain docs into branded collateral
+export interface BrandKit {
+  company: string
+  primary: string // hex
+  accent: string // hex
+  font: string
+  tone: string
+  logoName?: string
+}
+export type DocKind = 'deck' | 'proposal' | 'onepager' | 'case-study' | 'letter'
+export type DocFormat = 'pptx' | 'docx' | 'pdf' | 'html'
+export interface DocTemplate {
+  id: ID
+  name: string
+  kind: DocKind
+  format: DocFormat
+  desc: string
+}
+export interface BrandDoc {
+  id: ID
+  title: string
+  kind: DocKind
+  format: DocFormat
+  source: 'template' | 'upload'
+  sourceName?: string
+  createdAt: number
+}
+
 // AI Context — company playbooks that guide the agents on specific tasks (the "brain")
 export type PlaybookScope = 'general' | 'sourcing' | 'outreach' | 'qualifying' | 'proposal' | 'delivery'
 export interface Playbook {
@@ -387,6 +415,9 @@ export interface State {
   studioConfig: StudioConfig
   projects: StudioProject[]
   playbooks: Playbook[]
+  brandKit: BrandKit
+  docTemplates: DocTemplate[]
+  brandDocs: BrandDoc[]
   customFields: CustomField[]
   toasts: Toast[]
   railExpanded: boolean

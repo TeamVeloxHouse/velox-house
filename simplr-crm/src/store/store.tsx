@@ -59,6 +59,9 @@ type Action =
   | { type: 'ADD_PLAYBOOK'; playbook: import('./types').Playbook }
   | { type: 'UPDATE_PLAYBOOK'; id: ID; patch: Partial<import('./types').Playbook> }
   | { type: 'REMOVE_PLAYBOOK'; id: ID }
+  | { type: 'UPDATE_BRANDKIT'; patch: Partial<import('./types').BrandKit> }
+  | { type: 'ADD_BRANDDOC'; doc: import('./types').BrandDoc }
+  | { type: 'REMOVE_BRANDDOC'; id: ID }
   | { type: 'RESET' }
 
 function reducer(state: State, action: Action): State {
@@ -199,6 +202,12 @@ function reducer(state: State, action: Action): State {
       return { ...state, playbooks: state.playbooks.map((p) => (p.id === action.id ? { ...p, ...action.patch, updatedAt: Date.now() } : p)) }
     case 'REMOVE_PLAYBOOK':
       return { ...state, playbooks: state.playbooks.filter((p) => p.id !== action.id) }
+    case 'UPDATE_BRANDKIT':
+      return { ...state, brandKit: { ...state.brandKit, ...action.patch } }
+    case 'ADD_BRANDDOC':
+      return { ...state, brandDocs: [action.doc, ...state.brandDocs] }
+    case 'REMOVE_BRANDDOC':
+      return { ...state, brandDocs: state.brandDocs.filter((d) => d.id !== action.id) }
     case 'RESET':
       return buildSeed()
     default:
@@ -470,6 +479,15 @@ export function useActions() {
     updatePlaybook: (id: ID, patch: Partial<import('./types').Playbook>) => dispatch({ type: 'UPDATE_PLAYBOOK', id, patch }),
     togglePlaybook: (id: ID, active: boolean) => dispatch({ type: 'UPDATE_PLAYBOOK', id, patch: { active } }),
     removePlaybook: (id: ID, title: string) => { dispatch({ type: 'REMOVE_PLAYBOOK', id }); toast(`Playbook “${title}” removed`, 'warning') },
+    // ── Brand & Documents ──
+    updateBrandKit: (patch: Partial<import('./types').BrandKit>) => dispatch({ type: 'UPDATE_BRANDKIT', patch }),
+    addBrandDoc: (doc: Omit<import('./types').BrandDoc, 'id' | 'createdAt'>) => {
+      const full: import('./types').BrandDoc = { ...doc, id: uid('bd'), createdAt: Date.now() }
+      dispatch({ type: 'ADD_BRANDDOC', doc: full })
+      toast(`${full.title} — generated, branded`)
+      return full
+    },
+    removeBrandDoc: (id: ID) => dispatch({ type: 'REMOVE_BRANDDOC', id }),
     addAdder: (name: string, amount: number) => {
       const cur = live.state?.studioConfig.adders ?? []
       dispatch({ type: 'UPDATE_STUDIO_CONFIG', patch: { adders: [...cur, { id: uid('ad'), name, amount }] } })
