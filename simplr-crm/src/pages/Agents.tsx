@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { TopBar } from '../components/TopBar'
 import { PageBody } from '../components/Page'
 import { Button, Chip, Kpi } from '../components/ui'
 import { Robot, Sparkle, Check, Envelope, Task, Bolt, Building, Note } from '../components/icons'
+import { Modal, Field, Input, Textarea } from '../components/overlays'
 import { useState_, useActions } from '../store/store'
 import type { AgentRun } from '../store/types'
 import { classNames } from '../lib/format'
@@ -13,6 +15,7 @@ export function Agents() {
   const nav = useNavigate()
   const { agents, agentRuns } = useState_()
   const act = useActions()
+  const [buildOpen, setBuildOpen] = useState(false)
 
   const pending = agentRuns.filter((r) => r.status === 'pending').sort((a, b) => b.when - a.when)
   const history = agentRuns.filter((r) => r.status !== 'pending').sort((a, b) => b.when - a.when)
@@ -22,8 +25,9 @@ export function Agents() {
       <TopBar
         title="Agents"
         crumbs={['Autonomous workforce']}
-        actions={<><Button icon={<Sparkle size={16} />} onClick={() => act.toast('Agent builder (demo)', 'accent')}>Build agent</Button></>}
+        actions={<><Button icon={<Sparkle size={16} />} onClick={() => setBuildOpen(true)}>Build agent</Button></>}
       />
+      <BuildAgentModal open={buildOpen} onClose={() => setBuildOpen(false)} />
       <PageBody>
         <div className="grid grid-cols-4 gap-4">
           <Kpi variant="deep" label="Active agents" value={String(agents.filter((a) => a.on).length)} delta={`${agents.length} configured`} />
@@ -117,6 +121,33 @@ export function Agents() {
         </div>
       </PageBody>
     </>
+  )
+}
+
+const AGENT_PRESETS = [
+  { name: 'Follow-up writer', desc: 'Drafts a personalised follow-up when a deal goes quiet for 5 days.' },
+  { name: 'Lead qualifier', desc: 'Scores and researches new leads, then routes the good ones to you.' },
+  { name: 'Risk watcher', desc: 'Flags deals losing momentum and suggests the next best action.' },
+  { name: 'Meeting summariser', desc: 'Turns every recorded call into notes + action items on the record.' },
+]
+function BuildAgentModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const act = useActions()
+  const [name, setName] = useState('')
+  const [desc, setDesc] = useState('')
+  const reset = () => { setName(''); setDesc('') }
+  return (
+    <Modal open={open} onClose={onClose} title="Build an agent" subtitle="Give it a job — it runs it, and checks in with you"
+      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" onClick={() => { if (name.trim()) { act.addAgent(name.trim(), desc || 'Custom agent'); reset(); onClose() } }}>Create agent</Button></>}>
+      <Field label="Start from a preset">
+        <div className="flex flex-wrap gap-2">
+          {AGENT_PRESETS.map((p) => (
+            <button key={p.name} onClick={() => { setName(p.name); setDesc(p.desc) }} className="text-[12px] px-2.5 py-1.5 rounded-lg border border-border text-ink-3 hover:border-accent hover:text-accent">{p.name}</button>
+          ))}
+        </div>
+      </Field>
+      <Field label="Agent name"><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Follow-up writer" autoFocus /></Field>
+      <Field label="What should it do?"><Textarea rows={3} value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Draft a follow-up when a deal goes quiet…" /></Field>
+    </Modal>
   )
 }
 

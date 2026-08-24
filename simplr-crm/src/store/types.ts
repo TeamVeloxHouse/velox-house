@@ -134,6 +134,19 @@ export interface Playbook {
   updatedAt: number
 }
 
+export type CampaignStatus = 'Sending' | 'Live' | 'Complete' | 'Draft'
+export interface EmailCampaign {
+  id: ID
+  name: string
+  type: string
+  sent: number
+  opens: number
+  clicks: number
+  deals: number
+  status: CampaignStatus
+  createdAt: number
+}
+
 export type DocumentStatus = 'Draft' | 'Sent' | 'Viewed' | 'Signed' | 'Expired'
 export interface CrmDocument {
   id: ID
@@ -432,6 +445,7 @@ export interface State {
   brandDocs: BrandDoc[]
   products: import('../data/mock').Product[]
   documents: CrmDocument[]
+  emailCampaigns: EmailCampaign[]
   customFields: CustomField[]
   toasts: Toast[]
   railExpanded: boolean

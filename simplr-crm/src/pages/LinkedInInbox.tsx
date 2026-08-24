@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { TopBar } from '../components/TopBar'
 import { Button, Segmented, Avatar, Chip } from '../components/ui'
 import { Person, Send, Check, Sparkle, Plus } from '../components/icons'
+import { Modal, Field, Input, Textarea } from '../components/overlays'
 import { useState_, useActions } from '../store/store'
 import { classNames } from '../lib/format'
 
@@ -15,6 +16,7 @@ export function LinkedInInbox() {
   const [view, setView] = useState('All')
   const [sel, setSel] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
+  const [compose, setCompose] = useState(false)
 
   const list = linkedinThreads
     .filter((t) => (view === 'Unread' ? t.status === 'unread' : view === 'Requests' ? t.kind === 'connection' : view === 'Accepted' ? t.status === 'accepted' : true))
@@ -28,8 +30,9 @@ export function LinkedInInbox() {
         title="LinkedIn"
         crumbs={['Social selling']}
         center={<Segmented options={['All', 'Unread', 'Requests', 'Accepted']} value={view} onChange={setView} />}
-        actions={<><Button icon={<Person size={16} />} onClick={() => act.toast('Find people on LinkedIn (demo)', 'accent')}>Find people</Button><Button variant="primary" icon={<Plus size={16} />} onClick={() => act.toast('New message (demo)', 'accent')}>Message</Button></>}
+        actions={<><Button icon={<Person size={16} />} onClick={() => nav('/reach/people-finder')}>Find people</Button><Button variant="primary" icon={<Plus size={16} />} onClick={() => setCompose(true)}>Message</Button></>}
       />
+      <ComposeLiModal open={compose} onClose={() => setCompose(false)} onSend={(name, company, msg) => { const t = act.addLinkedInThread(name, company, msg); setSel(t.id); setCompose(false) }} />
       <div className="flex-1 flex min-h-0">
         {/* list */}
         <div className="w-[380px] shrink-0 bg-surface border-r border-border overflow-y-auto">
@@ -96,5 +99,22 @@ export function LinkedInInbox() {
         </main>
       </div>
     </>
+  )
+}
+
+function ComposeLiModal({ open, onClose, onSend }: { open: boolean; onClose: () => void; onSend: (name: string, company: string, msg: string) => void }) {
+  const [name, setName] = useState('')
+  const [company, setCompany] = useState('')
+  const [msg, setMsg] = useState('')
+  const reset = () => { setName(''); setCompany(''); setMsg('') }
+  return (
+    <Modal open={open} onClose={onClose} title="New LinkedIn message" subtitle="Drafts a thread — sends when your LinkedIn account is connected"
+      footer={<><Button icon={<Sparkle size={15} />} onClick={() => setMsg(`Hi ${name || 'there'}, I came across ${company || 'your company'} and loved what you're building. Would a quick chat about how we help teams like yours be useful?`)}>Draft with AI</Button><Button variant="primary" icon={<Send size={15} />} onClick={() => { if (name.trim() && msg.trim()) { onSend(name.trim(), company || '—', msg.trim()); reset() } }}>Save draft</Button></>}>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="To"><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" autoFocus /></Field>
+        <Field label="Company"><Input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Company" /></Field>
+      </div>
+      <Field label="Message"><Textarea rows={4} value={msg} onChange={(e) => setMsg(e.target.value)} placeholder="Write your message…" /></Field>
+    </Modal>
   )
 }

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { TopBar } from '../components/TopBar'
 import { Button, Segmented, Kpi, Avatar } from '../components/ui'
 import { Table, Row, Cell } from '../components/Table'
-import { Modal, Field, Input } from '../components/overlays'
+import { Modal, Field, Input, Textarea } from '../components/overlays'
 import { Plus, Download, Check, ArrowUpRight } from '../components/icons'
 import { ScorePill } from '../components/ai-widgets'
 import { leadScore } from '../lib/intelligence'
@@ -16,6 +16,7 @@ export function Leads() {
   const [view, setView] = useState('Inbox')
   const [sel, setSel] = useState<Set<string>>(new Set())
   const [showNew, setShowNew] = useState(false)
+  const [showImport, setShowImport] = useState(false)
   const template = '28px 2fr 1.5fr 1fr 1fr 1fr 0.8fr 0.6fr'
 
   const visible = leads.filter((l) => (view === 'Inbox' ? !l.archived : l.archived))
@@ -45,8 +46,9 @@ export function Leads() {
       <TopBar
         title="Leads"
         center={<Segmented options={['Inbox', 'Archived']} value={view} onChange={setView} />}
-        actions={<><Button icon={<Download size={16} />} onClick={() => act.toast('Import started — 0 rows (demo)', 'accent')}>Import</Button><Button variant="primary" icon={<Plus size={16} />} onClick={() => setShowNew(true)}>Add lead</Button></>}
+        actions={<><Button icon={<Download size={16} />} onClick={() => setShowImport(true)}>Import</Button><Button variant="primary" icon={<Plus size={16} />} onClick={() => setShowNew(true)}>Add lead</Button></>}
       />
+      <ImportLeadsModal open={showImport} onClose={() => setShowImport(false)} />
       <div className="flex-1 flex min-h-0">
         <aside className="w-[212px] shrink-0 bg-surface border-r border-border p-4 overflow-y-auto flex flex-col gap-5">
           <div>
@@ -134,6 +136,20 @@ function NewLeadModal({ open, onClose, onCreate }: { open: boolean; onClose: () 
         <Field label="Role"><Input value={role} onChange={(e) => setRole(e.target.value)} placeholder="Job title" /></Field>
         <Field label="Score"><Input type="number" value={score} onChange={(e) => setScore(e.target.value)} /></Field>
       </div>
+    </Modal>
+  )
+}
+
+function ImportLeadsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const act = useActions()
+  const [text, setText] = useState('')
+  const rows = text.split('\n').map((l) => l.split(/[,\t]/).map((c) => c.trim())).filter((c) => c[0])
+  const parsed = rows.map((c) => ({ name: c[0], company: c[1] || '—', role: c[2] || '', score: 65 }))
+  return (
+    <Modal open={open} onClose={onClose} title="Import leads" subtitle="Paste rows as: Name, Company, Role — one per line"
+      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" onClick={() => { if (parsed.length) { act.bulkAddLeads(parsed); act.toast(`Imported ${parsed.length} lead${parsed.length === 1 ? '' : 's'}`); setText(''); onClose() } }}>Import {parsed.length || ''} lead{parsed.length === 1 ? '' : 's'}</Button></>}>
+      <Field label="Paste your list"><Textarea rows={7} value={text} onChange={(e) => setText(e.target.value)} placeholder={'Jane Smith, Acme Solar, Director\nTom Reyes, Sunhill Renewables, Ops Manager'} autoFocus /></Field>
+      <div className="text-[12px] text-muted-2">{parsed.length} row{parsed.length === 1 ? '' : 's'} detected. CSV file upload &amp; column mapping connect with the import backend.</div>
     </Modal>
   )
 }

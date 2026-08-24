@@ -288,6 +288,14 @@ export function buildSeed(): State {
     { id: 'in5', number: 'INV-PJ3-02', kind: 'final', amount: 15260, status: 'overdue', issuedDate: '14 Aug', dueDate: '21 Aug' },
   ]
 
+  const emailCampaigns: import('./types').EmailCampaign[] = [
+    { id: 'ec1', name: 'Q3 Renewables outreach', type: 'Sequence', sent: 480, opens: 62, clicks: 18, deals: 9, status: 'Sending', createdAt: days(4) },
+    { id: 'ec2', name: 'Data-centre resilience', type: 'Email', sent: 1240, opens: 48, clicks: 12, deals: 14, status: 'Live', createdAt: days(12) },
+    { id: 'ec3', name: 'Grid webinar invite', type: 'Email', sent: 890, opens: 55, clicks: 21, deals: 6, status: 'Complete', createdAt: days(25) },
+    { id: 'ec4', name: 'EV fleet nurture', type: 'Sequence', sent: 0, opens: 0, clicks: 0, deals: 0, status: 'Draft', createdAt: days(1) },
+    { id: 'ec5', name: 'Site survey follow-up', type: 'Form', sent: 210, opens: 71, clicks: 34, deals: 4, status: 'Live', createdAt: days(8) },
+  ]
+
   const documents: import('./types').CrmDocument[] = [
     { id: 'doc1', ref: 'QUO-1042', deal: 'UPS refresh', value: 415000, status: 'Viewed', views: 6, sent: '2h ago', createdAt: days(1) },
     { id: 'doc2', ref: 'QUO-1041', deal: 'Campus microgrid', value: 268000, status: 'Sent', views: 1, sent: 'Yesterday', createdAt: days(2) },
@@ -334,5 +342,5 @@ export function buildSeed(): State {
   deals[0].custom = { cf1: '2 years', cf2: 'London' }
   people[1].custom = { cf3: 'linkedin.com/in/callumreed' }
 
-  return { deals, people, orgs, leads, activities, emails, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, linkedinThreads, enrolments, reachCampaigns, scheduledTasks, studioConfig, projects, playbooks, brandKit, docTemplates, brandDocs, products: mProducts, documents, customFields, toasts: [], railExpanded: true }
+  return { deals, people, orgs, leads, activities, emails, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, linkedinThreads, enrolments, reachCampaigns, scheduledTasks, studioConfig, projects, playbooks, brandKit, docTemplates, brandDocs, products: mProducts, documents, emailCampaigns, customFields, toasts: [], railExpanded: true }
 }

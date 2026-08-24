@@ -4,7 +4,7 @@ import { PageBody } from '../components/Page'
 import { Button, Segmented, Kpi, Chip, type ChipTone } from '../components/ui'
 import { Table, Row, Cell } from '../components/Table'
 import { Plus, Users, Megaphone, Sparkle, Send, Envelope, Clock, Phone, Task, Person } from '../components/icons'
-import { Modal, Field, Input, Textarea } from '../components/overlays'
+import { Modal, Field, Input, Textarea, Select } from '../components/overlays'
 import { useActions, useState_ } from '../store/store'
 import type { SeqStepType } from '../store/types'
 import { classNames } from '../lib/format'
@@ -15,19 +15,22 @@ const seqStepColor: Record<SeqStepType, string> = { email: '#1D4ED8', wait: '#7A
 type Status = 'Sending' | 'Live' | 'Complete' | 'Draft'
 const statusTone: Record<Status, ChipTone> = { Sending: 'accent', Live: 'positive', Complete: 'neutral', Draft: 'warning' }
 
-const campaigns: { name: string; type: string; sent: number; opens: number; clicks: number; deals: number; status: Status }[] = [
-  { name: 'Q3 Renewables outreach', type: 'Sequence', sent: 480, opens: 62, clicks: 18, deals: 9, status: 'Sending' },
-  { name: 'Data-centre resilience', type: 'Email', sent: 1240, opens: 48, clicks: 12, deals: 14, status: 'Live' },
-  { name: 'Grid webinar invite', type: 'Email', sent: 890, opens: 55, clicks: 21, deals: 6, status: 'Complete' },
-  { name: 'EV fleet nurture', type: 'Sequence', sent: 0, opens: 0, clicks: 0, deals: 0, status: 'Draft' },
-  { name: 'Site survey follow-up', type: 'Form', sent: 210, opens: 71, clicks: 34, deals: 4, status: 'Live' },
+const DEFAULT_STEPS = [
+  { type: 'email' as const, label: 'Intro — personalised', day: 0 },
+  { type: 'wait' as const, label: 'Wait 2 days', day: 2 },
+  { type: 'linkedin' as const, label: 'Connect on LinkedIn', day: 3 },
+  { type: 'email' as const, label: 'Follow-up + case study', day: 5 },
 ]
 
 export function Campaigns() {
   const act = useActions()
-  const { connections, socialPosts, sequences } = useState_()
+  const { connections, socialPosts, sequences, emailCampaigns: campaigns } = useState_()
   const [view, setView] = useState('All')
   const [post, setPost] = useState(false)
+  const [newCamp, setNewCamp] = useState(false)
+  const [newSeq, setNewSeq] = useState(false)
+  const [audience, setAudience] = useState(false)
+  const [stepFor, setStepFor] = useState<string | null>(null)
   const socialChannels = connections.filter((c) => c.kind === 'social' && c.connected)
   const template = '2fr 1fr 1fr 0.9fr 0.9fr 1fr 1fr'
   return (
@@ -37,9 +40,9 @@ export function Campaigns() {
         center={<Segmented options={['All', 'Email', 'Sequences', 'Social']} value={view} onChange={setView} />}
         actions={
           <>
-            <Button icon={<Users size={16} />} onClick={() => act.toast('Audience builder (demo)', 'accent')}>Audience</Button>
+            <Button icon={<Users size={16} />} onClick={() => setAudience(true)}>Audience</Button>
             <Button icon={<Megaphone size={16} />} onClick={() => setPost(true)}>Schedule post</Button>
-            <Button variant="primary" icon={<Plus size={16} />} onClick={() => act.toast('New campaign (demo)', 'accent')}>New campaign</Button>
+            <Button variant="primary" icon={<Plus size={16} />} onClick={() => setNewCamp(true)}>New campaign</Button>
           </>
         }
       />
@@ -48,7 +51,7 @@ export function Campaigns() {
           <>
             <div className="flex items-center justify-between">
               <div className="text-[13px] text-muted-b">Multi-step, multichannel outreach — email, LinkedIn, calls and tasks with automatic waits.</div>
-              <Button variant="primary" icon={<Plus size={16} />} onClick={() => act.toast('Sequence builder — drag steps to reorder (demo)', 'accent')}>New sequence</Button>
+              <Button variant="primary" icon={<Plus size={16} />} onClick={() => setNewSeq(true)}>New sequence</Button>
             </div>
             {sequences.map((s) => (
               <div key={s.id} className="bg-surface border border-border rounded-card p-5">
@@ -73,7 +76,7 @@ export function Campaigns() {
                       </div>
                     )
                   })}
-                  <button onClick={() => act.toast('Add step (demo)', 'accent')} className="shrink-0 rounded-lg border border-dashed border-input-border px-3 min-w-[52px] text-muted-2 hover:border-accent hover:text-accent flex items-center justify-center"><Plus size={16} /></button>
+                  <button onClick={() => setStepFor(s.id)} className="shrink-0 rounded-lg border border-dashed border-input-border px-3 min-w-[52px] text-muted-2 hover:border-accent hover:text-accent flex items-center justify-center"><Plus size={16} /></button>
                 </div>
               </div>
             ))}
@@ -139,7 +142,60 @@ export function Campaigns() {
         )}
       </PageBody>
       <SocialComposer open={post} onClose={() => setPost(false)} channels={socialChannels.map((c) => c.provider)} onSchedule={(ch, body, when) => { act.schedulePost(ch, body, when); setView('Social'); setPost(false) }} />
+      <NewCampaignModal open={newCamp} onClose={() => setNewCamp(false)} onCreate={(name, type) => { act.addEmailCampaign(name, type); setView('All'); setNewCamp(false) }} />
+      <NewSequenceModal open={newSeq} onClose={() => setNewSeq(false)} onCreate={(name) => { act.addSequence(name, DEFAULT_STEPS.map((s, i) => ({ id: `st${Date.now()}${i}`, ...s }))); setView('Sequences'); setNewSeq(false) }} />
+      <AddStepModal open={!!stepFor} onClose={() => setStepFor(null)} onAdd={(type, label, day) => { if (stepFor) act.addSequenceStep(stepFor, type, label, day); setStepFor(null) }} />
+      <AudienceModal open={audience} onClose={() => setAudience(false)} />
     </>
+  )
+}
+
+function NewCampaignModal({ open, onClose, onCreate }: { open: boolean; onClose: () => void; onCreate: (name: string, type: string) => void }) {
+  const [name, setName] = useState('')
+  const [type, setType] = useState('Email')
+  return (
+    <Modal open={open} onClose={onClose} title="New campaign" subtitle="Create a campaign as a draft"
+      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" onClick={() => { if (name.trim()) { onCreate(name.trim(), type); setName('') } }}>Create campaign</Button></>}>
+      <Field label="Name"><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Q4 Solar outreach" autoFocus /></Field>
+      <Field label="Type">
+        <div className="flex gap-2">{['Email', 'Sequence', 'Form', 'Social'].map((t) => <button key={t} onClick={() => setType(t)} className={classNames('h-9 px-3.5 rounded-lg text-[13px] font-semibold border', type === t ? 'bg-accent text-white border-accent' : 'border-border text-muted-b')}>{t}</button>)}</div>
+      </Field>
+    </Modal>
+  )
+}
+function NewSequenceModal({ open, onClose, onCreate }: { open: boolean; onClose: () => void; onCreate: (name: string) => void }) {
+  const [name, setName] = useState('')
+  return (
+    <Modal open={open} onClose={onClose} title="New sequence" subtitle="Starts with a proven 4-step email + LinkedIn cadence you can edit"
+      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" onClick={() => { if (name.trim()) { onCreate(name.trim()); setName('') } }}>Create sequence</Button></>}>
+      <Field label="Sequence name"><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Renewables — cold outreach" autoFocus /></Field>
+      <div className="text-[12.5px] text-muted-2">Seeded with: intro email → wait → LinkedIn connect → follow-up. Add or reorder steps after creating.</div>
+    </Modal>
+  )
+}
+function AddStepModal({ open, onClose, onAdd }: { open: boolean; onClose: () => void; onAdd: (type: SeqStepType, label: string, day: number) => void }) {
+  const [type, setType] = useState<SeqStepType>('email')
+  const [label, setLabel] = useState('')
+  const [day, setDay] = useState('7')
+  return (
+    <Modal open={open} onClose={onClose} title="Add step" subtitle="Append a step to this sequence"
+      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" onClick={() => { if (label.trim()) { onAdd(type, label.trim(), Number(day) || 0); setLabel('') } }}>Add step</Button></>}>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Type"><Select value={type} onChange={(e) => setType(e.target.value as SeqStepType)}><option value="email">Email</option><option value="linkedin">LinkedIn</option><option value="call">Call</option><option value="task">Task</option><option value="wait">Wait</option></Select></Field>
+        <Field label="Day"><Input type="number" value={day} onChange={(e) => setDay(e.target.value)} /></Field>
+      </div>
+      <Field label="Label"><Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Follow-up + case study" autoFocus /></Field>
+    </Modal>
+  )
+}
+function AudienceModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { people, leads } = useState_()
+  return (
+    <Modal open={open} onClose={onClose} title="Build an audience" subtitle="Segment your contacts for a campaign"
+      footer={<Button variant="primary" onClick={onClose}>Done</Button>}>
+      <div className="text-[13px] text-ink-2">You have <b>{people.length}</b> contacts and <b>{leads.length}</b> leads to segment.</div>
+      <div className="text-[12.5px] text-muted-2 mt-2">Full filter-based audience segments (save &amp; reuse) build on the same saved-views work as Lists — coming with the data-model phase.</div>
+    </Modal>
   )
 }
 

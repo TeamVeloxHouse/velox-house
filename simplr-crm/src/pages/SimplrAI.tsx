@@ -125,7 +125,7 @@ export function SimplrAI() {
               </div>
             ))}
           </div>
-          <button onClick={() => act.toast('Agent builder opened (demo)', 'accent')} className="text-[13px] text-accent font-semibold flex items-center gap-1.5 justify-center border border-dashed border-border-blue rounded-xl py-2.5 hover:bg-accent-wash transition-colors">
+          <button onClick={() => nav('/agents')} className="text-[13px] text-accent font-semibold flex items-center gap-1.5 justify-center border border-dashed border-border-blue rounded-xl py-2.5 hover:bg-accent-wash transition-colors">
             <Sparkle size={15} /> Build a new agent
           </button>
         </aside>

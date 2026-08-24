@@ -67,6 +67,10 @@ type Action =
   | { type: 'ADD_PRODUCT'; product: import('../data/mock').Product }
   | { type: 'ADD_DOCUMENT'; doc: import('./types').CrmDocument }
   | { type: 'UPDATE_DOCUMENT'; id: ID; patch: Partial<import('./types').CrmDocument> }
+  | { type: 'ADD_AGENT'; agent: import('./types').Agent }
+  | { type: 'ADD_LITHREAD'; thread: import('./types').LinkedInThread }
+  | { type: 'ADD_SEQSTEP'; seqId: ID; step: import('./types').SeqStep }
+  | { type: 'ADD_EMAILCAMPAIGN'; campaign: import('./types').EmailCampaign }
   | { type: 'RESET' }
 
 function reducer(state: State, action: Action): State {
@@ -223,6 +227,14 @@ function reducer(state: State, action: Action): State {
       return { ...state, documents: [action.doc, ...state.documents] }
     case 'UPDATE_DOCUMENT':
       return { ...state, documents: state.documents.map((d) => (d.id === action.id ? { ...d, ...action.patch } : d)) }
+    case 'ADD_AGENT':
+      return { ...state, agents: [...state.agents, action.agent] }
+    case 'ADD_LITHREAD':
+      return { ...state, linkedinThreads: [action.thread, ...state.linkedinThreads] }
+    case 'ADD_SEQSTEP':
+      return { ...state, sequences: state.sequences.map((s) => (s.id === action.seqId ? { ...s, steps: [...s.steps, action.step] } : s)) }
+    case 'ADD_EMAILCAMPAIGN':
+      return { ...state, emailCampaigns: [action.campaign, ...state.emailCampaigns] }
     case 'RESET':
       return buildSeed()
     default:
@@ -538,6 +550,29 @@ export function useActions() {
       return doc
     },
     updateDocument: (id: ID, patch: Partial<import('./types').CrmDocument>) => dispatch({ type: 'UPDATE_DOCUMENT', id, patch }),
+    addAgent: (name: string, desc: string) => {
+      dispatch({ type: 'ADD_AGENT', agent: { id: uid('ag'), name, desc, runs: 'Ready', on: true } })
+      toast(`Agent “${name}” created & switched on`)
+    },
+    addLinkedInThread: (name: string, company: string, message: string) => {
+      const thread: import('./types').LinkedInThread = {
+        id: uid('li'), name, company, headline: company, kind: 'message', status: 'open',
+        preview: message.slice(0, 80), time: 'Just now', createdAt: Date.now(),
+      }
+      dispatch({ type: 'ADD_LITHREAD', thread })
+      toast(`Message drafted to ${name}`)
+      return thread
+    },
+    addSequenceStep: (seqId: ID, type: import('./types').SeqStepType, label: string, day: number) => {
+      dispatch({ type: 'ADD_SEQSTEP', seqId, step: { id: uid('st'), type, label, day } })
+      toast('Step added to sequence')
+    },
+    addEmailCampaign: (name: string, type: string) => {
+      const campaign: import('./types').EmailCampaign = { id: uid('ec'), name, type, sent: 0, opens: 0, clicks: 0, deals: 0, status: 'Draft', createdAt: Date.now() }
+      dispatch({ type: 'ADD_EMAILCAMPAIGN', campaign })
+      toast(`Campaign “${name}” created as a draft`)
+      return campaign
+    },
     addAdder: (name: string, amount: number) => {
       const cur = live.state?.studioConfig.adders ?? []
       dispatch({ type: 'UPDATE_STUDIO_CONFIG', patch: { adders: [...cur, { id: uid('ad'), name, amount }] } })
