@@ -1,4 +1,4 @@
-import { deals as mDeals, people as mPeople, orgs as mOrgs, leads as mLeads } from '../data/mock'
+import { deals as mDeals, people as mPeople, orgs as mOrgs, leads as mLeads, products as mProducts } from '../data/mock'
 import type { State, Deal, Person, Activity, EmailMsg, Meeting, Agent, AgentRun, Connection, CustomField, Webhook, ApiKey, Integration, SocialPost, Sequence, Automation, LinkedInThread, Enrolment, ReachCampaign, ScheduledTask, StudioConfig, StudioProject } from './types'
 import { MILESTONES } from '../lib/delivery'
 
@@ -288,6 +288,14 @@ export function buildSeed(): State {
     { id: 'in5', number: 'INV-PJ3-02', kind: 'final', amount: 15260, status: 'overdue', issuedDate: '14 Aug', dueDate: '21 Aug' },
   ]
 
+  const documents: import('./types').CrmDocument[] = [
+    { id: 'doc1', ref: 'QUO-1042', deal: 'UPS refresh', value: 415000, status: 'Viewed', views: 6, sent: '2h ago', createdAt: days(1) },
+    { id: 'doc2', ref: 'QUO-1041', deal: 'Campus microgrid', value: 268000, status: 'Sent', views: 1, sent: 'Yesterday', createdAt: days(2) },
+    { id: 'doc3', ref: 'QUO-1039', deal: 'Solar + storage', value: 210000, status: 'Signed', views: 9, sent: 'Sep 8', createdAt: days(9) },
+    { id: 'doc4', ref: 'QUO-1036', deal: 'Metering rollout', value: 118000, status: 'Expired', views: 3, sent: 'Aug 21', createdAt: days(20) },
+    { id: 'doc5', ref: 'QUO-1044', deal: 'HV cabling', value: 320000, status: 'Draft', views: 0, sent: '—', createdAt: days(0) },
+  ]
+
   const brandKit: import('./types').BrandKit = {
     company: 'Simplr Solar', primary: '#1D4ED8', accent: '#F5A623', font: 'Inter',
     tone: 'Confident, warm and plain-English. Lead with the customer’s goal, show savings before cost, never pushy.',
@@ -326,5 +334,5 @@ export function buildSeed(): State {
   deals[0].custom = { cf1: '2 years', cf2: 'London' }
   people[1].custom = { cf3: 'linkedin.com/in/callumreed' }
 
-  return { deals, people, orgs, leads, activities, emails, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, linkedinThreads, enrolments, reachCampaigns, scheduledTasks, studioConfig, projects, playbooks, brandKit, docTemplates, brandDocs, customFields, toasts: [], railExpanded: true }
+  return { deals, people, orgs, leads, activities, emails, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, linkedinThreads, enrolments, reachCampaigns, scheduledTasks, studioConfig, projects, playbooks, brandKit, docTemplates, brandDocs, products: mProducts, documents, customFields, toasts: [], railExpanded: true }
 }

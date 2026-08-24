@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { TopBar } from '../components/TopBar'
 import { Button, Avatar, Chip } from '../components/ui'
 import { Plus, Video, Robot, Sparkle, Check, Waveform, Play, Note, Task, Envelope, Link as LinkIcon } from '../components/icons'
+import { Modal, Field, Input, Select } from '../components/overlays'
 import { useState_, useActions } from '../store/store'
+import type { Meeting } from '../store/types'
 import { classNames } from '../lib/format'
 
 const platformColor: Record<string, string> = { Teams: '#5059C9', 'Google Meet': '#00897B', Zoom: '#2D8CFF' }
@@ -31,6 +33,7 @@ export function Meetings() {
   const { meetings, connections } = useState_()
   const act = useActions()
   const [sel, setSel] = useState('mtg1')
+  const [schedOpen, setSchedOpen] = useState(false)
   const active = meetings.find((m) => m.id === sel) ?? meetings[0]
   const meetingConns = connections.filter((c) => c.kind === 'meeting')
 
@@ -39,8 +42,9 @@ export function Meetings() {
       <TopBar
         title="Meetings"
         crumbs={['AI notetaker']}
-        actions={<><Button icon={<LinkIcon size={16} />} onClick={() => act.toast('Manage connections in Settings', 'accent')}>Connections</Button><Button variant="primary" icon={<Plus size={16} />} onClick={() => act.toast('Meeting scheduler opened (demo)', 'accent')}>Schedule</Button></>}
+        actions={<><Button icon={<LinkIcon size={16} />} onClick={() => act.toast('Manage connections in Settings', 'accent')}>Connections</Button><Button variant="primary" icon={<Plus size={16} />} onClick={() => setSchedOpen(true)}>Schedule</Button></>}
       />
+      <ScheduleMeetingModal open={schedOpen} onClose={() => setSchedOpen(false)} onScheduled={(id) => setSel(id)} />
       <div className="flex-1 flex min-h-0">
         <div className="w-[360px] shrink-0 bg-surface border-r border-border overflow-y-auto">
           <div className="p-3.5 border-b border-border flex items-center gap-2">
@@ -138,5 +142,30 @@ export function Meetings() {
         </main>
       </div>
     </>
+  )
+}
+
+function ScheduleMeetingModal({ open, onClose, onScheduled }: { open: boolean; onClose: () => void; onScheduled: (id: string) => void }) {
+  const act = useActions()
+  const [title, setTitle] = useState('')
+  const [platform, setPlatform] = useState<Meeting['platform']>('Teams')
+  const [when, setWhen] = useState('')
+  const [org, setOrg] = useState('')
+  const [bot, setBot] = useState(true)
+  const reset = () => { setTitle(''); setWhen(''); setOrg('') }
+  return (
+    <Modal open={open} onClose={onClose} title="Schedule meeting" subtitle="The AI notetaker can join automatically"
+      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" onClick={() => { if (title.trim()) { const m = act.addMeeting({ title: title.trim(), platform, when: when || 'Soon', dealOrg: org, bot, status: 'upcoming' }); reset(); onClose(); onScheduled(m.id) } }}>Schedule</Button></>}>
+      <Field label="Title"><Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Discovery call — Acme Ltd" autoFocus /></Field>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Platform"><Select value={platform} onChange={(e) => setPlatform(e.target.value as Meeting['platform'])}><option>Teams</option><option>Google Meet</option><option>Zoom</option></Select></Field>
+        <Field label="When"><Input value={when} onChange={(e) => setWhen(e.target.value)} placeholder="Tomorrow 2pm" /></Field>
+      </div>
+      <Field label="Organisation / deal"><Input value={org} onChange={(e) => setOrg(e.target.value)} placeholder="Acme Ltd" /></Field>
+      <label className="flex items-center gap-2.5 mt-1 cursor-pointer">
+        <button type="button" onClick={() => setBot(!bot)} className={classNames('w-10 h-6 rounded-full flex items-center px-0.5 transition-colors', bot ? 'bg-accent justify-end' : 'bg-input-border justify-start')}><span className="w-5 h-5 rounded-full bg-white shadow" /></button>
+        <span className="text-[13px] text-ink-2">Simplr Notetaker joins &amp; summarises</span>
+      </label>
+    </Modal>
   )
 }

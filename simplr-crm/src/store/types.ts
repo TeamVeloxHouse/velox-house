@@ -134,6 +134,18 @@ export interface Playbook {
   updatedAt: number
 }
 
+export type DocumentStatus = 'Draft' | 'Sent' | 'Viewed' | 'Signed' | 'Expired'
+export interface CrmDocument {
+  id: ID
+  ref: string
+  deal: string
+  value: number
+  status: DocumentStatus
+  views: number
+  sent: string
+  createdAt: number
+}
+
 export type CustomEntity = 'deal' | 'person' | 'org'
 export interface CustomField {
   id: ID
@@ -418,6 +430,8 @@ export interface State {
   brandKit: BrandKit
   docTemplates: DocTemplate[]
   brandDocs: BrandDoc[]
+  products: import('../data/mock').Product[]
+  documents: CrmDocument[]
   customFields: CustomField[]
   toasts: Toast[]
   railExpanded: boolean

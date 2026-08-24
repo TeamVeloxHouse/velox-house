@@ -62,6 +62,11 @@ type Action =
   | { type: 'UPDATE_BRANDKIT'; patch: Partial<import('./types').BrandKit> }
   | { type: 'ADD_BRANDDOC'; doc: import('./types').BrandDoc }
   | { type: 'REMOVE_BRANDDOC'; id: ID }
+  | { type: 'ADD_ORG'; org: import('./types').Org }
+  | { type: 'ADD_MEETING'; meeting: import('./types').Meeting }
+  | { type: 'ADD_PRODUCT'; product: import('../data/mock').Product }
+  | { type: 'ADD_DOCUMENT'; doc: import('./types').CrmDocument }
+  | { type: 'UPDATE_DOCUMENT'; id: ID; patch: Partial<import('./types').CrmDocument> }
   | { type: 'RESET' }
 
 function reducer(state: State, action: Action): State {
@@ -208,6 +213,16 @@ function reducer(state: State, action: Action): State {
       return { ...state, brandDocs: [action.doc, ...state.brandDocs] }
     case 'REMOVE_BRANDDOC':
       return { ...state, brandDocs: state.brandDocs.filter((d) => d.id !== action.id) }
+    case 'ADD_ORG':
+      return { ...state, orgs: [action.org, ...state.orgs] }
+    case 'ADD_MEETING':
+      return { ...state, meetings: [action.meeting, ...state.meetings] }
+    case 'ADD_PRODUCT':
+      return { ...state, products: [action.product, ...state.products] }
+    case 'ADD_DOCUMENT':
+      return { ...state, documents: [action.doc, ...state.documents] }
+    case 'UPDATE_DOCUMENT':
+      return { ...state, documents: state.documents.map((d) => (d.id === action.id ? { ...d, ...action.patch } : d)) }
     case 'RESET':
       return buildSeed()
     default:
@@ -488,6 +503,41 @@ export function useActions() {
       return full
     },
     removeBrandDoc: (id: ID) => dispatch({ type: 'REMOVE_BRANDDOC', id }),
+    // ── Core CRUD: organisations, meetings, products, documents ──
+    addOrg: (partial: Partial<import('./types').Org> & { name: string }) => {
+      const org: import('./types').Org = {
+        id: uid('o'), industry: '—', people: 0, openValue: 0, wonLifetime: 0, owner: 'Jordan Miles', relationship: 'New', ...partial,
+      }
+      dispatch({ type: 'ADD_ORG', org })
+      toast(`Organisation “${org.name}” added`)
+      return org
+    },
+    addMeeting: (partial: Partial<import('./types').Meeting> & { title: string }) => {
+      const meeting: import('./types').Meeting = {
+        id: uid('mt'), platform: 'Teams', when: 'Soon', dealOrg: '', attendees: [], status: 'upcoming', bot: true, ...partial,
+      }
+      dispatch({ type: 'ADD_MEETING', meeting })
+      toast(`Meeting “${meeting.title}” scheduled`)
+      return meeting
+    },
+    addProduct: (partial: Partial<import('../data/mock').Product> & { name: string }) => {
+      const product: import('../data/mock').Product = {
+        id: uid('pr'), sku: '—', category: 'Hardware', unitPrice: 0, billing: 'One-off', openDeals: 0, active: true, ...partial,
+      }
+      dispatch({ type: 'ADD_PRODUCT', product })
+      toast(`Product “${product.name}” added`)
+      return product
+    },
+    addDocument: (partial: Partial<import('./types').CrmDocument> & { deal: string; value: number }) => {
+      const n = (live.state?.documents.length ?? 0) + 1042
+      const doc: import('./types').CrmDocument = {
+        id: uid('doc'), ref: `QUO-${n}`, status: 'Draft', views: 0, sent: '—', createdAt: Date.now(), ...partial,
+      }
+      dispatch({ type: 'ADD_DOCUMENT', doc })
+      toast(`Quote ${doc.ref} created`)
+      return doc
+    },
+    updateDocument: (id: ID, patch: Partial<import('./types').CrmDocument>) => dispatch({ type: 'UPDATE_DOCUMENT', id, patch }),
     addAdder: (name: string, amount: number) => {
       const cur = live.state?.studioConfig.adders ?? []
       dispatch({ type: 'UPDATE_STUDIO_CONFIG', patch: { adders: [...cur, { id: uid('ad'), name, amount }] } })

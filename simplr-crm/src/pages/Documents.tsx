@@ -4,19 +4,12 @@ import { PageBody } from '../components/Page'
 import { Button, Segmented, Kpi, Chip, type ChipTone } from '../components/ui'
 import { Table, Row, Cell } from '../components/Table'
 import { Plus } from '../components/icons'
-import { useActions } from '../store/store'
+import { Modal, Field, Input } from '../components/overlays'
+import { useState_, useActions } from '../store/store'
+import type { DocumentStatus } from '../store/types'
 import { money } from '../lib/format'
 
-type DStatus = 'Viewed' | 'Sent' | 'Expired' | 'Signed' | 'Draft'
-const dTone: Record<DStatus, ChipTone> = { Viewed: 'accent', Sent: 'neutral', Expired: 'warning', Signed: 'positive', Draft: 'neutral' }
-
-const docs: { ref: string; deal: string; value: number; status: DStatus; views: number; sent: string }[] = [
-  { ref: 'QUO-1042', deal: 'UPS refresh', value: 415000, status: 'Viewed', views: 6, sent: '2h ago' },
-  { ref: 'QUO-1041', deal: 'Campus microgrid', value: 268000, status: 'Sent', views: 1, sent: 'Yesterday' },
-  { ref: 'QUO-1039', deal: 'Solar + storage', value: 210000, status: 'Signed', views: 9, sent: 'Sep 8' },
-  { ref: 'QUO-1036', deal: 'Metering rollout', value: 118000, status: 'Expired', views: 3, sent: 'Aug 21' },
-  { ref: 'QUO-1044', deal: 'HV cabling', value: 320000, status: 'Draft', views: 0, sent: '—' },
-]
+const dTone: Record<DocumentStatus, ChipTone> = { Viewed: 'accent', Sent: 'neutral', Expired: 'warning', Signed: 'positive', Draft: 'neutral' }
 
 const lineItems = [
   ['Data-centre UPS units × 4', 168000],
@@ -26,8 +19,10 @@ const lineItems = [
 ] as const
 
 export function Documents() {
+  const { documents: docs } = useState_()
   const act = useActions()
   const [view, setView] = useState('Quotes')
+  const [addOpen, setAddOpen] = useState(false)
   const template = '2fr 1.6fr 1fr 1fr 1fr 1fr'
   const subtotal = lineItems.reduce((s, [, v]) => s + v, 0)
   const discount = 8600
@@ -39,10 +34,11 @@ export function Documents() {
         actions={
           <>
             <Button>E-signature · on</Button>
-            <Button variant="primary" icon={<Plus size={16} />} onClick={() => act.toast('New quote (demo)', 'accent')}>New quote</Button>
+            <Button variant="primary" icon={<Plus size={16} />} onClick={() => setAddOpen(true)}>New quote</Button>
           </>
         }
       />
+      <NewQuoteModal open={addOpen} onClose={() => setAddOpen(false)} />
       <PageBody>
         <div className="grid gap-4" style={{ gridTemplateColumns: '1fr 420px' }}>
           <div className="flex flex-col gap-4">
@@ -134,5 +130,19 @@ export function Documents() {
         </div>
       </PageBody>
     </>
+  )
+}
+
+function NewQuoteModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const act = useActions()
+  const [deal, setDeal] = useState('')
+  const [value, setValue] = useState('')
+  const reset = () => { setDeal(''); setValue('') }
+  return (
+    <Modal open={open} onClose={onClose} title="New quote" subtitle="Create a quotation document"
+      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" onClick={() => { if (deal.trim()) { act.addDocument({ deal: deal.trim(), value: Number(value) || 0 }); reset(); onClose() } }}>Create quote</Button></>}>
+      <Field label="Deal / description"><Input value={deal} onChange={(e) => setDeal(e.target.value)} placeholder="Solar + storage — Acme Ltd" autoFocus /></Field>
+      <Field label="Value (£)"><Input type="number" value={value} onChange={(e) => setValue(e.target.value)} placeholder="210000" /></Field>
+    </Modal>
   )
 }
