@@ -6,8 +6,9 @@ import { Plus, Check, Sparkle, Envelope, Video, Megaphone, Link as LinkIcon, Sea
 import { Modal, Field, Input, Textarea, Select } from '../components/overlays'
 import { BrandLogo } from '../components/BrandLogo'
 import { useActions, useState_ } from '../store/store'
-import type { CustomEntity, CustomField, Playbook, PlaybookScope, TradeKey, FeatureKey } from '../store/types'
+import type { CustomEntity, CustomField, Playbook, PlaybookScope, TradeKey, FeatureKey, UserRole } from '../store/types'
 import { TRADE_PROFILES, tradeByKey } from '../lib/trades'
+import { ROLES, roleByKey } from '../lib/roles'
 import { classNames } from '../lib/format'
 
 const tree = [
@@ -21,12 +22,13 @@ type URole = 'Admin' | 'Member'
 type UStatus = 'Active' | 'Invited'
 const statusTone: Record<UStatus, ChipTone> = { Active: 'positive', Invited: 'warning' }
 
-const users: { name: string; email: string; role: URole; team: string; status: UStatus }[] = [
-  { name: 'Jordan Miles', email: 'jordan@simplr.io', role: 'Admin', team: 'Enterprise', status: 'Active' },
-  { name: 'Priya Nair', email: 'priya@simplr.io', role: 'Member', team: 'Enterprise', status: 'Active' },
-  { name: 'Marcus Webb', email: 'marcus@simplr.io', role: 'Member', team: 'Mid-market', status: 'Active' },
-  { name: 'Sana Ali', email: 'sana@simplr.io', role: 'Member', team: 'Mid-market', status: 'Invited' },
-  { name: 'Devan Rao', email: 'devan@simplr.io', role: 'Admin', team: 'Ops', status: 'Active' },
+type TUser = { name: string; email: string; role: URole; team: string; status: UStatus; dash: UserRole }
+const users: TUser[] = [
+  { name: 'Jordan Miles', email: 'jordan@simplr.io', role: 'Admin', team: 'Sales', status: 'Active', dash: 'owner' },
+  { name: 'Priya Nair', email: 'priya@simplr.io', role: 'Member', team: 'Finance', status: 'Active', dash: 'finance' },
+  { name: 'Marcus Webb', email: 'marcus@simplr.io', role: 'Member', team: 'Sales', status: 'Active', dash: 'sales' },
+  { name: 'Sana Ali', email: 'sana@simplr.io', role: 'Member', team: 'Marketing', status: 'Invited', dash: 'marketing' },
+  { name: 'Devan Rao', email: 'devan@simplr.io', role: 'Admin', team: 'Operations', status: 'Active', dash: 'operations' },
 ]
 
 export function Settings() {
@@ -34,7 +36,7 @@ export function Settings() {
   const [active, setActive] = useState('Users & permissions')
   const [invite, setInvite] = useState(false)
   const [rows, setRows] = useState(users)
-  const template = '2fr 2fr 1.2fr 1.2fr 1fr'
+  const template = '1.7fr 1.7fr 0.9fr 1fr 1.4fr 0.9fr'
   return (
     <>
       <TopBar
@@ -48,7 +50,7 @@ export function Settings() {
           </>
         }
       />
-      <InviteModal open={invite} onClose={() => setInvite(false)} onInvite={(name, email, role, team) => { setRows((r) => [...r, { name, email, role: role as URole, team, status: 'Invited' }]); act.toast(`Invitation sent to ${email}`); setInvite(false) }} />
+      <InviteModal open={invite} onClose={() => setInvite(false)} onInvite={(name, email, role, team) => { setRows((r) => [...r, { name, email, role: role as URole, team, status: 'Invited', dash: 'sales' }]); act.toast(`Invitation sent to ${email}`); setInvite(false) }} />
       <div className="flex-1 flex min-h-0">
         <aside className="w-[236px] shrink-0 bg-surface border-r border-border p-4 overflow-y-auto flex flex-col gap-5">
           {tree.map((t) => (
@@ -102,11 +104,12 @@ export function Settings() {
                 columns={[
                   { key: 'name', header: 'Name' },
                   { key: 'email', header: 'Email' },
-                  { key: 'role', header: 'Role' },
+                  { key: 'role', header: 'Access' },
                   { key: 'team', header: 'Team' },
+                  { key: 'dash', header: 'Dashboard role' },
                   { key: 'status', header: 'Status' },
                 ]}
-                footer={<><span>{rows.length} users</span><span>Team plan</span></>}
+                footer={<><span>{rows.length} users</span><span>Dashboard role shapes each person’s Home</span></>}
               >
                 {rows.map((u) => (
                   <Row key={u.email} template={template}>
@@ -119,6 +122,20 @@ export function Settings() {
                     <Cell muted>{u.email}</Cell>
                     <Cell><Chip tone={u.role === 'Admin' ? 'accent' : 'neutral'}>{u.role}</Chip></Cell>
                     <Cell muted>{u.team}</Cell>
+                    <Cell>
+                      <select
+                        value={u.dash}
+                        onChange={(e) => {
+                          const dash = e.target.value as UserRole
+                          setRows((rs) => rs.map((r) => (r.email === u.email ? { ...r, dash } : r)))
+                          act.toast(`${u.name} → ${roleByKey(dash).label} dashboard`)
+                          if (u.email === 'jordan@simplr.io') act.setRole(dash, true)
+                        }}
+                        className="h-8 px-2 rounded-control border border-input-border bg-white text-[12.5px] text-ink-2 outline-none focus:border-accent w-full"
+                      >
+                        {ROLES.map((r) => (<option key={r.key} value={r.key}>{r.label}</option>))}
+                      </select>
+                    </Cell>
                     <Cell><Chip tone={statusTone[u.status]} dot>{u.status}</Chip></Cell>
                   </Row>
                 ))}

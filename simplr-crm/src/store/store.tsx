@@ -74,6 +74,7 @@ type Action =
   | { type: 'SET_TRADE'; trade: import('./types').TradeKey; features: import('./types').Features }
   | { type: 'SET_FEATURES'; patch: Partial<import('./types').Features> }
   | { type: 'COMPLETE_ONBOARDING' }
+  | { type: 'SET_ROLE'; role: import('./types').UserRole }
   | { type: 'ADD_JOB'; job: import('./types').Job }
   | { type: 'UPDATE_JOB'; id: ID; patch: Partial<import('./types').Job> }
   | { type: 'REMOVE_JOB'; id: ID }
@@ -247,6 +248,8 @@ function reducer(state: State, action: Action): State {
       return { ...state, features: { ...state.features, ...action.patch } }
     case 'COMPLETE_ONBOARDING':
       return { ...state, onboarded: true }
+    case 'SET_ROLE':
+      return { ...state, currentRole: action.role }
     case 'ADD_JOB':
       return { ...state, jobs: [action.job, ...state.jobs] }
     case 'UPDATE_JOB':
@@ -700,6 +703,10 @@ export function useActions() {
       toast(`${name} ${on ? 'switched off' : 'switched on'}`, on ? 'warning' : 'positive')
     },
     completeOnboarding: () => dispatch({ type: 'COMPLETE_ONBOARDING' }),
+    setRole: (role: import('./types').UserRole, quiet = false) => {
+      dispatch({ type: 'SET_ROLE', role })
+      if (!quiet) toast('Dashboard role updated')
+    },
 
     // ── Jobs & Scheduling ──
     addJob: (partial: Partial<import('./types').Job> & { kind: import('./types').Job['kind']; title: string; customer: string }) => {

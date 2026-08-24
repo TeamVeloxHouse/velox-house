@@ -158,7 +158,7 @@ export function Insights() {
               ))}
             </div>
             <div className="mt-4 rounded-[10px] bg-accent-wash-3 border border-[#D3E0FA] p-3 text-[12px] text-accent-700 font-medium">
-              You’re 1st this quarter — $64K ahead of 2nd.
+              You’re 1st this quarter — £64K ahead of 2nd.
             </div>
           </div>
         </div>

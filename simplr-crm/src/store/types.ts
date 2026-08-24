@@ -166,6 +166,9 @@ export type TradeKey = 'solar' | 'hvac' | 'roofing' | 'windows' | 'ev' | 'insula
 export type FeatureKey = 'jobs' | 'studio' | 'reach' | 'compliance' | 'inventory'
 export type Features = Record<FeatureKey, boolean>
 
+// ── Team roles (Admin assigns; each role gets a tailored home dashboard) ──
+export type UserRole = 'owner' | 'finance' | 'operations' | 'sales' | 'marketing' | 'engineer'
+
 // ── Jobs & Scheduling (the field-operations spine) ──
 export type JobKind = 'survey' | 'showroom' | 'install' | 'service' | 'remedial'
 export type JobStatus = 'unscheduled' | 'scheduled' | 'in-progress' | 'complete' | 'cancelled'
@@ -505,6 +508,8 @@ export interface State {
   onboarded: boolean
   engineers: Engineer[]
   jobs: Job[]
+  // The role of the person currently viewing (drives their home dashboard)
+  currentRole: UserRole
   toasts: Toast[]
   railExpanded: boolean
 }

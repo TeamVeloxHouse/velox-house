@@ -111,7 +111,7 @@ export function Campaigns() {
           <Kpi label="Emails sent" value="2,820" delta="Last 30 days" deltaTone="muted" />
           <Kpi variant="blue" label="Avg. open rate" value="54%" delta="+4 pts" />
           <Kpi label="Leads created" value="126" delta="+18 this month" />
-          <Kpi variant="deep" label="Pipeline influenced" value="$680K" delta="Across 33 deals" />
+          <Kpi variant="deep" label="Pipeline influenced" value="£680K" delta="Across 33 deals" />
         </div>
         <Table
           template={template}

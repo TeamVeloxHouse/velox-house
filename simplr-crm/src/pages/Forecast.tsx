@@ -35,7 +35,7 @@ export function Forecast() {
       />
       <PageBody>
         <div className="grid grid-cols-4 gap-4">
-          <Kpi variant="deep" label="Commit" value={money(commit, { compact: true })} delta="Quota $1.1M" />
+          <Kpi variant="deep" label="Commit" value={money(commit, { compact: true })} delta="Quota £1.1M" />
           <Kpi label="Best case" value={money(best, { compact: true })} delta={`+${money(best - commit, { compact: true })} upside`} />
           <Kpi variant="blue" label="Weighted pipeline" value={money(Math.round(deals.filter((d) => !d.won && !d.lost).reduce((s, d) => s + d.value * (d.probability / 100), 0)), { compact: true })} delta="prob-weighted" deltaTone="muted" />
           <Kpi label="Gap to quota" value={money(Math.max(0, 1100000 - commit), { compact: true })} delta="Below commit" deltaTone="negative" />
@@ -56,7 +56,7 @@ export function Forecast() {
                 { key: 'close', header: 'Close' },
                 { key: 'prob', header: 'Prob.', align: 'right' },
               ]}
-              footer={<><span>8 deals · $1.18M best case</span><span>Updated 2h ago</span></>}
+              footer={<><span>8 deals · £1.18M best case</span><span>Updated 2h ago</span></>}
             >
               {rows.map((d) => (
                 <Row key={d.id} template={template}>
@@ -76,18 +76,18 @@ export function Forecast() {
           <div className="flex flex-col gap-4">
             <div className="bg-surface border border-border rounded-card p-5">
               <div className="text-[15px] font-semibold text-ink mb-3.5">Forecast movement</div>
-              <MoveRow label="Last submitted" value="$698K" />
-              <MoveRow label="Added" value="+$96K" tone="#0E7C66" />
-              <MoveRow label="Slipped" value="−$52K" tone="#C2410C" />
+              <MoveRow label="Last submitted" value="£698K" />
+              <MoveRow label="Added" value="+£96K" tone="#0E7C66" />
+              <MoveRow label="Slipped" value="−£52K" tone="#C2410C" />
               <div className="border-t border-divider mt-2 pt-2.5 flex items-center justify-between">
                 <span className="text-[13px] font-semibold text-ink">This week</span>
-                <span className="text-[15px] font-bold text-ink">$742K</span>
+                <span className="text-[15px] font-bold text-ink">£742K</span>
               </div>
             </div>
             <div className="bg-surface border border-border rounded-card p-5">
               <div className="text-[15px] font-semibold text-ink mb-3">Risk to commit</div>
               <ul className="flex flex-col gap-2.5 text-[13px] text-ink-3 leading-relaxed">
-                <li>· Gale Renewables ($512K) in budget review — could slip to Q4.</li>
+                <li>· Gale Renewables (£512K) in budget review — could slip to Q4.</li>
                 <li>· Cirrus redlines still open with legal.</li>
                 <li>· St. Aidan has no next step booked.</li>
               </ul>

@@ -1,10 +1,10 @@
 export function money(n: number, opts: { compact?: boolean } = {}): string {
   if (opts.compact) {
-    if (Math.abs(n) >= 1_000_000) return `$${(n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 2)}M`
-    if (Math.abs(n) >= 1_000) return `$${Math.round(n / 1_000)}K`
-    return `$${n}`
+    if (Math.abs(n) >= 1_000_000) return `£${(n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 2)}M`
+    if (Math.abs(n) >= 1_000) return `£${Math.round(n / 1_000)}K`
+    return `£${n}`
   }
-  return `$${n.toLocaleString('en-US')}`
+  return `£${n.toLocaleString('en-GB')}`
 }
 
 export function initials(name: string): string {

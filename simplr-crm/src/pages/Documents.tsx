@@ -80,8 +80,8 @@ export function Documents() {
         <div className="grid gap-4" style={{ gridTemplateColumns: '1fr 420px' }}>
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-3 gap-4">
-              <Kpi label="Open quotes" value="$1.1M" delta="14 documents" deltaTone="muted" />
-              <Kpi variant="blue" label="Signed this quarter" value="$2.3M" delta="+31% vs last" />
+              <Kpi label="Open quotes" value="£1.1M" delta="14 documents" deltaTone="muted" />
+              <Kpi variant="blue" label="Signed this quarter" value="£2.3M" delta="+31% vs last" />
               <Kpi label="Avg. time to sign" value="4.2d" delta="−1.1d" />
             </div>
             <Table
