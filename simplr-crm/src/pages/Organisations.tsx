@@ -3,7 +3,7 @@ import { TopBar } from '../components/TopBar'
 import { PageBody } from '../components/Page'
 import { Button, Segmented, Kpi, Avatar, Chip, type ChipTone } from '../components/ui'
 import { Table, Row, Cell } from '../components/Table'
-import { Plus, Download, Sparkle } from '../components/icons'
+import { Plus, Download, Sparkle, Search } from '../components/icons'
 import { Modal, Field, Input, Select } from '../components/overlays'
 import { type Org } from '../data/mock'
 import { useState_, useActions } from '../store/store'
@@ -32,7 +32,21 @@ export function Organisations() {
   const act = useActions()
   const [view, setView] = useState('List')
   const [addOpen, setAddOpen] = useState(false)
+  const [q, setQ] = useState('')
+  const [fIndustry, setFIndustry] = useState('All')
+  const [fRel, setFRel] = useState('All')
   const template = '2fr 1.2fr 0.8fr 1fr 1fr 1fr 0.9fr'
+
+  const industries = [...new Set(orgs.map((o) => o.industry))].filter(Boolean).sort()
+  const filtered = orgs.filter((o) => {
+    if (q && !o.name.toLowerCase().includes(q.toLowerCase())) return false
+    if (fIndustry !== 'All' && o.industry !== fIndustry) return false
+    if (fRel !== 'All' && o.relationship !== fRel) return false
+    return true
+  })
+  const openTotal = orgs.reduce((s, o) => s + o.openValue, 0)
+  const wonTotal = orgs.reduce((s, o) => s + o.wonLifetime, 0)
+  const renewals = orgs.filter((o) => o.relationship === 'Renewal due').length
   return (
     <>
       <TopBar
@@ -49,11 +63,51 @@ export function Organisations() {
       <AddOrgModal open={addOpen} onClose={() => setAddOpen(false)} />
       <PageBody>
         <div className="grid grid-cols-4 gap-4">
-          <Kpi label="Accounts" value="128" delta="+6 this quarter" />
-          <Kpi variant="blue" label="Open value" value="$2.02M" delta="Across 42 deals" deltaTone="muted" />
-          <Kpi label="Won lifetime" value="$5.5M" delta="+$890K YTD" />
-          <Kpi variant="deep" label="Renewals due" value="7" delta="Next 90 days" />
+          <Kpi label="Accounts" value={String(orgs.length)} delta={`${filtered.length} shown`} deltaTone="muted" />
+          <Kpi variant="blue" label="Open value" value={money(openTotal, { compact: true })} delta="Across all accounts" deltaTone="muted" />
+          <Kpi label="Won lifetime" value={money(wonTotal, { compact: true })} delta="Total to date" />
+          <Kpi variant="deep" label="Renewals due" value={String(renewals)} delta="Relationship flag" />
         </div>
+
+        {/* filter bar */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="h-9 w-[240px] rounded-control border border-border bg-surface flex items-center gap-2 px-3">
+            <Search size={15} className="text-muted-3" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search organisations" className="bg-transparent outline-none flex-1 text-[13px] text-ink-2 placeholder:text-muted-3" />
+          </div>
+          <select value={fIndustry} onChange={(e) => setFIndustry(e.target.value)} className="h-9 px-2.5 rounded-control border border-input-border bg-white text-[13px] text-ink-2 outline-none focus:border-accent"><option>All</option>{industries.map((i) => <option key={i}>{i}</option>)}</select>
+          <select value={fRel} onChange={(e) => setFRel(e.target.value)} className="h-9 px-2.5 rounded-control border border-input-border bg-white text-[13px] text-ink-2 outline-none focus:border-accent"><option>All</option><option>New</option><option>Expanding</option><option>Stable</option><option>At risk</option><option>Renewal due</option></select>
+          {(q || fIndustry !== 'All' || fRel !== 'All') && <button onClick={() => { setQ(''); setFIndustry('All'); setFRel('All') }} className="text-[12.5px] text-accent font-medium">Clear</button>}
+          <span className="ml-auto text-[12.5px] text-muted-2">{filtered.length} of {orgs.length}</span>
+        </div>
+
+        {view === 'Map' ? (
+          <div className="flex-1 flex flex-col items-center justify-center text-center gap-2 py-12 bg-surface border border-border rounded-card">
+            <div className="text-[15px] font-semibold text-ink-2">Map view</div>
+            <div className="text-[13px] text-muted-b max-w-[420px]">Plotting accounts by location connects with a maps backend. Meanwhile, use List or the Industry grouping.</div>
+          </div>
+        ) : view === 'Hierarchy' ? (
+          <div className="flex flex-col gap-4">
+            {industries.filter((ind) => filtered.some((o) => o.industry === ind)).map((ind) => {
+              const group = filtered.filter((o) => o.industry === ind)
+              return (
+                <div key={ind} className="bg-surface border border-border rounded-card p-4">
+                  <div className="flex items-center gap-2 mb-2.5"><div className="text-[14px] font-bold text-ink">{ind}</div><Chip tone="neutral">{group.length}</Chip><span className="ml-auto text-[12.5px] text-muted-2">{money(group.reduce((s, o) => s + o.openValue, 0), { compact: true })} open</span></div>
+                  <div className="flex flex-col divide-y divide-divider">
+                    {group.map((o) => (
+                      <div key={o.id} className="flex items-center gap-2.5 py-2">
+                        <Avatar name={o.name} size={26} square variant="neutral" />
+                        <span className="text-[13px] font-medium text-ink-2 flex-1">{o.name}</span>
+                        <span className="text-[12px] text-muted-2">{o.people} people</span>
+                        <Chip tone={relTone[o.relationship]} dot>{o.relationship}</Chip>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ) : (
         <Table
           template={template}
           columns={[
@@ -65,9 +119,9 @@ export function Organisations() {
             { key: 'owner', header: 'Owner' },
             { key: 'rel', header: 'Relationship' },
           ]}
-          footer={<><span>{orgs.length} of 128 organisations</span><span className="flex gap-3"><button>Prev</button><button className="text-ink-3 font-medium">Next</button></span></>}
+          footer={<><span>{filtered.length} of {orgs.length} organisations</span></>}
         >
-          {orgs.map((o) => (
+          {filtered.map((o) => (
             <Row key={o.id} template={template}>
               <Cell>
                 <div className="flex items-center gap-2.5">
@@ -85,6 +139,7 @@ export function Organisations() {
             </Row>
           ))}
         </Table>
+        )}
       </PageBody>
     </>
   )

@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { TopBar } from '../components/TopBar'
 import { Button, Avatar, Chip, type ChipTone } from '../components/ui'
 import { Table, Row, Cell } from '../components/Table'
 import { Modal, Field, Input, Select } from '../components/overlays'
-import { Plus, Bars, Filter, ChevronDown, Grid, Pie, Box } from '../components/icons'
+import { Plus, Bars, Filter, Search, Grid, Pie, Box } from '../components/icons'
 import { ScorePill, RiskBadge } from '../components/ai-widgets'
 import { dealScore, dealRisk } from '../lib/intelligence'
 import { stages, stageColors, type Health, type StageName } from '../data/mock'
@@ -13,6 +13,7 @@ import type { Deal } from '../store/types'
 import { money, classNames } from '../lib/format'
 
 const healthTone: Record<Health, ChipTone> = { Healthy: 'positive', 'At risk': 'warning', Stalled: 'negative', 'No next step': 'warning' }
+const healthDot: Record<Health, string> = { Healthy: 'bg-positive', 'At risk': 'bg-warning', Stalled: 'bg-negative', 'No next step': 'bg-warning' }
 
 export function DealsBoard() {
   const nav = useNavigate()
@@ -21,19 +22,43 @@ export function DealsBoard() {
   const [view, setView] = useState<'board' | 'list' | 'forecast' | 'archive'>('board')
   const [dragId, setDragId] = useState<string | null>(null)
   const [showNew, setShowNew] = useState(false)
+  const [newStage, setNewStage] = useState<StageName>('Qualified')
+  const [q, setQ] = useState('')
+  const [showFilter, setShowFilter] = useState(false)
+  const [fOwner, setFOwner] = useState('All')
+  const [fHealth, setFHealth] = useState('All')
+  const [fMin, setFMin] = useState('')
+  const [quick, setQuick] = useState<'none' | 'mine' | 'risk' | 'high'>('none')
 
-  const active = deals.filter((d) => !d.lost)
+  const owners = useMemo(() => [...new Set(deals.map((d) => d.owner))], [deals])
+  const filterCount = (fOwner !== 'All' ? 1 : 0) + (fHealth !== 'All' ? 1 : 0) + (fMin ? 1 : 0) + (quick !== 'none' ? 1 : 0)
+  const clearFilters = () => { setFOwner('All'); setFHealth('All'); setFMin(''); setQuick('none'); setQ('') }
+
+  const match = (d: Deal) => {
+    if (q && !(`${d.name} ${d.org}`).toLowerCase().includes(q.toLowerCase())) return false
+    if (fOwner !== 'All' && d.owner !== fOwner) return false
+    if (fHealth !== 'All' && d.health !== fHealth) return false
+    if (fMin && d.value < Number(fMin)) return false
+    if (quick === 'mine' && d.owner !== 'Jordan Miles') return false
+    if (quick === 'risk' && d.health === 'Healthy') return false
+    if (quick === 'high' && d.value < 100000) return false
+    return true
+  }
+
+  const active = deals.filter((d) => !d.lost && match(d))
   const byStage = useMemo(() => {
     const map: Record<string, Deal[]> = {}
     stages.forEach((s) => (map[s] = []))
     active.forEach((d) => map[d.stage]?.push(d))
     return map
-  }, [deals])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deals, q, fOwner, fHealth, fMin, quick])
 
   const open = active.filter((d) => !d.won)
   const total = open.reduce((s, d) => s + d.value, 0)
   const weighted = Math.round(open.reduce((s, d) => s + d.value * (d.probability / 100), 0))
   const lost = deals.filter((d) => d.lost)
+  const openNewIn = (stage: StageName) => { setNewStage(stage); setShowNew(true) }
 
   const viewTabs = [
     { id: 'board', icon: Bars, label: 'Board' },
@@ -48,8 +73,8 @@ export function DealsBoard() {
         title="Deals"
         actions={
           <>
-            <Button icon={<Filter size={16} />}>Filter</Button>
-            <Button variant="primary" icon={<Plus size={16} />} onClick={() => setShowNew(true)}>New deal</Button>
+            <Button icon={<Filter size={16} />} onClick={() => setShowFilter((v) => !v)}>Filter{filterCount > 0 ? ` · ${filterCount}` : ''}</Button>
+            <Button variant="primary" icon={<Plus size={16} />} onClick={() => openNewIn('Qualified')}>New deal</Button>
           </>
         }
       />
@@ -67,15 +92,36 @@ export function DealsBoard() {
             </button>
           ))}
         </div>
-        <button className="h-9 px-3 rounded-control border border-border flex items-center gap-2 text-[13px] font-medium text-ink-3 hover:bg-control">
-          <Bars size={15} className="text-accent" /> Enterprise pipeline <ChevronDown size={14} className="text-muted-2" />
-        </button>
-        <button onClick={() => setShowNew(true)} className="text-[13px] text-muted-b hover:text-ink-3 flex items-center gap-1.5"><Plus size={14} /> Add condition</button>
+        <div className="h-9 w-[260px] rounded-control border border-border bg-surface flex items-center gap-2 px-3">
+          <Search size={15} className="text-muted-3" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search deals & companies" className="bg-transparent outline-none flex-1 text-[13px] text-ink-2 placeholder:text-muted-3" />
+        </div>
+        {/* quick filter chips */}
+        <div className="flex items-center gap-1.5">
+          {([['mine', 'My deals'], ['risk', 'At risk'], ['high', '£100k+']] as const).map(([id, label]) => (
+            <button key={id} onClick={() => setQuick((cur) => (cur === id ? 'none' : id))} className={classNames('h-8 px-2.5 rounded-lg text-[12.5px] font-medium border transition-colors', quick === id ? 'bg-accent text-white border-accent' : 'border-border text-muted-b hover:bg-control')}>{label}</button>
+          ))}
+        </div>
         <div className="ml-auto flex items-center gap-3 text-[13px]">
+          {filterCount > 0 && <button onClick={clearFilters} className="text-[12.5px] text-accent font-medium">Clear</button>}
           <span className="text-muted-2"><span className="font-semibold text-ink-2">{open.length}</span> deals · <span className="font-semibold text-ink-2">{money(total, { compact: true })}</span></span>
-          <Chip tone="accent" dot>Owner: Jordan Miles</Chip>
         </div>
       </div>
+
+      {showFilter && (
+        <div className="shrink-0 bg-surface-tint border-b border-border flex items-center gap-4 px-7 py-2.5">
+          <label className="flex items-center gap-2 text-[12.5px] text-ink-3"><span className="text-muted-2">Owner</span>
+            <select value={fOwner} onChange={(e) => setFOwner(e.target.value)} className="h-8 px-2 rounded-control border border-input-border bg-white text-[13px] outline-none focus:border-accent"><option>All</option>{owners.map((o) => <option key={o}>{o}</option>)}</select>
+          </label>
+          <label className="flex items-center gap-2 text-[12.5px] text-ink-3"><span className="text-muted-2">Health</span>
+            <select value={fHealth} onChange={(e) => setFHealth(e.target.value)} className="h-8 px-2 rounded-control border border-input-border bg-white text-[13px] outline-none focus:border-accent"><option>All</option><option>Healthy</option><option>At risk</option><option>Stalled</option><option>No next step</option></select>
+          </label>
+          <label className="flex items-center gap-2 text-[12.5px] text-ink-3"><span className="text-muted-2">Min value £</span>
+            <input type="number" value={fMin} onChange={(e) => setFMin(e.target.value)} placeholder="0" className="h-8 w-28 px-2 rounded-control border border-input-border bg-white text-[13px] outline-none focus:border-accent" />
+          </label>
+          <span className="ml-auto text-[12.5px] text-muted-2">{active.filter((d) => !d.won).length} match</span>
+        </div>
+      )}
 
       {view === 'board' && (
         <main className="flex-1 overflow-hidden p-7 flex flex-col gap-4">
@@ -89,65 +135,79 @@ export function DealsBoard() {
             </div>
           </div>
 
-          <div className="grid gap-3.5 flex-1 min-h-0" style={{ gridTemplateColumns: 'repeat(5,1fr)' }}>
-            {stages.map((stage, i) => {
-              const col = byStage[stage]
-              const colValue = col.reduce((a, b) => a + b.value, 0)
-              return (
-                <div key={stage} onDragOver={(e) => e.preventDefault()} onDrop={() => { if (dragId) moveStage(dragId, stage as StageName); setDragId(null) }} className="flex flex-col min-h-0">
-                  <div className="flex items-center justify-between pb-1">
-                    <div className="text-[13px] font-semibold text-ink-2">{stage}</div>
-                    <span className="text-[12px] text-muted-3">{col.length}</span>
-                  </div>
-                  <div className="text-[12px] text-muted-2 font-medium mb-2">{money(colValue, { compact: true })}</div>
-                  <div className="h-[3px] rounded-full mb-2.5" style={{ background: stageColors[i] }} />
-                  <div className="flex flex-col gap-2.5 overflow-y-auto pr-1 -mr-1 pb-2">
-                    {col.map((d) => {
-                      const focused = d.stage === 'Negotiations Started' && !d.won
-                      return (
-                        <div
-                          key={d.id}
-                          draggable
-                          onDragStart={() => setDragId(d.id)}
-                          onDragEnd={() => setDragId(null)}
-                          onClick={() => nav(`/deals/${d.id}`)}
-                          className={classNames(
-                            'bg-surface rounded-rail p-3.5 cursor-pointer transition-shadow duration-150 border',
-                            d.won && 'bg-[#F4FAF8] border-positive-border',
-                            !d.won && focused && 'border-accent shadow-board-selected',
-                            !d.won && !focused && 'border-border hover:shadow-card',
-                            dragId === d.id && 'opacity-50',
-                          )}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <div className="text-[13px] font-semibold text-ink-2 truncate">{d.org}</div>
-                              <div className="text-[12px] text-muted-2 truncate">{d.name}</div>
+          <div className="flex-1 min-h-0 overflow-x-auto -mx-1 px-1">
+            <div className="grid gap-3.5 h-full" style={{ gridTemplateColumns: 'repeat(5, minmax(264px, 1fr))' }}>
+              {stages.map((stage, i) => {
+                const col = byStage[stage]
+                const colValue = col.reduce((a, b) => a + b.value, 0)
+                const isDropTarget = dragId && deals.find((d) => d.id === dragId)?.stage !== stage
+                return (
+                  <div
+                    key={stage}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={() => { if (dragId) moveStage(dragId, stage as StageName); setDragId(null) }}
+                    className={classNames('flex flex-col min-h-0 rounded-xl px-1.5 transition-colors', isDropTarget ? 'bg-accent-wash' : '')}
+                  >
+                    <div className="flex items-center justify-between pt-1.5">
+                      <div className="text-[13px] font-semibold text-ink-2">{stage}</div>
+                      <span className="text-[11px] font-medium text-muted-3 bg-control rounded-full px-1.5 py-0.5">{col.length}</span>
+                    </div>
+                    <div className="text-[12px] text-muted-2 font-medium mb-2">{money(colValue, { compact: true })}</div>
+                    <div className="h-[3px] rounded-full mb-2.5" style={{ background: stageColors[i] }} />
+                    <div className="flex flex-col gap-2.5 overflow-y-auto pr-1 -mr-1 pb-2 flex-1">
+                      {col.length === 0 && (
+                        <div className="text-[12px] text-muted-3 text-center py-6 rounded-lg border border-dashed border-input-border">No deals</div>
+                      )}
+                      {col.map((d) => {
+                        const focused = d.stage === 'Negotiations Started' && !d.won
+                        return (
+                          <div
+                            key={d.id}
+                            draggable
+                            onDragStart={() => setDragId(d.id)}
+                            onDragEnd={() => setDragId(null)}
+                            onClick={() => nav(`/deals/${d.id}`)}
+                            className={classNames(
+                              'bg-surface rounded-rail p-3.5 cursor-pointer transition-shadow duration-150 border',
+                              d.won && 'bg-[#F4FAF8] border-positive-border',
+                              !d.won && focused && 'border-accent shadow-board-selected',
+                              !d.won && !focused && 'border-border hover:shadow-card',
+                              dragId === d.id && 'opacity-50',
+                            )}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <div className="text-[13px] font-semibold text-ink-2 truncate">{d.org}</div>
+                                <div className="text-[12px] text-muted-2 truncate">{d.name}</div>
+                              </div>
+                              {!d.won && <ScorePill score={dealScore(d, activities)} size="sm" />}
                             </div>
-                            {!d.won && <ScorePill score={dealScore(d, activities)} size="sm" />}
-                          </div>
-                          <div className="flex items-center justify-between mt-2.5">
-                            <div className="text-[15px] font-bold" style={{ color: d.won ? '#0E7C66' : '#0B1220' }}>{money(d.value, { compact: true })}</div>
-                            <Avatar name={d.owner} size={24} />
-                          </div>
-                          {(d.chips.length > 0 || !d.won) && (
-                            <div className="flex flex-wrap gap-1.5 mt-2.5">
-                              {!d.won && dealRisk(d, activities).level !== 'ok' && <RiskBadge risk={dealRisk(d, activities)} />}
-                              {d.chips.map((c, ci) => (<Chip key={ci} tone={c.tone}>{c.label}</Chip>))}
+                            <div className="flex items-center justify-between mt-2.5">
+                              <div className="text-[15px] font-bold" style={{ color: d.won ? '#0E7C66' : '#0B1220' }}>{money(d.value, { compact: true })}</div>
+                              <Avatar name={d.owner} size={24} />
                             </div>
-                          )}
-                        </div>
-                      )
-                    })}
-                    {i === 0 && (
-                      <button onClick={() => setShowNew(true)} className="rounded-rail border border-dashed border-input-border text-[13px] text-muted-2 py-3 hover:border-accent hover:text-accent transition-colors flex items-center justify-center gap-1.5">
-                        <Plus size={15} /> Add deal
+                            <div className="flex items-center gap-2 mt-2 text-[11px] text-muted-2">
+                              <span className={classNames('w-1.5 h-1.5 rounded-full', healthDot[d.health])} />
+                              <span>Close {d.closeDate}</span>
+                              <span className="ml-auto tabular-nums">{d.probability}%</span>
+                            </div>
+                            {(d.chips.length > 0 || (!d.won && dealRisk(d, activities).level !== 'ok')) && (
+                              <div className="flex flex-wrap gap-1.5 mt-2.5">
+                                {!d.won && dealRisk(d, activities).level !== 'ok' && <RiskBadge risk={dealRisk(d, activities)} />}
+                                {d.chips.map((c, ci) => (<Chip key={ci} tone={c.tone}>{c.label}</Chip>))}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                      <button onClick={() => openNewIn(stage as StageName)} className="rounded-rail border border-dashed border-input-border text-[12.5px] text-muted-2 py-2 hover:border-accent hover:text-accent transition-colors flex items-center justify-center gap-1.5">
+                        <Plus size={14} /> Add deal
                       </button>
-                    )}
+                    </div>
                   </div>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
           </div>
         </main>
       )}
@@ -237,16 +297,17 @@ export function DealsBoard() {
         </main>
       )}
 
-      <NewDealModal open={showNew} onClose={() => setShowNew(false)} orgs={orgs} onCreate={(p) => { const d = addDeal(p); setShowNew(false); nav(`/deals/${d.id}`) }} />
+      <NewDealModal open={showNew} initialStage={newStage} onClose={() => setShowNew(false)} orgs={orgs} onCreate={(p) => { const d = addDeal(p); setShowNew(false); nav(`/deals/${d.id}`) }} />
     </>
   )
 }
 
-function NewDealModal({ open, onClose, orgs, onCreate }: { open: boolean; onClose: () => void; orgs: { name: string }[]; onCreate: (p: { name: string; org: string; value: number; stage: StageName }) => void }) {
+function NewDealModal({ open, initialStage, onClose, orgs, onCreate }: { open: boolean; initialStage: StageName; onClose: () => void; orgs: { name: string }[]; onCreate: (p: { name: string; org: string; value: number; stage: StageName }) => void }) {
   const [name, setName] = useState('')
   const [org, setOrg] = useState('')
   const [value, setValue] = useState('')
-  const [stage, setStage] = useState<StageName>('Qualified')
+  const [stage, setStage] = useState<StageName>(initialStage)
+  useEffect(() => { if (open) setStage(initialStage) }, [open, initialStage])
   const valid = name.trim() && org.trim()
   return (
     <Modal
