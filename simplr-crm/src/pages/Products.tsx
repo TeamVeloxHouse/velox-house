@@ -30,10 +30,51 @@ export function Products() {
       <AddProductModal open={addOpen} onClose={() => setAddOpen(false)} />
       <PageBody>
         <div className="grid grid-cols-3 gap-4">
-          <Kpi label="Active products" value="18" delta="2 added this quarter" />
-          <Kpi variant="blue" label="Avg. deal size" value="$74K" delta="+6% vs last quarter" />
-          <Kpi label="Attach rate" value="1.8" delta="products per deal" deltaTone="muted" />
+          <Kpi label="Active products" value={String(products.filter((p) => p.active).length)} delta={`${products.length} total`} deltaTone="muted" />
+          <Kpi variant="blue" label="Catalogue value" value={money(products.reduce((s, p) => s + p.unitPrice, 0), { compact: true })} delta="Sum of unit prices" deltaTone="muted" />
+          <Kpi label="Categories" value={String(new Set(products.map((p) => p.category)).size)} delta="Hardware · Software · Service" />
         </div>
+
+        {view === 'Price lists' ? (
+          <div className="flex flex-col gap-4">
+            {[...new Set(products.map((p) => p.billing))].map((billing) => {
+              const group = products.filter((p) => p.billing === billing)
+              return (
+                <div key={billing} className="bg-surface border border-border rounded-card p-5">
+                  <div className="flex items-center gap-2 mb-3"><div className="text-[14px] font-bold text-ink">{billing}</div><Chip tone="neutral">{group.length}</Chip></div>
+                  <div className="flex flex-col divide-y divide-divider">
+                    {group.map((p) => (
+                      <div key={p.id} className="flex items-center gap-3 py-2.5">
+                        <span className="text-[13px] font-semibold text-ink-2 flex-1">{p.name} <span className="font-mono text-[11px] text-muted-3">{p.sku}</span></span>
+                        <Chip tone="neutral">{p.category}</Chip>
+                        <span className="text-[13.5px] font-bold text-ink-2 w-24 text-right tabular-nums">{money(p.unitPrice)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ) : view === 'Bundles' ? (
+          <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
+            {(['Hardware', 'Software', 'Service'] as const).map((cat) => {
+              const group = products.filter((p) => p.category === cat && p.active)
+              if (group.length === 0) return null
+              const total = group.reduce((s, p) => s + p.unitPrice, 0)
+              return (
+                <div key={cat} className="bg-surface border border-border rounded-card p-5">
+                  <div className="flex items-center justify-between mb-3"><div className="text-[14px] font-bold text-ink">{cat} bundle</div><Chip tone="accent">{group.length} items</Chip></div>
+                  <div className="flex flex-col gap-2">
+                    {group.map((p) => (
+                      <div key={p.id} className="flex items-center justify-between text-[13px]"><span className="text-ink-3">{p.name}</span><span className="font-medium text-ink-2 tabular-nums">{money(p.unitPrice)}</span></div>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between pt-3 mt-2 border-t border-divider"><span className="text-[13px] font-bold text-ink">Bundle total</span><span className="text-[16px] font-bold text-ink">{money(total)}</span></div>
+                </div>
+              )
+            })}
+          </div>
+        ) : (
         <Table
           template={template}
           columns={[
@@ -45,7 +86,7 @@ export function Products() {
             { key: 'deals', header: 'Open deals', align: 'right' },
             { key: 'status', header: 'Status' },
           ]}
-          footer={<><span>{products.length} products</span><span className="flex gap-3"><button>Prev</button><button className="text-ink-3 font-medium">Next</button></span></>}
+          footer={<><span>{products.length} products</span></>}
         >
           {products.map((p) => (
             <Row key={p.id} template={template}>
@@ -59,6 +100,7 @@ export function Products() {
             </Row>
           ))}
         </Table>
+        )}
       </PageBody>
     </>
   )

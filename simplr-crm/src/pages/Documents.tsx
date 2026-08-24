@@ -3,7 +3,8 @@ import { TopBar } from '../components/TopBar'
 import { PageBody } from '../components/Page'
 import { Button, Segmented, Kpi, Chip, type ChipTone } from '../components/ui'
 import { Table, Row, Cell } from '../components/Table'
-import { Plus } from '../components/icons'
+import { useNavigate } from 'react-router-dom'
+import { Plus, File as FileIcon, Layers } from '../components/icons'
 import { Modal, Field, Input } from '../components/overlays'
 import { useState_, useActions } from '../store/store'
 import type { DocumentStatus } from '../store/types'
@@ -19,11 +20,13 @@ const lineItems = [
 ] as const
 
 export function Documents() {
-  const { documents: docs } = useState_()
+  const nav = useNavigate()
+  const { documents: docs, docTemplates } = useState_()
   const act = useActions()
   const [view, setView] = useState('Quotes')
   const [addOpen, setAddOpen] = useState(false)
   const template = '2fr 1.6fr 1fr 1fr 1fr 1fr'
+  const signed = docs.filter((d) => d.status === 'Signed')
   const subtotal = lineItems.reduce((s, [, v]) => s + v, 0)
   const discount = 8600
   return (
@@ -40,6 +43,40 @@ export function Documents() {
       />
       <NewQuoteModal open={addOpen} onClose={() => setAddOpen(false)} />
       <PageBody>
+        {view === 'Contracts' ? (
+          <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-3 gap-4">
+              <Kpi label="Signed contracts" value={String(signed.length)} delta="Executed agreements" />
+              <Kpi variant="blue" label="Contract value" value={money(signed.reduce((s, d) => s + d.value, 0), { compact: true })} delta="Total signed" deltaTone="muted" />
+              <Kpi label="E-signature" value="On" delta="Tracking every view" />
+            </div>
+            {signed.length === 0 ? (
+              <div className="bg-surface border border-border rounded-card p-10 text-center text-[13px] text-muted-b">No signed contracts yet. Documents move here once a quote is signed.</div>
+            ) : (
+              <Table template="2fr 1.6fr 1fr 1fr 1.4fr" columns={[{ key: 'r', header: 'Contract' }, { key: 'd', header: 'Deal' }, { key: 'v', header: 'Value', align: 'right' }, { key: 's', header: 'Status' }, { key: 'a', header: '', align: 'right' }]} footer={<span>{signed.length} signed</span>}>
+                {signed.map((d) => (
+                  <Row key={d.id} template="2fr 1.6fr 1fr 1fr 1.4fr">
+                    <Cell><div className="flex items-center gap-2.5"><span className="w-8 h-8 rounded-lg bg-positive text-white text-[10px] font-bold flex items-center justify-center shrink-0">PDF</span><span className="font-semibold text-ink-2">{d.ref}</span></div></Cell>
+                    <Cell muted>{d.deal}</Cell>
+                    <Cell align="right" className="font-semibold text-ink-2">{money(d.value, { compact: true })}</Cell>
+                    <Cell><Chip tone="positive" dot>Signed</Chip></Cell>
+                    <Cell align="right"><button onClick={() => act.toast('PDF export connects with the document backend', 'accent')} className="text-[12px] text-accent font-semibold hover:underline">Download</button></Cell>
+                  </Row>
+                ))}
+              </Table>
+            )}
+          </div>
+        ) : view === 'Templates' ? (
+          <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
+            {docTemplates.map((t) => (
+              <button key={t.id} onClick={() => nav('/studio/brand')} className="text-left bg-surface border border-border rounded-card p-4 hover:shadow-card transition-shadow">
+                <div className="flex items-center gap-2.5"><span className="w-9 h-9 rounded-lg bg-accent-wash text-accent flex items-center justify-center shrink-0">{t.kind === 'deck' ? <Layers size={16} /> : <FileIcon size={16} />}</span><div className="text-[13.5px] font-semibold text-ink-2">{t.name}</div><span className="ml-auto text-[10px] font-bold uppercase tracking-wide text-muted-3">{t.format}</span></div>
+                <div className="text-[12px] text-muted-2 mt-2 leading-snug">{t.desc}</div>
+              </button>
+            ))}
+            <button onClick={() => nav('/studio/brand')} className="text-left bg-surface border border-dashed border-input-border rounded-card p-4 hover:border-accent flex items-center gap-2.5 text-ink-3"><span className="w-9 h-9 rounded-lg bg-control flex items-center justify-center shrink-0"><Plus size={16} /></span><div className="text-[13px] font-semibold">Manage in Brand &amp; Documents</div></button>
+          </div>
+        ) : (
         <div className="grid gap-4" style={{ gridTemplateColumns: '1fr 420px' }}>
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-3 gap-4">
@@ -128,6 +165,7 @@ export function Documents() {
             </div>
           </div>
         </div>
+        )}
       </PageBody>
     </>
   )
