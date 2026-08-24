@@ -3,7 +3,7 @@ import { buildSeed } from './seed'
 import type { State, Deal, Person, Lead, Org, Activity, EmailMsg, Toast, ID } from './types'
 import type { StageName } from '../data/mock'
 
-const KEY = 'simplr.state.v8'
+const KEY = 'simplr.state.v9'
 let idc = 1000
 export const uid = (p = 'x') => `${p}${Date.now().toString(36)}${idc++}`
 
@@ -414,6 +414,45 @@ export function useActions() {
       dispatch({ type: 'UPDATE_PROJECT', id: p.id, patch: { tasks } })
     },
     updateProject: (id: ID, patch: Partial<import('./types').StudioProject>) => dispatch({ type: 'UPDATE_PROJECT', id, patch }),
+    // ── Ordering (materials / equipment per installation) ──
+    addOrder: (projectId: ID, order: import('./types').ProjectOrder) => {
+      const p = live.state?.projects.find((x) => x.id === projectId)
+      if (!p) return
+      dispatch({ type: 'UPDATE_PROJECT', id: projectId, patch: { orders: [...(p.orders ?? []), order] } })
+      toast(`Order added — ${order.supplier}`)
+    },
+    setOrderStatus: (projectId: ID, orderId: ID, status: import('./types').OrderStatus) => {
+      const p = live.state?.projects.find((x) => x.id === projectId)
+      if (!p) return
+      const stamp = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+      const orders = (p.orders ?? []).map((o) => (o.id === orderId ? { ...o, status, orderedDate: status === 'ordered' ? (o.orderedDate ?? stamp) : o.orderedDate } : o))
+      dispatch({ type: 'UPDATE_PROJECT', id: projectId, patch: { orders } })
+    },
+    removeOrder: (projectId: ID, orderId: ID) => {
+      const p = live.state?.projects.find((x) => x.id === projectId)
+      if (!p) return
+      dispatch({ type: 'UPDATE_PROJECT', id: projectId, patch: { orders: (p.orders ?? []).filter((o) => o.id !== orderId) } })
+    },
+    // ── Invoicing (per installation) ──
+    addInvoice: (projectId: ID, invoice: import('./types').ProjectInvoice) => {
+      const p = live.state?.projects.find((x) => x.id === projectId)
+      if (!p) return
+      dispatch({ type: 'UPDATE_PROJECT', id: projectId, patch: { invoices: [...(p.invoices ?? []), invoice] } })
+      toast(`Invoice ${invoice.number} created`)
+    },
+    setInvoiceStatus: (projectId: ID, invoiceId: ID, status: import('./types').InvoiceStatus) => {
+      const p = live.state?.projects.find((x) => x.id === projectId)
+      if (!p) return
+      const stamp = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+      const invoices = (p.invoices ?? []).map((i) => (i.id === invoiceId ? { ...i, status, paidDate: status === 'paid' ? (i.paidDate ?? stamp) : undefined } : i))
+      dispatch({ type: 'UPDATE_PROJECT', id: projectId, patch: { invoices } })
+      if (status === 'paid') toast('Invoice marked paid 🎉', 'positive')
+    },
+    removeInvoice: (projectId: ID, invoiceId: ID) => {
+      const p = live.state?.projects.find((x) => x.id === projectId)
+      if (!p) return
+      dispatch({ type: 'UPDATE_PROJECT', id: projectId, patch: { invoices: (p.invoices ?? []).filter((i) => i.id !== invoiceId) } })
+    },
     addAdder: (name: string, amount: number) => {
       const cur = live.state?.studioConfig.adders ?? []
       dispatch({ type: 'UPDATE_STUDIO_CONFIG', patch: { adders: [...cur, { id: uid('ad'), name, amount }] } })

@@ -23,6 +23,32 @@ export interface Activity {
 export interface ProjectMilestone { key: string; label: string; done: boolean; date?: string }
 export interface ProjectTask { id: ID; label: string; done: boolean }
 export interface ProductLine { name: string; detail: string; value: number }
+
+export type OrderStatus = 'draft' | 'ordered' | 'delivered'
+export interface OrderItem { name: string; qty: number; unitCost: number }
+export interface ProjectOrder {
+  id: ID
+  supplier: string
+  items: OrderItem[]
+  status: OrderStatus
+  orderedDate?: string
+  expectedDate?: string
+  note?: string
+}
+
+export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue'
+export type InvoiceKind = 'deposit' | 'interim' | 'final' | 'other'
+export interface ProjectInvoice {
+  id: ID
+  number: string
+  kind: InvoiceKind
+  amount: number
+  status: InvoiceStatus
+  issuedDate?: string
+  dueDate?: string
+  paidDate?: string
+}
+
 export interface StudioProject {
   id: ID
   dealId?: ID
@@ -35,6 +61,8 @@ export interface StudioProject {
   milestones: ProjectMilestone[]
   tasks: ProjectTask[]
   products: ProductLine[]
+  orders?: ProjectOrder[]
+  invoices?: ProjectInvoice[]
   installDate?: string
   ptoDate?: string
   createdAt: number

@@ -2,13 +2,14 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { TopBar } from '../components/TopBar'
 import { PageBody } from '../components/Page'
-import { Button, Kpi, Chip, Avatar, Progress } from '../components/ui'
-import { Modal } from '../components/overlays'
-import { ViewSwitch } from '../components/chrome'
-import { Bars, Grid, Plus, Check, Sun, Box, Flow, Building } from '../components/icons'
+import { Button, Kpi, Chip, Progress } from '../components/ui'
+import { Modal, Field, Input, Select } from '../components/overlays'
+import { ViewSwitch, PillTabs } from '../components/chrome'
+import { Bars, Grid, Plus, Check, Sun, Box, Flow, Building, Dollar, Clock, Layers } from '../components/icons'
 import { Table, Row, Cell } from '../components/Table'
 import { useState_, useActions, useSelectors } from '../store/store'
-import { buildProject, MILESTONES } from '../lib/delivery'
+import { buildProject, MILESTONES, buildOrder, buildInvoice, orderTotal, projectFinance } from '../lib/delivery'
+import type { StudioProject, ProjectOrder, ProjectInvoice, OrderItem, InvoiceKind, InvoiceStatus, OrderStatus } from '../store/types'
 import { gbp } from '../lib/solar'
 import { classNames } from '../lib/format'
 
@@ -134,13 +135,16 @@ export function ProjectDetail() {
   const nav = useNavigate()
   const { projects } = useState_()
   const act = useActions()
+  const [tab, setTab] = useState('overview')
   const p = projects.find((x) => x.id === id)
 
   if (!p) return (<><TopBar title="Delivery" /><PageBody><div className="text-muted-b">Project not found. <button onClick={() => nav('/studio/delivery')} className="text-accent font-semibold">Back to delivery</button>.</div></PageBody></>)
 
   const pct = Math.round((p.milestoneIndex / (MILESTONES.length - 1)) * 100)
   const atPto = p.milestoneIndex === MILESTONES.length - 1
-  const tasksDone = p.tasks.filter((t) => t.done).length
+  const fin = projectFinance(p)
+  const orders = p.orders ?? []
+  const invoices = p.invoices ?? []
 
   return (
     <>
@@ -155,7 +159,7 @@ export function ProjectDetail() {
         {/* milestone stepper */}
         <div className="bg-surface border border-border rounded-card p-5">
           <div className="flex items-center justify-between mb-4">
-            <div><div className="text-[16px] font-bold text-ink">{p.address}</div><div className="text-[13px] text-muted-b">{p.customer} · {p.owner} · {gbp(p.value)}</div></div>
+            <div><div className="text-[16px] font-bold text-ink">{p.address}</div><div className="text-[13px] text-muted-b">{p.customer} · {p.owner} · {gbp(p.value)}{p.systemKwp ? ` · ${p.systemKwp} kWp` : ''}</div></div>
             <div className="text-right"><div className="text-[22px] font-bold text-ink">{pct}%</div><div className="text-[12px] text-muted-2">to PTO</div></div>
           </div>
           <div className="flex items-center">
@@ -173,52 +177,262 @@ export function ProjectDetail() {
           </div>
         </div>
 
-        <div className="grid gap-4" style={{ gridTemplateColumns: '1.4fr 1fr' }}>
-          {/* checklist */}
-          <div className="bg-surface border border-border rounded-card p-5">
-            <div className="flex items-center justify-between mb-3">
-              <div className="text-[15px] font-semibold text-ink">Job checklist</div>
-              <span className="text-[12px] text-muted-2">{tasksDone}/{p.tasks.length} done</span>
-            </div>
-            <div className="flex flex-col gap-1">
-              {p.tasks.map((t) => (
-                <button key={t.id} onClick={() => act.toggleProjectTask(p, t.id)} className="flex items-center gap-3 py-2 text-left">
-                  <span className={classNames('w-[18px] h-[18px] rounded-[5px] border flex items-center justify-center shrink-0', t.done ? 'bg-accent border-accent' : 'border-input-border')}>{t.done && <Check size={12} className="text-white" strokeWidth={2.6} />}</span>
-                  <span className={classNames('text-[13px]', t.done ? 'text-muted-3 line-through' : 'text-ink-2')}>{t.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* products + dates */}
-          <div className="flex flex-col gap-4">
-            <div className="bg-surface border border-border rounded-card p-5">
-              <div className="text-[15px] font-semibold text-ink mb-3">Product lines</div>
-              <div className="flex flex-col gap-2.5">
-                {p.products.map((pr) => {
-                  const Icon = productIcon[pr.name] ?? productIcon.default
-                  return (
-                    <div key={pr.name} className="flex items-center gap-2.5">
-                      <span className="w-7 h-7 rounded-lg bg-accent-wash text-accent flex items-center justify-center shrink-0"><Icon size={14} /></span>
-                      <div className="min-w-0 flex-1"><div className="text-[13px] font-semibold text-ink-2">{pr.name}</div><div className="text-[12px] text-muted-2">{pr.detail}</div></div>
-                      <div className="text-[13px] font-semibold text-ink-2">{gbp(pr.value)}</div>
-                    </div>
-                  )
-                })}
-                <div className="flex items-center justify-between pt-2.5 mt-1 border-t border-divider"><span className="text-[13px] font-bold text-ink">Total</span><span className="text-[15px] font-bold text-ink">{gbp(p.value)}</span></div>
-              </div>
-            </div>
-            <div className="bg-surface border border-border rounded-card p-5">
-              <div className="text-[15px] font-semibold text-ink mb-3">Key dates</div>
-              <Row2 label="System size" value={p.systemKwp ? `${p.systemKwp} kWp` : '—'} />
-              <Row2 label="Install date" value={p.installDate ?? 'To be booked'} />
-              <Row2 label="PTO / handover" value={p.ptoDate ?? (atPto ? 'Complete' : 'Pending')} />
-              {p.dealId && <button onClick={() => nav(`/deals/${p.dealId}`)} className="text-[13px] text-accent font-semibold mt-2">View linked deal →</button>}
-            </div>
-          </div>
+        {/* finance strip */}
+        <div className="grid grid-cols-4 gap-4">
+          <Kpi label="Contract value" value={gbp(p.value)} delta={fin.uninvoiced > 0 ? `${gbp(fin.uninvoiced)} not yet invoiced` : 'Fully invoiced'} deltaTone="muted" />
+          <Kpi variant="blue" label="Invoiced" value={gbp(fin.invoiced)} delta={`${gbp(fin.paid)} paid`} />
+          <Kpi label="Outstanding" value={gbp(fin.outstanding)} delta={invoices.some((i) => i.status === 'overdue') ? 'Overdue invoice' : 'On track'} deltaTone={invoices.some((i) => i.status === 'overdue') ? 'negative' : 'muted'} />
+          <Kpi variant="deep" label="Materials cost" value={gbp(fin.orderedCost)} delta={`${gbp(fin.grossMargin)} gross margin`} />
         </div>
+
+        <PillTabs
+          className="mt-1"
+          value={tab}
+          onChange={setTab}
+          tabs={[
+            { id: 'overview', label: 'Overview', icon: Layers },
+            { id: 'timeline', label: 'Timeline', icon: Clock },
+            { id: 'orders', label: `Orders${orders.length ? ` · ${orders.length}` : ''}`, icon: Box },
+            { id: 'invoices', label: `Invoices${invoices.length ? ` · ${invoices.length}` : ''}`, icon: Dollar },
+          ]}
+        />
+
+        {tab === 'overview' && <OverviewTab p={p} atPto={atPto} />}
+        {tab === 'timeline' && <TimelineTab p={p} />}
+        {tab === 'orders' && <OrdersTab p={p} />}
+        {tab === 'invoices' && <InvoicesTab p={p} />}
       </PageBody>
     </>
+  )
+}
+
+function OverviewTab({ p, atPto }: { p: StudioProject; atPto: boolean }) {
+  const nav = useNavigate()
+  const act = useActions()
+  const tasksDone = p.tasks.filter((t) => t.done).length
+  return (
+    <div className="grid gap-4" style={{ gridTemplateColumns: '1.4fr 1fr' }}>
+      {/* checklist / processes */}
+      <div className="bg-surface border border-border rounded-card p-5">
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-[15px] font-semibold text-ink">Job checklist</div>
+          <span className="text-[12px] text-muted-2">{tasksDone}/{p.tasks.length} done</span>
+        </div>
+        <div className="flex flex-col gap-1">
+          {p.tasks.map((t) => (
+            <button key={t.id} onClick={() => act.toggleProjectTask(p, t.id)} className="flex items-center gap-3 py-2 text-left">
+              <span className={classNames('w-[18px] h-[18px] rounded-[5px] border flex items-center justify-center shrink-0', t.done ? 'bg-accent border-accent' : 'border-input-border')}>{t.done && <Check size={12} className="text-white" strokeWidth={2.6} />}</span>
+              <span className={classNames('text-[13px]', t.done ? 'text-muted-3 line-through' : 'text-ink-2')}>{t.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* products + dates */}
+      <div className="flex flex-col gap-4">
+        <div className="bg-surface border border-border rounded-card p-5">
+          <div className="text-[15px] font-semibold text-ink mb-3">Product lines</div>
+          <div className="flex flex-col gap-2.5">
+            {p.products.map((pr) => {
+              const Icon = productIcon[pr.name] ?? productIcon.default
+              return (
+                <div key={pr.name} className="flex items-center gap-2.5">
+                  <span className="w-7 h-7 rounded-lg bg-accent-wash text-accent flex items-center justify-center shrink-0"><Icon size={14} /></span>
+                  <div className="min-w-0 flex-1"><div className="text-[13px] font-semibold text-ink-2">{pr.name}</div><div className="text-[12px] text-muted-2">{pr.detail}</div></div>
+                  <div className="text-[13px] font-semibold text-ink-2">{gbp(pr.value)}</div>
+                </div>
+              )
+            })}
+            <div className="flex items-center justify-between pt-2.5 mt-1 border-t border-divider"><span className="text-[13px] font-bold text-ink">Total</span><span className="text-[15px] font-bold text-ink">{gbp(p.value)}</span></div>
+          </div>
+        </div>
+        <div className="bg-surface border border-border rounded-card p-5">
+          <div className="text-[15px] font-semibold text-ink mb-3">Key dates</div>
+          <Row2 label="System size" value={p.systemKwp ? `${p.systemKwp} kWp` : '—'} />
+          <Row2 label="Install date" value={p.installDate ?? 'To be booked'} />
+          <Row2 label="PTO / handover" value={p.ptoDate ?? (atPto ? 'Complete' : 'Pending')} />
+          {p.dealId && <button onClick={() => nav(`/deals/${p.dealId}`)} className="text-[13px] text-accent font-semibold mt-2">View linked deal →</button>}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function TimelineTab({ p }: { p: StudioProject }) {
+  // milestones become a dated timeline; install / PTO surface as pinned events
+  const events = p.milestones.map((m, i) => ({
+    key: m.key,
+    label: m.label,
+    date: m.date,
+    done: m.done,
+    current: i === p.milestoneIndex,
+    detail: m.key === 'scheduled' && p.installDate ? `Install booked · ${p.installDate}` : m.key === 'pto' && p.ptoDate ? `Handover · ${p.ptoDate}` : undefined,
+  }))
+  return (
+    <div className="bg-surface border border-border rounded-card p-5 max-w-[640px]">
+      <div className="text-[15px] font-semibold text-ink mb-4">Project timeline</div>
+      <div className="flex flex-col">
+        {events.map((e, i) => (
+          <div key={e.key} className="flex gap-3.5">
+            <div className="flex flex-col items-center">
+              <div className={classNames('w-3.5 h-3.5 rounded-full border-2 shrink-0 mt-0.5', e.done ? 'bg-positive border-positive' : e.current ? 'border-accent bg-accent-wash' : 'border-input-border bg-surface')} />
+              {i < events.length - 1 && <div className="w-0.5 flex-1 my-1" style={{ background: e.done ? '#0E7C66' : '#E4E8EE', minHeight: 26 }} />}
+            </div>
+            <div className={classNames('pb-4', e.current ? '' : 'opacity-95')}>
+              <div className="flex items-center gap-2">
+                <span className={classNames('text-[13.5px] font-semibold', e.done ? 'text-ink-2' : e.current ? 'text-accent' : 'text-muted-2')}>{e.label}</span>
+                {e.current && <Chip tone="accent" dot>In progress</Chip>}
+              </div>
+              <div className="text-[12px] text-muted-2 mt-0.5">{e.done ? (e.date ? `Completed ${e.date}` : 'Completed') : e.current ? 'Current stage' : 'Upcoming'}{e.detail ? ` · ${e.detail}` : ''}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function OrdersTab({ p }: { p: StudioProject }) {
+  const act = useActions()
+  const [add, setAdd] = useState(false)
+  const orders = p.orders ?? []
+  return (
+    <div className="bg-surface border border-border rounded-card p-5">
+      <div className="flex items-center justify-between mb-3">
+        <div><div className="text-[15px] font-semibold text-ink">Orders</div><div className="text-[12px] text-muted-2">Materials &amp; equipment for this install</div></div>
+        <Button icon={<Plus size={15} />} onClick={() => setAdd(true)}>New order</Button>
+      </div>
+      {orders.length === 0 ? (
+        <div className="text-[13px] text-muted-2 py-6 text-center">No orders yet. Add a supplier order to track materials and cost.</div>
+      ) : (
+        <div className="flex flex-col gap-2.5">
+          {orders.map((o) => (
+            <div key={o.id} className="border border-border rounded-lg p-3.5">
+              <div className="flex items-center gap-3">
+                <span className="w-8 h-8 rounded-lg bg-accent-wash text-accent flex items-center justify-center shrink-0"><Box size={15} /></span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[13.5px] font-semibold text-ink-2">{o.supplier}</div>
+                  <div className="text-[12px] text-muted-2">{o.items.length} line{o.items.length === 1 ? '' : 's'}{o.orderedDate ? ` · ordered ${o.orderedDate}` : ''}{o.expectedDate ? ` · due ${o.expectedDate}` : ''}</div>
+                </div>
+                <div className="text-[13.5px] font-bold text-ink-2 mr-1">{gbp(orderTotal(o))}</div>
+                <OrderStatusSelect status={o.status} onChange={(s) => act.setOrderStatus(p.id, o.id, s)} />
+                <button onClick={() => act.removeOrder(p.id, o.id)} className="text-[12px] text-negative font-medium hover:underline shrink-0">Remove</button>
+              </div>
+              <div className="mt-2.5 pl-11 flex flex-col gap-1">
+                {o.items.map((it, idx) => (
+                  <div key={idx} className="flex items-center text-[12.5px] text-ink-3">
+                    <span className="flex-1">{it.name}</span>
+                    <span className="text-muted-2 tabular-nums w-24 text-right">{it.qty} × {gbp(it.unitCost)}</span>
+                    <span className="font-semibold text-ink-2 tabular-nums w-20 text-right">{gbp(it.qty * it.unitCost)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      <AddOrderModal open={add} onClose={() => setAdd(false)} onAdd={(supplier, items) => { act.addOrder(p.id, buildOrder(supplier, items)); setAdd(false) }} />
+    </div>
+  )
+}
+
+const ORDER_TONE: Record<OrderStatus, 'neutral' | 'accent' | 'positive'> = { draft: 'neutral', ordered: 'accent', delivered: 'positive' }
+function OrderStatusSelect({ status, onChange }: { status: OrderStatus; onChange: (s: OrderStatus) => void }) {
+  return (
+    <select value={status} onChange={(e) => onChange(e.target.value as OrderStatus)} className={classNames('h-7 px-2 rounded-md border text-[11.5px] font-semibold outline-none shrink-0', status === 'delivered' ? 'border-positive/40 text-positive bg-positive/5' : status === 'ordered' ? 'border-accent/40 text-accent bg-accent-wash' : 'border-input-border text-muted-b')}>
+      <option value="draft">Draft</option>
+      <option value="ordered">Ordered</option>
+      <option value="delivered">Delivered</option>
+    </select>
+  )
+}
+
+function InvoicesTab({ p }: { p: StudioProject }) {
+  const act = useActions()
+  const [add, setAdd] = useState(false)
+  const invoices = p.invoices ?? []
+  const fin = projectFinance(p)
+  return (
+    <div className="bg-surface border border-border rounded-card p-5">
+      <div className="flex items-center justify-between mb-3">
+        <div><div className="text-[15px] font-semibold text-ink">Invoices</div><div className="text-[12px] text-muted-2">{gbp(fin.paid)} paid · {gbp(fin.outstanding)} outstanding · {gbp(fin.uninvoiced)} not yet invoiced</div></div>
+        <Button icon={<Plus size={15} />} onClick={() => setAdd(true)}>New invoice</Button>
+      </div>
+      {invoices.length === 0 ? (
+        <div className="text-[13px] text-muted-2 py-6 text-center">No invoices yet. Raise a deposit, interim or final invoice against the {gbp(p.value)} contract.</div>
+      ) : (
+        <Table
+          template="1.3fr 0.9fr 1fr 1.1fr 1.4fr"
+          columns={[{ key: 'n', header: 'Invoice' }, { key: 'k', header: 'Type' }, { key: 'a', header: 'Amount', align: 'right' }, { key: 's', header: 'Status' }, { key: 'x', header: 'Actions', align: 'right' }]}
+          footer={<span>{invoices.length} invoice{invoices.length === 1 ? '' : 's'} · {gbp(fin.invoiced)} total</span>}
+        >
+          {invoices.map((inv) => (
+            <Row key={inv.id} template="1.3fr 0.9fr 1fr 1.1fr 1.4fr">
+              <Cell className="font-semibold text-ink-2">{inv.number}<div className="text-[11px] text-muted-2 font-normal">{inv.issuedDate ? `Issued ${inv.issuedDate}` : 'Draft'}{inv.dueDate && inv.status !== 'paid' ? ` · due ${inv.dueDate}` : ''}{inv.paidDate ? ` · paid ${inv.paidDate}` : ''}</div></Cell>
+              <Cell muted className="capitalize">{inv.kind}</Cell>
+              <Cell align="right" className="font-semibold text-ink-2 tabular-nums">{gbp(inv.amount)}</Cell>
+              <Cell><Chip tone={INVOICE_TONE[inv.status]} dot>{inv.status[0].toUpperCase() + inv.status.slice(1)}</Chip></Cell>
+              <Cell align="right">
+                <div className="flex items-center gap-2 justify-end">
+                  {inv.status === 'draft' && <button onClick={() => act.setInvoiceStatus(p.id, inv.id, 'sent')} className="text-[12px] text-accent font-semibold hover:underline">Mark sent</button>}
+                  {(inv.status === 'sent' || inv.status === 'overdue') && <button onClick={() => act.setInvoiceStatus(p.id, inv.id, 'paid')} className="text-[12px] text-positive font-semibold hover:underline">Mark paid</button>}
+                  <button onClick={() => act.removeInvoice(p.id, inv.id)} className="text-[12px] text-negative font-medium hover:underline">Remove</button>
+                </div>
+              </Cell>
+            </Row>
+          ))}
+        </Table>
+      )}
+      <AddInvoiceModal open={add} defaultAmount={fin.uninvoiced} onClose={() => setAdd(false)} onAdd={(kind, amount) => { act.addInvoice(p.id, buildInvoice(p, kind, amount)); setAdd(false) }} />
+    </div>
+  )
+}
+
+const INVOICE_TONE: Record<InvoiceStatus, 'neutral' | 'accent' | 'positive' | 'negative'> = { draft: 'neutral', sent: 'accent', paid: 'positive', overdue: 'negative' }
+
+function AddOrderModal({ open, onClose, onAdd }: { open: boolean; onClose: () => void; onAdd: (supplier: string, items: OrderItem[]) => void }) {
+  const [supplier, setSupplier] = useState('')
+  const [items, setItems] = useState<OrderItem[]>([{ name: '', qty: 1, unitCost: 0 }])
+  const total = items.reduce((s, it) => s + it.qty * it.unitCost, 0)
+  const patch = (idx: number, k: keyof OrderItem, v: string) => setItems((arr) => arr.map((it, i) => (i === idx ? { ...it, [k]: k === 'name' ? v : Number(v) } : it)))
+  const valid = supplier.trim() && items.some((it) => it.name.trim())
+  const reset = () => { setSupplier(''); setItems([{ name: '', qty: 1, unitCost: 0 }]) }
+  return (
+    <Modal open={open} onClose={onClose} title="New order" subtitle="Materials or equipment from a supplier" width={620}
+      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" onClick={() => { if (valid) { onAdd(supplier.trim(), items.filter((it) => it.name.trim())); reset() } }}>Add order</Button></>}>
+      <Field label="Supplier"><Input value={supplier} onChange={(e) => setSupplier(e.target.value)} placeholder="Segen, City Electrical Factors…" autoFocus /></Field>
+      <div className="text-[12px] font-semibold text-ink-3 mt-1 mb-1">Line items</div>
+      <div className="flex flex-col gap-2">
+        {items.map((it, idx) => (
+          <div key={idx} className="grid gap-2" style={{ gridTemplateColumns: '1fr 64px 96px 24px' }}>
+            <Input value={it.name} onChange={(e) => patch(idx, 'name', e.target.value)} placeholder="Item" />
+            <Input type="number" value={String(it.qty)} onChange={(e) => patch(idx, 'qty', e.target.value)} placeholder="Qty" />
+            <Input type="number" value={String(it.unitCost)} onChange={(e) => patch(idx, 'unitCost', e.target.value)} placeholder="£ each" />
+            <button onClick={() => setItems((arr) => (arr.length > 1 ? arr.filter((_, i) => i !== idx) : arr))} className="text-muted-3 hover:text-negative text-[16px]">×</button>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center justify-between mt-2.5">
+        <button onClick={() => setItems((arr) => [...arr, { name: '', qty: 1, unitCost: 0 }])} className="text-[13px] text-accent font-semibold flex items-center gap-1"><Plus size={14} /> Add line</button>
+        <div className="text-[13px] font-bold text-ink-2">Total {gbp(total)}</div>
+      </div>
+    </Modal>
+  )
+}
+
+function AddInvoiceModal({ open, onClose, onAdd, defaultAmount }: { open: boolean; onClose: () => void; onAdd: (kind: InvoiceKind, amount: number) => void; defaultAmount: number }) {
+  const [kind, setKind] = useState<InvoiceKind>('deposit')
+  const [amount, setAmount] = useState('')
+  const reset = () => { setKind('deposit'); setAmount('') }
+  return (
+    <Modal open={open} onClose={onClose} title="New invoice" subtitle="Raise an invoice against this project"
+      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" onClick={() => { const a = Number(amount) || 0; if (a > 0) { onAdd(kind, a); reset() } }}>Create invoice</Button></>}>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Type"><Select value={kind} onChange={(e) => setKind(e.target.value as InvoiceKind)}><option value="deposit">Deposit</option><option value="interim">Interim</option><option value="final">Final</option><option value="other">Other</option></Select></Field>
+        <Field label="Amount (£)"><Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={defaultAmount > 0 ? String(defaultAmount) : '0'} autoFocus /></Field>
+      </div>
+      {defaultAmount > 0 && <button onClick={() => setAmount(String(defaultAmount))} className="text-[12px] text-accent font-semibold mt-1 self-start">Use remaining balance · {gbp(defaultAmount)}</button>}
+    </Modal>
   )
 }
 

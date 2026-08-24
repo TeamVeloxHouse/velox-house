@@ -1,5 +1,5 @@
 /* Delivery (ops) templates + project factory — Phase 4. */
-import type { StudioProject, ProjectMilestone, ProjectTask, ProductLine } from '../store/types'
+import type { StudioProject, ProjectMilestone, ProjectTask, ProductLine, ProjectOrder, ProjectInvoice, OrderItem, InvoiceKind } from '../store/types'
 import type { SolarDesign } from './solar'
 
 export const MILESTONES: { key: string; label: string }[] = [
@@ -29,6 +29,42 @@ const DEFAULT_TASKS = [
 
 let seq = 5000
 const pid = () => `pj${(seq++).toString(36)}`
+let oseq = 7000
+export const oid = () => `or${(oseq++).toString(36)}`
+let iseq = 9000
+export const invid = () => `in${(iseq++).toString(36)}`
+
+const today = () => new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+const plusDays = (n: number) => new Date(Date.now() + n * 864e5).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+
+export function buildOrder(supplier: string, items: OrderItem[]): ProjectOrder {
+  return { id: oid(), supplier, items, status: 'draft' }
+}
+
+/** Next sensible invoice number for a project (INV-<pid>-NN). */
+export function nextInvoiceNumber(p: StudioProject): string {
+  const n = (p.invoices?.length ?? 0) + 1
+  return `INV-${p.id.toUpperCase()}-${String(n).padStart(2, '0')}`
+}
+
+export function buildInvoice(p: StudioProject, kind: InvoiceKind, amount: number): ProjectInvoice {
+  return { id: invid(), number: nextInvoiceNumber(p), kind, amount, status: 'draft', issuedDate: today(), dueDate: plusDays(14) }
+}
+
+export const orderTotal = (o: ProjectOrder) => o.items.reduce((s, it) => s + it.qty * it.unitCost, 0)
+
+/** Money summary for a project: what's been ordered, invoiced, paid and what's still outstanding. */
+export function projectFinance(p: StudioProject) {
+  const orders = p.orders ?? []
+  const invoices = p.invoices ?? []
+  const orderedCost = orders.reduce((s, o) => s + orderTotal(o), 0)
+  const invoiced = invoices.reduce((s, i) => s + i.amount, 0)
+  const paid = invoices.filter((i) => i.status === 'paid').reduce((s, i) => s + i.amount, 0)
+  const outstanding = invoiced - paid
+  const uninvoiced = Math.max(0, p.value - invoiced)
+  const grossMargin = p.value - orderedCost
+  return { orderedCost, invoiced, paid, outstanding, uninvoiced, grossMargin }
+}
 
 export function buildProject(opts: {
   dealId?: string

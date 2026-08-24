@@ -268,6 +268,26 @@ export function buildSeed(): State {
     mkProject('pj4', '31 Victoria St, Rochdale', 'Owen Pryce', 7600, 3.5, 1, [{ name: 'Solar PV', detail: '8 panels · 3.5 kWp', value: 7600 }]),
   ]
 
+  // Orders (materials/equipment) + invoices per installation
+  projects[0].orders = [
+    { id: 'or1', supplier: 'Segen', status: 'ordered', orderedDate: '6 Aug', expectedDate: '22 Aug', items: [{ name: 'JA Solar 440W panel', qty: 12, unitCost: 92 }, { name: 'GivEnergy 5.2 kWh battery', qty: 1, unitCost: 2100 }] },
+    { id: 'or2', supplier: 'City Electrical Factors', status: 'delivered', orderedDate: '4 Aug', items: [{ name: 'Solis 3.6kW hybrid inverter', qty: 1, unitCost: 640 }, { name: 'DC isolators + cabling', qty: 1, unitCost: 180 }] },
+  ]
+  projects[0].invoices = [
+    { id: 'in1', number: 'INV-PJ1-01', kind: 'deposit', amount: 3735, status: 'paid', issuedDate: '2 Aug', dueDate: '9 Aug', paidDate: '5 Aug' },
+    { id: 'in2', number: 'INV-PJ1-02', kind: 'interim', amount: 4000, status: 'sent', issuedDate: '18 Aug', dueDate: '1 Sep' },
+  ]
+  projects[1].orders = [
+    { id: 'or3', supplier: 'Midsummer Wholesale', status: 'delivered', orderedDate: '1 Aug', items: [{ name: 'Aiko 445W panel', qty: 10, unitCost: 98 }, { name: 'Bird protection mesh', qty: 1, unitCost: 120 }] },
+  ]
+  projects[1].invoices = [
+    { id: 'in3', number: 'INV-PJ2-01', kind: 'deposit', amount: 2760, status: 'paid', issuedDate: '30 Jul', dueDate: '6 Aug', paidDate: '2 Aug' },
+  ]
+  projects[2].invoices = [
+    { id: 'in4', number: 'INV-PJ3-01', kind: 'deposit', amount: 6540, status: 'paid', issuedDate: '10 Jul', dueDate: '17 Jul', paidDate: '12 Jul' },
+    { id: 'in5', number: 'INV-PJ3-02', kind: 'final', amount: 15260, status: 'overdue', issuedDate: '14 Aug', dueDate: '21 Aug' },
+  ]
+
   const customFields: CustomField[] = [
     { id: 'cf1', entity: 'deal', label: 'Contract length', type: 'select', options: ['1 year', '2 years', '3 years', '5 years'] },
     { id: 'cf2', entity: 'deal', label: 'Region', type: 'text' },
