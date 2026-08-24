@@ -369,6 +369,7 @@ export function useActions() {
         source: partial.source ?? 'Manual',
         owner: partial.owner ?? 'Jordan Miles',
         created: 'Just now',
+        createdAt: Date.now(),
         score: partial.score ?? 60,
         ...partial,
       }
@@ -668,7 +669,7 @@ export function useActions() {
       toast(`Connected with ${t.name}`)
     },
     bulkAddLeads: (rows: { name: string; company: string; role: string; score: number }[]) => {
-      const leads: Lead[] = rows.map((r) => ({ id: uid('l'), name: r.name, role: r.role, company: r.company, source: 'Simplr AI', owner: 'Jordan Miles', created: 'Just now', score: r.score }))
+      const leads: Lead[] = rows.map((r) => ({ id: uid('l'), name: r.name, role: r.role, company: r.company, source: 'Simplr AI', owner: 'Jordan Miles', created: 'Just now', createdAt: Date.now(), score: r.score }))
       dispatch({ type: 'BULK_ADD_LEADS', leads })
       return leads
     },

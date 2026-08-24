@@ -3,7 +3,7 @@ import { TopBar } from '../components/TopBar'
 import { Button, Segmented, Kpi, Avatar } from '../components/ui'
 import { Table, Row, Cell } from '../components/Table'
 import { Modal, Field, Input, Textarea } from '../components/overlays'
-import { Plus, Download, Check, ArrowUpRight } from '../components/icons'
+import { Plus, Download, Check, ArrowUpRight, Search } from '../components/icons'
 import { ScorePill } from '../components/ai-widgets'
 import { leadScore } from '../lib/intelligence'
 import { useState_, useActions } from '../store/store'
@@ -17,15 +17,37 @@ export function Leads() {
   const [sel, setSel] = useState<Set<string>>(new Set())
   const [showNew, setShowNew] = useState(false)
   const [showImport, setShowImport] = useState(false)
+  // filters
+  const [source, setSource] = useState('All sources')
+  const [owner, setOwner] = useState('All owners')
+  const [minScore, setMinScore] = useState(0)
+  const [timeframe, setTimeframe] = useState('All time')
+  const [query, setQuery] = useState('')
   const template = '28px 2fr 1.5fr 1fr 1fr 1fr 0.8fr 0.6fr'
 
-  const visible = leads.filter((l) => (view === 'Inbox' ? !l.archived : l.archived))
+  const now = Date.now()
+  const inTime = (ts?: number) => {
+    if (timeframe === 'All time' || !ts) return timeframe === 'All time'
+    const win = timeframe === '24 hours' ? 86_400_000 : timeframe === '7 days' ? 7 * 86_400_000 : 30 * 86_400_000
+    return ts >= now - win
+  }
+  const q = query.trim().toLowerCase()
+  const visible = leads
+    .filter((l) => (view === 'Inbox' ? !l.archived : l.archived))
+    .filter((l) => source === 'All sources' || l.source === source)
+    .filter((l) => owner === 'All owners' || l.owner === owner)
+    .filter((l) => l.score >= minScore)
+    .filter((l) => (timeframe === 'All time' ? true : inTime(l.createdAt)))
+    .filter((l) => !q || l.name.toLowerCase().includes(q) || l.company.toLowerCase().includes(q) || l.role.toLowerCase().includes(q))
   const allSel = visible.length > 0 && sel.size === visible.length
+  const owners = [...new Set(leads.map((l) => l.owner))]
+  const activeFilterCount = (source !== 'All sources' ? 1 : 0) + (owner !== 'All owners' ? 1 : 0) + (minScore > 0 ? 1 : 0) + (timeframe !== 'All time' ? 1 : 0) + (q ? 1 : 0)
+  const clearFilters = () => { setSource('All sources'); setOwner('All owners'); setMinScore(0); setTimeframe('All time'); setQuery('') }
 
   const filters = [
-    { label: 'All open leads', count: leads.filter((l) => !l.archived).length, active: true },
-    { label: 'High score (≥75)', count: leads.filter((l) => !l.archived && l.score >= 75).length },
-    { label: 'Archived', count: leads.filter((l) => l.archived).length },
+    { label: 'All open leads', count: leads.filter((l) => !l.archived).length, active: view === 'Inbox' && minScore === 0 },
+    { label: 'High score (≥75)', count: leads.filter((l) => !l.archived && l.score >= 75).length, active: minScore === 75 },
+    { label: 'Archived', count: leads.filter((l) => l.archived).length, active: view === 'Archived' },
   ]
   const sources = [...new Set(leads.map((l) => l.source))].map((s) => ({ label: s, count: leads.filter((l) => l.source === s && !l.archived).length })).filter((s) => s.count > 0)
 
@@ -55,7 +77,7 @@ export function Leads() {
             <div className="eyebrow text-muted-3 mb-2">Saved filters</div>
             <div className="flex flex-col gap-0.5">
               {filters.map((f) => (
-                <button key={f.label} onClick={() => setView(f.label === 'Archived' ? 'Archived' : 'Inbox')} className={classNames('flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[13px]', f.active ? 'bg-accent-wash-2 text-accent-700 font-semibold' : 'text-ink-3 hover:bg-control')}>
+                <button key={f.label} onClick={() => { if (f.label === 'Archived') { setView('Archived') } else if (f.label === 'High score (≥75)') { setView('Inbox'); setMinScore(75) } else { setView('Inbox'); setMinScore(0) } }} className={classNames('flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[13px]', f.active ? 'bg-accent-wash-2 text-accent-700 font-semibold' : 'text-ink-3 hover:bg-control')}>
                   <span>{f.label}</span><span className={f.active ? 'text-accent-700' : 'text-muted-3'}>{f.count}</span>
                 </button>
               ))}
@@ -64,7 +86,12 @@ export function Leads() {
           <div>
             <div className="eyebrow text-muted-3 mb-2">Sources</div>
             <div className="flex flex-col gap-0.5">
-              {sources.map((s) => (<div key={s.label} className="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[13px] text-ink-3"><span>{s.label}</span><span className="text-muted-3">{s.count}</span></div>))}
+              <button onClick={() => setSource('All sources')} className={classNames('flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[13px]', source === 'All sources' ? 'bg-accent-wash-2 text-accent-700 font-semibold' : 'text-ink-3 hover:bg-control')}><span>All sources</span><span className={source === 'All sources' ? 'text-accent-700' : 'text-muted-3'}>{leads.filter((l) => !l.archived).length}</span></button>
+              {sources.map((s) => (
+                <button key={s.label} onClick={() => setSource(s.label)} className={classNames('flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[13px]', source === s.label ? 'bg-accent-wash-2 text-accent-700 font-semibold' : 'text-ink-3 hover:bg-control')}>
+                  <span className="truncate">{s.label}</span><span className={source === s.label ? 'text-accent-700' : 'text-muted-3'}>{s.count}</span>
+                </button>
+              ))}
             </div>
           </div>
         </aside>
@@ -74,6 +101,25 @@ export function Leads() {
             <Kpi label="Open leads" value={String(leads.filter((l) => !l.archived).length)} delta="In your inbox" deltaTone="muted" />
             <Kpi label="Avg. lead score" value={String(Math.round(leads.filter((l) => !l.archived).reduce((s, l) => s + l.score, 0) / Math.max(1, leads.filter((l) => !l.archived).length)))} delta="Qualified threshold 60" deltaTone="muted" />
             <Kpi variant="blue" label="Converted" value={String(leads.filter((l) => l.converted).length)} delta="To deals + contacts" />
+          </div>
+
+          {/* filter bar */}
+          <div className="flex items-center gap-2 flex-wrap bg-surface border border-border rounded-card px-3 py-2.5">
+            <div className="relative">
+              <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-3" />
+              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search name, company…" className="h-8 pl-8 pr-3 rounded-control border border-input-border bg-white text-[12.5px] text-ink-2 outline-none focus:border-accent w-52" />
+            </div>
+            <select value={source} onChange={(e) => setSource(e.target.value)} className="h-8 px-2.5 rounded-control border border-input-border bg-white text-[12.5px] text-ink-2 outline-none focus:border-accent">
+              <option>All sources</option>
+              {sources.map((s) => (<option key={s.label}>{s.label}</option>))}
+            </select>
+            <select value={owner} onChange={(e) => setOwner(e.target.value)} className="h-8 px-2.5 rounded-control border border-input-border bg-white text-[12.5px] text-ink-2 outline-none focus:border-accent">
+              <option>All owners</option>
+              {owners.map((o) => (<option key={o}>{o}</option>))}
+            </select>
+            <Segmented options={['All time', '24 hours', '7 days', '30 days']} value={timeframe} onChange={setTimeframe} />
+            <Segmented options={['Any', '60+', '75+']} value={minScore === 0 ? 'Any' : minScore === 60 ? '60+' : '75+'} onChange={(v) => setMinScore(v === 'Any' ? 0 : v === '60+' ? 60 : 75)} />
+            {activeFilterCount > 0 && <button onClick={clearFilters} className="ml-auto text-[12.5px] text-accent font-semibold">Clear filters ({activeFilterCount})</button>}
           </div>
 
           {sel.size > 0 && (

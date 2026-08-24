@@ -195,7 +195,17 @@ export function buildSeed(): State {
   void personByName
   void mLeads
 
-  const leads = mLeads.map((l) => ({ ...l }))
+  // Give each lead a real timestamp derived from its relative label, so the
+  // Leads page can filter by date range.
+  const parseWhen = (s: string): number => {
+    const t = s.toLowerCase()
+    if (t.includes('just now')) return mins(2)
+    if (t === 'yesterday') return days(1)
+    const h = t.match(/(\d+)\s*h/); if (h) return hrs(Number(h[1]))
+    const d = t.match(/(\d+)\s*day/); if (d) return days(Number(d[1]))
+    return days(3)
+  }
+  const leads = mLeads.map((l, i) => ({ ...l, createdAt: parseWhen(l.created) - i * 3_600_000 }))
 
   const sequences: Sequence[] = [
     { id: 'sq1', name: 'Renewables outbound', enrolled: 42, active: true, replyRate: 18, steps: [

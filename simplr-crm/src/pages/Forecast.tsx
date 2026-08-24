@@ -9,17 +9,27 @@ import { money } from '../lib/format'
 type Cat = 'Commit' | 'Best case' | 'Pipeline' | 'Closed'
 const catTone: Record<Cat, ChipTone> = { Commit: 'positive', 'Best case': 'accent', Pipeline: 'warning', Closed: 'neutral' }
 
+const categoryFor = (d: { won?: boolean; probability: number }): Cat =>
+  d.won ? 'Closed' : d.probability >= 80 ? 'Commit' : d.probability >= 50 ? 'Best case' : 'Pipeline'
+
 export function Forecast() {
   const { deals } = useState_()
   const act = useActions()
   const [q, setQ] = useState('Q3 FY26')
+  const [owner, setOwner] = useState('All owners')
+  const [cat, setCat] = useState('All')
   const template = '2fr 1fr 1.1fr 1fr 1fr'
-  const rows = deals.filter((d) => !d.lost).slice(0, 8).map((d, i) => ({
-    ...d,
-    category: (['Commit', 'Best case', 'Pipeline', 'Closed', 'Commit', 'Best case', 'Pipeline', 'Commit'] as Cat[])[i],
-  }))
+
+  const owners = [...new Set(deals.map((d) => d.owner))]
+  const rows = deals.filter((d) => !d.lost).map((d) => ({ ...d, category: categoryFor(d) }))
+    .filter((d) => owner === 'All owners' || d.owner === owner)
+    .filter((d) => cat === 'All' || d.category === cat)
+    .sort((a, b) => b.value - a.value)
+  const openRows = rows.filter((d) => !d.won)
   const commit = rows.filter((r) => r.category === 'Commit').reduce((s, r) => s + r.value, 0)
-  const best = rows.reduce((s, r) => s + r.value, 0)
+  const best = commit + rows.filter((r) => r.category === 'Best case').reduce((s, r) => s + r.value, 0)
+  const weighted = Math.round(openRows.reduce((s, d) => s + d.value * (d.probability / 100), 0))
+  const activeFilters = (owner !== 'All owners' ? 1 : 0) + (cat !== 'All' ? 1 : 0)
   return (
     <>
       <TopBar
@@ -37,15 +47,26 @@ export function Forecast() {
         <div className="grid grid-cols-4 gap-4">
           <Kpi variant="deep" label="Commit" value={money(commit, { compact: true })} delta="Quota £1.1M" />
           <Kpi label="Best case" value={money(best, { compact: true })} delta={`+${money(best - commit, { compact: true })} upside`} />
-          <Kpi variant="blue" label="Weighted pipeline" value={money(Math.round(deals.filter((d) => !d.won && !d.lost).reduce((s, d) => s + d.value * (d.probability / 100), 0)), { compact: true })} delta="prob-weighted" deltaTone="muted" />
+          <Kpi variant="blue" label="Weighted pipeline" value={money(weighted, { compact: true })} delta="prob-weighted" deltaTone="muted" />
           <Kpi label="Gap to quota" value={money(Math.max(0, 1100000 - commit), { compact: true })} delta="Below commit" deltaTone="negative" />
+        </div>
+
+        {/* filter bar */}
+        <div className="flex items-center gap-2 flex-wrap bg-surface border border-border rounded-card px-3 py-2.5">
+          <span className="text-[12px] text-muted-2 mr-1">Filter</span>
+          <select value={owner} onChange={(e) => setOwner(e.target.value)} className="h-8 px-2.5 rounded-control border border-input-border bg-white text-[12.5px] text-ink-2 outline-none focus:border-accent">
+            <option>All owners</option>
+            {owners.map((o) => (<option key={o}>{o}</option>))}
+          </select>
+          <Segmented options={['All', 'Commit', 'Best case', 'Pipeline', 'Closed']} value={cat} onChange={setCat} />
+          {activeFilters > 0 && <button onClick={() => { setOwner('All owners'); setCat('All') }} className="ml-auto text-[12.5px] text-accent font-semibold">Clear ({activeFilters})</button>}
         </div>
 
         <div className="grid gap-4" style={{ gridTemplateColumns: '1fr 340px' }}>
           <div className="flex flex-col gap-2.5">
             <div className="flex items-center justify-between">
               <div className="text-[15px] font-semibold text-ink">Forecast by deal</div>
-              <span className="text-[12px] text-muted-2">Categorise by dragging a deal into a column →</span>
+              <span className="text-[12px] text-muted-2">Category set from win probability</span>
             </div>
             <Table
               template={template}
@@ -56,7 +77,7 @@ export function Forecast() {
                 { key: 'close', header: 'Close' },
                 { key: 'prob', header: 'Prob.', align: 'right' },
               ]}
-              footer={<><span>8 deals · £1.18M best case</span><span>Updated 2h ago</span></>}
+              footer={<><span>{rows.length} deals · {money(best, { compact: true })} best case</span><span>Updated 2h ago</span></>}
             >
               {rows.map((d) => (
                 <Row key={d.id} template={template}>
@@ -67,7 +88,7 @@ export function Forecast() {
                   <Cell align="right" className="font-semibold text-ink-2">{money(d.value)}</Cell>
                   <Cell><Chip tone={catTone[d.category]}>{d.category}</Chip></Cell>
                   <Cell muted>{d.closeDate}</Cell>
-                  <Cell align="right" muted>{[35, 50, 65, 80, 90][Math.floor(Math.random() * 5)]}%</Cell>
+                  <Cell align="right" muted>{d.won ? '100%' : `${d.probability}%`}</Cell>
                 </Row>
               ))}
             </Table>

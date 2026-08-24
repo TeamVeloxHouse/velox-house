@@ -278,6 +278,7 @@ export interface Lead {
   source: string
   owner: string
   created: string
+  createdAt?: number // epoch ms — for date filtering
   score: number
   archived?: boolean
   converted?: boolean
