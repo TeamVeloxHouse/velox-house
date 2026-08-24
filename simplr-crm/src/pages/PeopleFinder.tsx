@@ -107,6 +107,12 @@ export function PeopleFinder() {
             <div className="text-[16px] font-semibold text-ink-2">Describe your ideal customer, then source</div>
             <div className="text-[13px] text-muted-b max-w-[440px]">Every result is scored for fit and comes with the research behind it — you never import a cold, unqualified list.</div>
           </div>
+        ) : leads.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center text-center gap-2 py-16">
+            <Search size={34} className="text-muted-3" />
+            <div className="text-[15px] font-semibold text-ink-2">No matches for that search</div>
+            <div className="text-[13px] text-muted-b max-w-[420px]">{live ? 'People Data Labs returned no one for those exact filters. Try a broader job title, or clear the location or company size.' : 'Try a broader search.'}</div>
+          </div>
         ) : (
           <>
             <div className="flex items-center justify-between gap-4">

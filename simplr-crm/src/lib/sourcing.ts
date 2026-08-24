@@ -126,7 +126,9 @@ export async function sourceLeads(c: SourcingCriteria): Promise<{ leads: Sourced
     const r = await fetch('/api/sourcing', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(c) })
     if (r.ok) {
       const j = await r.json()
-      if (j && !j.fallback && Array.isArray(j.people) && j.people.length) people = j.people as PdlPerson[]
+      // A live response (even with zero matches) counts as live — only fall back to sample when the
+      // backend has no key or errored (j.fallback).
+      if (j && !j.fallback && Array.isArray(j.people)) people = j.people as PdlPerson[]
       else reason = j?.reason
     }
   } catch (e) {

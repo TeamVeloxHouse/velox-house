@@ -10,6 +10,21 @@
 
 const PDL_SEARCH = 'https://api.peopledatalabs.com/v5/person/search'
 
+// PDL's job_company_industry is a fixed taxonomy — a loose word won't `match`, so map common
+// inputs to the exact value and query it as an exact `term`.
+const INDUSTRY_MAP = {
+  renewables: 'renewables & environment', solar: 'renewables & environment', 'renewable energy': 'renewables & environment',
+  energy: 'renewables & environment', pv: 'renewables & environment', photovoltaic: 'renewables & environment',
+  construction: 'construction', electrical: 'electrical/electronic manufacturing', utilities: 'utilities',
+  'oil & energy': 'oil & energy', 'facilities services': 'facilities services',
+}
+function mapIndustry(raw) {
+  const ind = raw.trim().toLowerCase()
+  if (INDUSTRY_MAP[ind]) return INDUSTRY_MAP[ind]
+  if (/renew|solar|photovolt|\bpv\b/.test(ind)) return 'renewables & environment'
+  return null
+}
+
 /** Build a People Data Labs Elasticsearch query from simple criteria. */
 function buildQuery(c) {
   const must = []
@@ -17,7 +32,10 @@ function buildQuery(c) {
   must.push({ term: { location_country: (c.country || 'united kingdom').toLowerCase() } })
   if (c.location && c.location.trim()) must.push({ match: { location_name: c.location.trim().toLowerCase() } })
   if (c.title && c.title.trim()) must.push({ match: { job_title: c.title.trim().toLowerCase() } })
-  if (c.industry && c.industry.trim()) must.push({ match: { job_company_industry: c.industry.trim().toLowerCase() } })
+  if (c.industry && c.industry.trim()) {
+    const mapped = mapIndustry(c.industry)
+    must.push(mapped ? { term: { job_company_industry: mapped } } : { match: { job_company_industry: c.industry.trim().toLowerCase() } })
+  }
   if (c.companySize && c.companySize.trim()) must.push({ term: { job_company_size: c.companySize.trim() } })
   if (Array.isArray(c.keywords)) for (const k of c.keywords) if (k && k.trim()) must.push({ match: { job_title: k.trim().toLowerCase() } })
   return { query: { bool: { must } }, size: Math.min(15, Math.max(1, c.limit || 12)) }
@@ -46,6 +64,8 @@ export async function pdlSearch(criteria, key) {
     headers: { 'Content-Type': 'application/json', 'X-Api-Key': key },
     body: JSON.stringify(body),
   })
+  // PDL returns 404 when a valid search simply has zero matches — that's an empty result, not an error.
+  if (r.status === 404) return { source: 'pdl', people: [], empty: true }
   if (!r.ok) {
     const t = await r.text().catch(() => '')
     throw new Error(`pdl ${r.status}: ${t.slice(0, 160)}`)
