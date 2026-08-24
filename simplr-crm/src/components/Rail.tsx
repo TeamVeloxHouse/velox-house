@@ -43,6 +43,7 @@ const reachGroups: Group[] = [
   { label: 'Overview', items: [{ to: '/reach', icon: Grid, label: 'Overview', end: true }] },
   { label: 'Find', items: [
     { to: '/reach/finders', icon: Radar, label: 'Finders' },
+    { to: '/reach/people-finder', icon: Person, label: 'People finder' },
     { to: '/reach/solar', icon: Sun, label: 'Solar finder' },
     { to: '/reach/prospects', icon: Search, label: 'B2B prospects' },
   ] },

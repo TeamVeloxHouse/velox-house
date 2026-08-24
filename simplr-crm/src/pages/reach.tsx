@@ -113,7 +113,7 @@ export function ReachOverview() {
 /* ============================ Finders hub ============================ */
 const finders = [
   { id: 'solar', name: 'Solar roof finder', desc: 'Scan an area, measure every roof’s solar potential, and prospect the best sites.', to: '/reach/solar', icon: Sun, color: '#F59E0B', live: true, found: '1,240 roofs' },
-  { id: 'b2b', name: 'B2B database', desc: '400M+ contacts. Filter by role, industry and company size, reveal verified emails.', to: '/reach/prospects', icon: Search, color: '#1D4ED8', live: true, found: '4.8k matches' },
+  { id: 'people', name: 'People finder', desc: '400M+ contacts via People Data Labs. Filter by role, industry & size — each match scored and researched before it reaches your CRM.', to: '/reach/people-finder', icon: Person, color: '#1D4ED8', live: true, found: 'People Data Labs' },
   { id: 'local', name: 'Local business finder', desc: 'Map-based discovery of businesses by type and area (Places + enrichment).', to: '/reach/finders', icon: Building, color: '#0E7C66', live: false, found: 'Coming soon' },
   { id: 'intent', name: 'Buyer-intent signals', desc: 'Surface companies showing hiring, funding or tech-change signals.', to: '/reach/finders', icon: Bolt, color: '#5B29CC', live: false, found: 'Coming soon' },
 ]

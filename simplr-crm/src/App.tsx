@@ -29,6 +29,7 @@ import { StudioOverview, ProposalsList, StudioAnalytics, StudioTemplates } from 
 import { StudioPricing } from './pages/StudioPricing'
 import { Delivery, ProjectDetail } from './pages/Delivery'
 import { EvCalculator } from './pages/EvCalculator'
+import { PeopleFinder } from './pages/PeopleFinder'
 
 export const router = createBrowserRouter([
   {
@@ -61,6 +62,7 @@ export const router = createBrowserRouter([
       { path: 'reach/ai', element: <ReachAI /> },
       { path: 'reach/finders', element: <Finders /> },
       { path: 'reach/solar', element: <SolarFinder /> },
+      { path: 'reach/people-finder', element: <PeopleFinder /> },
       // Simplr Studio — design, proposals & analytics
       { path: 'studio', element: <StudioOverview /> },
       { path: 'studio/design', element: <DesignStudio /> },
