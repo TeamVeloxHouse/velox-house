@@ -4,7 +4,7 @@ import { MILESTONES } from '../lib/delivery'
 import { tradeByKey } from '../lib/trades'
 import { money } from '../lib/format'
 import { AI_MEMBER_ID, YOU_MEMBER_ID } from './types'
-import type { TeamMember, TeamChannel, TeamMessage, Announcement } from './types'
+import type { TeamMember, TeamChannel, TeamMessage, Announcement, Employee, LeaveRequest, Policy, Certification, Expense, StockItem, Review } from './types'
 
 const now = Date.now()
 const mins = (m: number) => now - m * 60_000
@@ -462,6 +462,71 @@ export function buildSeed(): State {
     { id: 'an-shout1', kind: 'shoutout', title: 'Shoutout to Priya 🙌', body: 'Fastest lead → booked-demo turnaround this month, twice over. The follow-up game is unmatched.', authorId: 'tm-marcus', createdAt: days(4), cheers: [YOU_MEMBER_ID, 'tm-dana', 'tm-sofia'] },
   ]
 
+  // ── Departments — the whole-workforce layer ──
+  const isoAgo = (d: number) => new Date(now - d * 86_400_000).toISOString().slice(0, 10)
+  const isoIn = (d: number) => new Date(now + d * 86_400_000).toISOString().slice(0, 10)
+
+  const employees: Employee[] = [
+    { id: 'emp-jordan', name: 'Jordan Miles', role: 'Account Executive', dept: 'sales', startDate: isoAgo(720), status: 'active', managerId: 'emp-dana', color: '#1D4ED8' },
+    { id: 'emp-dana', name: 'Dana Okafor', role: 'CEO & Founder', dept: 'operations', startDate: isoAgo(1600), status: 'active', color: '#B01B4F' },
+    { id: 'emp-priya', name: 'Priya Nair', role: 'Account Executive', dept: 'sales', startDate: isoAgo(400), status: 'active', managerId: 'emp-dana', color: '#0E9F6E' },
+    { id: 'emp-marcus', name: 'Marcus Webb', role: 'Sales Lead', dept: 'sales', startDate: isoAgo(900), status: 'active', managerId: 'emp-dana', color: '#E8721A' },
+    { id: 'emp-sofia', name: 'Sofia Reyes', role: 'Marketing Manager', dept: 'marketing', startDate: isoAgo(300), status: 'active', managerId: 'emp-dana', color: '#7C5CFF' },
+    { id: 'emp-nia', name: 'Nia Bennett', role: 'Finance Manager', dept: 'finance', startDate: isoAgo(540), status: 'active', managerId: 'emp-dana', color: '#0891B2' },
+    { id: 'emp-ryan', name: 'Ryan Cole', role: 'Lead Installer', dept: 'delivery', startDate: isoAgo(650), status: 'active', managerId: 'emp-dana', color: '#0E9F6E' },
+    { id: 'emp-dev', name: 'Dev Sharma', role: 'Electrician (Part P)', dept: 'delivery', startDate: isoAgo(210), status: 'active', managerId: 'emp-ryan', color: '#1D4ED8' },
+    { id: 'emp-marek', name: 'Marek Nowak', role: 'Installer / Roofer', dept: 'delivery', startDate: isoAgo(140), status: 'probation', managerId: 'emp-ryan', color: '#E8721A' },
+    { id: 'emp-chloe', name: 'Chloe Adams', role: 'Surveyor', dept: 'delivery', startDate: isoAgo(95), status: 'active', managerId: 'emp-ryan', color: '#7C5CFF' },
+  ]
+
+  const leaveRequests: LeaveRequest[] = [
+    { id: 'lv1', employeeId: 'emp-dev', type: 'holiday', from: isoIn(6), to: isoIn(10), days: 3, status: 'pending', note: 'Family holiday', createdAt: hrs(20) },
+    { id: 'lv2', employeeId: 'emp-chloe', type: 'holiday', from: isoIn(14), to: isoIn(18), days: 5, status: 'pending', createdAt: hrs(30) },
+    { id: 'lv3', employeeId: 'emp-marek', type: 'sick', from: isoAgo(1), to: isoAgo(1), days: 1, status: 'approved', createdAt: days(1) },
+    { id: 'lv4', employeeId: 'emp-priya', type: 'holiday', from: isoAgo(20), to: isoAgo(16), days: 4, status: 'approved', createdAt: days(30) },
+  ]
+
+  const policies: Policy[] = [
+    { id: 'pol1', title: 'Employee handbook', category: 'Employment', owner: 'Dana Okafor', updatedAt: days(40), status: 'current' },
+    { id: 'pol2', title: 'Health & Safety policy', category: 'Health & Safety', owner: 'Ryan Cole', updatedAt: days(200), status: 'review-due' },
+    { id: 'pol3', title: 'Working at height — RAMS template', category: 'Health & Safety', owner: 'Ryan Cole', updatedAt: days(120), status: 'current' },
+    { id: 'pol4', title: 'Data protection (UK GDPR)', category: 'IT & Data', owner: 'Dana Okafor', updatedAt: days(400), status: 'review-due' },
+    { id: 'pol5', title: 'Expenses & travel policy', category: 'Finance', owner: 'Nia Bennett', updatedAt: days(60), status: 'current' },
+    { id: 'pol6', title: 'Disciplinary & grievance', category: 'Conduct', owner: 'Dana Okafor', updatedAt: days(90), status: 'current' },
+  ]
+
+  const certifications: Certification[] = [
+    { id: 'ct1', employeeId: 'emp-ryan', name: 'MCS (Solar PV)', issued: isoAgo(700), expires: isoIn(40) },
+    { id: 'ct2', employeeId: 'emp-dev', name: 'NICEIC / Part P', issued: isoAgo(300), expires: isoIn(200) },
+    { id: 'ct3', employeeId: 'emp-dev', name: 'First Aid at Work', issued: isoAgo(1000), expires: isoIn(18) },
+    { id: 'ct4', employeeId: 'emp-marek', name: 'CSCS card', issued: isoAgo(500), expires: isoIn(25) },
+    { id: 'ct5', employeeId: 'emp-ryan', name: 'Working at Height', issued: isoAgo(360), expires: isoIn(300) },
+    { id: 'ct6', employeeId: 'emp-chloe', name: 'CSCS card', issued: isoAgo(90), expires: isoIn(640) },
+  ]
+
+  const expenses: Expense[] = [
+    { id: 'ex1', date: isoAgo(2), category: 'Fuel', vendor: 'Shell', amount: 88.4, who: 'Ryan Cole', status: 'pending' },
+    { id: 'ex2', date: isoAgo(3), category: 'Materials', vendor: 'City Electrical Factors', amount: 412.9, who: 'Dev Sharma', status: 'pending' },
+    { id: 'ex3', date: isoAgo(5), category: 'Tools', vendor: 'Screwfix', amount: 149.99, who: 'Marek Nowak', status: 'approved' },
+    { id: 'ex4', date: isoAgo(7), category: 'Software', vendor: 'Adobe', amount: 59.99, who: 'Sofia Reyes', status: 'reimbursed' },
+    { id: 'ex5', date: isoAgo(1), category: 'Subsistence', vendor: 'Greggs', amount: 24.6, who: 'Chloe Adams', status: 'pending' },
+  ]
+
+  const stock: StockItem[] = [
+    { id: 'st1', name: '450W mono panel', sku: 'PNL-450M', qty: 42, reorderAt: 60, unitCost: 92, supplier: 'Segen' },
+    { id: 'st2', name: '5kW hybrid inverter', sku: 'INV-5KH', qty: 6, reorderAt: 8, unitCost: 780, supplier: 'Segen' },
+    { id: 'st3', name: '5.2kWh battery module', sku: 'BAT-52', qty: 3, reorderAt: 6, unitCost: 1350, supplier: 'GivEnergy' },
+    { id: 'st4', name: 'Roof mounting rail 4.2m', sku: 'MNT-42', qty: 120, reorderAt: 80, unitCost: 18, supplier: 'Van der Valk' },
+    { id: 'st5', name: 'DC isolator', sku: 'ISO-DC', qty: 9, reorderAt: 20, unitCost: 14, supplier: 'City Electrical' },
+  ]
+
+  const reviews: Review[] = [
+    { id: 'rv1', author: 'Helen T.', rating: 5, text: 'Immaculate install, tidy team, panels producing more than quoted. Highly recommend.', source: 'Google', date: isoAgo(2), responded: false },
+    { id: 'rv2', author: 'Raj P.', rating: 5, text: 'From survey to switch-on in three weeks. Ryan’s crew were brilliant.', source: 'Checkatrade', date: isoAgo(6), responded: true },
+    { id: 'rv3', author: 'Moira K.', rating: 4, text: 'Great work overall, slight delay on the battery but kept us informed.', source: 'Google', date: isoAgo(9), responded: false },
+    { id: 'rv4', author: 'Dan W.', rating: 5, text: 'Best quote, no pressure, proper MCS paperwork. Would use again.', source: 'Trustpilot', date: isoAgo(14), responded: true },
+  ]
+
   const customFields: CustomField[] = [
     { id: 'cf1', entity: 'deal', label: 'Contract length', type: 'select', options: ['1 year', '2 years', '3 years', '5 years'] },
     { id: 'cf2', entity: 'deal', label: 'Region', type: 'text' },
@@ -474,5 +539,5 @@ export function buildSeed(): State {
   const activeTrade = 'solar' as const
   const features = { ...tradeByKey(activeTrade).features }
 
-  return { deals, people, orgs, leads, activities, emails, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, linkedinThreads, enrolments, reachCampaigns, scheduledTasks, studioConfig, projects, playbooks, brandKit, docTemplates, brandDocs, products: mProducts, documents, emailCampaigns, customFields, activeTrade, features, onboarded: false, engineers, jobs, currentRole: 'owner', teamMembers, teamChannels, teamMessages, announcements, toasts: [], railExpanded: true }
+  return { deals, people, orgs, leads, activities, emails, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, linkedinThreads, enrolments, reachCampaigns, scheduledTasks, studioConfig, projects, playbooks, brandKit, docTemplates, brandDocs, products: mProducts, documents, emailCampaigns, customFields, activeTrade, features, onboarded: false, engineers, jobs, currentRole: 'owner', teamMembers, teamChannels, teamMessages, announcements, employees, leaveRequests, policies, certifications, expenses, stock, reviews, toasts: [], railExpanded: true }
 }

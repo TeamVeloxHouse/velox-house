@@ -102,8 +102,8 @@ export interface BrandKit {
   tone: string
   logoName?: string
 }
-export type DocKind = 'deck' | 'proposal' | 'onepager' | 'case-study' | 'letter'
-export type DocFormat = 'pptx' | 'docx' | 'pdf' | 'html'
+export type DocKind = 'deck' | 'proposal' | 'onepager' | 'case-study' | 'letter' | 'report' | 'model' | 'certificate' | 'policy' | 'contract' | 'handover'
+export type DocFormat = 'pptx' | 'docx' | 'pdf' | 'html' | 'xlsx'
 export interface DocTemplate {
   id: ID
   name: string
@@ -545,6 +545,80 @@ export interface Announcement {
   pinned?: boolean
 }
 
+// ── Departments — the whole-workforce layer (build what we own, connect the rest) ──
+export type Dept = 'operations' | 'finance' | 'hr' | 'marketing' | 'delivery'
+
+// HR / People
+export interface Employee {
+  id: ID
+  name: string
+  role: string
+  dept: Dept | 'sales'
+  startDate: string // ISO
+  status: 'active' | 'probation' | 'leave'
+  managerId?: ID
+  color: string
+}
+export interface LeaveRequest {
+  id: ID
+  employeeId: ID
+  type: 'holiday' | 'sick' | 'unpaid' | 'parental'
+  from: string
+  to: string
+  days: number
+  status: 'pending' | 'approved' | 'declined'
+  note?: string
+  createdAt: number
+}
+export interface Policy {
+  id: ID
+  title: string
+  category: 'Employment' | 'Health & Safety' | 'IT & Data' | 'Finance' | 'Conduct'
+  owner: string
+  updatedAt: number
+  status: 'current' | 'review-due' | 'draft'
+}
+export interface Certification {
+  id: ID
+  employeeId: ID
+  name: string // MCS, Gas Safe, NICEIC, CSCS, First Aid…
+  issued: string
+  expires: string // ISO — drives the expiry warnings
+}
+
+// Finance
+export interface Expense {
+  id: ID
+  date: string
+  category: string
+  vendor: string
+  amount: number
+  who: string
+  status: 'pending' | 'approved' | 'reimbursed'
+}
+
+// Operations
+export interface StockItem {
+  id: ID
+  name: string
+  sku: string
+  qty: number
+  reorderAt: number
+  unitCost: number
+  supplier: string
+}
+
+// Marketing
+export interface Review {
+  id: ID
+  author: string
+  rating: number // 1–5
+  text: string
+  source: 'Google' | 'Trustpilot' | 'Checkatrade'
+  date: string
+  responded: boolean
+}
+
 export interface State {
   deals: Deal[]
   people: Person[]
@@ -589,6 +663,14 @@ export interface State {
   teamChannels: TeamChannel[]
   teamMessages: TeamMessage[]
   announcements: Announcement[]
+  // Departments (whole-workforce layer)
+  employees: Employee[]
+  leaveRequests: LeaveRequest[]
+  policies: Policy[]
+  certifications: Certification[]
+  expenses: Expense[]
+  stock: StockItem[]
+  reviews: Review[]
   toasts: Toast[]
   railExpanded: boolean
 }

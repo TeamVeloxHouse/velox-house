@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   Grid, Bars, Bolt, Person, Building, Calendar, Envelope, Pie, Gear, ChevronRight, ChevronDown,
-  Box, Flow, Megaphone, Sparkle, Video, Robot, Target, Layers, File, Sun, Radar, Search, Send, Check, Clock, Dollar, Wrench, Users,
+  Box, Flow, Megaphone, Sparkle, Video, Robot, Target, Layers, File, Sun, Radar, Search, Send, Check, Clock, Dollar, Wrench, Users, Sliders,
 } from './icons'
 import { classNames } from '../lib/format'
 import { useState_ } from '../store/store'
@@ -41,6 +41,13 @@ const crmGroups: Group[] = [
     { to: '/projects', icon: Flow, label: 'Projects' },
     { to: '/products', icon: Box, label: 'Products' },
     { to: '/documents', icon: File, label: 'Documents' },
+  ] },
+  { label: 'Departments', items: [
+    { to: '/operations', icon: Sliders, label: 'Operations' },
+    { to: '/finance', icon: Dollar, label: 'Finance' },
+    { to: '/hr', icon: Person, label: 'HR & People' },
+    { to: '/marketing', icon: Megaphone, label: 'Marketing' },
+    { to: '/delivery', icon: Box, label: 'Delivery' },
   ] },
   { label: 'Analyse', items: [{ to: '/insights', icon: Pie, label: 'Insights' }] },
 ]

@@ -9,8 +9,8 @@ import type { DocKind, DocFormat, DocTemplate, BrandDoc } from '../store/types'
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 const FONTS = ['Inter', 'Poppins', 'Roboto', 'Montserrat', 'Georgia', 'System UI']
-const kindLabel: Record<DocKind, string> = { deck: 'Pitch deck', proposal: 'Proposal', onepager: 'One-pager', 'case-study': 'Case study', letter: 'Letter' }
-const kindIcon: Record<DocKind, any> = { deck: Layers, proposal: FileIcon, onepager: FileIcon, 'case-study': FileIcon, letter: FileIcon }
+const kindLabel: Record<DocKind, string> = { deck: 'Pitch deck', proposal: 'Proposal', onepager: 'One-pager', 'case-study': 'Case study', letter: 'Letter', report: 'Report', model: 'Model', certificate: 'Certificate', policy: 'Policy', contract: 'Contract', handover: 'Handover pack' }
+const kindIcon: Record<DocKind, any> = { deck: Layers, proposal: FileIcon, onepager: FileIcon, 'case-study': FileIcon, letter: FileIcon, report: FileIcon, model: FileIcon, certificate: FileIcon, policy: FileIcon, contract: FileIcon, handover: FileIcon }
 
 export function BrandDocuments() {
   const { brandKit, docTemplates, brandDocs, playbooks } = useState_()

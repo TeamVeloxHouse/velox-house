@@ -4,7 +4,7 @@ import type { State, Deal, Person, Lead, Org, Activity, EmailMsg, Toast, ID } fr
 import { AI_MEMBER_ID, YOU_MEMBER_ID } from './types'
 import type { StageName } from '../data/mock'
 
-const KEY = 'simplr.state.v12'
+const KEY = 'simplr.state.v13'
 let idc = 1000
 export const uid = (p = 'x') => `${p}${Date.now().toString(36)}${idc++}`
 
@@ -85,6 +85,10 @@ type Action =
   | { type: 'MARK_CHANNEL_READ'; id: ID }
   | { type: 'ADD_ANNOUNCEMENT'; announcement: import('./types').Announcement }
   | { type: 'TOGGLE_CHEER'; id: ID; by: ID }
+  | { type: 'SET_LEAVE_STATUS'; id: ID; status: import('./types').LeaveRequest['status'] }
+  | { type: 'SET_EXPENSE_STATUS'; id: ID; status: import('./types').Expense['status'] }
+  | { type: 'RESPOND_REVIEW'; id: ID }
+  | { type: 'UPDATE_POLICY'; id: ID; patch: Partial<import('./types').Policy> }
   | { type: 'RESET' }
 
 function reducer(state: State, action: Action): State {
@@ -291,6 +295,14 @@ function reducer(state: State, action: Action): State {
             : a,
         ),
       }
+    case 'SET_LEAVE_STATUS':
+      return { ...state, leaveRequests: state.leaveRequests.map((l) => (l.id === action.id ? { ...l, status: action.status } : l)) }
+    case 'SET_EXPENSE_STATUS':
+      return { ...state, expenses: state.expenses.map((e) => (e.id === action.id ? { ...e, status: action.status } : e)) }
+    case 'RESPOND_REVIEW':
+      return { ...state, reviews: state.reviews.map((r) => (r.id === action.id ? { ...r, responded: true } : r)) }
+    case 'UPDATE_POLICY':
+      return { ...state, policies: state.policies.map((p) => (p.id === action.id ? { ...p, ...action.patch } : p)) }
     case 'RESET':
       return buildSeed()
     default:
@@ -807,6 +819,25 @@ export function useActions() {
       return a
     },
     toggleCheer: (id: ID, member: ID = YOU_MEMBER_ID) => dispatch({ type: 'TOGGLE_CHEER', id, by: member }),
+
+    // ── Departments (whole-workforce layer) ──
+    setLeaveStatus: (id: ID, status: import('./types').LeaveRequest['status'], name?: string) => {
+      dispatch({ type: 'SET_LEAVE_STATUS', id, status })
+      toast(status === 'approved' ? `Leave approved${name ? ` — ${name}` : ''}` : `Leave declined${name ? ` — ${name}` : ''}`, status === 'approved' ? 'positive' : 'warning')
+    },
+    setExpenseStatus: (id: ID, status: import('./types').Expense['status']) => {
+      dispatch({ type: 'SET_EXPENSE_STATUS', id, status })
+      toast(status === 'approved' ? 'Expense approved' : status === 'reimbursed' ? 'Expense marked reimbursed' : 'Expense updated')
+    },
+    respondReview: (id: ID) => { dispatch({ type: 'RESPOND_REVIEW', id }); toast('Response drafted & posted') },
+    updatePolicy: (id: ID, patch: Partial<import('./types').Policy>) => dispatch({ type: 'UPDATE_POLICY', id, patch }),
+    /** The artifact engine — in production Claude generates the real .xlsx/.pptx/.docx; here it lands in Brand & Documents. */
+    generateArtifact: (title: string, kind: import('./types').DocKind, format: import('./types').DocFormat) => {
+      const full: import('./types').BrandDoc = { id: uid('bd'), title, kind, format, source: 'template', createdAt: Date.now() }
+      dispatch({ type: 'ADD_BRANDDOC', doc: full })
+      toast(`${title} — generated (.${format})`)
+      return full
+    },
 
     reset: () => {
       dispatch({ type: 'RESET' })

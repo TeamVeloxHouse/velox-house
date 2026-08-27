@@ -33,6 +33,7 @@ import { EvCalculator } from './pages/EvCalculator'
 import { PeopleFinder } from './pages/PeopleFinder'
 import { BrandDocuments } from './pages/BrandDocuments'
 import { Team } from './pages/Team'
+import { Operations, Finance, HR, Marketing, DeliveryDept } from './pages/departments'
 
 export const router = createBrowserRouter([
   {
@@ -42,6 +43,11 @@ export const router = createBrowserRouter([
       { index: true, element: <Home /> },
       { path: 'ai', element: <SimplrAI /> },
       { path: 'team', element: <Team /> },
+      { path: 'operations', element: <Operations /> },
+      { path: 'finance', element: <Finance /> },
+      { path: 'hr', element: <HR /> },
+      { path: 'marketing', element: <Marketing /> },
+      { path: 'delivery', element: <DeliveryDept /> },
       { path: 'agents', element: <Agents /> },
       { path: 'meetings', element: <Meetings /> },
       { path: 'deals', element: <DealsBoard /> },
