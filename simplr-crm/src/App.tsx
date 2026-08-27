@@ -32,6 +32,7 @@ import { Delivery, ProjectDetail } from './pages/Delivery'
 import { EvCalculator } from './pages/EvCalculator'
 import { PeopleFinder } from './pages/PeopleFinder'
 import { BrandDocuments } from './pages/BrandDocuments'
+import { Team } from './pages/Team'
 
 export const router = createBrowserRouter([
   {
@@ -40,6 +41,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Home /> },
       { path: 'ai', element: <SimplrAI /> },
+      { path: 'team', element: <Team /> },
       { path: 'agents', element: <Agents /> },
       { path: 'meetings', element: <Meetings /> },
       { path: 'deals', element: <DealsBoard /> },

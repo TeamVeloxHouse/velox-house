@@ -1,9 +1,10 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, type ReactNode } from 'react'
 import { buildSeed } from './seed'
 import type { State, Deal, Person, Lead, Org, Activity, EmailMsg, Toast, ID } from './types'
+import { AI_MEMBER_ID, YOU_MEMBER_ID } from './types'
 import type { StageName } from '../data/mock'
 
-const KEY = 'simplr.state.v11'
+const KEY = 'simplr.state.v12'
 let idc = 1000
 export const uid = (p = 'x') => `${p}${Date.now().toString(36)}${idc++}`
 
@@ -78,6 +79,12 @@ type Action =
   | { type: 'ADD_JOB'; job: import('./types').Job }
   | { type: 'UPDATE_JOB'; id: ID; patch: Partial<import('./types').Job> }
   | { type: 'REMOVE_JOB'; id: ID }
+  | { type: 'ADD_TEAM_MESSAGE'; message: import('./types').TeamMessage }
+  | { type: 'UPDATE_TEAM_MESSAGE'; id: ID; patch: Partial<import('./types').TeamMessage> }
+  | { type: 'ADD_TEAM_CHANNEL'; channel: import('./types').TeamChannel }
+  | { type: 'MARK_CHANNEL_READ'; id: ID }
+  | { type: 'ADD_ANNOUNCEMENT'; announcement: import('./types').Announcement }
+  | { type: 'TOGGLE_CHEER'; id: ID; by: ID }
   | { type: 'RESET' }
 
 function reducer(state: State, action: Action): State {
@@ -256,6 +263,34 @@ function reducer(state: State, action: Action): State {
       return { ...state, jobs: state.jobs.map((j) => (j.id === action.id ? { ...j, ...action.patch } : j)) }
     case 'REMOVE_JOB':
       return { ...state, jobs: state.jobs.filter((j) => j.id !== action.id) }
+    case 'ADD_TEAM_MESSAGE':
+      return {
+        ...state,
+        teamMessages: [...state.teamMessages, action.message],
+        // bump the channel's unread unless the message is from the current viewer
+        teamChannels: state.teamChannels.map((c) =>
+          c.id === action.message.channelId && action.message.authorId !== YOU_MEMBER_ID
+            ? { ...c, unread: c.unread + 1 }
+            : c,
+        ),
+      }
+    case 'UPDATE_TEAM_MESSAGE':
+      return { ...state, teamMessages: state.teamMessages.map((m) => (m.id === action.id ? { ...m, ...action.patch } : m)) }
+    case 'ADD_TEAM_CHANNEL':
+      return { ...state, teamChannels: [...state.teamChannels, action.channel] }
+    case 'MARK_CHANNEL_READ':
+      return { ...state, teamChannels: state.teamChannels.map((c) => (c.id === action.id ? { ...c, unread: 0 } : c)) }
+    case 'ADD_ANNOUNCEMENT':
+      return { ...state, announcements: [action.announcement, ...state.announcements] }
+    case 'TOGGLE_CHEER':
+      return {
+        ...state,
+        announcements: state.announcements.map((a) =>
+          a.id === action.id
+            ? { ...a, cheers: a.cheers.includes(action.by) ? a.cheers.filter((x) => x !== action.by) : [...a.cheers, action.by] }
+            : a,
+        ),
+      }
     case 'RESET':
       return buildSeed()
     default:
@@ -732,6 +767,46 @@ export function useActions() {
       toast(status === 'complete' ? `${job.ref} marked complete` : `${job.ref} → ${status}`)
     },
     removeJob: (id: ID, ref: string) => { dispatch({ type: 'REMOVE_JOB', id }); toast(`${ref} removed`, 'warning') },
+
+    // ── Team space (internal chat + announcements) ──
+    postMessage: (channelId: ID, text: string, authorId: ID = YOU_MEMBER_ID) => {
+      const message: import('./types').TeamMessage = { id: uid('tm'), channelId, authorId, text, createdAt: Date.now() }
+      dispatch({ type: 'ADD_TEAM_MESSAGE', message })
+      return message
+    },
+    postAiMessage: (channelId: ID, text: string, ai?: import('./types').TeamAiBlock[], actions?: import('./types').TeamActionRef[]) => {
+      const message: import('./types').TeamMessage = { id: uid('tm'), channelId, authorId: AI_MEMBER_ID, text, createdAt: Date.now(), ai, actions }
+      dispatch({ type: 'ADD_TEAM_MESSAGE', message })
+      return message
+    },
+    markMessageHandled: (id: ID) => dispatch({ type: 'UPDATE_TEAM_MESSAGE', id, patch: { handled: true } }),
+    reactToMessage: (id: ID, emoji: string, member: ID = YOU_MEMBER_ID) => {
+      const m = live.state?.teamMessages.find((x) => x.id === id)
+      if (!m) return
+      const reactions = [...(m.reactions ?? [])]
+      const idx = reactions.findIndex((r) => r.emoji === emoji)
+      if (idx === -1) reactions.push({ emoji, by: [member] })
+      else {
+        const by = reactions[idx].by.includes(member) ? reactions[idx].by.filter((x) => x !== member) : [...reactions[idx].by, member]
+        if (by.length === 0) reactions.splice(idx, 1)
+        else reactions[idx] = { ...reactions[idx], by }
+      }
+      dispatch({ type: 'UPDATE_TEAM_MESSAGE', id, patch: { reactions } })
+    },
+    addChannel: (name: string, kind: import('./types').ChannelKind, topic?: string) => {
+      const channel: import('./types').TeamChannel = { id: uid('ch'), name, kind, topic, memberIds: [YOU_MEMBER_ID, AI_MEMBER_ID], ai: true, unread: 0 }
+      dispatch({ type: 'ADD_TEAM_CHANNEL', channel })
+      toast(`${kind === 'group' ? 'Group' : 'Channel'} “${name}” created`)
+      return channel
+    },
+    markChannelRead: (id: ID) => dispatch({ type: 'MARK_CHANNEL_READ', id }),
+    postAnnouncement: (kind: import('./types').AnnouncementKind, title: string, body: string, value?: number) => {
+      const a: import('./types').Announcement = { id: uid('an'), kind, title, body, authorId: YOU_MEMBER_ID, createdAt: Date.now(), value, cheers: [] }
+      dispatch({ type: 'ADD_ANNOUNCEMENT', announcement: a })
+      toast(kind === 'win' ? 'Win posted — nice one! 🎉' : 'Posted to the announcements board')
+      return a
+    },
+    toggleCheer: (id: ID, member: ID = YOU_MEMBER_ID) => dispatch({ type: 'TOGGLE_CHEER', id, by: member }),
 
     reset: () => {
       dispatch({ type: 'RESET' })

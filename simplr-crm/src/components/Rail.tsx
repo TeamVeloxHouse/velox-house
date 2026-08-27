@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   Grid, Bars, Bolt, Person, Building, Calendar, Envelope, Pie, Gear, ChevronRight, ChevronDown,
-  Box, Flow, Megaphone, Sparkle, Video, Robot, Target, Layers, File, Sun, Radar, Search, Send, Check, Clock, Dollar, Wrench,
+  Box, Flow, Megaphone, Sparkle, Video, Robot, Target, Layers, File, Sun, Radar, Search, Send, Check, Clock, Dollar, Wrench, Users,
 } from './icons'
 import { classNames } from '../lib/format'
 import { useState_ } from '../store/store'
@@ -14,6 +14,7 @@ type Group = { label: string; items: Item[] }
 const crmGroups: Group[] = [
   { label: 'Workspace', items: [
     { to: '/', icon: Grid, label: 'Home', end: true },
+    { to: '/team', icon: Users, label: 'Team' },
     { to: '/agents', icon: Robot, label: 'Agents' },
   ] },
   { label: 'Pipeline', items: [
@@ -45,7 +46,7 @@ const crmGroups: Group[] = [
 ]
 
 const reachGroups: Group[] = [
-  { label: 'Overview', items: [{ to: '/reach', icon: Grid, label: 'Overview', end: true }] },
+  { label: 'Overview', items: [{ to: '/reach', icon: Grid, label: 'Overview', end: true }, { to: '/team', icon: Users, label: 'Team' }] },
   { label: 'Find', items: [
     { to: '/reach/finders', icon: Radar, label: 'Finders' },
     { to: '/reach/people-finder', icon: Person, label: 'People finder' },
@@ -65,7 +66,7 @@ const reachGroups: Group[] = [
 ]
 
 const studioGroups: Group[] = [
-  { label: 'Overview', items: [{ to: '/studio', icon: Grid, label: 'Overview', end: true }] },
+  { label: 'Overview', items: [{ to: '/studio', icon: Grid, label: 'Overview', end: true }, { to: '/team', icon: Users, label: 'Team' }] },
   { label: 'Design', items: [
     { to: '/studio/design', icon: Sun, label: 'Design Studio' },
     { to: '/studio/brand', icon: File, label: 'Brand & Documents' },
@@ -106,14 +107,15 @@ function Tooltip({ label }: { label: string }) {
 export function Rail() {
   const location = useLocation()
   const nav = useNavigate()
-  const { features } = useState_()
+  const { features, teamChannels } = useState_()
+  const teamUnread = teamChannels.reduce((s, c) => s + c.unread, 0)
   const isReach = location.pathname.startsWith('/reach')
   const isStudio = location.pathname.startsWith('/studio')
   const ws = isStudio ? workspaces[2] : isReach ? workspaces[1] : workspaces[0]
   // Trade profile decides which workspaces + nav items are switched on.
   const availableWorkspaces = workspaces.filter((w) => !w.feature || features[w.feature])
   const groups = (isStudio ? studioGroups : isReach ? reachGroups : crmGroups)
-    .map((g) => ({ ...g, items: g.items.filter((it) => !it.feature || features[it.feature]) }))
+    .map((g) => ({ ...g, items: g.items.filter((it) => !it.feature || features[it.feature]).map((it) => (it.to === '/team' && teamUnread > 0 ? { ...it, badge: teamUnread } : it)) }))
     .filter((g) => g.items.length > 0)
   const activeFill = isStudio ? 'bg-[#E8721A]/30' : isReach ? 'bg-[#5B29CC]/25' : 'bg-white/10'
 

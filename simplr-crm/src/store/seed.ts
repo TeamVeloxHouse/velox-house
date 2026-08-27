@@ -2,6 +2,9 @@ import { deals as mDeals, people as mPeople, orgs as mOrgs, leads as mLeads, pro
 import type { State, Deal, Person, Activity, EmailMsg, Meeting, Agent, AgentRun, Connection, CustomField, Webhook, ApiKey, Integration, SocialPost, Sequence, Automation, LinkedInThread, Enrolment, ReachCampaign, ScheduledTask, StudioConfig, StudioProject, Engineer, Job } from './types'
 import { MILESTONES } from '../lib/delivery'
 import { tradeByKey } from '../lib/trades'
+import { money } from '../lib/format'
+import { AI_MEMBER_ID, YOU_MEMBER_ID } from './types'
+import type { TeamMember, TeamChannel, TeamMessage, Announcement } from './types'
 
 const now = Date.now()
 const mins = (m: number) => now - m * 60_000
@@ -383,6 +386,82 @@ export function buildSeed(): State {
     { id: 'job9', ref: 'JOB-2049', kind: 'showroom', title: 'Showroom appointment', customer: 'Sam Idris', address: 'Showroom — Deansgate', crew: [], durationMins: 60, status: 'unscheduled', personId: 'p3', createdAt: now },
   ]
 
+  // ── Team space — one internal chat + announcements board across every workspace ──
+  const teamMembers: TeamMember[] = [
+    { id: YOU_MEMBER_ID, name: 'Jordan Miles', role: 'Account Executive', color: '#1D4ED8', status: 'online', you: true },
+    { id: 'tm-dana', name: 'Dana Okafor', role: 'CEO & Founder', color: '#B01B4F', status: 'online', boss: true },
+    { id: 'tm-priya', name: 'Priya Nair', role: 'Account Executive', color: '#0E9F6E', status: 'online' },
+    { id: 'tm-marcus', name: 'Marcus Webb', role: 'Sales Lead', color: '#E8721A', status: 'away' },
+    { id: 'tm-sofia', name: 'Sofia Reyes', role: 'Marketing', color: '#7C5CFF', status: 'dnd' },
+    { id: 'tm-ryan', name: 'Ryan Cole', role: 'Lead Installer', color: '#0891B2', status: 'offline' },
+    { id: AI_MEMBER_ID, name: 'Simplr AI', role: 'Works across every app', color: '#3B6BF5', status: 'online', bot: true },
+  ]
+  const everyone = teamMembers.map((m) => m.id)
+
+  const teamChannels: TeamChannel[] = [
+    { id: 'ch-general', name: 'general', kind: 'channel', topic: 'Company-wide — anything and everything', memberIds: everyone, ai: true, unread: 0 },
+    { id: 'ch-sales', name: 'sales', kind: 'channel', topic: 'Pipeline, deals & forecasting', memberIds: [YOU_MEMBER_ID, 'tm-dana', 'tm-priya', 'tm-marcus', AI_MEMBER_ID], ai: true, unread: 2 },
+    { id: 'ch-random', name: 'random', kind: 'channel', topic: 'Off-topic & watercooler', memberIds: everyone, ai: false, unread: 0 },
+    { id: 'ch-enterprise', name: 'Enterprise pod', kind: 'group', topic: 'The big-logo working group', memberIds: [YOU_MEMBER_ID, 'tm-marcus', 'tm-dana', AI_MEMBER_ID], ai: true, unread: 0 },
+    { id: 'ch-solar', name: 'Solar delivery', kind: 'group', topic: 'Design → install → PTO handover', memberIds: [YOU_MEMBER_ID, 'tm-priya', 'tm-ryan', AI_MEMBER_ID], ai: true, unread: 0 },
+    { id: 'dm-dana', name: 'Dana Okafor', kind: 'dm', memberIds: [YOU_MEMBER_ID, 'tm-dana', AI_MEMBER_ID], ai: true, unread: 1 },
+    { id: 'dm-ai', name: 'Simplr AI', kind: 'dm', topic: 'Your private copilot', memberIds: [YOU_MEMBER_ID, AI_MEMBER_ID], ai: true, unread: 0 },
+  ]
+
+  // A real, computed answer the AI already posted in #sales — accurate to the seeded pipeline.
+  const openForBars = deals.filter((d) => !d.won && !d.lost)
+  const byStage = openForBars.reduce<Record<string, number>>((acc, d) => { acc[d.stage] = (acc[d.stage] ?? 0) + d.value; return acc }, {})
+  const stageBars = Object.entries(byStage)
+    .sort((a, b) => b[1] - a[1])
+    .map(([label, value]) => ({ label, value, display: money(value, { compact: true }), tone: 'accent' as const }))
+  const totalOpen = openForBars.reduce((s, d) => s + d.value, 0)
+
+  const teamMessages: TeamMessage[] = [
+    // #general
+    { id: 'msg-g1', channelId: 'ch-general', authorId: 'tm-dana', text: 'Morning all — strong start to the week. Board’s next Thursday, let’s go in with our best numbers 💪', createdAt: hrs(6) },
+    { id: 'msg-g2', channelId: 'ch-general', authorId: 'tm-priya', text: 'Portal maintenance window’s done, everything’s back up 👍', createdAt: hrs(5), reactions: [{ emoji: '🙌', by: ['tm-marcus'] }] },
+    { id: 'msg-g3', channelId: 'ch-general', authorId: 'tm-marcus', text: 'Reminder: pipeline review Thursday 3pm. Come with your top 3 at-risk deals.', createdAt: hrs(3) },
+
+    // #sales — a data question the AI answered with a visual
+    { id: 'msg-s1', channelId: 'ch-sales', authorId: 'tm-priya', text: '@Simplr AI how’s the pipeline shaping up for the quarter?', createdAt: hrs(2) },
+    {
+      id: 'msg-s2', channelId: 'ch-sales', authorId: AI_MEMBER_ID, createdAt: hrs(2) + 40_000,
+      text: 'Healthy but back-loaded — most value is sitting in the late stages. Here’s the open pipeline right now:',
+      ai: [
+        { type: 'stats', items: [
+          { label: 'Open pipeline', value: money(totalOpen, { compact: true }) },
+          { label: 'Weighted', value: money(Math.round(totalOpen * 0.33), { compact: true }), tone: 'muted' },
+          { label: 'Open deals', value: String(openForBars.length) },
+          { label: 'To quota', value: '68%', tone: 'positive' },
+        ] },
+        { type: 'bars', title: 'Open pipeline by stage', items: stageBars },
+        { type: 'text', text: 'Cirrus Hosting and Gale Renewables alone are ~40% of open value — keep both moving so the quarter doesn’t hinge on one slip.' },
+      ],
+      reactions: [{ emoji: '👍', by: ['tm-priya', 'tm-marcus'] }],
+    },
+
+    // Enterprise pod
+    { id: 'msg-e1', channelId: 'ch-enterprise', authorId: 'tm-marcus', text: 'Cirrus verbal yes is in 🎉 legal redlines on the liability caps are the only blocker now.', createdAt: hrs(7), reactions: [{ emoji: '🎉', by: [YOU_MEMBER_ID, 'tm-dana'] }] },
+    { id: 'msg-e2', channelId: 'ch-enterprise', authorId: YOU_MEMBER_ID, text: 'On it — chasing procurement this week and lining up a joint legal call.', createdAt: hrs(6) },
+
+    // Solar delivery
+    { id: 'msg-so1', channelId: 'ch-solar', authorId: 'tm-priya', text: 'Brightleaf Way install is booked for Monday, Ryan’s crew assigned. Survey came back clean.', createdAt: hrs(8) },
+
+    // #random
+    { id: 'msg-r1', channelId: 'ch-random', authorId: 'tm-sofia', text: 'The floor-2 coffee machine has risen from the dead ☕', createdAt: hrs(4), reactions: [{ emoji: '☕', by: [YOU_MEMBER_ID, 'tm-priya', 'tm-marcus'] }] },
+
+    // DM from the boss — the fresh, actionable request (left unhandled so the AI can act on it live)
+    { id: 'msg-d1', channelId: 'dm-dana', authorId: 'tm-dana', text: 'Hey — can you prepare a presentation for next week’s board? Focus on Q3 pipeline and our recent wins. Would love a first cut by Friday 🙏', createdAt: mins(9) },
+  ]
+
+  const announcements: Announcement[] = [
+    { id: 'an-win1', kind: 'win', title: 'Cirrus Hosting — £415k closed 🎉', body: 'Six-month cycle, phased rollout landed. Huge credit to Jordan for holding the line on the liability caps and to Marcus for keeping procurement warm.', authorId: 'tm-dana', createdAt: hrs(20), value: 415000, cheers: ['tm-priya', 'tm-marcus', 'tm-sofia', 'tm-dana'], pinned: true },
+    { id: 'an-win2', kind: 'win', title: 'Ashford Utilities renewal secured', body: 'Renewed a year early on a bigger footprint — metering + monitoring added. Priya ran the whole save.', authorId: 'tm-marcus', createdAt: days(2), value: 128000, cheers: [YOU_MEMBER_ID, 'tm-dana'] },
+    { id: 'an-news1', kind: 'news', title: '68% of quarterly quota with 3 weeks to go', body: 'Best position we’ve been in at this point in a quarter. Late-stage pipeline is strong — let’s convert.', authorId: 'tm-dana', createdAt: days(3), cheers: ['tm-priya'] },
+    { id: 'an-update1', kind: 'update', title: 'Simplr AI now lives inside Team', body: '@mention Simplr AI in any channel to get instant answers, visuals, or have it action a request — it can prep a deck, book a meeting or push tasks straight into your list, across every app.', authorId: 'tm-sofia', createdAt: days(1), cheers: [YOU_MEMBER_ID, 'tm-marcus'] },
+    { id: 'an-shout1', kind: 'shoutout', title: 'Shoutout to Priya 🙌', body: 'Fastest lead → booked-demo turnaround this month, twice over. The follow-up game is unmatched.', authorId: 'tm-marcus', createdAt: days(4), cheers: [YOU_MEMBER_ID, 'tm-dana', 'tm-sofia'] },
+  ]
+
   const customFields: CustomField[] = [
     { id: 'cf1', entity: 'deal', label: 'Contract length', type: 'select', options: ['1 year', '2 years', '3 years', '5 years'] },
     { id: 'cf2', entity: 'deal', label: 'Region', type: 'text' },
@@ -395,5 +474,5 @@ export function buildSeed(): State {
   const activeTrade = 'solar' as const
   const features = { ...tradeByKey(activeTrade).features }
 
-  return { deals, people, orgs, leads, activities, emails, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, linkedinThreads, enrolments, reachCampaigns, scheduledTasks, studioConfig, projects, playbooks, brandKit, docTemplates, brandDocs, products: mProducts, documents, emailCampaigns, customFields, activeTrade, features, onboarded: false, engineers, jobs, currentRole: 'owner', toasts: [], railExpanded: true }
+  return { deals, people, orgs, leads, activities, emails, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, linkedinThreads, enrolments, reachCampaigns, scheduledTasks, studioConfig, projects, playbooks, brandKit, docTemplates, brandDocs, products: mProducts, documents, emailCampaigns, customFields, activeTrade, features, onboarded: false, engineers, jobs, currentRole: 'owner', teamMembers, teamChannels, teamMessages, announcements, toasts: [], railExpanded: true }
 }

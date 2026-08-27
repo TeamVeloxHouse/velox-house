@@ -473,6 +473,78 @@ export interface Toast {
   actionLabel?: string
 }
 
+// ── Team space — one internal chat + announcements board that spans every workspace ──
+// Fixed ids so the seed, the AI engine and the UI all agree on "you" and the bot.
+export const AI_MEMBER_ID = 'tm-ai'
+export const YOU_MEMBER_ID = 'tm-you'
+
+export type PresenceStatus = 'online' | 'away' | 'dnd' | 'offline'
+export interface TeamMember {
+  id: ID
+  name: string
+  role: string
+  color: string // avatar accent
+  status: PresenceStatus
+  bot?: boolean // Simplr AI
+  boss?: boolean // your manager
+  you?: boolean // the current viewer
+}
+
+export type ChannelKind = 'channel' | 'group' | 'dm'
+export interface TeamChannel {
+  id: ID
+  name: string
+  kind: ChannelKind
+  topic?: string
+  memberIds: ID[] // participants (the AI is included where it "sits inside")
+  ai: boolean // Simplr AI is a member here and will respond
+  unread: number
+}
+
+// Rich, structured content the in-channel AI can post — accurate answers + visuals.
+export type TeamAiBlock =
+  | { type: 'text'; text: string }
+  | { type: 'stats'; items: { label: string; value: string; tone?: 'positive' | 'negative' | 'muted' }[] }
+  | { type: 'bars'; title?: string; items: { label: string; value: number; display: string; tone?: 'accent' | 'positive' | 'warning' }[] }
+  | { type: 'tasks'; items: { label: string; meta: string }[] }
+  | { type: 'agenda'; title: string; items: string[] }
+  | { type: 'email'; to: string; subject: string; body: string }
+
+export type TeamActionKind = 'task' | 'deck' | 'meeting' | 'email' | 'doc' | 'campaign'
+export interface TeamActionRef {
+  kind: TeamActionKind
+  label: string
+  to?: string // route the chip opens
+}
+
+export interface Reaction { emoji: string; by: ID[] }
+
+export interface TeamMessage {
+  id: ID
+  channelId: ID
+  authorId: ID // TeamMember id; the AI uses AI_MEMBER_ID
+  text: string
+  createdAt: number
+  ai?: TeamAiBlock[] // structured AI content (answers / visuals)
+  actions?: TeamActionRef[] // things the AI did off this message, as openable chips
+  reactions?: Reaction[]
+  pinned?: boolean
+  handled?: boolean // an actionable teammate request the AI has already picked up
+}
+
+export type AnnouncementKind = 'win' | 'news' | 'update' | 'shoutout'
+export interface Announcement {
+  id: ID
+  kind: AnnouncementKind
+  title: string
+  body: string
+  authorId: ID
+  createdAt: number
+  value?: number // £ — for wins
+  cheers: ID[] // member ids who cheered
+  pinned?: boolean
+}
+
 export interface State {
   deals: Deal[]
   people: Person[]
@@ -512,6 +584,11 @@ export interface State {
   jobs: Job[]
   // The role of the person currently viewing (drives their home dashboard)
   currentRole: UserRole
+  // Team space
+  teamMembers: TeamMember[]
+  teamChannels: TeamChannel[]
+  teamMessages: TeamMessage[]
+  announcements: Announcement[]
   toasts: Toast[]
   railExpanded: boolean
 }
