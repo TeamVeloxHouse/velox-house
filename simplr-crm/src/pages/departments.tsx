@@ -5,6 +5,7 @@ import { Kpi, Chip, Button, Progress, Avatar, type ChipTone } from '../component
 import { Sparkle, Check, Dollar, Users, Wrench, Megaphone, Box, File, Star, Clock, ArrowUpRight, Link as LinkIcon } from '../components/icons'
 import { classNames, money, initials } from '../lib/format'
 import { useState_, useActions } from '../store/store'
+import { buildCashflowWorkbook, buildPnlWorkbook, downloadBlob } from '../lib/financeModel'
 
 /* ============================================================= *
  *  Shared department scaffold — every function gets the same
@@ -164,7 +165,8 @@ export function Operations() {
 /* ============================== FINANCE ============================== */
 export function Finance() {
   const nav = useNavigate()
-  const { deals, projects, expenses } = useState_()
+  const state = useState_()
+  const { deals, projects, expenses } = state
   const act = useActions()
   const open = deals.filter((d) => !d.won && !d.lost)
   const openVal = open.reduce((s, d) => s + d.value, 0)
@@ -189,9 +191,9 @@ export function Finance() {
       </>}
       ai={<AiStrip role="Finance" blurb="Ask me for numbers and I’ll build the file — a live cashflow forecast or P&L as a real spreadsheet, a board deck from your pipeline, or I’ll chase every overdue invoice. Just like Claude in Excel, but wired to your live data."
         actions={[
-          { label: 'Build cashflow forecast (.xlsx)', run: () => act.generateArtifact('Cashflow forecast — 13 week', 'model', 'xlsx') },
+          { label: 'Build cashflow forecast (.xlsx)', run: () => { buildCashflowWorkbook(state).then((b) => { downloadBlob(b, 'Simplr — 13-week cashflow.xlsx'); act.generateArtifact('Cashflow forecast — 13 week', 'model', 'xlsx') }) } },
           { label: 'Generate board pack (.pptx)', run: () => act.generateArtifact('Board pack — Q3 finance', 'deck', 'pptx') },
-          { label: 'P&L this quarter (.xlsx)', run: () => act.generateArtifact('P&L — this quarter', 'report', 'xlsx') },
+          { label: 'P&L this quarter (.xlsx)', run: () => { buildPnlWorkbook(state).then((b) => { downloadBlob(b, 'Simplr — P&L this quarter.xlsx'); act.generateArtifact('P&L — this quarter', 'report', 'xlsx') }) } },
           { label: 'Chase overdue invoices', run: () => { overdue.forEach((i) => act.addActivity({ type: 'email', subject: `Chase overdue invoice ${i.number} — ${i.customer}`, due: 'Today', priority: 'High', who: 'Simplr AI', source: 'ai' })); act.toast(`${overdue.length || 'No'} chase emails drafted`) } },
         ]} />}
     >
