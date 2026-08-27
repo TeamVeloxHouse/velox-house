@@ -14,9 +14,9 @@ import { buildCashflowWorkbook, buildPnlWorkbook, downloadBlob } from '../lib/fi
  *  let one AI operate across all of it.
  * ============================================================= */
 
-type DeptAction = { label: string; primary?: boolean; run: () => void }
+export type DeptAction = { label: string; primary?: boolean; run: () => void }
 
-function AiAction({ a }: { a: DeptAction }) {
+export function AiAction({ a }: { a: DeptAction }) {
   const [s, setS] = useState<'idle' | 'run' | 'done'>('idle')
   function go() {
     if (s !== 'idle') return
@@ -41,7 +41,7 @@ function AiAction({ a }: { a: DeptAction }) {
   )
 }
 
-function AiStrip({ role, blurb, actions }: { role: string; blurb: string; actions: DeptAction[] }) {
+export function AiStrip({ role, blurb, actions }: { role: string; blurb: string; actions: DeptAction[] }) {
   return (
     <div className="rounded-card border border-border bg-surface p-4">
       <div className="flex items-center gap-2.5 mb-1">
@@ -65,7 +65,7 @@ function OwnsConnects({ owns, connects }: { owns: string; connects: string[] }) 
   )
 }
 
-function Section({ title, meta, action, children }: { title: string; meta?: string; action?: ReactNode; children: ReactNode }) {
+export function Section({ title, meta, action, children }: { title: ReactNode; meta?: string; action?: ReactNode; children: ReactNode }) {
   return (
     <div className="bg-surface border border-border rounded-card overflow-hidden">
       <div className="px-4 py-3 border-b border-divider flex items-center gap-2">
@@ -75,6 +75,21 @@ function Section({ title, meta, action, children }: { title: string; meta?: stri
       </div>
       <div>{children}</div>
     </div>
+  )
+}
+
+/** Lightweight shell for department sub-pages (TopBar + scroll + optional KPI row). */
+export function DeptPage({ title, crumb, kpis, actions, children }: { title: string; crumb: string; kpis?: ReactNode; actions?: ReactNode; children: ReactNode }) {
+  return (
+    <>
+      <TopBar title={title} crumbs={[crumb]} actions={actions} />
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-[1120px] mx-auto px-7 py-6 flex flex-col gap-5">
+          {kpis && <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">{kpis}</div>}
+          {children}
+        </div>
+      </div>
+    </>
   )
 }
 
@@ -97,9 +112,9 @@ function DeptShell({ title, crumb, kpis, owns, connects, ai, children, topAction
 }
 
 /* small helpers */
-const daysUntil = (iso: string) => Math.round((Date.parse(iso) - Date.now()) / 86_400_000)
-const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
-function StatusChip({ children, tone }: { children: ReactNode; tone: ChipTone }) { return <Chip tone={tone}>{children}</Chip> }
+export const daysUntil = (iso: string) => Math.round((Date.parse(iso) - Date.now()) / 86_400_000)
+export const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+export function StatusChip({ children, tone }: { children: ReactNode; tone: ChipTone }) { return <Chip tone={tone}>{children}</Chip> }
 
 /* ============================== OPERATIONS ============================== */
 export function Operations() {

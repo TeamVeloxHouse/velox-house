@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   Grid, Bars, Bolt, Person, Building, Calendar, Envelope, Pie, Gear, ChevronRight, ChevronDown,
-  Box, Flow, Megaphone, Sparkle, Video, Robot, Target, Layers, File, Sun, Radar, Search, Send, Check, Clock, Dollar, Wrench, Users, Sliders,
+  Box, Flow, Megaphone, Sparkle, Video, Robot, Target, Layers, File, Sun, Radar, Search, Send, Check, Clock, Dollar, Wrench, Users, Sliders, Star,
 } from './icons'
 import { classNames } from '../lib/format'
 import { useState_ } from '../store/store'
@@ -41,13 +41,6 @@ const crmGroups: Group[] = [
     { to: '/projects', icon: Flow, label: 'Projects' },
     { to: '/products', icon: Box, label: 'Products' },
     { to: '/documents', icon: File, label: 'Documents' },
-  ] },
-  { label: 'Departments', items: [
-    { to: '/operations', icon: Sliders, label: 'Operations' },
-    { to: '/finance', icon: Dollar, label: 'Finance' },
-    { to: '/hr', icon: Person, label: 'HR & People' },
-    { to: '/marketing', icon: Megaphone, label: 'Marketing' },
-    { to: '/delivery', icon: Box, label: 'Delivery' },
   ] },
   { label: 'Analyse', items: [{ to: '/insights', icon: Pie, label: 'Insights' }] },
 ]
@@ -90,11 +83,85 @@ const studioGroups: Group[] = [
   { label: 'Measure', items: [{ to: '/studio/analytics', icon: Pie, label: 'Analytics' }] },
 ]
 
+// ── Department workspaces (the whole-workforce layer) — full apps, not CRM pages ──
+const financeGroups: Group[] = [
+  { label: 'Overview', items: [{ to: '/finance', icon: Grid, label: 'Overview', end: true }, { to: '/team', icon: Users, label: 'Team' }] },
+  { label: 'Money', items: [
+    { to: '/finance/invoices', icon: File, label: 'Invoices' },
+    { to: '/finance/expenses', icon: Dollar, label: 'Expenses' },
+  ] },
+  { label: 'Plan', items: [
+    { to: '/finance/forecasting', icon: Pie, label: 'Forecasting' },
+    { to: '/finance/reports', icon: Layers, label: 'Reports' },
+  ] },
+]
+const opsGroups: Group[] = [
+  { label: 'Overview', items: [{ to: '/operations', icon: Grid, label: 'Overview', end: true }, { to: '/team', icon: Users, label: 'Team' }] },
+  { label: 'Field', items: [
+    { to: '/operations/schedule', icon: Calendar, label: 'Schedule' },
+    { to: '/operations/stock', icon: Box, label: 'Stock' },
+  ] },
+  { label: 'Procure', items: [
+    { to: '/operations/purchase-orders', icon: File, label: 'Purchase orders' },
+    { to: '/operations/safety', icon: Check, label: 'Safety & RAMS' },
+  ] },
+]
+const hrGroups: Group[] = [
+  { label: 'Overview', items: [{ to: '/hr', icon: Grid, label: 'Overview', end: true }, { to: '/team', icon: Users, label: 'Team' }] },
+  { label: 'People', items: [
+    { to: '/hr/people', icon: Person, label: 'Directory' },
+    { to: '/hr/leave', icon: Calendar, label: 'Leave' },
+  ] },
+  { label: 'Compliance', items: [
+    { to: '/hr/policies', icon: File, label: 'Policies' },
+    { to: '/hr/compliance', icon: Check, label: 'Certifications' },
+  ] },
+]
+const marketingGroups: Group[] = [
+  { label: 'Overview', items: [{ to: '/marketing', icon: Grid, label: 'Overview', end: true }, { to: '/team', icon: Users, label: 'Team' }] },
+  { label: 'Reputation', items: [{ to: '/marketing/reviews', icon: Star, label: 'Reviews' }] },
+  { label: 'Grow', items: [
+    { to: '/marketing/campaigns', icon: Megaphone, label: 'Campaigns' },
+    { to: '/marketing/content', icon: Clock, label: 'Content' },
+    { to: '/marketing/reports', icon: Pie, label: 'Reports' },
+  ] },
+]
+const deliveryGroups: Group[] = [
+  { label: 'Overview', items: [{ to: '/delivery', icon: Grid, label: 'Overview', end: true }, { to: '/team', icon: Users, label: 'Team' }] },
+  { label: 'Field', items: [
+    { to: '/delivery/installs', icon: Box, label: 'Installs' },
+    { to: '/delivery/field', icon: Wrench, label: 'Field jobs' },
+  ] },
+  { label: 'Handover', items: [
+    { to: '/delivery/certificates', icon: File, label: 'Certificates' },
+    { to: '/delivery/service', icon: Flow, label: 'Service' },
+  ] },
+]
+
 const workspaces = [
   { id: 'crm', name: 'Simplr CRM', desc: 'Pipeline & customers', to: '/', icon: Bars, grad: 'linear-gradient(180deg,#3B6BF5 0%,#1D4ED8 100%)', feature: undefined as FeatureKey | undefined },
   { id: 'reach', name: 'Simplr Reach', desc: 'Prospecting & outreach', to: '/reach', icon: Radar, grad: 'linear-gradient(180deg,#7C5CFF 0%,#5B29CC 100%)', feature: 'reach' as FeatureKey },
   { id: 'studio', name: 'Simplr Studio', desc: 'Design & proposals', to: '/studio', icon: Sun, grad: 'linear-gradient(180deg,#F5A623 0%,#E8721A 100%)', feature: 'studio' as FeatureKey },
+  { id: 'finance', name: 'Simplr Finance', desc: 'Money & forecasting', to: '/finance', icon: Dollar, grad: 'linear-gradient(180deg,#10B981 0%,#0E7C66 100%)', feature: undefined as FeatureKey | undefined },
+  { id: 'operations', name: 'Simplr Operations', desc: 'Scheduling & stock', to: '/operations', icon: Sliders, grad: 'linear-gradient(180deg,#64748B 0%,#334155 100%)', feature: undefined as FeatureKey | undefined },
+  { id: 'hr', name: 'Simplr People', desc: 'HR & compliance', to: '/hr', icon: Person, grad: 'linear-gradient(180deg,#6366F1 0%,#4338CA 100%)', feature: undefined as FeatureKey | undefined },
+  { id: 'marketing', name: 'Simplr Marketing', desc: 'Reputation & campaigns', to: '/marketing', icon: Megaphone, grad: 'linear-gradient(180deg,#F43F5E 0%,#BE123C 100%)', feature: undefined as FeatureKey | undefined },
+  { id: 'delivery', name: 'Simplr Delivery', desc: 'Installs & handover', to: '/delivery', icon: Box, grad: 'linear-gradient(180deg,#06B6D4 0%,#0E7490 100%)', feature: undefined as FeatureKey | undefined },
 ]
+
+// Path prefix → workspace id (longest-specific first; CRM is the fallback).
+const wsPrefixes: [string, string][] = [
+  ['/reach', 'reach'], ['/studio', 'studio'], ['/finance', 'finance'],
+  ['/operations', 'operations'], ['/hr', 'hr'], ['/marketing', 'marketing'], ['/delivery', 'delivery'],
+]
+const groupsById: Record<string, Group[]> = {
+  crm: crmGroups, reach: reachGroups, studio: studioGroups,
+  finance: financeGroups, operations: opsGroups, hr: hrGroups, marketing: marketingGroups, delivery: deliveryGroups,
+}
+const activeFillById: Record<string, string> = {
+  crm: 'bg-white/10', reach: 'bg-[#5B29CC]/25', studio: 'bg-[#E8721A]/30',
+  finance: 'bg-[#0E7C66]/35', operations: 'bg-white/10', hr: 'bg-[#4338CA]/40', marketing: 'bg-[#BE123C]/30', delivery: 'bg-[#0E7490]/40',
+}
 
 function itemClasses(expanded: boolean, accent: string) {
   return (isActive: boolean) =>
@@ -116,15 +183,16 @@ export function Rail() {
   const nav = useNavigate()
   const { features, teamChannels } = useState_()
   const teamUnread = teamChannels.reduce((s, c) => s + c.unread, 0)
-  const isReach = location.pathname.startsWith('/reach')
-  const isStudio = location.pathname.startsWith('/studio')
-  const ws = isStudio ? workspaces[2] : isReach ? workspaces[1] : workspaces[0]
+  const wsId = wsPrefixes.find(([p]) => location.pathname.startsWith(p))?.[1] ?? 'crm'
+  const ws = workspaces.find((w) => w.id === wsId) ?? workspaces[0]
+  const isReach = wsId === 'reach'
+  const isStudio = wsId === 'studio'
   // Trade profile decides which workspaces + nav items are switched on.
   const availableWorkspaces = workspaces.filter((w) => !w.feature || features[w.feature])
-  const groups = (isStudio ? studioGroups : isReach ? reachGroups : crmGroups)
+  const groups = (groupsById[wsId] ?? crmGroups)
     .map((g) => ({ ...g, items: g.items.filter((it) => !it.feature || features[it.feature]).map((it) => (it.to === '/team' && teamUnread > 0 ? { ...it, badge: teamUnread } : it)) }))
     .filter((g) => g.items.length > 0)
-  const activeFill = isStudio ? 'bg-[#E8721A]/30' : isReach ? 'bg-[#5B29CC]/25' : 'bg-white/10'
+  const activeFill = activeFillById[wsId] ?? 'bg-white/10'
 
   const [expanded, setExpanded] = useState(() => (typeof localStorage !== 'undefined' ? localStorage.getItem('simplr.rail') !== '0' : true))
   const [collapsed, setCollapsed] = useState<Set<string>>(() => {
@@ -184,7 +252,7 @@ export function Rail() {
       </div>
 
       {/* featured: Simplr AI (CRM only) */}
-      {!isReach && !isStudio && (
+      {wsId === 'crm' && (
         <NavLink to="/ai" title={expanded ? undefined : 'Simplr AI'} className={({ isActive }) => classNames('group relative flex items-center mb-3 transition-all duration-150', expanded ? 'h-10 rounded-[10px] px-2.5 gap-3' : 'w-11 h-11 rounded-[12px] justify-center', isActive ? 'bg-accent-gradient text-white shadow-primary' : 'text-white bg-white/[0.06] hover:bg-white/10 ring-1 ring-inset ring-white/10')}>
           <Sparkle size={19} className="shrink-0" />
           {expanded && <span className="text-[13.5px] font-semibold flex-1 truncate">Simplr AI</span>}

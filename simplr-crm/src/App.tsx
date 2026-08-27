@@ -34,6 +34,13 @@ import { PeopleFinder } from './pages/PeopleFinder'
 import { BrandDocuments } from './pages/BrandDocuments'
 import { Team } from './pages/Team'
 import { Operations, Finance, HR, Marketing, DeliveryDept } from './pages/departments'
+import {
+  FinanceInvoices, FinanceExpenses, FinanceForecasting, FinanceReports,
+  OpsSchedule, OpsStock, OpsPurchaseOrders, OpsSafety,
+  HrPeople, HrLeave, HrPolicies, HrCompliance,
+  MktReviews, MktCampaigns, MktContent, MktReports,
+  DelInstalls, DelField, DelCertificates, DelService,
+} from './pages/deptPages'
 
 export const router = createBrowserRouter([
   {
@@ -44,10 +51,30 @@ export const router = createBrowserRouter([
       { path: 'ai', element: <SimplrAI /> },
       { path: 'team', element: <Team /> },
       { path: 'operations', element: <Operations /> },
+      { path: 'operations/schedule', element: <OpsSchedule /> },
+      { path: 'operations/stock', element: <OpsStock /> },
+      { path: 'operations/purchase-orders', element: <OpsPurchaseOrders /> },
+      { path: 'operations/safety', element: <OpsSafety /> },
       { path: 'finance', element: <Finance /> },
+      { path: 'finance/invoices', element: <FinanceInvoices /> },
+      { path: 'finance/expenses', element: <FinanceExpenses /> },
+      { path: 'finance/forecasting', element: <FinanceForecasting /> },
+      { path: 'finance/reports', element: <FinanceReports /> },
       { path: 'hr', element: <HR /> },
+      { path: 'hr/people', element: <HrPeople /> },
+      { path: 'hr/leave', element: <HrLeave /> },
+      { path: 'hr/policies', element: <HrPolicies /> },
+      { path: 'hr/compliance', element: <HrCompliance /> },
       { path: 'marketing', element: <Marketing /> },
+      { path: 'marketing/reviews', element: <MktReviews /> },
+      { path: 'marketing/campaigns', element: <MktCampaigns /> },
+      { path: 'marketing/content', element: <MktContent /> },
+      { path: 'marketing/reports', element: <MktReports /> },
       { path: 'delivery', element: <DeliveryDept /> },
+      { path: 'delivery/installs', element: <DelInstalls /> },
+      { path: 'delivery/field', element: <DelField /> },
+      { path: 'delivery/certificates', element: <DelCertificates /> },
+      { path: 'delivery/service', element: <DelService /> },
       { path: 'agents', element: <Agents /> },
       { path: 'meetings', element: <Meetings /> },
       { path: 'deals', element: <DealsBoard /> },
