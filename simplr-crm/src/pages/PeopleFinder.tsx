@@ -68,7 +68,7 @@ export function PeopleFinder() {
             <span className="w-11 h-11 rounded-[12px] flex items-center justify-center text-white shrink-0" style={{ background: 'linear-gradient(180deg,#3B6BF5,#1D4ED8)' }}><Search size={22} /></span>
             <div className="flex-1">
               <div className="text-[16px] font-bold text-ink">Source people from 400M+ contacts</div>
-              <div className="text-[13px] text-muted-b mt-0.5">Describe your ideal customer. Simplr searches People Data Labs, then scores and researches each match before anything reaches your CRM.</div>
+              <div className="text-[13px] text-muted-b mt-0.5">Describe your ideal customer. TellOvi searches People Data Labs, then scores and researches each match before anything reaches your CRM.</div>
             </div>
             {guide && (
               <div className="flex items-center gap-2 rounded-lg bg-white/80 border border-[#D8E2F6] px-3 py-2 shrink-0" title={guide.body}>

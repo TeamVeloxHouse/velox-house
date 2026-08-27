@@ -38,7 +38,7 @@ export function LinkedInInbox() {
         <div className="w-[380px] shrink-0 bg-surface border-r border-border overflow-y-auto">
           <div className="px-4 py-3 border-b border-border flex items-center gap-2.5">
             <span className="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0" style={{ background: LI }}><Person size={16} /></span>
-            <div className="flex-1 min-w-0"><div className="text-[13px] font-semibold text-ink-2">Simplr · via Unipile</div><div className="text-[12px] text-muted-2">Connected · {unread} unread</div></div>
+            <div className="flex-1 min-w-0"><div className="text-[13px] font-semibold text-ink-2">TellOvi · via Unipile</div><div className="text-[12px] text-muted-2">Connected · {unread} unread</div></div>
             <Check size={15} className="text-positive" />
           </div>
           {list.map((t) => (

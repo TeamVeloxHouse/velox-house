@@ -46,7 +46,7 @@ export function AiStrip({ role, blurb, actions }: { role: string; blurb: string;
     <div className="rounded-card border border-border bg-surface p-4">
       <div className="flex items-center gap-2.5 mb-1">
         <span className="w-8 h-8 rounded-xl bg-accent-gradient text-white flex items-center justify-center shadow-primary"><Sparkle size={17} /></span>
-        <div className="flex-1"><div className="text-[14px] font-bold text-ink flex items-center gap-2">Simplr AI · {role} <Chip tone="positive" dot>Operator</Chip></div></div>
+        <div className="flex-1"><div className="text-[14px] font-bold text-ink flex items-center gap-2">TellOvi AI · {role} <Chip tone="positive" dot>Operator</Chip></div></div>
       </div>
       <p className="text-[13px] text-muted-b mb-3 leading-relaxed">{blurb}</p>
       <div className="flex flex-wrap gap-2">{actions.map((a, i) => <AiAction key={i} a={{ ...a, primary: a.primary ?? i === 0 }} />)}</div>
@@ -206,10 +206,10 @@ export function Finance() {
       </>}
       ai={<AiStrip role="Finance" blurb="Ask me for numbers and I’ll build the file — a live cashflow forecast or P&L as a real spreadsheet, a board deck from your pipeline, or I’ll chase every overdue invoice. Just like Claude in Excel, but wired to your live data."
         actions={[
-          { label: 'Build cashflow forecast (.xlsx)', run: () => { buildCashflowWorkbook(state).then((b) => { downloadBlob(b, 'Simplr — 13-week cashflow.xlsx'); act.generateArtifact('Cashflow forecast — 13 week', 'model', 'xlsx') }) } },
+          { label: 'Build cashflow forecast (.xlsx)', run: () => { buildCashflowWorkbook(state).then((b) => { downloadBlob(b, 'TellOvi — 13-week cashflow.xlsx'); act.generateArtifact('Cashflow forecast — 13 week', 'model', 'xlsx') }) } },
           { label: 'Generate board pack (.pptx)', run: () => act.generateArtifact('Board pack — Q3 finance', 'deck', 'pptx') },
-          { label: 'P&L this quarter (.xlsx)', run: () => { buildPnlWorkbook(state).then((b) => { downloadBlob(b, 'Simplr — P&L this quarter.xlsx'); act.generateArtifact('P&L — this quarter', 'report', 'xlsx') }) } },
-          { label: 'Chase overdue invoices', run: () => { overdue.forEach((i) => act.addActivity({ type: 'email', subject: `Chase overdue invoice ${i.number} — ${i.customer}`, due: 'Today', priority: 'High', who: 'Simplr AI', source: 'ai' })); act.toast(`${overdue.length || 'No'} chase emails drafted`) } },
+          { label: 'P&L this quarter (.xlsx)', run: () => { buildPnlWorkbook(state).then((b) => { downloadBlob(b, 'TellOvi — P&L this quarter.xlsx'); act.generateArtifact('P&L — this quarter', 'report', 'xlsx') }) } },
+          { label: 'Chase overdue invoices', run: () => { overdue.forEach((i) => act.addActivity({ type: 'email', subject: `Chase overdue invoice ${i.number} — ${i.customer}`, due: 'Today', priority: 'High', who: 'TellOvi AI', source: 'ai' })); act.toast(`${overdue.length || 'No'} chase emails drafted`) } },
         ]} />}
     >
       <Section title="Invoices" meta={`${money(outstanding, { compact: true })} outstanding`} action={<Button variant="ghost" onClick={() => nav('/documents')}>All documents</Button>}>
@@ -273,8 +273,8 @@ export function HR() {
         actions={[
           { label: 'Draft a policy', run: () => act.generateArtifact('Remote & hybrid working policy', 'policy', 'docx') },
           { label: 'Generate employment contract', run: () => act.generateArtifact('Employment contract — installer', 'contract', 'docx') },
-          { label: 'Build onboarding checklist', run: () => { ['Send contract & handbook', 'Set up payroll & pension', 'Order PPE & tools', 'Book induction + H&S', 'Assign buddy'].forEach((t) => act.addActivity({ type: 'task', subject: `Onboarding — ${t}`, due: 'This week', priority: 'Medium', who: 'Simplr AI', source: 'ai' })); act.toast('Onboarding checklist added to tasks') } },
-          { label: 'Chase expiring certs', run: () => { expiringCerts.forEach((c) => act.addActivity({ type: 'task', subject: `Renew ${c.name} — ${emp(c.employeeId)?.name}`, due: 'This week', priority: 'High', who: 'Simplr AI', source: 'ai' })); act.toast(`${expiringCerts.length} renewal tasks created`) } },
+          { label: 'Build onboarding checklist', run: () => { ['Send contract & handbook', 'Set up payroll & pension', 'Order PPE & tools', 'Book induction + H&S', 'Assign buddy'].forEach((t) => act.addActivity({ type: 'task', subject: `Onboarding — ${t}`, due: 'This week', priority: 'Medium', who: 'TellOvi AI', source: 'ai' })); act.toast('Onboarding checklist added to tasks') } },
+          { label: 'Chase expiring certs', run: () => { expiringCerts.forEach((c) => act.addActivity({ type: 'task', subject: `Renew ${c.name} — ${emp(c.employeeId)?.name}`, due: 'This week', priority: 'High', who: 'TellOvi AI', source: 'ai' })); act.toast(`${expiringCerts.length} renewal tasks created`) } },
         ]} />}
     >
       <Section title="Leave requests" meta={`${pending.length} pending`}>

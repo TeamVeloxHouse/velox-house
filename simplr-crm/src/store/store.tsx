@@ -89,6 +89,12 @@ type Action =
   | { type: 'SET_EXPENSE_STATUS'; id: ID; status: import('./types').Expense['status'] }
   | { type: 'RESPOND_REVIEW'; id: ID }
   | { type: 'UPDATE_POLICY'; id: ID; patch: Partial<import('./types').Policy> }
+  | { type: 'FULFIL_REQUEST'; id: ID; status: import('./types').RequestStatus; note?: string }
+  | { type: 'ADD_CONTENT'; item: import('./types').ContentItem }
+  | { type: 'ADVANCE_CONTENT'; id: ID; status: import('./types').ContentStatus }
+  | { type: 'TOGGLE_MKT_CONNECTOR'; id: ID }
+  | { type: 'ADD_BRAND_ASSET'; asset: import('./types').BrandAsset }
+  | { type: 'ADD_MEDIA'; media: import('./types').MediaAsset }
   | { type: 'RESET' }
 
 function reducer(state: State, action: Action): State {
@@ -303,6 +309,18 @@ function reducer(state: State, action: Action): State {
       return { ...state, reviews: state.reviews.map((r) => (r.id === action.id ? { ...r, responded: true } : r)) }
     case 'UPDATE_POLICY':
       return { ...state, policies: state.policies.map((p) => (p.id === action.id ? { ...p, ...action.patch } : p)) }
+    case 'FULFIL_REQUEST':
+      return { ...state, mktRequests: state.mktRequests.map((r) => (r.id === action.id ? { ...r, status: action.status, note: action.note ?? r.note } : r)) }
+    case 'ADD_CONTENT':
+      return { ...state, contentItems: [action.item, ...state.contentItems] }
+    case 'ADVANCE_CONTENT':
+      return { ...state, contentItems: state.contentItems.map((c) => (c.id === action.id ? { ...c, status: action.status } : c)) }
+    case 'TOGGLE_MKT_CONNECTOR':
+      return { ...state, mktConnectors: state.mktConnectors.map((c) => (c.id === action.id ? { ...c, connected: !c.connected } : c)) }
+    case 'ADD_BRAND_ASSET':
+      return { ...state, brandAssets: [action.asset, ...state.brandAssets] }
+    case 'ADD_MEDIA':
+      return { ...state, mediaAssets: [action.media, ...state.mediaAssets] }
     case 'RESET':
       return buildSeed()
     default:
@@ -474,10 +492,10 @@ export function useActions() {
     },
     processMeeting: (id: ID, dealId: ID | undefined, personId: ID | undefined, org: string) => {
       const acts: Activity[] = [
-        { id: uid('act'), type: 'note', subject: `Meeting notes — ${org}`, body: 'AI summary: deal gated on liability-cap wording; finance signs off budget by month-end if resolved this week. Champion confirmed phased rollout. Client wants retainer to cover standby units.', dealId, personId, done: true, who: 'Simplr Notetaker', createdAt: Date.now(), source: 'meeting' },
-        { id: uid('act'), type: 'email', subject: 'Send liability-cap wording to Marta Lund', dealId, personId, done: false, priority: 'High', due: 'Today', who: 'Simplr Notetaker', createdAt: Date.now(), source: 'meeting' },
-        { id: uid('act'), type: 'task', subject: 'Split maintenance retainer on the quote', dealId, done: false, priority: 'Medium', due: 'Tomorrow', who: 'Simplr Notetaker', createdAt: Date.now(), source: 'meeting' },
-        { id: uid('act'), type: 'meeting', subject: 'Book legal walkthrough call', dealId, personId, done: false, priority: 'High', due: 'This week', who: 'Simplr Notetaker', createdAt: Date.now(), source: 'meeting' },
+        { id: uid('act'), type: 'note', subject: `Meeting notes — ${org}`, body: 'AI summary: deal gated on liability-cap wording; finance signs off budget by month-end if resolved this week. Champion confirmed phased rollout. Client wants retainer to cover standby units.', dealId, personId, done: true, who: 'TellOvi Notetaker', createdAt: Date.now(), source: 'meeting' },
+        { id: uid('act'), type: 'email', subject: 'Send liability-cap wording to Marta Lund', dealId, personId, done: false, priority: 'High', due: 'Today', who: 'TellOvi Notetaker', createdAt: Date.now(), source: 'meeting' },
+        { id: uid('act'), type: 'task', subject: 'Split maintenance retainer on the quote', dealId, done: false, priority: 'Medium', due: 'Tomorrow', who: 'TellOvi Notetaker', createdAt: Date.now(), source: 'meeting' },
+        { id: uid('act'), type: 'meeting', subject: 'Book legal walkthrough call', dealId, personId, done: false, priority: 'High', due: 'This week', who: 'TellOvi Notetaker', createdAt: Date.now(), source: 'meeting' },
       ]
       dispatch({ type: 'PROCESS_MEETING', id, activities: acts })
       toast(`Notes + 3 action items added to ${org}’s card`)
@@ -491,10 +509,10 @@ export function useActions() {
       let email: EmailMsg | undefined
       let activity: Activity | undefined
       if (run.kind === 'draft' && run.emailTo) {
-        email = { id: uid('em'), folder: 'sent', from: 'Jordan Miles', fromEmail: 'jordan@simplr.io', to: run.emailTo, subject: run.title.replace(/^Drafted reply to /, 'Re: '), body: run.emailBody ?? '', dealId: run.dealId, personId: run.personId, time: 'Just now', createdAt: Date.now() }
-        activity = { id: uid('act'), type: 'email', subject: `Email sent (AI): ${run.title}`, dealId: run.dealId, personId: run.personId, done: true, who: 'Simplr AI', createdAt: Date.now(), source: 'ai' }
+        email = { id: uid('em'), folder: 'sent', from: 'Jordan Miles', fromEmail: 'jordan@tellovi.io', to: run.emailTo, subject: run.title.replace(/^Drafted reply to /, 'Re: '), body: run.emailBody ?? '', dealId: run.dealId, personId: run.personId, time: 'Just now', createdAt: Date.now() }
+        activity = { id: uid('act'), type: 'email', subject: `Email sent (AI): ${run.title}`, dealId: run.dealId, personId: run.personId, done: true, who: 'TellOvi AI', createdAt: Date.now(), source: 'ai' }
       } else if (run.kind === 'task' || run.kind === 'risk') {
-        activity = { id: uid('act'), type: run.kind === 'risk' ? 'email' : 'task', subject: run.title.replace(/^Suggested task: /, ''), dealId: run.dealId, personId: run.personId, due: 'Today', priority: 'High', done: false, who: 'Simplr AI', createdAt: Date.now(), source: 'ai' }
+        activity = { id: uid('act'), type: run.kind === 'risk' ? 'email' : 'task', subject: run.title.replace(/^Suggested task: /, ''), dealId: run.dealId, personId: run.personId, due: 'Today', priority: 'High', done: false, who: 'TellOvi AI', createdAt: Date.now(), source: 'ai' }
       }
       dispatch({ type: 'RESOLVE_RUN', id: run.id, status: 'approved', email, activity })
       toast('Approved — action applied to your CRM')
@@ -716,7 +734,7 @@ export function useActions() {
       toast(`Connected with ${t.name}`)
     },
     bulkAddLeads: (rows: { name: string; company: string; role: string; score: number }[]) => {
-      const leads: Lead[] = rows.map((r) => ({ id: uid('l'), name: r.name, role: r.role, company: r.company, source: 'Simplr AI', owner: 'Jordan Miles', created: 'Just now', createdAt: Date.now(), score: r.score }))
+      const leads: Lead[] = rows.map((r) => ({ id: uid('l'), name: r.name, role: r.role, company: r.company, source: 'TellOvi AI', owner: 'Jordan Miles', created: 'Just now', createdAt: Date.now(), score: r.score }))
       dispatch({ type: 'BULK_ADD_LEADS', leads })
       return leads
     },
@@ -831,6 +849,31 @@ export function useActions() {
     },
     respondReview: (id: ID) => { dispatch({ type: 'RESPOND_REVIEW', id }); toast('Response drafted & posted') },
     updatePolicy: (id: ID, patch: Partial<import('./types').Policy>) => dispatch({ type: 'UPDATE_POLICY', id, patch }),
+
+    /* ---- TellOvi Marketing ---- */
+    fulfilRequest: (id: ID, status: import('./types').RequestStatus, note?: string) => {
+      dispatch({ type: 'FULFIL_REQUEST', id, status, note })
+      toast(status === 'found' ? 'Ovi found it — handed over' : status === 'done' ? 'Request closed' : status === 'in-progress' ? 'Sent to a designer' : 'Request updated', 'accent')
+    },
+    addContentItem: (item: Omit<import('./types').ContentItem, 'id'>) => {
+      const full: import('./types').ContentItem = { id: uid('ci'), ...item }
+      dispatch({ type: 'ADD_CONTENT', item: full })
+      return full
+    },
+    advanceContent: (id: ID, status: import('./types').ContentStatus) => { dispatch({ type: 'ADVANCE_CONTENT', id, status }); toast(`Moved to ${status}`, 'accent') },
+    toggleMktConnector: (id: ID) => dispatch({ type: 'TOGGLE_MKT_CONNECTOR', id }),
+    saveBrandAsset: (asset: Omit<import('./types').BrandAsset, 'id'>) => {
+      const full: import('./types').BrandAsset = { id: uid('ba'), ...asset }
+      dispatch({ type: 'ADD_BRAND_ASSET', asset: full })
+      toast(`${asset.name} saved to the Brand Hub`)
+      return full
+    },
+    addMedia: (media: Omit<import('./types').MediaAsset, 'id'>) => {
+      const full: import('./types').MediaAsset = { id: uid('md'), ...media }
+      dispatch({ type: 'ADD_MEDIA', media: full })
+      toast(`${media.name} added to Assets`)
+      return full
+    },
     /** The artifact engine — in production Claude generates the real .xlsx/.pptx/.docx; here it lands in Brand & Documents. */
     generateArtifact: (title: string, kind: import('./types').DocKind, format: import('./types').DocFormat) => {
       const full: import('./types').BrandDoc = { id: uid('bd'), title, kind, format, source: 'template', createdAt: Date.now() }

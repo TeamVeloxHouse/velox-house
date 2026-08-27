@@ -1,4 +1,4 @@
-/* Simplr AI — the copilot that sits inside the Team channel.
+/* TellOvi AI — the copilot that sits inside the Team channel.
  *
  * A deterministic, offline stand-in for a live LLM (same pattern as lib/ai.ts):
  * it parses intent from a chat message, composes an accurate answer with visuals
@@ -32,7 +32,7 @@ export type TeamAiPlan = {
 /** True when a message clearly wants the AI to do or answer something. */
 export function wantsAi(text: string, channelHasAi: boolean): boolean {
   const q = text.toLowerCase()
-  if (/@\s?(simplr|ai)\b/.test(q)) return true
+  if (/@\s?(tellovi|ai)\b/.test(q)) return true
   if (!channelHasAi) return false
   if (text.trim().endsWith('?')) return true
   return /\b(prepare|draft|write|book|schedule|set up|create|send|show|find|summar|build|pull|chase|remind|analyse|analyze|report|forecast)\b/.test(q)

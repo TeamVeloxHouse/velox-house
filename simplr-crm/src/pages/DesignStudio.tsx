@@ -179,12 +179,12 @@ export function DesignStudio() {
     <>
       <TopBar title="Design Studio" crumbs={['Studio', 'Instant solar design']} actions={design ? <Button variant="primary" icon={<Sparkle size={16} />} onClick={generateProposal}>Generate proposal</Button> : undefined} />
       <PageBody>
-        {/* Design with Simplr AI */}
+        {/* Design with TellOvi AI */}
         <div className="rounded-card border border-border-blue bg-[#FBFCFF] overflow-hidden">
           <div className="px-4 py-3 border-b border-border-blue flex items-center gap-2.5">
             <span className="w-8 h-8 rounded-lg bg-accent-gradient text-white flex items-center justify-center shadow-primary"><Sparkle size={17} /></span>
             <div className="flex-1">
-              <div className="text-[13.5px] font-bold text-ink">Design with Simplr AI</div>
+              <div className="text-[13.5px] font-bold text-ink">Design with TellOvi AI</div>
               <div className="text-[12px] text-muted-2">Prompt an address, or attach a list and it designs every site and creates the proposals.</div>
             </div>
           </div>
@@ -255,7 +255,7 @@ export function DesignStudio() {
           <div className="bg-surface border border-border rounded-card p-10 text-center">
             <div className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center" style={{ background: '#FDF2E2', color: '#A85B00' }}><Sun size={24} /></div>
             <div className="text-[16px] font-bold text-ink mt-3">Address in, solar design out</div>
-            <div className="text-[13px] text-muted-b mt-1 max-w-[440px] mx-auto">Type a property address and Simplr generates a panel layout, production estimate, savings and a live price — ready to turn into a proposal.</div>
+            <div className="text-[13px] text-muted-b mt-1 max-w-[440px] mx-auto">Type a property address and TellOvi generates a panel layout, production estimate, savings and a live price — ready to turn into a proposal.</div>
             <div className="flex flex-wrap gap-2 justify-center mt-4">
               {['14 Brightleaf Way, Manchester', '8 Meridian Road, Leeds', 'Unit 4, Harbour Estate, Hull'].map((s) => (
                 <button key={s} onClick={() => { setAddress(s); run(s) }} className="text-[12.5px] text-accent bg-accent-wash rounded-lg px-3 py-1.5 font-medium hover:bg-[#E4ECFB]">{s}</button>

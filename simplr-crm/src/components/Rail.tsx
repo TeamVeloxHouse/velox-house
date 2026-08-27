@@ -119,12 +119,21 @@ const hrGroups: Group[] = [
 ]
 const marketingGroups: Group[] = [
   { label: 'Overview', items: [{ to: '/marketing', icon: Grid, label: 'Overview', end: true }, { to: '/team', icon: Users, label: 'Team' }] },
-  { label: 'Reputation', items: [{ to: '/marketing/reviews', icon: Star, label: 'Reviews' }] },
-  { label: 'Grow', items: [
-    { to: '/marketing/campaigns', icon: Megaphone, label: 'Campaigns' },
-    { to: '/marketing/content', icon: Clock, label: 'Content' },
-    { to: '/marketing/reports', icon: Pie, label: 'Reports' },
+  { label: 'Brand', items: [
+    { to: '/marketing/brand', icon: Layers, label: 'Brand Hub' },
+    { to: '/marketing/assets', icon: Box, label: 'Assets' },
   ] },
+  { label: 'Plan', items: [
+    { to: '/marketing/content', icon: Calendar, label: 'Content' },
+    { to: '/marketing/campaigns', icon: Megaphone, label: 'Campaigns' },
+  ] },
+  { label: 'Engage', items: [
+    { to: '/marketing/social', icon: Send, label: 'Social' },
+    { to: '/marketing/reviews', icon: Star, label: 'Reviews' },
+    { to: '/marketing/requests', icon: Envelope, label: 'Requests' },
+  ] },
+  { label: 'Connect', items: [{ to: '/marketing/connectors', icon: Flow, label: 'Connectors' }] },
+  { label: 'Measure', items: [{ to: '/marketing/reports', icon: Pie, label: 'Reports' }] },
 ]
 const deliveryGroups: Group[] = [
   { label: 'Overview', items: [{ to: '/delivery', icon: Grid, label: 'Overview', end: true }, { to: '/team', icon: Users, label: 'Team' }] },
@@ -139,14 +148,14 @@ const deliveryGroups: Group[] = [
 ]
 
 const workspaces = [
-  { id: 'crm', name: 'Simplr CRM', desc: 'Pipeline & customers', to: '/', icon: Bars, grad: 'linear-gradient(180deg,#3B6BF5 0%,#1D4ED8 100%)', feature: undefined as FeatureKey | undefined },
-  { id: 'reach', name: 'Simplr Reach', desc: 'Prospecting & outreach', to: '/reach', icon: Radar, grad: 'linear-gradient(180deg,#7C5CFF 0%,#5B29CC 100%)', feature: 'reach' as FeatureKey },
-  { id: 'studio', name: 'Simplr Studio', desc: 'Design & proposals', to: '/studio', icon: Sun, grad: 'linear-gradient(180deg,#F5A623 0%,#E8721A 100%)', feature: 'studio' as FeatureKey },
-  { id: 'finance', name: 'Simplr Finance', desc: 'Money & forecasting', to: '/finance', icon: Dollar, grad: 'linear-gradient(180deg,#10B981 0%,#0E7C66 100%)', feature: undefined as FeatureKey | undefined },
-  { id: 'operations', name: 'Simplr Operations', desc: 'Scheduling & stock', to: '/operations', icon: Sliders, grad: 'linear-gradient(180deg,#64748B 0%,#334155 100%)', feature: undefined as FeatureKey | undefined },
-  { id: 'hr', name: 'Simplr People', desc: 'HR & compliance', to: '/hr', icon: Person, grad: 'linear-gradient(180deg,#6366F1 0%,#4338CA 100%)', feature: undefined as FeatureKey | undefined },
-  { id: 'marketing', name: 'Simplr Marketing', desc: 'Reputation & campaigns', to: '/marketing', icon: Megaphone, grad: 'linear-gradient(180deg,#F43F5E 0%,#BE123C 100%)', feature: undefined as FeatureKey | undefined },
-  { id: 'delivery', name: 'Simplr Delivery', desc: 'Installs & handover', to: '/delivery', icon: Box, grad: 'linear-gradient(180deg,#06B6D4 0%,#0E7490 100%)', feature: undefined as FeatureKey | undefined },
+  { id: 'crm', name: 'TellOvi CRM', desc: 'Pipeline & customers', to: '/', icon: Bars, grad: 'linear-gradient(180deg,#3B6BF5 0%,#1D4ED8 100%)', feature: undefined as FeatureKey | undefined },
+  { id: 'reach', name: 'TellOvi Reach', desc: 'Prospecting & outreach', to: '/reach', icon: Radar, grad: 'linear-gradient(180deg,#7C5CFF 0%,#5B29CC 100%)', feature: 'reach' as FeatureKey },
+  { id: 'studio', name: 'TellOvi Studio', desc: 'Design & proposals', to: '/studio', icon: Sun, grad: 'linear-gradient(180deg,#F5A623 0%,#E8721A 100%)', feature: 'studio' as FeatureKey },
+  { id: 'finance', name: 'TellOvi Finance', desc: 'Money & forecasting', to: '/finance', icon: Dollar, grad: 'linear-gradient(180deg,#10B981 0%,#0E7C66 100%)', feature: undefined as FeatureKey | undefined },
+  { id: 'operations', name: 'TellOvi Operations', desc: 'Scheduling & stock', to: '/operations', icon: Sliders, grad: 'linear-gradient(180deg,#64748B 0%,#334155 100%)', feature: undefined as FeatureKey | undefined },
+  { id: 'hr', name: 'TellOvi People', desc: 'HR & compliance', to: '/hr', icon: Person, grad: 'linear-gradient(180deg,#6366F1 0%,#4338CA 100%)', feature: undefined as FeatureKey | undefined },
+  { id: 'marketing', name: 'TellOvi Marketing', desc: 'Brand & content ops', to: '/marketing', icon: Megaphone, grad: 'linear-gradient(180deg,#F43F5E 0%,#BE123C 100%)', feature: undefined as FeatureKey | undefined },
+  { id: 'delivery', name: 'TellOvi Delivery', desc: 'Installs & handover', to: '/delivery', icon: Box, grad: 'linear-gradient(180deg,#06B6D4 0%,#0E7490 100%)', feature: undefined as FeatureKey | undefined },
 ]
 
 // Path prefix → workspace id (longest-specific first; CRM is the fallback).
@@ -251,13 +260,13 @@ export function Rail() {
         )}
       </div>
 
-      {/* featured: Simplr AI (CRM only) */}
+      {/* featured: TellOvi AI (CRM only) */}
       {wsId === 'crm' && (
-        <NavLink to="/ai" title={expanded ? undefined : 'Simplr AI'} className={({ isActive }) => classNames('group relative flex items-center mb-3 transition-all duration-150', expanded ? 'h-10 rounded-[10px] px-2.5 gap-3' : 'w-11 h-11 rounded-[12px] justify-center', isActive ? 'bg-accent-gradient text-white shadow-primary' : 'text-white bg-white/[0.06] hover:bg-white/10 ring-1 ring-inset ring-white/10')}>
+        <NavLink to="/ai" title={expanded ? undefined : 'TellOvi AI'} className={({ isActive }) => classNames('group relative flex items-center mb-3 transition-all duration-150', expanded ? 'h-10 rounded-[10px] px-2.5 gap-3' : 'w-11 h-11 rounded-[12px] justify-center', isActive ? 'bg-accent-gradient text-white shadow-primary' : 'text-white bg-white/[0.06] hover:bg-white/10 ring-1 ring-inset ring-white/10')}>
           <Sparkle size={19} className="shrink-0" />
-          {expanded && <span className="text-[13.5px] font-semibold flex-1 truncate">Simplr AI</span>}
+          {expanded && <span className="text-[13.5px] font-semibold flex-1 truncate">TellOvi AI</span>}
           {expanded && <span className="eyebrow text-[9px] bg-white/20 rounded px-1.5 py-0.5">AI</span>}
-          {!expanded && <Tooltip label="Simplr AI" />}
+          {!expanded && <Tooltip label="TellOvi AI" />}
         </NavLink>
       )}
 

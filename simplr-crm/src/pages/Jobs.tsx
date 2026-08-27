@@ -64,7 +64,7 @@ export function Jobs() {
         act.updateJob(j.id, { date: day, start: j.kind === 'install' ? '08:00' : '10:00', crew, status: 'scheduled' })
       })
       setBusy(false)
-      act.toast(`Simplr AI scheduled ${backlog.length} job${backlog.length > 1 ? 's' : ''} across your team`)
+      act.toast(`TellOvi AI scheduled ${backlog.length} job${backlog.length > 1 ? 's' : ''} across your team`)
     }, 1100)
   }
 

@@ -24,11 +24,11 @@ const statusTone: Record<UStatus, ChipTone> = { Active: 'positive', Invited: 'wa
 
 type TUser = { name: string; email: string; role: URole; team: string; status: UStatus; dash: UserRole }
 const users: TUser[] = [
-  { name: 'Jordan Miles', email: 'jordan@simplr.io', role: 'Admin', team: 'Sales', status: 'Active', dash: 'owner' },
-  { name: 'Priya Nair', email: 'priya@simplr.io', role: 'Member', team: 'Finance', status: 'Active', dash: 'finance' },
-  { name: 'Marcus Webb', email: 'marcus@simplr.io', role: 'Member', team: 'Sales', status: 'Active', dash: 'sales' },
-  { name: 'Sana Ali', email: 'sana@simplr.io', role: 'Member', team: 'Marketing', status: 'Invited', dash: 'marketing' },
-  { name: 'Devan Rao', email: 'devan@simplr.io', role: 'Admin', team: 'Operations', status: 'Active', dash: 'operations' },
+  { name: 'Jordan Miles', email: 'jordan@tellovi.io', role: 'Admin', team: 'Sales', status: 'Active', dash: 'owner' },
+  { name: 'Priya Nair', email: 'priya@tellovi.io', role: 'Member', team: 'Finance', status: 'Active', dash: 'finance' },
+  { name: 'Marcus Webb', email: 'marcus@tellovi.io', role: 'Member', team: 'Sales', status: 'Active', dash: 'sales' },
+  { name: 'Sana Ali', email: 'sana@tellovi.io', role: 'Member', team: 'Marketing', status: 'Invited', dash: 'marketing' },
+  { name: 'Devan Rao', email: 'devan@tellovi.io', role: 'Admin', team: 'Operations', status: 'Active', dash: 'operations' },
 ]
 
 export function Settings() {
@@ -129,7 +129,7 @@ export function Settings() {
                           const dash = e.target.value as UserRole
                           setRows((rs) => rs.map((r) => (r.email === u.email ? { ...r, dash } : r)))
                           act.toast(`${u.name} → ${roleByKey(dash).label} dashboard`)
-                          if (u.email === 'jordan@simplr.io') act.setRole(dash, true)
+                          if (u.email === 'jordan@tellovi.io') act.setRole(dash, true)
                         }}
                         className="h-8 px-2 rounded-control border border-input-border bg-white text-[12.5px] text-ink-2 outline-none focus:border-accent w-full"
                       >
@@ -193,7 +193,7 @@ function ConnectionsPanel() {
     <>
       <div>
         <div className="text-[16px] font-bold text-ink">Connections</div>
-        <div className="text-[13px] text-muted-b mt-0.5">Connect any email, calendar or social account. Simplr uses OAuth for Google &amp; Microsoft, generic IMAP/SMTP for everything else, and a unified social API — so any address works.</div>
+        <div className="text-[13px] text-muted-b mt-0.5">Connect any email, calendar or social account. TellOvi uses OAuth for Google &amp; Microsoft, generic IMAP/SMTP for everything else, and a unified social API — so any address works.</div>
       </div>
       <Section title="Email" sub="Send and sync from any address. Add unlimited accounts per user." items={email} icon={Envelope} />
       <button onClick={() => setImap(true)} className="self-start text-[13px] text-accent font-semibold flex items-center gap-1.5"><Plus size={15} /> Add another email account</button>
@@ -212,7 +212,7 @@ function ImapModal({ open, onClose, onConnect }: { open: boolean; onClose: () =>
     <Modal open={open} onClose={onClose} title="Connect via IMAP / SMTP" subtitle="Works with any provider — Fastmail, Zoho, cPanel, custom domains" footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" onClick={() => email.trim() && onConnect(email, 'imap')}>Connect</Button></>}>
       <Field label="Email address"><Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@yourdomain.com" autoFocus /></Field>
       <Field label="IMAP server"><Input value={server} onChange={(e) => setServer(e.target.value)} placeholder="imap.yourdomain.com" /></Field>
-      <div className="text-[12px] text-muted-2">In production this hands off to a secure OAuth or credential flow — no passwords touch Simplr’s servers in plain text.</div>
+      <div className="text-[12px] text-muted-2">In production this hands off to a secure OAuth or credential flow — no passwords touch TellOvi’s servers in plain text.</div>
     </Modal>
   )
 }
@@ -293,7 +293,7 @@ function ApiPanel() {
       <div className="flex items-center justify-between">
         <div>
           <div className="text-[16px] font-bold text-ink">API &amp; webhooks</div>
-          <div className="text-[13px] text-muted-b mt-0.5">Build your own integrations against the Simplr REST API, or push events anywhere with webhooks.</div>
+          <div className="text-[13px] text-muted-b mt-0.5">Build your own integrations against the TellOvi REST API, or push events anywhere with webhooks.</div>
         </div>
         <Button variant="primary" icon={<Plus size={16} />} onClick={() => act.createApiKey('New key')}>New API key</Button>
       </div>
@@ -341,7 +341,7 @@ function AddWebhookModal({ open, onClose, onAdd }: { open: boolean; onClose: () 
   const [url, setUrl] = useState('')
   const [events, setEvents] = useState('deal.won')
   return (
-    <Modal open={open} onClose={onClose} title="Add webhook" subtitle="Simplr will POST the event payload to this URL" footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" onClick={() => url.trim() && onAdd(url, events.split(',').map((s) => s.trim()).filter(Boolean))}>Add webhook</Button></>}>
+    <Modal open={open} onClose={onClose} title="Add webhook" subtitle="TellOvi will POST the event payload to this URL" footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" onClick={() => url.trim() && onAdd(url, events.split(',').map((s) => s.trim()).filter(Boolean))}>Add webhook</Button></>}>
       <Field label="Payload URL"><Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…" autoFocus /></Field>
       <Field label="Events (comma-separated)"><Input value={events} onChange={(e) => setEvents(e.target.value)} placeholder="deal.won, lead.created" /></Field>
     </Modal>
@@ -444,7 +444,7 @@ function PlaybookModal({ initial, onClose, onSave }: { initial: Playbook | null;
     setFileName(f.name)
     setSource('uploaded')
     if (/\.(txt|md|csv)$/i.test(f.name)) { const r = new FileReader(); r.onload = () => setBody(String(r.result || '').slice(0, 8000)); r.readAsText(f) }
-    else if (!body) setBody(`Uploaded ${f.name}. Simplr AI will read this file when it runs ${SCOPE_META[scope].label.toLowerCase()} tasks.`)
+    else if (!body) setBody(`Uploaded ${f.name}. TellOvi AI will read this file when it runs ${SCOPE_META[scope].label.toLowerCase()} tasks.`)
   }
 
   return (
@@ -462,7 +462,7 @@ function PlaybookModal({ initial, onClose, onSave }: { initial: Playbook | null;
         <button onClick={() => fileRef.current?.click()} className="text-[13px] text-accent font-semibold flex items-center gap-1.5"><FileIcon size={14} /> Upload a document instead</button>
         {fileName && <span className="text-[12px] text-muted-2 font-mono truncate">{fileName}</span>}
       </div>
-      <div className="text-[11.5px] text-muted-3 leading-snug">Text files load inline; PDFs &amp; docs are stored and read by Simplr AI when the backend is connected.</div>
+      <div className="text-[11.5px] text-muted-3 leading-snug">Text files load inline; PDFs &amp; docs are stored and read by TellOvi AI when the backend is connected.</div>
     </Modal>
   )
 }

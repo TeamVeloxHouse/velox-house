@@ -14,7 +14,7 @@ const capabilities = [
   { icon: Bolt, title: 'Take action', sub: 'Create tasks, move deals, book next steps' },
 ]
 
-export function SimplrAI() {
+export function TellOviAI() {
   const nav = useNavigate()
   const { turns, ask } = useChat()
   const { agents } = useState_()
@@ -29,7 +29,7 @@ export function SimplrAI() {
   return (
     <>
       <TopBar
-        title="Simplr AI"
+        title="TellOvi AI"
         crumbs={['Your CRM copilot']}
         actions={
           <>
@@ -96,7 +96,7 @@ export function SimplrAI() {
             <div className="max-w-[760px] mx-auto">
               <AiComposer onSend={ask} />
               <div className="text-[11px] text-muted-3 text-center mt-2">
-                Simplr AI can read and act on your CRM. It always shows its work before doing anything irreversible.
+                TellOvi AI can read and act on your CRM. It always shows its work before doing anything irreversible.
               </div>
             </div>
           </div>

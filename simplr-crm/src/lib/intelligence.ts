@@ -1,4 +1,4 @@
-/* Simplr intelligence — deterministic scoring / risk / next-best-action derived from CRM data.
+/* TellOvi intelligence — deterministic scoring / risk / next-best-action derived from CRM data.
  * Pure functions over store entities; a live model would replace the bodies, signatures stay. */
 import type { Deal, Person, Activity, Lead } from '../store/types'
 import { stages } from '../data/mock'

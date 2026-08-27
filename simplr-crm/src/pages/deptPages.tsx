@@ -108,11 +108,11 @@ export function FinanceForecasting() {
       <Kpi label="Projected wk-13" value={money(weeks[12].close, { compact: true })} deltaTone={weeks[12].close >= opening ? 'positive' : 'negative'} />
       <Kpi label="Lowest point" value={money(lowest, { compact: true })} deltaTone={lowest < 0 ? 'negative' : 'muted'} />
       <Kpi label="Weekly opex" value={money(weeklyOpex, { compact: true })} />
-    </>} actions={<Button variant="primary" icon={<Download size={16} />} onClick={() => buildCashflowWorkbook(state).then((b) => { downloadBlob(b, 'Simplr — 13-week cashflow.xlsx'); act.generateArtifact('Cashflow forecast — 13 week', 'model', 'xlsx') })}>Download .xlsx</Button>}>
+    </>} actions={<Button variant="primary" icon={<Download size={16} />} onClick={() => buildCashflowWorkbook(state).then((b) => { downloadBlob(b, 'TellOvi — 13-week cashflow.xlsx'); act.generateArtifact('Cashflow forecast — 13 week', 'model', 'xlsx') })}>Download .xlsx</Button>}>
       <AiStrip role="Finance forecasting" blurb="This 13-week model is live from your pipeline and AR. Download it as a real spreadsheet — formulas intact, so finance can flex the assumptions."
         actions={[
-          { label: 'Download cashflow (.xlsx)', run: () => buildCashflowWorkbook(state).then((b) => { downloadBlob(b, 'Simplr — 13-week cashflow.xlsx'); act.generateArtifact('Cashflow forecast — 13 week', 'model', 'xlsx') }) },
-          { label: 'Generate P&L (.xlsx)', run: () => buildPnlWorkbook(state).then((b) => { downloadBlob(b, 'Simplr — P&L.xlsx'); act.generateArtifact('P&L — this quarter', 'report', 'xlsx') }) },
+          { label: 'Download cashflow (.xlsx)', run: () => buildCashflowWorkbook(state).then((b) => { downloadBlob(b, 'TellOvi — 13-week cashflow.xlsx'); act.generateArtifact('Cashflow forecast — 13 week', 'model', 'xlsx') }) },
+          { label: 'Generate P&L (.xlsx)', run: () => buildPnlWorkbook(state).then((b) => { downloadBlob(b, 'TellOvi — P&L.xlsx'); act.generateArtifact('P&L — this quarter', 'report', 'xlsx') }) },
         ]} />
       <Section title="13-week cashflow" meta="Opening → closing, chained weekly">
         <div className="overflow-x-auto">
@@ -144,8 +144,8 @@ export function FinanceReports() {
     <DeptPage title="Finance" crumb="Reports">
       <AiStrip role="Finance" blurb="Every board pack and financial model, generated on demand from live data and kept here. Real .xlsx and .pptx files."
         actions={[
-          { label: 'Cashflow forecast (.xlsx)', run: () => buildCashflowWorkbook(state).then((b) => { downloadBlob(b, 'Simplr — 13-week cashflow.xlsx'); act.generateArtifact('Cashflow forecast — 13 week', 'model', 'xlsx') }) },
-          { label: 'P&L this quarter (.xlsx)', run: () => buildPnlWorkbook(state).then((b) => { downloadBlob(b, 'Simplr — P&L.xlsx'); act.generateArtifact('P&L — this quarter', 'report', 'xlsx') }) },
+          { label: 'Cashflow forecast (.xlsx)', run: () => buildCashflowWorkbook(state).then((b) => { downloadBlob(b, 'TellOvi — 13-week cashflow.xlsx'); act.generateArtifact('Cashflow forecast — 13 week', 'model', 'xlsx') }) },
+          { label: 'P&L this quarter (.xlsx)', run: () => buildPnlWorkbook(state).then((b) => { downloadBlob(b, 'TellOvi — P&L.xlsx'); act.generateArtifact('P&L — this quarter', 'report', 'xlsx') }) },
           { label: 'Board pack (.pptx)', run: () => act.generateArtifact('Board pack — Q3 finance', 'deck', 'pptx') },
         ]} />
       <Section title="Generated reports" meta="Board packs, models & statements"><DocList kinds={['model', 'report', 'deck']} empty="No reports yet — generate one above." /></Section>
@@ -342,7 +342,7 @@ export function HrCompliance() {
       <Kpi label="Expiring <60d" value={String(expiring.length)} deltaTone={expiring.length ? 'negative' : 'positive'} />
       <Kpi label="Expired" value={String(sorted.filter((c) => daysUntil(c.expires) < 0).length)} deltaTone="negative" />
       <Kpi label="People covered" value={String(new Set(certifications.map((c) => c.employeeId)).size)} />
-    </>} actions={expiring.length ? <Button variant="primary" icon={<Sparkle size={16} />} onClick={() => { expiring.forEach((c) => act.addActivity({ type: 'task', subject: `Renew ${c.name} — ${emp(c.employeeId)?.name}`, due: 'This week', priority: 'High', who: 'Simplr AI', source: 'ai' })); act.toast(`${expiring.length} renewal tasks created`) }}>Chase all</Button> : undefined}>
+    </>} actions={expiring.length ? <Button variant="primary" icon={<Sparkle size={16} />} onClick={() => { expiring.forEach((c) => act.addActivity({ type: 'task', subject: `Renew ${c.name} — ${emp(c.employeeId)?.name}`, due: 'This week', priority: 'High', who: 'TellOvi AI', source: 'ai' })); act.toast(`${expiring.length} renewal tasks created`) }}>Chase all</Button> : undefined}>
       <Section title="Certification tracker" meta="Trade & safety compliance, soonest expiry first">
         {sorted.map((c) => {
           const d = daysUntil(c.expires)

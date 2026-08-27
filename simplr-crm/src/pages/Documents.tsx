@@ -121,7 +121,7 @@ export function Documents() {
                 <div className="flex items-center gap-2.5">
                   <span className="w-9 h-9 rounded-[10px] bg-accent text-white flex items-center justify-center font-bold">S</span>
                   <div>
-                    <div className="text-[15px] font-bold text-ink">Simplr</div>
+                    <div className="text-[15px] font-bold text-ink">TellOvi</div>
                     <div className="text-[11px] text-muted-2">Quotation QUO-1042</div>
                   </div>
                 </div>

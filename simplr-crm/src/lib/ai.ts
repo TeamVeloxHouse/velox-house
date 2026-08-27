@@ -1,4 +1,4 @@
-/* Simplr AI — an in-app reasoning engine over the CRM's mock data.
+/* TellOvi AI — an in-app reasoning engine over the CRM's mock data.
  *
  * This is a deterministic, offline stand-in for a live LLM: it parses intent from
  * the prompt and composes a structured answer from the real data in `data/mock.ts`.

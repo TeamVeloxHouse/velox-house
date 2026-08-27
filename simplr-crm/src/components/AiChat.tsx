@@ -354,7 +354,7 @@ export function AiComposer({ onSend, compact, placeholder }: { onSend: (t: strin
           onChange={(e) => setV(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit() } }}
           rows={1}
-          placeholder={placeholder ?? 'Ask Simplr AI to analyse, draft, or do something…'}
+          placeholder={placeholder ?? 'Ask TellOvi AI to analyse, draft, or do something…'}
           className="flex-1 resize-none outline-none bg-transparent text-[14px] text-ink-2 placeholder:text-muted-3 px-2 py-1.5 max-h-32"
         />
         <button
@@ -376,7 +376,7 @@ export function AiHeader({ right }: { right?: ReactNode }) {
         <Sparkle size={17} />
       </div>
       <div className="flex-1">
-        <div className="text-[14px] font-bold text-ink flex items-center gap-2">Simplr AI <Chip tone="positive" dot>Autonomous</Chip></div>
+        <div className="text-[14px] font-bold text-ink flex items-center gap-2">TellOvi AI <Chip tone="positive" dot>Autonomous</Chip></div>
       </div>
       {right}
     </div>

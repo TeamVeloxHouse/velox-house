@@ -34,7 +34,7 @@ export function Onboarding() {
     if (!trade) return
     act.selectTrade(trade, features, true)
     act.completeOnboarding()
-    act.toast(`Welcome — Simplr is set up for ${tradeByKey(trade).name.toLowerCase()}`)
+    act.toast(`Welcome — TellOvi is set up for ${tradeByKey(trade).name.toLowerCase()}`)
   }
 
   return (
@@ -43,8 +43,8 @@ export function Onboarding() {
         {/* header */}
         <div className="px-8 pt-7 pb-5 border-b border-divider">
           <div className="flex items-center gap-2 text-accent-700 mb-2"><Sparkle size={16} /><span className="eyebrow text-[11px]">Set up your workspace</span></div>
-          <div className="text-[22px] font-bold text-ink tracking-[-0.01em]">{step === 0 ? 'What does your business do?' : `Great — let’s tailor Simplr for ${profile?.name}`}</div>
-          <div className="text-[13.5px] text-muted-b mt-1">{step === 0 ? 'Pick your trade and Simplr sets up the right tools, job types, survey template and compliance checklist. You can change any of this later.' : 'These are switched on by default for your trade. Turn anything on or off — nothing is locked.'}</div>
+          <div className="text-[22px] font-bold text-ink tracking-[-0.01em]">{step === 0 ? 'What does your business do?' : `Great — let’s tailor TellOvi for ${profile?.name}`}</div>
+          <div className="text-[13.5px] text-muted-b mt-1">{step === 0 ? 'Pick your trade and TellOvi sets up the right tools, job types, survey template and compliance checklist. You can change any of this later.' : 'These are switched on by default for your trade. Turn anything on or off — nothing is locked.'}</div>
           <div className="flex items-center gap-1.5 mt-4">
             <span className={classNames('h-1.5 rounded-full transition-all', step === 0 ? 'w-8 bg-accent' : 'w-4 bg-accent/40')} />
             <span className={classNames('h-1.5 rounded-full transition-all', step === 1 ? 'w-8 bg-accent' : 'w-4 bg-border')} />

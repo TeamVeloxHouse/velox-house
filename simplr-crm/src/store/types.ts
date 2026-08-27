@@ -485,7 +485,7 @@ export interface TeamMember {
   role: string
   color: string // avatar accent
   status: PresenceStatus
-  bot?: boolean // Simplr AI
+  bot?: boolean // TellOvi AI
   boss?: boolean // your manager
   you?: boolean // the current viewer
 }
@@ -497,7 +497,7 @@ export interface TeamChannel {
   kind: ChannelKind
   topic?: string
   memberIds: ID[] // participants (the AI is included where it "sits inside")
-  ai: boolean // Simplr AI is a member here and will respond
+  ai: boolean // TellOvi AI is a member here and will respond
   unread: number
 }
 
@@ -619,6 +619,68 @@ export interface Review {
   responded: boolean
 }
 
+// ── TellOvi Marketing — brand & content operations hub ──
+export type BrandAssetType = 'logo' | 'template' | 'header' | 'deck' | 'pdf' | 'guideline' | 'font'
+export interface BrandAsset {
+  id: ID
+  name: string
+  type: BrandAssetType
+  format: string // 'SVG' | 'PNG' | 'PPTX' | 'DOCX' | 'PDF' | 'OTF' …
+  tags: string[]
+  version: string // e.g. 'v3'
+  updatedAt: number
+  note?: string
+  latest: boolean
+}
+export type MessagingCategory = 'tagline' | 'boilerplate' | 'value-prop' | 'tone' | 'banned'
+export interface MessagingSnippet {
+  id: ID
+  label: string
+  category: MessagingCategory
+  text: string
+}
+export type MediaSource = 'upload' | 'canva' | 'claude-design' | 'figma'
+export interface MediaAsset {
+  id: ID
+  name: string
+  type: 'image' | 'video' | 'graphic'
+  tags: string[]
+  source: MediaSource
+  when: string
+  license?: string
+  expiry?: string
+}
+export type ContentStatus = 'idea' | 'brief' | 'draft' | 'review' | 'approved' | 'scheduled' | 'published'
+export interface ContentItem {
+  id: ID
+  title: string
+  channel: string // 'LinkedIn' | 'Instagram' | 'Blog' | 'Email' | 'X' …
+  campaign?: string
+  status: ContentStatus
+  owner: string
+  date: string
+  note?: string
+}
+export type RequestStatus = 'new' | 'found' | 'in-progress' | 'done'
+export interface MarketingRequest {
+  id: ID
+  from: string
+  ask: string
+  status: RequestStatus
+  assetId?: ID
+  when: string
+  note?: string
+}
+export type ConnectorKind = 'design' | 'social' | 'storage' | 'analytics' | 'email'
+export interface MarketingConnector {
+  id: ID
+  name: string
+  kind: ConnectorKind
+  connected: boolean
+  account?: string
+  note?: string
+}
+
 export interface State {
   deals: Deal[]
   people: Person[]
@@ -671,6 +733,13 @@ export interface State {
   expenses: Expense[]
   stock: StockItem[]
   reviews: Review[]
+  // TellOvi Marketing — brand & content operations
+  brandAssets: BrandAsset[]
+  messaging: MessagingSnippet[]
+  mediaAssets: MediaAsset[]
+  contentItems: ContentItem[]
+  mktRequests: MarketingRequest[]
+  mktConnectors: MarketingConnector[]
   toasts: Toast[]
   railExpanded: boolean
 }

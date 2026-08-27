@@ -1,0 +1,793 @@
+<title>TellOvi Business Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --canvas:#F6F7F9; --surface:#FFFFFF; --surface-tint:#FBFCFF;
+  --ink:#0B1220; --ink-2:#1B2534; --ink-3:#3D4757;
+  --muted:#5D6878; --muted-2:#7A8494; --faint:#98A1B0;
+  --accent:#1D4ED8; --accent-700:#17429C; --accent-600:#3A67E4; --accent-500:#5B85F0;
+  --accent-wash:#EEF2FB; --accent-wash-2:#DCE7FC; --accent-wash-4:#F1F6FF;
+  --navy1:#1C3A72; --navy0:#0C1B38;
+  --border:#E4E8EE; --border-blue:#D8E1F4; --divider:#EDF0F4; --control:#F1F3F7;
+  --positive:#0E7C66; --positive-wash:#E9F5F1; --warning:#C2410C; --negative:#B01B4F;
+  --purple:#7C3AED; --purple-lo:#8B5CF6; --cyan:#12B5C4;
+  /* translucent-white helpers used ONLY inside the deep-navy chat panel */
+  --hair:rgba(255,255,255,.12); --hair-strong:rgba(255,255,255,.20); --panel-2:rgba(255,255,255,.09);
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,"Cascadia Mono",Consolas,monospace;
+  --shadow-card:0 2px 8px rgba(20,24,40,.05); --shadow-modal:0 30px 70px rgba(11,18,32,.35);
+  --readw:74ch; --maxw:1200px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){ html{scroll-behavior:auto} }
+body{
+  margin:0;background:var(--canvas);color:var(--ink-2);
+  font-family:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  -webkit-font-smoothing:antialiased;line-height:1.6;font-size:17px;
+  background-image:
+    radial-gradient(52% 44% at 100% -4%, rgba(29,78,216,.06), transparent 62%),
+    radial-gradient(46% 40% at -6% 8%, rgba(124,58,237,.05), transparent 64%);
+  background-attachment:fixed;
+}
+h1,h2,h3,h4{font-family:"Instrument Sans",system-ui,sans-serif;margin:0;letter-spacing:-.015em;text-wrap:balance;line-height:1.08;color:var(--ink)}
+p{margin:0 0 16px}
+a{color:var(--accent);text-decoration:none}
+strong{color:var(--ink);font-weight:700}
+em{color:var(--accent);font-style:normal;font-weight:600}
+.grad{background:linear-gradient(100deg,var(--accent-600),var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent}
+.mono{font-family:var(--mono)}
+
+/* ---------- top progress + header ---------- */
+.topbar{position:fixed;top:0;left:0;right:0;z-index:60;
+  display:flex;align-items:center;gap:14px;padding:12px clamp(16px,3.5vw,34px);
+  background:rgba(255,255,255,.86);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border)}
+.topbar .brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:17px;letter-spacing:-.01em}
+.topbar .brand .rob{width:24px;height:24px}
+.topbar .brand .t1{color:var(--ink)}.topbar .brand .o{color:var(--purple)}.topbar .brand .t2{color:var(--accent)}
+.topbar .doc{margin-left:6px;font-size:11px;font-weight:600;letter-spacing:.12em;color:var(--muted-2);text-transform:uppercase}
+.topbar .spacer{flex:1}
+.topbar .toc-toggle{display:none;background:var(--control);border:1px solid var(--border);color:var(--ink-2);
+  border-radius:9px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer}
+.pbar{position:fixed;top:0;left:0;height:3px;z-index:61;background:linear-gradient(90deg,var(--accent-600),var(--accent));width:0}
+@media (max-width:1080px){ .topbar .toc-toggle{display:block} }
+
+/* ---------- layout: TOC + content ---------- */
+.shell{max-width:var(--maxw);margin:0 auto;padding:0 clamp(16px,3.5vw,34px);
+  display:grid;grid-template-columns:214px 1fr;gap:clamp(24px,4vw,60px);align-items:start}
+@media (max-width:1080px){ .shell{grid-template-columns:1fr} }
+
+.toc{position:sticky;top:74px;align-self:start;padding:8px 0;max-height:calc(100vh - 90px);overflow:auto}
+.toc .lab{font-size:10.5px;font-weight:600;letter-spacing:.16em;color:var(--faint);text-transform:uppercase;margin:0 0 10px}
+.toc a{display:block;color:var(--muted);font-size:13.5px;padding:5px 10px;border-left:2px solid transparent;line-height:1.3;margin-bottom:1px;border-radius:0 6px 6px 0}
+.toc a .n{font-family:var(--mono);font-size:11px;color:var(--faint);margin-right:8px}
+.toc a:hover{color:var(--ink);background:var(--surface-tint)}
+.toc a.active{color:var(--accent);font-weight:600;border-left-color:var(--accent);background:var(--accent-wash)}
+.toc a.active .n{color:var(--accent)}
+@media (max-width:1080px){
+  .toc{position:fixed;inset:0 auto 0 0;top:0;width:270px;max-height:100vh;z-index:70;
+    background:var(--surface);border-right:1px solid var(--border);padding:74px 16px 24px;
+    transform:translateX(-100%);transition:transform .28s ease;box-shadow:var(--shadow-modal)}
+  .toc.open{transform:none}
+}
+.scrim{position:fixed;inset:0;background:rgba(11,18,32,.35);z-index:65;opacity:0;visibility:hidden;transition:.25s}
+.scrim.open{opacity:1;visibility:visible}
+@media (min-width:1081px){ .scrim{display:none} }
+
+.content{min-width:0;padding-top:86px;padding-bottom:120px}
+
+/* ---------- section primitives ---------- */
+section{scroll-margin-top:76px;padding:52px 0;border-top:1px solid var(--divider)}
+section:first-of-type{border-top:none}
+.eyebrow{font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:10px;margin:0 0 16px}
+.eyebrow::before{content:"";width:22px;height:2px;border-radius:2px;background:var(--accent)}
+h2.sec{font-size:clamp(28px,3.6vw,42px);font-weight:700;margin-bottom:18px}
+h3.sub{font-size:clamp(19px,2vw,24px);font-weight:700;margin:30px 0 12px;color:var(--ink)}
+.prose{max-width:var(--readw)}
+.prose p{color:var(--ink-3)}
+.lead{font-size:clamp(18px,1.9vw,21px);color:var(--muted)!important;max-width:66ch}
+.pull{border-left:3px solid var(--accent);padding:4px 0 4px 20px;margin:22px 0;font-weight:700;font-size:clamp(19px,2.2vw,26px);color:var(--ink);line-height:1.25;max-width:24ch;letter-spacing:-.01em}
+.pull.wide{max-width:34ch}
+
+/* cards + grids */
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}
+@media (max-width:820px){ .g2,.g3,.g4{grid-template-columns:1fr} }
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px;box-shadow:var(--shadow-card)}
+.card.soft{background:var(--accent-wash-4);border-color:var(--border-blue);box-shadow:none}
+.card h4{font-size:17px;font-weight:700;margin-bottom:7px;color:var(--ink)}
+.card p{font-size:14.5px;color:var(--muted);margin:0}
+.tag{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
+
+/* stat tiles */
+.stats{display:grid;gap:16px;grid-template-columns:repeat(4,1fr)}
+@media (max-width:820px){ .stats{grid-template-columns:1fr 1fr} }
+.stat .n{font-weight:700;font-size:clamp(28px,3.4vw,40px);line-height:1;color:var(--ink);letter-spacing:-.02em}
+.stat .n .g2t{background:linear-gradient(100deg,var(--accent),var(--purple));-webkit-background-clip:text;background-clip:text;color:transparent}
+.stat .l{color:var(--muted);font-size:13.5px;margin-top:7px}
+
+/* command chip */
+.cmd{font-family:var(--mono);font-size:13.5px;display:inline-flex;align-items:center;gap:8px;
+  padding:8px 13px;border-radius:8px;background:var(--accent-wash);
+  border:1px solid var(--border-blue);color:var(--accent-700)}
+.cmd .p{color:var(--accent);font-weight:700}
+.cmd-list{display:flex;flex-direction:column;gap:10px;align-items:flex-start;margin:18px 0}
+
+/* lifecycle rail */
+.rail{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:26px 0}
+@media (max-width:900px){ .rail{grid-template-columns:1fr 1fr} }
+.node{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:15px 14px;position:relative;box-shadow:var(--shadow-card)}
+.node .s{font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:.04em;font-weight:700}
+.node h4{font-size:16px;margin:6px 0 5px;color:var(--ink)}
+.node p{font-size:12.8px;color:var(--muted);margin:0}
+
+/* module list rows */
+.mod{display:grid;grid-template-columns:200px 1fr;gap:20px;padding:20px 0;border-top:1px solid var(--divider);align-items:start}
+.mod:first-child{border-top:none}
+@media (max-width:760px){ .mod{grid-template-columns:1fr;gap:8px} }
+.mod .name{font-weight:700;font-size:20px;color:var(--ink);letter-spacing:-.01em}
+.mod .name .o{color:var(--accent)}
+.mod .stage{font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2);margin-top:6px}
+.mod .desc p{margin:0 0 8px;color:var(--ink-3);font-size:15px}
+.mod ul{margin:6px 0 0;padding:0;list-style:none;display:grid;gap:5px}
+.mod li{font-size:13.8px;color:var(--muted);padding-left:18px;position:relative}
+.mod li::before{content:"▸";position:absolute;left:0;color:var(--accent-500)}
+
+/* worked-example timeline */
+.tl{position:relative;margin:24px 0;padding-left:26px}
+.tl::before{content:"";position:absolute;left:7px;top:6px;bottom:6px;width:2px;background:linear-gradient(180deg,var(--accent),var(--purple))}
+.tl .step{position:relative;padding:0 0 22px 4px}
+.tl .step::before{content:"";position:absolute;left:-26px;top:3px;width:14px;height:14px;border-radius:50%;background:var(--surface);border:2px solid var(--accent);box-shadow:0 0 0 3px var(--accent-wash)}
+.tl .who{font-family:var(--mono);font-size:11px;letter-spacing:.04em;color:var(--accent);text-transform:uppercase;font-weight:700}
+.tl h4{font-size:16.5px;margin:3px 0 5px;color:var(--ink)}
+.tl p{font-size:14.5px;color:var(--muted);margin:0;max-width:64ch}
+
+/* comparison table */
+.tbl{width:100%;border-collapse:collapse;margin:20px 0;font-size:14px;min-width:640px}
+.tbl th,.tbl td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--divider);vertical-align:top}
+.tbl thead th{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted-2)}
+.tbl tbody th{font-weight:700;color:var(--ink);font-size:14px}
+.tbl td{color:var(--ink-3)}
+.tbl .yes{color:var(--positive);font-weight:600}.tbl .no{color:var(--negative)}.tbl .mid{color:var(--warning)}
+.tbl .us{background:var(--accent-wash);color:var(--ink)}
+.tbl-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-card)}
+
+/* pricing */
+.tiers{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:22px 0}
+@media (max-width:900px){ .tiers{grid-template-columns:1fr 1fr} }
+@media (max-width:560px){ .tiers{grid-template-columns:1fr} }
+.tier{display:flex;flex-direction:column}
+.tier.hot{border-color:var(--accent);background:var(--accent-wash-4);box-shadow:0 6px 18px rgba(29,78,216,.13)}
+.tier .nm{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2)}
+.tier .pr{font-weight:700;font-size:30px;margin:8px 0 2px;color:var(--ink);letter-spacing:-.02em}
+.tier .pr small{font-size:12.5px;color:var(--faint);font-weight:400}
+.tier ul{list-style:none;padding:0;margin:12px 0 0;display:flex;flex-direction:column;gap:7px}
+.tier li{font-size:13px;color:var(--muted);padding-left:18px;position:relative}
+.tier li::before{content:"→";position:absolute;left:0;color:var(--accent)}
+
+/* roadmap phases */
+.phase{display:grid;grid-template-columns:130px 1fr;gap:20px;padding:18px 0;border-top:1px solid var(--divider)}
+@media (max-width:700px){ .phase{grid-template-columns:1fr;gap:6px} }
+.phase .when{font-family:var(--mono);font-size:13px;color:var(--accent);font-weight:700}
+.phase .when small{display:block;color:var(--muted-2);font-size:11px;margin-top:3px;font-family:"Instrument Sans"}
+.phase h4{font-size:17px;margin-bottom:6px;color:var(--ink)}
+.phase p{font-size:14px;color:var(--muted);margin:0}
+
+/* funds bars */
+.fund{display:flex;flex-direction:column;gap:11px}
+.fund .row{display:flex;align-items:center;gap:12px}
+.fund .bar{flex:1;height:9px;border-radius:6px;background:var(--control);overflow:hidden}
+.fund .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent-600),var(--accent))}
+.fund .lab{font-size:13.5px;color:var(--ink-2);min-width:190px}
+.fund .pct{font-family:var(--mono);font-size:12.5px;color:var(--muted);min-width:42px;text-align:right}
+
+/* risk grid */
+.risk{border-left:3px solid var(--negative);padding-left:16px}
+.risk h4{color:var(--ink);font-size:16px;margin-bottom:5px}
+.risk .m{color:var(--muted);font-size:14px}
+.risk .m b{color:var(--accent);font-weight:700;font-size:11px;letter-spacing:.06em;text-transform:uppercase;display:block;margin-top:8px}
+
+/* placeholder token */
+.ph{border-bottom:1.5px dashed var(--accent-500);color:var(--accent);white-space:nowrap;font-weight:600}
+
+/* hero */
+.hero{border-top:none;padding:8px 0 30px;text-align:center}
+.hero .rob{width:clamp(90px,12vw,132px);filter:drop-shadow(0 16px 34px rgba(124,58,237,.28));margin-bottom:20px}
+.hero .wm{font-weight:700;font-size:clamp(46px,8vw,92px);letter-spacing:-.03em;line-height:.92}
+.hero .wm .tell{color:var(--ink)}.hero .wm .o{color:var(--purple)}.hero .wm .vi{color:var(--accent)}
+.hero .rule{width:min(320px,60vw);height:2px;margin:14px auto 0;background:linear-gradient(90deg,transparent,var(--purple),var(--accent),transparent)}
+.hero .cat{font-size:clamp(12px,1.5vw,15px);font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-top:22px}
+.hero .tag{font-size:clamp(18px,2.4vw,26px);color:var(--muted);margin:14px auto 0;max-width:26ch;font-weight:600;line-height:1.25}
+.hero .tag b{color:var(--ink)}
+.hero .meta{margin-top:26px;font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--faint);text-transform:uppercase}
+
+.note{font-size:12.5px;color:var(--muted-2);font-family:var(--mono);margin-top:14px}
+.divider-glow{height:1px;background:var(--border);margin:8px 0 0}
+.close-band{text-align:center;padding:60px 0 20px}
+.close-band .big{font-weight:700;font-size:clamp(34px,6vw,68px);letter-spacing:-.02em;color:var(--ink)}
+</style>
+
+<!-- OVI MASCOT SYMBOL -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <radialGradient id="silver" cx="38%" cy="30%" r="80%">
+      <stop offset="0%" stop-color="#ffffff"/><stop offset="42%" stop-color="#e9e9f3"/>
+      <stop offset="78%" stop-color="#c2c2d6"/><stop offset="100%" stop-color="#9797b0"/>
+    </radialGradient>
+    <linearGradient id="helmet" x1="12%" y1="8%" x2="88%" y2="70%">
+      <stop offset="0%" stop-color="#9d6bff"/><stop offset="52%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#4338ca"/>
+    </linearGradient>
+    <radialGradient id="ball" cx="35%" cy="30%" r="75%">
+      <stop offset="0%" stop-color="#c4b0ff"/><stop offset="100%" stop-color="#6d28d9"/>
+    </radialGradient>
+    <linearGradient id="screen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#26283a"/><stop offset="100%" stop-color="#14151f"/>
+    </linearGradient>
+    <filter id="eyeglow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="2.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <symbol id="ovi" viewBox="0 0 200 205">
+    <g stroke="#c9c9dc" stroke-width="4" stroke-linecap="round"><line x1="72" y1="46" x2="58" y2="20"/><line x1="128" y1="46" x2="142" y2="20"/></g>
+    <circle cx="55" cy="16" r="9" fill="url(#ball)"/><circle cx="145" cy="16" r="9" fill="url(#ball)"/>
+    <circle cx="100" cy="112" r="74" fill="url(#silver)"/>
+    <ellipse cx="28" cy="112" rx="11" ry="17" fill="#b9b9cf"/><ellipse cx="172" cy="112" rx="11" ry="17" fill="#b9b9cf"/>
+    <path d="M100 38 a74 74 0 0 1 71 55 q-6 6 -16 6 q-4 -30 -30 -44 q-25 -13 -50 0 q-26 14 -30 44 q-10 0 -16 -6 a74 74 0 0 1 71 -55 Z" fill="url(#helmet)"/>
+    <rect x="46" y="74" width="108" height="74" rx="24" fill="url(#helmet)"/>
+    <rect x="52" y="80" width="96" height="62" rx="19" fill="#d7d7e6"/>
+    <rect x="58" y="85" width="84" height="52" rx="15" fill="url(#screen)"/>
+    <g fill="none" stroke="#3af0f0" stroke-width="6.5" stroke-linecap="round" filter="url(#eyeglow)"><path d="M74 118 q9 -16 18 0"/><path d="M108 118 q9 -16 18 0"/></g>
+  </symbol>
+</svg>
+
+<div class="pbar" id="pbar"></div>
+<header class="topbar">
+  <span class="brand"><svg class="rob" viewBox="0 0 200 205"><use href="#ovi"/></svg>
+    <span class="t1">Tell</span><span class="o">O</span><span class="t2">vi</span></span>
+  <span class="doc">Business Plan</span>
+  <span class="spacer"></span>
+  <button class="toc-toggle" id="tocToggle">☰ Contents</button>
+</header>
+
+<div class="scrim" id="scrim"></div>
+
+<div class="shell">
+  <!-- ============ TOC ============ -->
+  <nav class="toc" id="toc">
+    <p class="lab">Contents</p>
+    <a href="#summary"><span class="n">01</span>Executive summary</a>
+    <a href="#idea"><span class="n">02</span>The idea</a>
+    <a href="#problem"><span class="n">03</span>The problem</a>
+    <a href="#moat"><span class="n">04</span>Differentiator &amp; moat</a>
+    <a href="#operating"><span class="n">05</span>How Ovi operates</a>
+    <a href="#platform"><span class="n">06</span>The platform &amp; full scope</a>
+    <a href="#leadengine"><span class="n">07</span>The research lead engine</a>
+    <a href="#teams"><span class="n">08</span>OviTeams: chat → action</a>
+    <a href="#endtoend"><span class="n">09</span>A deal, end to end</a>
+    <a href="#collab"><span class="n">10</span>Human + AI model</a>
+    <a href="#market"><span class="n">11</span>Market &amp; opportunity</a>
+    <a href="#compete"><span class="n">12</span>Competition</a>
+    <a href="#gtm"><span class="n">13</span>Go-to-market</a>
+    <a href="#model"><span class="n">14</span>Business model</a>
+    <a href="#roadmap"><span class="n">15</span>Roadmap</a>
+    <a href="#traction"><span class="n">16</span>Where we are</a>
+    <a href="#financials"><span class="n">17</span>Financials</a>
+    <a href="#risks"><span class="n">18</span>Risks</a>
+    <a href="#team"><span class="n">19</span>Team</a>
+    <a href="#ask"><span class="n">20</span>The ask</a>
+  </nav>
+
+  <main class="content">
+
+    <!-- HERO -->
+    <section class="hero" id="top">
+      <svg class="rob" viewBox="0 0 200 205"><use href="#ovi"/></svg>
+      <div class="wm"><span class="tell">Tell</span><span class="o">O</span><span class="vi">vi</span></div>
+      <div class="rule"></div>
+      <div class="cat">The Agentic Business Operating System</div>
+      <div class="tag">One AI operator runs your <b>entire business</b> — research to delivery.</div>
+      <div class="meta">Business Plan · v1 · 2026 · Confidential</div>
+    </section>
+
+    <!-- 01 EXEC SUMMARY -->
+    <section id="summary">
+      <p class="eyebrow">01 · Executive summary</p>
+      <h2 class="sec">A business that operates itself, on your command.</h2>
+      <div class="prose">
+        <p class="lead">TellOvi is an AI-operated business operating system. A single platform, built on one shared data spine, where an AI operator named <em>Ovi</em> runs the entire commercial process — from researching and generating leads, through sales, quoting and ordering, all the way to fulfilment and delivery — while human teams collaborate on the same records and direct Ovi in plain language.</p>
+        <p>Today a growing company stitches together ten or more disconnected tools — a CRM, a prospecting tool, an email platform, a BI dashboard, a quoting app, an ordering system, a scheduling tool, a project tracker and a team chat — and spends enormous human effort being the glue between them. Their "AI" is a chatbot bolted onto the side of one box, unable to see or touch the rest. The work of joining it all up still falls on people.</p>
+        <p>TellOvi collapses that entire stack into one platform and hands the joining-up to Ovi. Because every stage lives on one data model, Ovi acts with full context the whole way through: it researches a market and surfaces genuinely qualified leads, runs the outreach, works the pipeline, builds the quote, places the order, sources the product, schedules the delivery by location, and reports on all of it — and it does this <strong>inside the team chat</strong>, taking action straight off the conversation.</p>
+        <div class="pull wide">Not software you operate. A business that operates itself, on your command.</div>
+        <p>The wedge is simple and hard to copy: <strong>end-to-end on one spine.</strong> Point tools automate a slice; TellOvi owns the whole thread, so its AI is an <em>operator</em>, not an assistant. Every action across the lifecycle feeds a compounding data flywheel that makes the next research, score, price and route smarter — an advantage fragmented incumbents structurally cannot build.</p>
+        <p>We're honest about the field: "AI runs your business" is the most contested space in software, and no single pillar here is ours alone. Our edge is <strong>focus and architecture</strong> — we're the only end-to-end AI operator built for the businesses the giants ignore: <em>SMB and mid-market firms that both sell and deliver</em> — installers, trades, agencies and wholesalers. Salesforce won't come down-market to a six-person installer; the field-service tools that serve them aren't AI-native. We own the whole thread for exactly those businesses, and the data that thread produces compounds.</p>
+        <p>We are raising <span class="ph">£[ amount ]</span> to ship the hosted AI backend, launch the collaborative Teams layer, and convert a built product and early pilots into paying, expanding accounts. The prize is not a seat at one software category — it is the operating layer beneath all of them, for the segment no one else is serving properly.</p>
+      </div>
+      <div class="stats" style="margin-top:30px">
+        <div class="card stat"><div class="n"><span class="g2t">10→1</span></div><div class="l">tools replaced by one operator</div></div>
+        <div class="card stat"><div class="n">1 <span class="g2t">spine</span></div><div class="l">every stage on one data model</div></div>
+        <div class="card stat"><div class="n">End<span class="g2t">→</span>end</div><div class="l">research to delivery, one AI</div></div>
+        <div class="card stat"><div class="n">Chat<span class="g2t">-native</span></div><div class="l">Ovi acts from the conversation</div></div>
+      </div>
+    </section>
+
+    <!-- 02 THE IDEA -->
+    <section id="idea">
+      <p class="eyebrow">02 · The idea</p>
+      <h2 class="sec">A new category: the Agentic Business Operating System.</h2>
+      <div class="prose">
+        <p class="lead">Every previous wave of business software digitised a <em>function</em> — a place to store contacts, a place to send email, a place to track jobs. The next wave doesn't digitise a function. It operates the whole business.</p>
+        <p>TellOvi's thesis is that the unit of software is no longer the app you open — it's the <strong>operator you instruct</strong>. You don't navigate menus, tabs and settings across ten products; you tell Ovi what you want and it does the work across all of them, because there is no "them" — there is one system. The brand name <em>is</em> the interface: <span class="mono" style="color:var(--cyan)">tell Ovi</span>.</p>
+        <p>Three shifts make this the right idea at the right moment:</p>
+      </div>
+      <div class="grid g3" style="margin-top:20px">
+        <div class="card soft"><span class="tag">SHIFT 01</span><h4>AI can now operate</h4><p>Frontier models can reliably plan, chain tools and take multi-step action. That is the line between a chatbot that answers and an operator that does the job.</p></div>
+        <div class="card soft"><span class="tag">SHIFT 02</span><h4>Buyers want one system</h4><p>Budgets are consolidating. Teams are tired of paying for ten seats and doing the integration by hand. One platform that does the work beats a stack you assemble.</p></div>
+        <div class="card soft"><span class="tag">SHIFT 03</span><h4>Ops for everyone</h4><p>Small teams can't hire analysts, SDRs and coordinators. Ovi gives a five-person company an entire operations department inside a text box.</p></div>
+      </div>
+      <div class="prose"><div class="pull">The unit of software is no longer the app you open. It's the operator you instruct.</div></div>
+    </section>
+
+    <!-- 03 PROBLEM -->
+    <section id="problem">
+      <p class="eyebrow">03 · The problem</p>
+      <h2 class="sec">The modern business is a pile of tools held together by people.</h2>
+      <div class="prose">
+        <p class="lead">Ask any growing company how a customer actually flows through their business and you'll hear a list of products, not a process. Each tool owns one slice, none of them talk properly, and the humans are the integration layer.</p>
+      </div>
+      <div class="grid g2" style="margin-top:8px">
+        <div class="card"><h4>Fragmented data</h4><p>The lead, the deal, the quote, the order and the delivery live in different systems. No one place knows the whole story, so no AI can either. Reporting means exporting and stitching spreadsheets.</p></div>
+        <div class="card"><h4>Manual glue</h4><p>People re-key the same customer into five tools, chase updates across apps, and copy answers between chat, CRM and dashboards. Most of the working day is coordination, not value.</p></div>
+        <div class="card"><h4>Bolt-on AI</h4><p>The "AI" is a sidebar in one product. It can draft an email but can't see the pipeline, can't place an order, can't schedule the install. It assists; it doesn't operate.</p></div>
+        <div class="card"><h4>Ten bills, one job</h4><p>CRM + prospecting + email + BI + quoting + ordering + scheduling + chat is a stack of subscriptions and logins — expensive to buy, painful to run, impossible to make coherent.</p></div>
+      </div>
+      <div class="prose"><p style="margin-top:22px">The result: growth is capped by headcount, because scaling the business means scaling the human glue. The problem isn't a missing feature in any one tool — it's that <strong>no tool owns the whole process</strong>, so intelligence has nowhere to stand.</p></div>
+    </section>
+
+    <!-- 04 MOAT -->
+    <section id="moat">
+      <p class="eyebrow">04 · The key differentiator &amp; moat</p>
+      <h2 class="sec">End-to-end on one spine — the advantage nobody can retrofit.</h2>
+      <div class="prose">
+        <p class="lead">Let's be clear-eyed: no single capability here is ours alone. Salesforce owns records, Clay and Apollo own prospecting, 11x builds AI SDRs, Jobber and ServiceTitan own field-service delivery, Slack and Copilot sit in chat. Each is strong at one box. The gap none of them fill is the <em>whole thread on one spine</em> — and that gap, for a segment they don't serve, is the moat.</p>
+        <p>Four properties turn that gap into a defensible position an incumbent can't close with a feature announcement:</p>
+      </div>
+      <div class="grid g2" style="margin-top:8px">
+        <div class="card soft"><span class="tag">MOAT 01 · CONTEXT</span><h4>One spine, total context</h4><p>Research, lead, deal, quote, order and delivery are one connected object. Ovi never guesses — it reads the real, current state of the whole journey, and writes back to it. Fragmented rivals literally can't see this far.</p></div>
+        <div class="card soft"><span class="tag">MOAT 02 · FOCUS</span><h4>The segment giants ignore</h4><p>Built for SMB firms that both sell <em>and</em> deliver — installers, trades, agencies, wholesalers. Salesforce won't come down to them; their field-service tools aren't AI-native. We own that customer end-to-end before anyone bothers.</p></div>
+        <div class="card soft"><span class="tag">MOAT 03 · SURFACE</span><h4>Conversation → action in chat</h4><p>Ovi lives in the team channel and turns what people say into work done. A CRM doesn't own your chat; a chat tool doesn't own your data. We own both, so Ovi stands where decisions are actually made.</p></div>
+        <div class="card soft"><span class="tag">MOAT 04 · FLYWHEEL</span><h4>Compounding data loop</h4><p>Every action — which research converted, which price closed, which route ran on time — trains better targeting, scoring, pricing and scheduling. Point tools never see enough of the journey to build this loop.</p></div>
+      </div>
+      <div class="prose"><div class="pull wide">Rivals automate a slice. We own the thread — so our AI is an operator, and our data compounds.</div></div>
+    </section>
+
+    <!-- 05 HOW OVI OPERATES -->
+    <section id="operating">
+      <p class="eyebrow">05 · How Ovi operates</p>
+      <h2 class="sec">The operating model: one spine, one operator, many hands.</h2>
+      <div class="prose"><p class="lead">TellOvi is architected so that intelligence has somewhere to stand and something to do. Four layers make Ovi a true operator rather than a chat window.</p></div>
+      <div class="grid g2" style="margin-top:8px">
+        <div class="card"><span class="tag">LAYER 01</span><h4>The data spine</h4><p>A single, shared model of the whole business — accounts, people, deals, quotes, orders, products, jobs, schedules, conversations. Every module reads and writes the same objects, so there is one source of truth and cross-links happen for free (a won deal becomes an order becomes a scheduled delivery).</p></div>
+        <div class="card"><span class="tag">LAYER 02</span><h4>The agent runtime</h4><p>Ovi is a network of specialised agents over that spine — a research agent, an outreach agent, a pricing agent, a scheduling agent — orchestrated by a planner. It breaks a request into steps, calls real tools, and shows its working as it goes.</p></div>
+        <div class="card"><span class="tag">LAYER 03</span><h4>Actions, not answers</h4><p>Ovi's tools <em>do</em> things: create a task, send a sequence, generate a quote, raise a purchase order, book an install, pull a report. Every action is a real, permissioned mutation of the spine — auditable and reversible.</p></div>
+        <div class="card"><span class="tag">LAYER 04</span><h4>Governance &amp; trust</h4><p>Role-based permissions, approval gates for sensitive actions (sending, spending, deleting), a full audit trail, and "show your work" streaming so teams can see and trust what Ovi did. AI is powerful <em>and</em> accountable.</p></div>
+      </div>
+      <div class="prose"><p style="margin-top:22px">Ovi is addressable from anywhere the same way — the CRM record, the website chatbot, the quote screen, the delivery board, and the team channel are all just <strong>surfaces onto the same operator</strong>. Ask it a question and it answers from live data; give it a job and it carries it out, carrying full context between surfaces.</p></div>
+    </section>
+
+    <!-- 06 PLATFORM / FULL SCOPE -->
+    <section id="platform">
+      <p class="eyebrow">06 · The platform &amp; full scope</p>
+      <h2 class="sec">Every inch of the process — one operator across it.</h2>
+      <div class="prose"><p class="lead">The commercial lifecycle runs in one continuous line, and Ovi runs the length of it. Below is the full scope: the lifecycle, then every module that delivers it.</p></div>
+
+      <div class="rail">
+        <div class="node"><div class="s">01</div><h4>Research &amp; Find</h4><p>Understand the market; surface leads with a reason to buy.</p></div>
+        <div class="node"><div class="s">02</div><h4>Engage &amp; Sell</h4><p>Outreach, inbound chat, pipeline and follow-up.</p></div>
+        <div class="node"><div class="s">03</div><h4>Quote &amp; Order</h4><p>Price, propose, e-sign and place the order.</p></div>
+        <div class="node"><div class="s">04</div><h4>Fulfil &amp; Deliver</h4><p>Source, schedule by location, install, complete.</p></div>
+        <div class="node"><div class="s">05</div><h4>Support &amp; Grow</h4><p>Serve, renew, upsell — and learn from all of it.</p></div>
+      </div>
+
+      <h3 class="sub">The Ovi module suite</h3>
+      <div class="prose"><p>Modular so a team can start anywhere, unified so nothing is an island. Every module is the same Ovi, specialised for a stage.</p></div>
+
+      <div class="mods">
+        <div class="mod">
+          <div><div class="name"><span class="o">Ovi</span>Research</div><div class="stage">Stage · Research</div></div>
+          <div class="desc"><p>The intelligence foundation. Ovi researches markets, companies and products — building your ideal-customer profile from real signals, watching for buying triggers, and doing product/supplier research on demand.</p>
+            <ul><li>ICP builder from real firmographic + behavioural signals</li><li>Buying-signal &amp; trigger detection (funding, hiring, expansion, tech changes)</li><li>Product &amp; supplier research to spec and source what a deal needs</li><li>Market and competitor briefs generated on request</li></ul></div>
+        </div>
+        <div class="mod">
+          <div><div class="name"><span class="o">Ovi</span>Leads</div><div class="stage">Stage · Find</div></div>
+          <div class="desc"><p>Research-driven lead generation. Not a scraped list — Ovi finds the right accounts and people, enriches them, and attaches a <em>reason to buy now</em>, then scores and prioritises the queue.</p>
+            <ul><li>Account + contact discovery with verified details</li><li>Fit + timing scoring, with the "why now" written out</li><li>De-duplication against the live spine, so no double-work</li><li>Continuous refresh as new signals appear</li></ul></div>
+        </div>
+        <div class="mod">
+          <div><div class="name"><span class="o">Ovi</span>Reach</div><div class="stage">Stage · Engage · Outbound</div></div>
+          <div class="desc"><p>The AI SDR. Multichannel outreach that writes, personalises and sends itself — email, LinkedIn and calls — then books the meeting and hands a warm deal to the pipeline.</p>
+            <ul><li>Personalised sequences grounded in the research, not templates</li><li>Auto or approval mode, with per-channel steps</li><li>Reply handling, objection responses and meeting booking</li><li>Deliverability, throttling and inbox management built in</li></ul></div>
+        </div>
+        <div class="mod">
+          <div><div class="name"><span class="o">Ovi</span>Chat</div><div class="stage">Stage · Engage · Inbound</div></div>
+          <div class="desc"><p>Website and messaging chatbots that qualify inbound, answer product questions, and book straight into the diary — every conversation lands as a real lead on the spine.</p>
+            <ul><li>On-site chatbot + WhatsApp / web messaging</li><li>Qualifies, captures and routes with full context</li><li>Books meetings against location-aware availability</li><li>Escalates to a human in the same thread when needed</li></ul></div>
+        </div>
+        <div class="mod">
+          <div><div class="name"><span class="o">Ovi</span>CRM</div><div class="stage">Stage · Sell · System of record</div></div>
+          <div class="desc"><p>The self-driving system of record. Contacts, accounts, deals and pipeline that update themselves — Ovi logs activity, spots risk, and tees up the next best move.</p>
+            <ul><li>Kanban pipeline, deal &amp; contact records, activities, inbox</li><li>Auto-logged activity and meeting notes on the record</li><li>Deal scoring, risk flags and next-best-action prompts</li><li>Forecasting from live pipeline, not manual guesses</li></ul></div>
+        </div>
+        <div class="mod">
+          <div><div class="name"><span class="o">Ovi</span>Quote</div><div class="stage">Stage · Quote &amp; Price</div></div>
+          <div class="desc"><p>Configurable pricing calculators, quotes and proposals. Ovi builds the numbers from your rules, generates the proposal, and takes it to e-signature — no spreadsheets.</p>
+            <ul><li>Rule-based pricing calculators (products, options, margins)</li><li>Instant, on-brand quotes and proposals</li><li>Approvals for discounts / thresholds, then e-sign</li><li>Won quote flows straight into an order — no re-keying</li></ul></div>
+        </div>
+        <div class="mod">
+          <div><div class="name"><span class="o">Ovi</span>Order</div><div class="stage">Stage · Order</div></div>
+          <div class="desc"><p>Order management from the moment a deal is won. Ovi turns the quote into an order, researches and sources the products, and raises supplier POs — the commercial-to-operational handoff, automated.</p>
+            <ul><li>Deal → order conversion with full line-item detail</li><li>Product sourcing &amp; supplier selection (via OviResearch)</li><li>Purchase orders, stock checks and lead-time tracking</li><li>Order status visible to sales, ops and the customer</li></ul></div>
+        </div>
+        <div class="mod">
+          <div><div class="name"><span class="o">Ovi</span>Diary</div><div class="stage">Stage · Schedule</div></div>
+          <div class="desc"><p>Location-aware scheduling. Ovi organises diaries and field visits by client geography — clustering appointments to cut travel, and booking installs against real team availability.</p>
+            <ul><li>Route- and location-based appointment clustering</li><li>Team calendars, capacity and skills matching</li><li>Auto-scheduling of site visits, surveys and installs</li><li>Reminders, reschedules and customer confirmations</li></ul></div>
+        </div>
+        <div class="mod">
+          <div><div class="name"><span class="o">Ovi</span>Deliver</div><div class="stage">Stage · Fulfil &amp; Deliver</div></div>
+          <div class="desc"><p>Fulfilment and delivery operations. A won order becomes a live project — tasks, milestones, on-site work and completion — tracked to done, with nothing falling through the gap between sales and ops.</p>
+            <ul><li>Project &amp; job boards with milestones and handoffs</li><li>Field / installation workflow and completion sign-off</li><li>Logistics and delivery tracking to the customer</li><li>Post-delivery status feeds renewals and support</li></ul></div>
+        </div>
+        <div class="mod">
+          <div><div class="name"><span class="o">Ovi</span>Teams</div><div class="stage">Layer · Collaboration (the wedge)</div></div>
+          <div class="desc"><p>Internal messaging channels where Ovi is a participant. People discuss work in plain language; Ovi answers from live data and <em>takes actions off the conversation</em> — the surface no legacy CRM owns.</p>
+            <ul><li>Team &amp; project channels, DMs, threads</li><li>Ask Ovi anything in-thread — real numbers, live charts</li><li>Turn a message into a task, quote, campaign or report</li><li>Shared context: the chat, the record and the work are one</li></ul></div>
+        </div>
+        <div class="mod">
+          <div><div class="name"><span class="o">Ovi</span>Analytics</div><div class="stage">Layer · Intelligence</div></div>
+          <div class="desc"><p>Ask-anything analytics across the whole spine. No dashboards to build — request any number, any cut, any report in words, and get a live answer plus a boardroom-ready chart.</p>
+            <ul><li>Natural-language queries over the entire lifecycle</li><li>Live KPIs: leads, pipeline, win-rate, delivery, margin</li><li>Auto-generated reports and board packs</li><li>Anomaly and trend alerts pushed into Teams</li></ul></div>
+        </div>
+        <div class="mod">
+          <div><div class="name"><span class="o">Ovi</span>Build</div><div class="stage">Layer · Automation platform</div></div>
+          <div class="desc"><p>Build your own agents and automations. Describe a workflow and Ovi assembles it; connect external tools; extend the platform to any industry's process without code.</p>
+            <ul><li>Custom agents &amp; automations from plain-language briefs</li><li>Integrations &amp; API to the wider tool stack</li><li>Industry templates (installers, agencies, wholesalers, services)</li><li>A marketplace path for third-party agents and packs</li></ul></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 07 LEAD ENGINE -->
+    <section id="leadengine">
+      <p class="eyebrow">07 · Deep dive — the research lead engine</p>
+      <h2 class="sec">Leads with a reason to buy, not rows in a list.</h2>
+      <div class="prose">
+        <p class="lead">Lead generation is where TellOvi's advantage begins, and it's built differently on purpose. The market is full of databases that sell you contacts. We don't sell contacts — Ovi <em>researches its way to the right opportunity</em> and hands you a lead that already carries its own justification.</p>
+        <p>The engine runs a research loop, not a lookup:</p>
+      </div>
+      <div class="tl">
+        <div class="step"><div class="who">Ovi · define</div><h4>Learn what a good customer actually looks like</h4><p>Ovi builds your ICP from your real won deals and your best accounts — the firmographics, the shapes, the tells — not a generic filter you guess at.</p></div>
+        <div class="step"><div class="who">Ovi · scan</div><h4>Watch the market for buying signals</h4><p>It monitors for triggers that mean "now" — expansion, hiring, funding, new premises, tech or supplier changes, tender activity — the events that precede a purchase.</p></div>
+        <div class="step"><div class="who">Ovi · research</div><h4>Investigate each candidate in depth</h4><p>For a promising account, Ovi reads around the company, identifies the right people, understands their situation, and drafts the specific reason this is a fit right now.</p></div>
+        <div class="step"><div class="who">Ovi · qualify</div><h4>Score fit + timing, and write the "why now"</h4><p>Each lead lands with a fit score, a timing score and a one-line rationale a rep can act on immediately — and it's de-duplicated against the live spine so no one works it twice.</p></div>
+        <div class="step"><div class="who">Ovi · learn</div><h4>Feed outcomes back into the model</h4><p>Which leads converted, which stalled, which delivered profitably — every outcome sharpens the next round of targeting. The engine gets better the more you sell.</p></div>
+      </div>
+      <div class="prose"><div class="pull wide">A database gives you a list. Ovi gives you a shortlist that already knows why it's on the list.</div></div>
+    </section>
+
+    <!-- 08 TEAMS -->
+    <section id="teams">
+      <p class="eyebrow">08 · Deep dive — OviTeams</p>
+      <h2 class="sec">The team chat where the AI takes action.</h2>
+      <div class="prose">
+        <p class="lead">Work is decided in conversation. Someone asks a question, someone makes a call, someone says "chase that." In every other stack, the chat is a dead-end — the decision then has to be carried by hand into the tools. In TellOvi, the chat is <em>live</em>: Ovi is in the channel, and the decision becomes the work.</p>
+      </div>
+
+      <div class="grid g2" style="align-items:center;gap:36px;margin-top:8px">
+        <div>
+          <div class="cmd-list">
+            <span class="cmd"><span class="p">Ask</span> — "Ovi, how many leads this week?"</span>
+            <span class="cmd"><span class="p">Answer</span> — real number, live chart, in-thread</span>
+            <span class="cmd"><span class="p">Act</span> — "draft follow-ups to the 41 MQLs" → done</span>
+          </div>
+          <div class="prose">
+            <p>Because Ovi sits on the same spine as everything else, an answer in chat is never a guess — it's the current state of the business. And an instruction in chat isn't a note-to-self — it's an action Ovi carries out and reports back on, right there, with the whole team watching.</p>
+          </div>
+        </div>
+        <div class="card" style="background:linear-gradient(158deg,#1C3A72 0%,#0C1B38 100%);border-color:rgba(255,255,255,.14);box-shadow:0 20px 44px rgba(11,18,32,.28);color:#E8ECF6">
+          <div style="display:flex;align-items:center;gap:9px;padding-bottom:12px;border-bottom:1px solid var(--hair);margin-bottom:14px">
+            <span class="mono" style="color:var(--faint)">#</span><span style="font-weight:700;font-size:14px">leadership</span>
+            <span class="mono" style="margin-left:auto;font-size:11px;color:var(--faint)">3 online</span>
+          </div>
+          <div style="display:flex;gap:11px;margin-bottom:15px">
+            <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#3b3b57,#26263c);display:grid;place-items:center;font-weight:700;font-size:12px;color:#c9cbef;flex:none">JD</div>
+            <div><div style="font-size:13px;font-weight:700;margin-bottom:3px">Jordan (CEO)</div><p style="margin:0;font-size:14px;color:#dcdcec">How many leads have we generated this week?</p></div>
+          </div>
+          <div style="display:flex;gap:11px">
+            <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--purple),var(--accent));padding:5px;flex:none"><svg viewBox="0 0 200 205" style="width:100%;height:100%"><use href="#ovi"/></svg></div>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:700;margin-bottom:4px">Ovi <span class="mono" style="font-size:9.5px;letter-spacing:.1em;background:rgba(52,231,231,.14);color:var(--cyan);border:1px solid rgba(52,231,231,.3);padding:1px 6px;border-radius:5px">AI</span></div>
+              <div style="background:linear-gradient(180deg,rgba(52,231,231,.06),rgba(139,92,246,.05));border:1px solid rgba(52,231,231,.22);border-radius:11px;padding:12px 14px">
+                <p style="margin:0 0 8px;font-size:13.5px;color:#dcdcec"><strong style="color:#fff">184 leads</strong> this week — up 27% on last week.</p>
+                <div style="display:flex;gap:16px;margin-bottom:8px">
+                  <div><div style="font-weight:700;font-size:22px;color:#fff;line-height:1;letter-spacing:-.02em">184</div><div class="mono" style="font-size:10px;color:rgba(255,255,255,.6)">leads · 7d</div></div>
+                  <div><div style="font-weight:700;font-size:22px;color:#4ADE80;line-height:1;letter-spacing:-.02em">+27%</div><div class="mono" style="font-size:10px;color:rgba(255,255,255,.6)">vs last wk</div></div>
+                  <div><div style="font-weight:700;font-size:22px;color:#fff;line-height:1;letter-spacing:-.02em">41</div><div class="mono" style="font-size:10px;color:rgba(255,255,255,.6)">MQLs</div></div>
+                </div>
+                <div style="display:flex;align-items:flex-end;gap:4px;height:30px;margin-bottom:10px">
+                  <i style="flex:1;height:40%;background:linear-gradient(180deg,var(--cyan),var(--accent));border-radius:3px 3px 0 0"></i><i style="flex:1;height:55%;background:linear-gradient(180deg,var(--cyan),var(--accent));border-radius:3px 3px 0 0"></i><i style="flex:1;height:48%;background:linear-gradient(180deg,var(--cyan),var(--accent));border-radius:3px 3px 0 0"></i><i style="flex:1;height:72%;background:linear-gradient(180deg,var(--cyan),var(--accent));border-radius:3px 3px 0 0"></i><i style="flex:1;height:63%;background:linear-gradient(180deg,var(--cyan),var(--accent));border-radius:3px 3px 0 0"></i><i style="flex:1;height:86%;background:linear-gradient(180deg,var(--cyan),var(--accent));border-radius:3px 3px 0 0"></i><i style="flex:1;height:100%;background:linear-gradient(180deg,var(--cyan),var(--accent));border-radius:3px 3px 0 0"></i>
+                </div>
+                <div style="display:flex;gap:7px;flex-wrap:wrap">
+                  <span class="mono" style="font-size:11.5px;padding:5px 10px;border-radius:7px;background:linear-gradient(135deg,var(--purple),var(--accent));color:#fff">Break down by source</span>
+                  <span class="mono" style="font-size:11.5px;padding:5px 10px;border-radius:7px;background:var(--panel-2);border:1px solid var(--hair);color:#cdd0e6">Draft outreach to the 41</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="prose"><p style="margin-top:24px">This is the most visible proof of the whole thesis, and the hardest surface for an incumbent to enter — a CRM company doesn't own your chat, and a chat company doesn't own your data. TellOvi owns both, so Ovi can stand exactly where the work is decided.</p></div>
+    </section>
+
+    <!-- 09 END TO END -->
+    <section id="endtoend">
+      <p class="eyebrow">09 · A deal, end to end</p>
+      <h2 class="sec">One customer, one continuous thread.</h2>
+      <div class="prose"><p class="lead">Here is a single opportunity flowing through TellOvi — the same object, touched by Ovi and the team at every stage, with nothing re-keyed and nothing lost between systems.</p></div>
+      <div class="tl">
+        <div class="step"><div class="who">OviResearch + OviLeads</div><h4>Ovi surfaces the lead with a reason</h4><p>A regional business shows an expansion signal that matches your best customers. Ovi researches it, finds the decision-maker, and queues the lead with a fit score and a written "why now."</p></div>
+        <div class="step"><div class="who">OviReach</div><h4>Outreach that books the meeting</h4><p>Ovi runs a personalised multichannel sequence grounded in the research, handles the reply, and books a discovery call into a location-aware slot. A warm deal lands in the pipeline.</p></div>
+        <div class="step"><div class="who">OviChat + OviCRM</div><h4>Inbound and record, unified</h4><p>The prospect also asks a question on the website; OviChat answers and attaches the thread to the same account. The deal record updates itself as activity happens.</p></div>
+        <div class="step"><div class="who">OviQuote</div><h4>Priced, proposed, signed</h4><p>Ovi builds the quote from your pricing rules, generates the proposal, routes a discount for approval in Teams, and sends it for e-signature. Won.</p></div>
+        <div class="step"><div class="who">OviOrder + OviResearch</div><h4>Won deal becomes an order</h4><p>The quote converts to an order automatically. Ovi researches and sources the required products, raises the supplier PO, and tracks lead times — no gap between sales and ops.</p></div>
+        <div class="step"><div class="who">OviDiary + OviDeliver</div><h4>Scheduled by location, delivered to done</h4><p>Ovi schedules the install by geography to cut travel, spins up the delivery project with milestones, and tracks it to completion and sign-off.</p></div>
+        <div class="step"><div class="who">OviAnalytics + OviTeams</div><h4>Reported, learned, grown</h4><p>Margin, cycle time and delivery performance flow into analytics; the outcome trains the next research round; and the whole thread is one query away in chat for anyone who asks.</p></div>
+      </div>
+
+      <h3 class="sub">Worked example — a domestic solar &amp; battery installer</h3>
+      <div class="prose"><p>To make it concrete, here is a real-world vertical: an MCS-certified installer selling and fitting solar PV and battery storage to homeowners. This is exactly the kind of "sell <em>and</em> deliver" SMB the incumbents don't serve — and where owning the whole thread is transformative. One job, from a rooftop Ovi has never seen to a commissioned, exporting system.</p></div>
+      <div class="tl">
+        <div class="step"><div class="who">OviResearch + OviLeads</div><h4>Finds the right roofs, with a reason</h4><p>Ovi builds the ICP from the installer's best past jobs and watches for intent — homeowners in high-irradiance postcodes with suitable south/east-west roofs, recent EPC updates, EV ownership and rising-bill signals — queuing each with a fit score and a written "why now."</p></div>
+        <div class="step"><div class="who">OviChat + OviReach</div><h4>Qualifies and books the survey</h4><p>A homeowner lands on the website; OviChat asks the right questions — roof type, orientation, typical bill, ownership, battery interest — and books a survey. Warm leads that don't convert get a personalised nurture sequence from OviReach.</p></div>
+        <div class="step"><div class="who">OviQuote</div><h4>Designs the system and prices it</h4><p>From the survey, Ovi sizes the array (e.g. a <span class="ph">4.2&nbsp;kWp</span> system with a <span class="ph">5&nbsp;kWh</span> battery), runs the pricing calculator — panels, inverter, battery, scaffolding, MCS and labour — and generates a branded proposal showing annual savings, SEG export income and payback. Discounts route to Teams for approval, then it goes for e-signature.</p></div>
+        <div class="step"><div class="who">OviOrder + OviResearch</div><h4>Sources the kit and raises POs</h4><p>The won quote becomes an order. Ovi researches and selects panels, inverter and battery against price, stock and lead time, raises the supplier purchase orders, and flags anything that would slip the install date.</p></div>
+        <div class="step"><div class="who">OviDiary</div><h4>Schedules by postcode to cut van miles</h4><p>Ovi clusters the survey and install against jobs in the same area, matches an MCS-certified team with capacity, and books scaffolding to arrive ahead of the crew — minimising travel and idle days across the week's route.</p></div>
+        <div class="step"><div class="who">OviDeliver</div><h4>Installs, certifies and switches on</h4><p>The install becomes a live project: scaffold, fit, and commission, with the DNO / G99 application, MCS certificate and handover pack tracked as milestones — through to the SEG export tariff being set up so the customer starts earning.</p></div>
+        <div class="step"><div class="who">OviAnalytics + OviTeams</div><h4>Learns and compounds</h4><p>Margin per install, install-days per job and route efficiency feed analytics; the profitable outcome sharpens the next round of roof targeting. When the owner asks in chat <span class="mono" style="color:var(--accent)">"how many installs are booked this month?"</span>, Ovi answers from live data — instantly.</p></div>
+      </div>
+      <div class="stats" style="margin-top:22px">
+        <div class="card stat"><div class="n"><span class="g2t">1</span> thread</div><div class="l">roof to switch-on, nothing re-keyed</div></div>
+        <div class="card stat"><div class="n"><span class="g2t">6</span> modules</div><div class="l">one operator across all of them</div></div>
+        <div class="card stat"><div class="n">Fewer <span class="g2t">van miles</span></div><div class="l">location-clustered scheduling</div></div>
+        <div class="card stat"><div class="n">Faster <span class="g2t">cash</span></div><div class="l">quote → order → install, automated</div></div>
+      </div>
+    </section>
+
+    <!-- 10 COLLAB -->
+    <section id="collab">
+      <p class="eyebrow">10 · The human + AI model</p>
+      <h2 class="sec">Collaborative by design — people and Ovi on the same objects.</h2>
+      <div class="prose">
+        <p class="lead">TellOvi is not an autopilot that locks people out, and not a copilot that only suggests. It's a shared workspace where humans and Ovi operate the <em>same</em> records — each doing what they're best at, each able to see and adjust the other's work.</p>
+      </div>
+      <div class="grid g3" style="margin-top:8px">
+        <div class="card"><h4>Direct in plain language</h4><p>Anyone can tell Ovi what they want — in a record, a screen or a channel — without learning a new interface. The instruction is the UI.</p></div>
+        <div class="card"><h4>Work the same records</h4><p>A rep and Ovi edit the same deal; ops and Ovi share the same delivery board. No hand-off files, no duplicate state — one object, many hands.</p></div>
+        <div class="card"><h4>Trust through transparency</h4><p>Ovi streams its steps, asks before sensitive actions, and logs everything. People stay in control while Ovi carries the load.</p></div>
+      </div>
+      <div class="grid g2" style="margin-top:16px">
+        <div class="card soft"><h4>Cross-team by default</h4><p>Sales, ops, delivery and leadership see one connected process, not siloed tools. A change in one place is visible everywhere it matters — the coordination tax disappears.</p></div>
+        <div class="card soft"><h4>Roles &amp; permissions</h4><p>Who can see what, who can approve what, and what Ovi may do on its own versus with sign-off — configured per team, so autonomy scales safely with trust.</p></div>
+      </div>
+    </section>
+
+    <!-- 11 MARKET -->
+    <section id="market">
+      <p class="eyebrow">11 · Market &amp; opportunity</p>
+      <h2 class="sec">We don't join a category. We sit beneath all of them.</h2>
+      <div class="prose"><p class="lead">TellOvi replaces a stack, so our opportunity is the sum of several large software markets plus the manual labour between them. Each box below is a category businesses already pay for; TellOvi collapses them into one operator.</p></div>
+      <div class="grid g4" style="margin-top:8px">
+        <div class="card"><span class="tag">REPLACES</span><h4>CRM &amp; pipeline</h4><p>The system-of-record incumbents.</p></div>
+        <div class="card"><span class="tag">REPLACES</span><h4>Sales engagement</h4><p>Prospecting, outreach, enrichment.</p></div>
+        <div class="card"><span class="tag">REPLACES</span><h4>Analytics &amp; BI</h4><p>Dashboards and reporting.</p></div>
+        <div class="card"><span class="tag">REPLACES</span><h4>Quoting &amp; CPQ</h4><p>Pricing, proposals, e-sign.</p></div>
+        <div class="card"><span class="tag">REPLACES</span><h4>Order &amp; ops</h4><p>Order management and fulfilment.</p></div>
+        <div class="card"><span class="tag">REPLACES</span><h4>Field &amp; scheduling</h4><p>Diaries, routing, installs.</p></div>
+        <div class="card"><span class="tag">REPLACES</span><h4>Team chat</h4><p>Internal messaging — our wedge.</p></div>
+        <div class="card"><span class="tag">REPLACES</span><h4>The manual glue</h4><p>The human coordination itself.</p></div>
+      </div>
+      <div class="prose">
+        <p style="margin-top:22px">Our beachhead is <strong>SMB and mid-market operating businesses that both sell and deliver</strong> — installers, agencies, wholesalers, trades and service firms — where the pain of a fragmented stack is sharpest and a single operator is transformative. From there we expand up-market and across industries via templates and OviBuild.</p>
+        <p class="note">Sizing: serviceable market £<span class="ph">[ SAM ]</span>, total addressable £<span class="ph">[ TAM ]</span> — insert your sized figures and sources.</p>
+      </div>
+    </section>
+
+    <!-- 12 COMPETE -->
+    <section id="compete">
+      <p class="eyebrow">12 · Competition</p>
+      <h2 class="sec">The field is crowded — here's exactly who, and why we win.</h2>
+      <div class="prose"><p class="lead">We name our rivals openly, because knowing the field is our credibility. They're formidable inside their box. Not one of them owns the whole thread on one spine for our segment — and that's the column that matters.</p></div>
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead><tr><th>Player</th><th>What they own</th><th>Why we win</th></tr></thead>
+          <tbody>
+            <tr><th>Salesforce / Agentforce</th><td>System of record + agents, upmarket</td><td>Enterprise-priced and record-centric; won't serve SMB sell-and-deliver, and can't re-unify data fragmented across its own products.</td></tr>
+            <tr><th>HubSpot Breeze</th><td>SMB CRM + marketing + AI copilots</td><td>Strong front office, but stops at the sale — no ordering, sourcing, scheduling or delivery, and AI assists rather than operates.</td></tr>
+            <tr><th>Clay / Apollo</th><td>Data + research-led prospecting</td><td>Excellent at the top of funnel only; hand off a list and disappear. We carry the lead all the way to delivery on one spine.</td></tr>
+            <tr><th>11x / Artisan</th><td>Autonomous AI SDRs</td><td>One job — outbound. No CRM, quoting, ops or delivery, and no team-chat action surface.</td></tr>
+            <tr><th>Jobber / ServiceTitan</th><td>Field-service ops &amp; delivery</td><td>Own the back end for trades but aren't AI-native and are weak at research-led acquisition — the opposite half of what we join up.</td></tr>
+            <tr><th>Slack AI / Copilot</th><td>Assistants inside team chat</td><td>Answer in chat but don't own your business data, so they can't take real end-to-end action off the conversation. We can.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="prose"><p style="margin-top:18px">The pattern is the same every time: each rival is deep in <em>one</em> box and structurally can't leave it — an incumbent can't re-unify data it fragmented across products and acquisitions, and a point tool never sees the rest of the journey. TellOvi's advantage isn't a feature they could ship next quarter; it's the <strong>architecture and the focus</strong> — the whole thread, on one spine, for the segment they've all skipped. Architecture and focus are the hardest things to copy.</p></div>
+    </section>
+
+    <!-- 13 GTM -->
+    <section id="gtm">
+      <p class="eyebrow">13 · Go-to-market</p>
+      <h2 class="sec">Land on one stage, expand across the whole process.</h2>
+      <div class="prose"><p class="lead">We don't ask a business to rip out everything on day one. We land where the pain is loudest, prove Ovi as an operator, and expand module by module until TellOvi runs the whole thread.</p></div>
+      <div class="grid g3" style="margin-top:8px">
+        <div class="card"><span class="tag">LAND</span><h4>Enter at the sharp pain</h4><p>Start with research-driven lead gen and CRM + Teams — fast time-to-value, an obvious "wow" the first week, low switching cost.</p></div>
+        <div class="card"><span class="tag">EXPAND</span><h4>Grow along the lifecycle</h4><p>Add outreach, quoting, ordering, scheduling and delivery as trust builds. Each module makes the last more valuable — natural net-revenue expansion.</p></div>
+        <div class="card"><span class="tag">DEEPEN</span><h4>Become the operating layer</h4><p>Once the whole process runs on TellOvi, it's the system the business is run from. Deeply embedded, high retention, expanding usage.</p></div>
+      </div>
+      <div class="grid g2" style="margin-top:16px">
+        <div class="card soft"><h4>Channels</h4><p>Product-led entry and content on the research-lead-gen edge; founder-led sales into the beachhead verticals; industry templates via OviBuild; and a partner/agency motion for installers and service firms.</p></div>
+        <div class="card soft"><h4>The demo that sells</h4><p>Ovi answering a real question in Teams — with the live number, the chart and a one-click action — is the moment prospects understand the category. The wedge is also the pitch.</p></div>
+      </div>
+    </section>
+
+    <!-- 14 MODEL -->
+    <section id="model">
+      <p class="eyebrow">14 · Business model</p>
+      <h2 class="sec">Per-seat SaaS, expanding by module and usage.</h2>
+      <div class="prose"><p class="lead">Recurring subscription per seat, tiered by how much of the lifecycle a team runs on TellOvi, with usage-based revenue as Ovi does more of the work. Land small, expand as the platform takes over more of the process.</p></div>
+      <div class="tiers">
+        <div class="card tier"><span class="nm">Starter</span><div class="pr">£<span class="ph">19</span><small>/seat·mo</small></div><ul><li>OviCRM + Ask Ovi</li><li>OviTeams chat</li><li>Core AI actions</li></ul></div>
+        <div class="card tier hot"><span class="nm">Growth · popular</span><div class="pr">£<span class="ph">49</span><small>/seat·mo</small></div><ul><li>+ OviLeads &amp; OviReach</li><li>+ OviAnalytics</li><li>Higher action limits</li></ul></div>
+        <div class="card tier"><span class="nm">Scale</span><div class="pr">£<span class="ph">99</span><small>/seat·mo</small></div><ul><li>+ OviQuote, Order, Diary</li><li>+ OviDeliver</li><li>Roles, audit, integrations</li></ul></div>
+        <div class="card tier"><span class="nm">Enterprise</span><div class="pr">Custom</div><ul><li>Full suite + OviBuild</li><li>SLAs &amp; security</li><li>Dedicated support</li></ul></div>
+      </div>
+      <div class="grid g3" style="margin-top:10px">
+        <div class="card"><h4>Land &amp; expand</h4><p>Low-friction entry seat, expanding as modules and usage grow — net revenue retention above 100% by design.</p></div>
+        <div class="card"><h4>Usage upside</h4><p>AI actions, research credits and outreach volume add a metered layer on top of seats, aligned to value delivered.</p></div>
+        <div class="card"><h4>Sticky by nature</h4><p>Once the whole process runs on TellOvi, it's the operating system of the business — churn is structurally low.</p></div>
+      </div>
+      <p class="note">Pricing shown is illustrative — replace with your live numbers.</p>
+    </section>
+
+    <!-- 15 ROADMAP -->
+    <section id="roadmap">
+      <p class="eyebrow">15 · Roadmap</p>
+      <h2 class="sec">From working product to autonomous operator.</h2>
+      <div class="phase"><div class="when">Phase 1<small>Now</small></div><div><h4>The connected product</h4><p>The full lifecycle built on one spine — CRM, prospecting/outreach and delivery workspaces live and cross-linked, with an in-app AI operator. The foundation is in place.</p></div></div>
+      <div class="phase"><div class="when">Phase 2<small>Funded</small></div><div><h4>Live AI backend + OviTeams</h4><p>Swap the in-app engine for a hosted LLM backend so Ovi acts for real at scale, and launch the collaborative Teams layer — the wedge and the pitch, in customers' hands.</p></div></div>
+      <div class="phase"><div class="when">Phase 3</div><div><h4>Order → fulfil → deliver, complete</h4><p>Harden OviQuote, OviOrder, OviDiary and OviDeliver into a seamless commercial-to-operational thread, with location-aware scheduling and supplier sourcing.</p></div></div>
+      <div class="phase"><div class="when">Phase 4</div><div><h4>The research lead engine at scale</h4><p>Productionise signal-driven, reason-to-buy lead generation as the flagship acquisition edge — and the top of the data flywheel.</p></div></div>
+      <div class="phase"><div class="when">Phase 5</div><div><h4>OviBuild &amp; the marketplace</h4><p>Open the automation platform and industry templates so TellOvi extends into any market's process — and third parties build on top.</p></div></div>
+    </section>
+
+    <!-- 16 TRACTION -->
+    <section id="traction">
+      <p class="eyebrow">16 · Where we are</p>
+      <h2 class="sec">A working product — not a prototype.</h2>
+      <div class="prose"><p class="lead">TellOvi is already a real, running application, not a set of mockups. The core architecture — the one thing that's hardest to build and easiest to underestimate — exists and works today.</p></div>
+      <div class="grid g2" style="margin-top:8px">
+        <div class="card soft"><h4>✓ Full product built</h4><p>Three connected workspaces — CRM, prospecting/outreach and delivery — live on one shared data spine, with real CRUD, pipeline, and cross-linking between stages.</p></div>
+        <div class="card soft"><h4>✓ AI that acts, end to end</h4><p>The operator already creates tasks, drafts and "sends" outreach, runs designs and starts delivery — real, persisted actions, not canned demos.</p></div>
+        <div class="card soft"><h4>✓ Real integration proven</h4><p>At least one genuine external data integration is wired and working — evidence the plumbing for a true operator is real, not a shell.</p></div>
+        <div class="card soft"><h4>→ Next: make Ovi live</h4><p>The funded step is the hosted AI backend and the Teams layer — turning a built product into a live operator in customers' hands.</p></div>
+      </div>
+      <div class="stats" style="margin-top:22px">
+        <div class="card stat"><div class="n"><span class="ph">[ X ]</span></div><div class="l">pilots / design partners</div></div>
+        <div class="card stat"><div class="n"><span class="ph">[ X ]</span></div><div class="l">on the waitlist</div></div>
+        <div class="card stat"><div class="n"><span class="ph">[ £X ]</span></div><div class="l">early MRR</div></div>
+        <div class="card stat"><div class="n"><span class="ph">[ X ]</span></div><div class="l">modules live</div></div>
+      </div>
+      <p class="note">Bracketed figures are placeholders — insert your real traction numbers.</p>
+    </section>
+
+    <!-- 17 FINANCIALS -->
+    <section id="financials">
+      <p class="eyebrow">17 · Financials</p>
+      <h2 class="sec">The shape of the business.</h2>
+      <div class="prose"><p class="lead">A SaaS model with strong gross margins, land-and-expand revenue, and usage upside as Ovi does more work. The numbers below are the framework — drop your live plan into the placeholders.</p></div>
+      <div class="grid g4" style="margin-top:8px">
+        <div class="card stat"><div class="n">£<span class="ph">X</span></div><div class="l">ARR target · year 1</div></div>
+        <div class="card stat"><div class="n">£<span class="ph">X</span></div><div class="l">ARR target · year 3</div></div>
+        <div class="card stat"><div class="n"><span class="ph">X</span>%</div><div class="l">gross margin</div></div>
+        <div class="card stat"><div class="n">&gt;<span class="ph">X</span>%</div><div class="l">net revenue retention</div></div>
+      </div>
+      <div class="grid g2" style="margin-top:16px">
+        <div class="card"><h4>Revenue drivers</h4><p>Seats × tier, plus metered AI actions, research credits and outreach volume. Expansion as modules are adopted along the lifecycle.</p></div>
+        <div class="card"><h4>Cost drivers</h4><p>AI inference (managed with model routing — heavy work on capable models, bulk on cheaper ones), engineering, and go-to-market. Inference cost per action falls as models improve.</p></div>
+      </div>
+      <p class="note">Illustrative framework — insert your financial model.</p>
+    </section>
+
+    <!-- 18 RISKS -->
+    <section id="risks">
+      <p class="eyebrow">18 · Risks &amp; mitigations</p>
+      <h2 class="sec">What could go wrong — and how we handle it.</h2>
+      <div class="grid g2" style="margin-top:8px">
+        <div class="card"><div class="risk"><h4>Incumbents add AI</h4><div class="m">Salesforce and others ship AI features on their existing data.<b>Mitigation</b>They can't re-unify fragmented data or own the chat surface; our moat is architecture and the flywheel, not a feature.</div></div></div>
+        <div class="card"><div class="risk"><h4>AI reliability &amp; trust</h4><div class="m">Operators must be dependable to be trusted with real actions.<b>Mitigation</b>Approval gates, audit trails, "show your work" streaming, and human-in-the-loop for sensitive steps — autonomy scales with trust.</div></div></div>
+        <div class="card"><div class="risk"><h4>Scope is large</h4><div class="m">End-to-end is ambitious to build and to sell.<b>Mitigation</b>Land-and-expand: ship and monetise stage by stage on a spine already built, not all at once.</div></div></div>
+        <div class="card"><div class="risk"><h4>AI cost curve</h4><div class="m">Inference could pressure margins at scale.<b>Mitigation</b>Model routing, caching and right-sizing per task; unit costs fall as models get cheaper and more capable.</div></div></div>
+        <div class="card"><div class="risk"><h4>Data &amp; compliance</h4><div class="m">Handling business-critical data raises security and privacy bars.<b>Mitigation</b>Role-based access, encryption, auditability and region controls built into the spine from the start.</div></div></div>
+        <div class="card"><div class="risk"><h4>Adoption / change</h4><div class="m">Teams must trust an AI to run real work.<b>Mitigation</b>Collaborative model — Ovi assists first, earns autonomy; the in-chat "wow" drives fast, low-friction adoption.</div></div></div>
+      </div>
+    </section>
+
+    <!-- 19 TEAM -->
+    <section id="team">
+      <p class="eyebrow">19 · Team</p>
+      <h2 class="sec">Who's building it.</h2>
+      <div class="prose"><p class="lead">A founding team that has already built the hard part — a real, connected product with a working AI operator — before raising. Add your bios, roles and the hires this round funds.</p></div>
+      <div class="grid g3" style="margin-top:8px">
+        <div class="card"><span class="tag">FOUNDER</span><h4><span class="ph">Name — role</span></h4><p><span class="ph">One line on background and why you're the person to build this.</span></p></div>
+        <div class="card"><span class="tag">FOUNDER / KEY HIRE</span><h4><span class="ph">Name — role</span></h4><p><span class="ph">Background and remit.</span></p></div>
+        <div class="card"><span class="tag">HIRING</span><h4><span class="ph">Key roles this round funds</span></h4><p><span class="ph">e.g. AI/backend engineers, GTM lead.</span></p></div>
+      </div>
+      <p class="note">Placeholders — add your real team.</p>
+    </section>
+
+    <!-- 20 ASK -->
+    <section id="ask">
+      <p class="eyebrow">20 · The ask</p>
+      <h2 class="sec">Raising <span class="grad">£<span class="ph">[ amount ]</span></span> to make Ovi live.</h2>
+      <div class="prose"><p class="lead">This round takes a built product and turns it into a live, autonomous operator in the market — shipping the hosted AI backend, launching OviTeams, and converting pilots into expanding revenue over the next <span class="ph">[ 18 ]</span> months.</p></div>
+      <div class="grid g2" style="margin-top:8px">
+        <div class="card"><h4>What the round buys</h4>
+          <div class="fund" style="margin-top:12px">
+            <div class="row"><span class="lab">Live AI backend + Ovi engine</span><span class="bar"><i style="width:40%"></i></span><span class="pct">40%</span></div>
+            <div class="row"><span class="lab">OviTeams + go-to-market</span><span class="bar"><i style="width:30%"></i></span><span class="pct">30%</span></div>
+            <div class="row"><span class="lab">Engineering hires</span><span class="bar"><i style="width:20%"></i></span><span class="pct">20%</span></div>
+            <div class="row"><span class="lab">Ops &amp; runway buffer</span><span class="bar"><i style="width:10%"></i></span><span class="pct">10%</span></div>
+          </div>
+          <p class="note" style="margin-top:12px">Allocation illustrative — set your split.</p>
+        </div>
+        <div class="card soft"><h4>The prize</h4><p>Not a seat at one software category — the operating layer beneath all of them. The system every business is run from, addressable in plain language, doing the work end to end.</p>
+          <div class="prose" style="margin-top:6px"><div class="pull" style="margin:10px 0 0">Built to dominate every market — not to take part in one.</div></div>
+        </div>
+      </div>
+
+      <div class="divider-glow"></div>
+      <div class="close-band">
+        <svg class="rob" viewBox="0 0 200 205" style="width:96px;filter:drop-shadow(0 18px 40px rgba(124,58,237,.5));margin-bottom:18px"><use href="#ovi"/></svg>
+        <div class="big">Just <span class="grad">tell Ovi.</span></div>
+        <p class="mono" style="margin-top:18px;font-size:12px;letter-spacing:.14em;color:var(--faint);text-transform:uppercase">tellovi.ai&nbsp;&nbsp;·&nbsp;&nbsp;<span class="ph">[ your email ]</span></p>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+(function(){
+  var pbar=document.getElementById('pbar');
+  var links=Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+  var sections=links.map(function(a){return document.getElementById(a.getAttribute('href').slice(1));});
+  var toc=document.getElementById('toc'),scrim=document.getElementById('scrim'),toggle=document.getElementById('tocToggle');
+
+  function onScroll(){
+    var h=document.documentElement;
+    var max=h.scrollHeight-h.clientHeight;
+    pbar.style.width=(max>0?(h.scrollTop/max*100):0)+'%';
+    var y=h.scrollTop+120,cur=0;
+    for(var i=0;i<sections.length;i++){ if(sections[i]&&sections[i].offsetTop<=y) cur=i; }
+    links.forEach(function(l,i){ l.classList.toggle('active',i===cur); });
+  }
+  window.addEventListener('scroll',onScroll,{passive:true});
+  window.addEventListener('resize',onScroll);
+  onScroll();
+
+  function close(){ toc.classList.remove('open'); scrim.classList.remove('open'); }
+  toggle.addEventListener('click',function(){ toc.classList.toggle('open'); scrim.classList.toggle('open'); });
+  scrim.addEventListener('click',close);
+  links.forEach(function(l){ l.addEventListener('click',close); });
+})();
+</script>

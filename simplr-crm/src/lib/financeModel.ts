@@ -32,7 +32,7 @@ function totalRow(row: Row) {
 export async function buildCashflowWorkbook(s: State): Promise<Blob> {
   const ExcelJS = await loadExcel()
   const wb = new ExcelJS.Workbook()
-  wb.creator = 'Simplr AI'
+  wb.creator = 'TellOvi AI'
   wb.created = new Date()
 
   const open = s.deals.filter((d) => !d.won && !d.lost)
@@ -123,7 +123,7 @@ export async function buildCashflowWorkbook(s: State): Promise<Blob> {
 export async function buildPnlWorkbook(s: State): Promise<Blob> {
   const ExcelJS = await loadExcel()
   const wb = new ExcelJS.Workbook()
-  wb.creator = 'Simplr AI'
+  wb.creator = 'TellOvi AI'
   const won = s.deals.filter((d) => d.won)
   const revenue = won.reduce((a, d) => a + d.value, 0)
   const paidInvoices = s.projects.flatMap((p) => p.invoices ?? []).filter((i) => i.status === 'paid').reduce((a, i) => a + i.amount, 0)

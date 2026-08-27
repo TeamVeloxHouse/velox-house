@@ -46,12 +46,12 @@ function MemberAvatar({ m, size = 32, ring }: { m?: TeamMember; size?: number; r
 
 /* ---------- rich chat text: **bold** + @mentions ---------- */
 function ChatText({ text }: { text: string }) {
-  const parts = text.split(/(\*\*[^*]+\*\*|@Simplr AI|@ai\b)/gi)
+  const parts = text.split(/(\*\*[^*]+\*\*|@TellOvi AI|@ai\b)/gi)
   return (
     <span className="whitespace-pre-wrap leading-relaxed">
       {parts.map((p, i) => {
         if (/^\*\*[^*]+\*\*$/.test(p)) return <strong key={i} className="font-semibold text-ink">{p.slice(2, -2)}</strong>
-        if (/^@simplr ai$/i.test(p) || /^@ai$/i.test(p)) return <span key={i} className="font-semibold text-accent bg-accent-wash rounded px-1">{p}</span>
+        if (/^@tellovi ai$/i.test(p) || /^@ai$/i.test(p)) return <span key={i} className="font-semibold text-accent bg-accent-wash rounded px-1">{p}</span>
         return <span key={i}>{p}</span>
       })}
     </span>
@@ -181,7 +181,7 @@ function MessageRow({ msg, channel, onHandle, onReact }: { msg: TeamMessage; cha
         {/* AI reads a teammate's request and acts on it */}
         {actionable && (
           <button onClick={onHandle} className="mt-2 h-8 px-3 rounded-lg text-[12.5px] font-semibold border border-border-blue bg-accent-wash text-accent flex items-center gap-1.5 hover:bg-[#E4ECFB] transition">
-            <Sparkle size={13} /> Let Simplr AI handle this
+            <Sparkle size={13} /> Let TellOvi AI handle this
           </button>
         )}
 
@@ -217,7 +217,7 @@ function Composer({ placeholder, onSend, disabled }: { placeholder: string; onSe
   function submit() { if (!v.trim() || disabled) return; onSend(v.trim()); setV('') }
   return (
     <div className="bg-surface border border-border rounded-2xl flex items-end gap-2 p-2 shadow-card">
-      <button onClick={() => setV((x) => (x.startsWith('@Simplr AI ') ? x : '@Simplr AI ' + x))} title="Mention Simplr AI" className="w-9 h-9 rounded-xl border border-border-blue bg-accent-wash text-accent hover:bg-[#E4ECFB] flex items-center justify-center shrink-0"><Sparkle size={16} /></button>
+      <button onClick={() => setV((x) => (x.startsWith('@TellOvi AI ') ? x : '@TellOvi AI ' + x))} title="Mention TellOvi AI" className="w-9 h-9 rounded-xl border border-border-blue bg-accent-wash text-accent hover:bg-[#E4ECFB] flex items-center justify-center shrink-0"><Sparkle size={16} /></button>
       <textarea
         value={v}
         onChange={(e) => setV(e.target.value)}
@@ -235,7 +235,7 @@ function Composer({ placeholder, onSend, disabled }: { placeholder: string; onSe
 function Working({ steps, i }: { steps: string[]; i: number }) {
   return (
     <div className="flex gap-2.5 px-1">
-      <MemberAvatar m={{ id: AI_MEMBER_ID, name: 'Simplr AI', role: '', color: '#3B6BF5', status: 'online', bot: true }} size={34} />
+      <MemberAvatar m={{ id: AI_MEMBER_ID, name: 'TellOvi AI', role: '', color: '#3B6BF5', status: 'online', bot: true }} size={34} />
       <div className="rounded-card border border-border bg-surface-tint overflow-hidden py-1 min-w-[260px]">
         {steps.map((s, si) => (
           <div key={si} className="flex items-center gap-2.5 px-3.5 py-1.5">
@@ -374,12 +374,12 @@ function ChannelView({ channel }: { channel: TeamChannel }) {
       } else if (a.kind === 'task') {
         if (/prep/i.test(a.label)) {
           ;['Draft the board narrative', 'Pull Q3 pipeline & win figures', 'Design the deck & rehearse'].forEach((t, k) =>
-            act.addActivity({ type: 'task', subject: t, due: k === 0 ? 'Tomorrow' : 'This week', priority: 'High', who: 'Simplr AI', source: 'ai' }))
+            act.addActivity({ type: 'task', subject: t, due: k === 0 ? 'Tomorrow' : 'This week', priority: 'High', who: 'TellOvi AI', source: 'ai' }))
         } else if (/each/i.test(a.label)) {
           const risk = deals.filter((d) => !d.won && !d.lost && (d.health === 'At risk' || d.health === 'Stalled' || d.health === 'No next step'))
-          risk.slice(0, 3).forEach((d) => act.addActivity({ type: 'task', subject: `Add a next step — ${d.org}`, dealId: d.id, personId: d.personIds[0], due: 'Tomorrow', priority: 'High', who: 'Simplr AI', source: 'ai' }))
+          risk.slice(0, 3).forEach((d) => act.addActivity({ type: 'task', subject: `Add a next step — ${d.org}`, dealId: d.id, personId: d.personIds[0], due: 'Tomorrow', priority: 'High', who: 'TellOvi AI', source: 'ai' }))
         } else {
-          act.addActivity({ type: 'task', subject: 'Follow up', due: 'Tomorrow', priority: 'Medium', who: 'Simplr AI', source: 'ai' })
+          act.addActivity({ type: 'task', subject: 'Follow up', due: 'Tomorrow', priority: 'Medium', who: 'TellOvi AI', source: 'ai' })
         }
       }
       return { kind: a.kind, label: a.label, to: a.to }
@@ -426,7 +426,7 @@ function ChannelView({ channel }: { channel: TeamChannel }) {
         {/* channel header */}
         <div className="h-[52px] shrink-0 border-b border-border bg-surface flex items-center gap-3 px-6">
           <div className="min-w-0">
-            <div className="text-[15px] font-bold text-ink truncate flex items-center gap-2">{heading}{channel.ai && <Chip tone="accent" dot>Simplr AI is in here</Chip>}</div>
+            <div className="text-[15px] font-bold text-ink truncate flex items-center gap-2">{heading}{channel.ai && <Chip tone="accent" dot>TellOvi AI is in here</Chip>}</div>
           </div>
           {channel.topic && <div className="text-[12.5px] text-muted-2 truncate hidden md:block border-l border-divider pl-3">{channel.topic}</div>}
           <div className="ml-auto flex -space-x-1.5">
@@ -438,7 +438,7 @@ function ChannelView({ channel }: { channel: TeamChannel }) {
         <div ref={scroller} className="flex-1 overflow-y-auto px-5 py-5">
           <div className="max-w-[780px] mx-auto flex flex-col gap-5">
             {msgs.length === 0 && (
-              <div className="text-center text-muted-2 text-[13px] py-10">This is the start of your conversation.{channel.ai && ' @mention Simplr AI to get answers, visuals or have it action a request.'}</div>
+              <div className="text-center text-muted-2 text-[13px] py-10">This is the start of your conversation.{channel.ai && ' @mention TellOvi AI to get answers, visuals or have it action a request.'}</div>
             )}
             {msgs.map((m) => <MessageRow key={m.id} msg={m} channel={channel} onHandle={() => handle(m)} onReact={(e) => act.reactToMessage(m.id, e)} />)}
             {work && <Working steps={work.steps} i={work.i} />}
@@ -449,7 +449,7 @@ function ChannelView({ channel }: { channel: TeamChannel }) {
         <div className="border-t border-border bg-canvas px-5 py-4">
           <div className="max-w-[780px] mx-auto">
             <Composer placeholder={channel.kind === 'dm' ? `Message ${channel.name}…` : `Message ${heading}…`} onSend={send} disabled={!!work} />
-            <div className="text-[11px] text-muted-3 text-center mt-2">{kindLabel} · {members.length} members{channel.ai && ' · Simplr AI can answer with live data and take action'}</div>
+            <div className="text-[11px] text-muted-3 text-center mt-2">{kindLabel} · {members.length} members{channel.ai && ' · TellOvi AI can answer with live data and take action'}</div>
           </div>
         </div>
       </div>

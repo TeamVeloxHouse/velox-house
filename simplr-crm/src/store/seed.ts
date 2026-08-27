@@ -64,11 +64,11 @@ export function buildSeed(): State {
   ]
 
   const emails: EmailMsg[] = [
-    { id: 'em1', folder: 'inbox', from: 'Callum Reed', fromEmail: 'callum@cirrus.com', to: 'jordan@simplr.io', subject: 'Re: Revised proposal v3', body: 'Hi Jordan,\n\nThis looks good — the phased rollout is exactly what we needed to make the numbers work for this budget cycle. Marta wants to see where legal landed on the liability caps before we sign off, so if you can flag that in the SOW it would speed things along.\n\nWe’re aiming to have a decision by the end of next week. Appreciate the quick turnaround on v3.\n\nBest,\nCallum', dealId: 'd9', personId: 'p2', dealLabel: 'UPS refresh', unread: true, time: '09:41', createdAt: mins(45) },
-    { id: 'em2', folder: 'inbox', from: 'Elena Voss', fromEmail: 'elena@meridian.com', to: 'jordan@simplr.io', subject: 'Site access for survey', body: 'We can offer Thursday morning or Friday afternoon for the team to come in and assess the substation. Let me know what suits.', dealId: 'd1', personId: 'p1', dealLabel: 'Substation upgrade', unread: true, time: '08:12', createdAt: hrs(3) },
-    { id: 'em3', folder: 'inbox', from: 'Sam Idris', fromEmail: 'sam@fenwick.com', to: 'jordan@simplr.io', subject: 'Budget approval update', body: 'Finance committee meets next week — I’ll push for a decision then.', dealId: 'd8', personId: 'p3', dealLabel: 'Campus microgrid', time: 'Yesterday', createdAt: days(1) },
-    { id: 'em4', folder: 'inbox', from: 'Owen Pryce', fromEmail: 'owen@staidan.com', to: 'jordan@simplr.io', subject: 'Maintenance terms', body: 'Can we extend the retainer to cover the standby generators as well?', dealId: 'd4', personId: 'p4', dealLabel: 'Generator retrofit', time: 'Yesterday', createdAt: days(1) },
-    { id: 'em5', folder: 'inbox', from: 'Dana Kirk', fromEmail: 'dana@brightleaf.com', to: 'jordan@simplr.io', subject: 'Panel spec question', body: 'What’s the degradation warranty on the modules you quoted?', dealId: 'd3', personId: 'p5', dealLabel: 'Solar + storage', time: 'Mon', createdAt: days(3) },
+    { id: 'em1', folder: 'inbox', from: 'Callum Reed', fromEmail: 'callum@cirrus.com', to: 'jordan@tellovi.io', subject: 'Re: Revised proposal v3', body: 'Hi Jordan,\n\nThis looks good — the phased rollout is exactly what we needed to make the numbers work for this budget cycle. Marta wants to see where legal landed on the liability caps before we sign off, so if you can flag that in the SOW it would speed things along.\n\nWe’re aiming to have a decision by the end of next week. Appreciate the quick turnaround on v3.\n\nBest,\nCallum', dealId: 'd9', personId: 'p2', dealLabel: 'UPS refresh', unread: true, time: '09:41', createdAt: mins(45) },
+    { id: 'em2', folder: 'inbox', from: 'Elena Voss', fromEmail: 'elena@meridian.com', to: 'jordan@tellovi.io', subject: 'Site access for survey', body: 'We can offer Thursday morning or Friday afternoon for the team to come in and assess the substation. Let me know what suits.', dealId: 'd1', personId: 'p1', dealLabel: 'Substation upgrade', unread: true, time: '08:12', createdAt: hrs(3) },
+    { id: 'em3', folder: 'inbox', from: 'Sam Idris', fromEmail: 'sam@fenwick.com', to: 'jordan@tellovi.io', subject: 'Budget approval update', body: 'Finance committee meets next week — I’ll push for a decision then.', dealId: 'd8', personId: 'p3', dealLabel: 'Campus microgrid', time: 'Yesterday', createdAt: days(1) },
+    { id: 'em4', folder: 'inbox', from: 'Owen Pryce', fromEmail: 'owen@staidan.com', to: 'jordan@tellovi.io', subject: 'Maintenance terms', body: 'Can we extend the retainer to cover the standby generators as well?', dealId: 'd4', personId: 'p4', dealLabel: 'Generator retrofit', time: 'Yesterday', createdAt: days(1) },
+    { id: 'em5', folder: 'inbox', from: 'Dana Kirk', fromEmail: 'dana@brightleaf.com', to: 'jordan@tellovi.io', subject: 'Panel spec question', body: 'What’s the degradation warranty on the modules you quoted?', dealId: 'd3', personId: 'p5', dealLabel: 'Solar + storage', time: 'Mon', createdAt: days(3) },
   ]
 
   const meetings: Meeting[] = [
@@ -104,21 +104,21 @@ export function buildSeed(): State {
   ]
 
   const connections: Connection[] = [
-    { id: 'cn1', kind: 'email', provider: 'Microsoft 365', account: 'jordan@simplr.io', connected: true, color: '#0078D4', protocol: 'oauth' },
+    { id: 'cn1', kind: 'email', provider: 'Microsoft 365', account: 'jordan@tellovi.io', connected: true, color: '#0078D4', protocol: 'oauth' },
     { id: 'cn2', kind: 'email', provider: 'Gmail', account: 'j.miles@gmail.com', connected: true, color: '#EA4335', protocol: 'oauth' },
     { id: 'cn3', kind: 'email', provider: 'IMAP / SMTP', connected: false, color: '#5D6878', protocol: 'imap' },
-    { id: 'cn4', kind: 'meeting', provider: 'Teams', account: 'jordan@simplr.io', connected: true, color: '#5059C9', protocol: 'oauth' },
-    { id: 'cn5', kind: 'meeting', provider: 'Google Meet', account: 'jordan@simplr.io', connected: true, color: '#00897B', protocol: 'oauth' },
+    { id: 'cn4', kind: 'meeting', provider: 'Teams', account: 'jordan@tellovi.io', connected: true, color: '#5059C9', protocol: 'oauth' },
+    { id: 'cn5', kind: 'meeting', provider: 'Google Meet', account: 'jordan@tellovi.io', connected: true, color: '#00897B', protocol: 'oauth' },
     { id: 'cn6', kind: 'meeting', provider: 'Zoom', connected: false, color: '#2D8CFF', protocol: 'oauth' },
-    { id: 'cn7', kind: 'social', provider: 'LinkedIn', account: 'Simplr', connected: true, color: '#0A66C2', protocol: 'api' },
-    { id: 'cn8', kind: 'social', provider: 'X', account: '@simplrhq', connected: true, color: '#0B1220', protocol: 'api' },
+    { id: 'cn7', kind: 'social', provider: 'LinkedIn', account: 'TellOvi', connected: true, color: '#0A66C2', protocol: 'api' },
+    { id: 'cn8', kind: 'social', provider: 'X', account: '@tellovihq', connected: true, color: '#0B1220', protocol: 'api' },
     { id: 'cn9', kind: 'social', provider: 'Facebook', connected: false, color: '#1877F2', protocol: 'api' },
     { id: 'cn10', kind: 'social', provider: 'Instagram', connected: false, color: '#E4405F', protocol: 'api' },
   ]
 
   const webhooks: Webhook[] = [
     { id: 'wh1', url: 'https://hooks.zapier.com/hooks/catch/8241/a3f9', events: ['deal.won', 'deal.stage_changed'], active: true },
-    { id: 'wh2', url: 'https://api.acme.co/simplr/leads', events: ['lead.created'], active: true },
+    { id: 'wh2', url: 'https://api.acme.co/tellovi/leads', events: ['lead.created'], active: true },
   ]
   const apiKeys: ApiKey[] = [
     { id: 'ak1', label: 'Production', key: 'sk_live_9f2a…c71b', created: 'Aug 2, 2026' },
@@ -335,7 +335,7 @@ export function buildSeed(): State {
   ]
 
   const brandKit: import('./types').BrandKit = {
-    company: 'Simplr Solar', primary: '#1D4ED8', accent: '#F5A623', font: 'Inter',
+    company: 'TellOvi Solar', primary: '#1D4ED8', accent: '#F5A623', font: 'Inter',
     tone: 'Confident, warm and plain-English. Lead with the customer’s goal, show savings before cost, never pushy.',
     logoName: 'logo-simplr-solar.svg',
   }
@@ -394,7 +394,7 @@ export function buildSeed(): State {
     { id: 'tm-marcus', name: 'Marcus Webb', role: 'Sales Lead', color: '#E8721A', status: 'away' },
     { id: 'tm-sofia', name: 'Sofia Reyes', role: 'Marketing', color: '#7C5CFF', status: 'dnd' },
     { id: 'tm-ryan', name: 'Ryan Cole', role: 'Lead Installer', color: '#0891B2', status: 'offline' },
-    { id: AI_MEMBER_ID, name: 'Simplr AI', role: 'Works across every app', color: '#3B6BF5', status: 'online', bot: true },
+    { id: AI_MEMBER_ID, name: 'TellOvi AI', role: 'Works across every app', color: '#3B6BF5', status: 'online', bot: true },
   ]
   const everyone = teamMembers.map((m) => m.id)
 
@@ -405,7 +405,7 @@ export function buildSeed(): State {
     { id: 'ch-enterprise', name: 'Enterprise pod', kind: 'group', topic: 'The big-logo working group', memberIds: [YOU_MEMBER_ID, 'tm-marcus', 'tm-dana', AI_MEMBER_ID], ai: true, unread: 0 },
     { id: 'ch-solar', name: 'Solar delivery', kind: 'group', topic: 'Design → install → PTO handover', memberIds: [YOU_MEMBER_ID, 'tm-priya', 'tm-ryan', AI_MEMBER_ID], ai: true, unread: 0 },
     { id: 'dm-dana', name: 'Dana Okafor', kind: 'dm', memberIds: [YOU_MEMBER_ID, 'tm-dana', AI_MEMBER_ID], ai: true, unread: 1 },
-    { id: 'dm-ai', name: 'Simplr AI', kind: 'dm', topic: 'Your private copilot', memberIds: [YOU_MEMBER_ID, AI_MEMBER_ID], ai: true, unread: 0 },
+    { id: 'dm-ai', name: 'TellOvi AI', kind: 'dm', topic: 'Your private copilot', memberIds: [YOU_MEMBER_ID, AI_MEMBER_ID], ai: true, unread: 0 },
   ]
 
   // A real, computed answer the AI already posted in #sales — accurate to the seeded pipeline.
@@ -423,7 +423,7 @@ export function buildSeed(): State {
     { id: 'msg-g3', channelId: 'ch-general', authorId: 'tm-marcus', text: 'Reminder: pipeline review Thursday 3pm. Come with your top 3 at-risk deals.', createdAt: hrs(3) },
 
     // #sales — a data question the AI answered with a visual
-    { id: 'msg-s1', channelId: 'ch-sales', authorId: 'tm-priya', text: '@Simplr AI how’s the pipeline shaping up for the quarter?', createdAt: hrs(2) },
+    { id: 'msg-s1', channelId: 'ch-sales', authorId: 'tm-priya', text: '@TellOvi AI how’s the pipeline shaping up for the quarter?', createdAt: hrs(2) },
     {
       id: 'msg-s2', channelId: 'ch-sales', authorId: AI_MEMBER_ID, createdAt: hrs(2) + 40_000,
       text: 'Healthy but back-loaded — most value is sitting in the late stages. Here’s the open pipeline right now:',
@@ -458,7 +458,7 @@ export function buildSeed(): State {
     { id: 'an-win1', kind: 'win', title: 'Cirrus Hosting — £415k closed 🎉', body: 'Six-month cycle, phased rollout landed. Huge credit to Jordan for holding the line on the liability caps and to Marcus for keeping procurement warm.', authorId: 'tm-dana', createdAt: hrs(20), value: 415000, cheers: ['tm-priya', 'tm-marcus', 'tm-sofia', 'tm-dana'], pinned: true },
     { id: 'an-win2', kind: 'win', title: 'Ashford Utilities renewal secured', body: 'Renewed a year early on a bigger footprint — metering + monitoring added. Priya ran the whole save.', authorId: 'tm-marcus', createdAt: days(2), value: 128000, cheers: [YOU_MEMBER_ID, 'tm-dana'] },
     { id: 'an-news1', kind: 'news', title: '68% of quarterly quota with 3 weeks to go', body: 'Best position we’ve been in at this point in a quarter. Late-stage pipeline is strong — let’s convert.', authorId: 'tm-dana', createdAt: days(3), cheers: ['tm-priya'] },
-    { id: 'an-update1', kind: 'update', title: 'Simplr AI now lives inside Team', body: '@mention Simplr AI in any channel to get instant answers, visuals, or have it action a request — it can prep a deck, book a meeting or push tasks straight into your list, across every app.', authorId: 'tm-sofia', createdAt: days(1), cheers: [YOU_MEMBER_ID, 'tm-marcus'] },
+    { id: 'an-update1', kind: 'update', title: 'TellOvi AI now lives inside Team', body: '@mention TellOvi AI in any channel to get instant answers, visuals, or have it action a request — it can prep a deck, book a meeting or push tasks straight into your list, across every app.', authorId: 'tm-sofia', createdAt: days(1), cheers: [YOU_MEMBER_ID, 'tm-marcus'] },
     { id: 'an-shout1', kind: 'shoutout', title: 'Shoutout to Priya 🙌', body: 'Fastest lead → booked-demo turnaround this month, twice over. The follow-up game is unmatched.', authorId: 'tm-marcus', createdAt: days(4), cheers: [YOU_MEMBER_ID, 'tm-dana', 'tm-sofia'] },
   ]
 
@@ -536,8 +536,63 @@ export function buildSeed(): State {
   deals[0].custom = { cf1: '2 years', cf2: 'London' }
   people[1].custom = { cf3: 'linkedin.com/in/callumreed' }
 
+  // ── TellOvi Marketing — brand & content operations ──
+  const brandAssets: import('./types').BrandAsset[] = [
+    { id: 'ba1', name: 'Primary logo — full colour', type: 'logo', format: 'SVG', tags: ['logo', 'primary'], version: 'v3', updatedAt: days(30), latest: true, note: 'Use on light backgrounds. Min width 120px.' },
+    { id: 'ba2', name: 'Logo — reversed (white)', type: 'logo', format: 'SVG', tags: ['logo', 'reversed', 'dark-bg'], version: 'v3', updatedAt: days(30), latest: true },
+    { id: 'ba3', name: 'Logo — monochrome', type: 'logo', format: 'PNG', tags: ['logo', 'mono'], version: 'v3', updatedAt: days(30), latest: true },
+    { id: 'ba4', name: 'Brand guidelines', type: 'guideline', format: 'PDF', tags: ['guidelines', 'brand'], version: 'v2', updatedAt: days(45), latest: true, note: 'Logo, colour, type, tone, do’s & don’ts.' },
+    { id: 'ba5', name: 'Pitch deck template', type: 'deck', format: 'PPTX', tags: ['deck', 'template', 'sales'], version: 'v4', updatedAt: days(14), latest: true },
+    { id: 'ba6', name: 'Branded letterhead', type: 'header', format: 'DOCX', tags: ['letterhead', 'template'], version: 'v2', updatedAt: days(60), latest: true },
+    { id: 'ba7', name: 'Proposal PDF template', type: 'pdf', format: 'PDF', tags: ['proposal', 'template'], version: 'v3', updatedAt: days(20), latest: true },
+    { id: 'ba8', name: 'Email header banner', type: 'header', format: 'PNG', tags: ['email', 'header'], version: 'v1', updatedAt: days(90), latest: true },
+    { id: 'ba9', name: 'Instrument Sans (brand font)', type: 'font', format: 'OTF', tags: ['font', 'type'], version: 'v1', updatedAt: days(120), latest: true },
+  ]
+  const messaging: import('./types').MessagingSnippet[] = [
+    { id: 'ms1', label: 'Tagline', category: 'tagline', text: 'Own your energy.' },
+    { id: 'ms2', label: 'Boilerplate (short)', category: 'boilerplate', text: 'TellOvi Solar designs, installs and maintains MCS-certified solar & battery systems for homes and businesses across the North West.' },
+    { id: 'ms3', label: 'Value prop — savings', category: 'value-prop', text: 'Cut your electricity bill from day one — and get paid for what you export.' },
+    { id: 'ms4', label: 'Value prop — trust', category: 'value-prop', text: 'MCS-certified, fully insured, and rated 4.9★ by the homeowners we’ve switched on.' },
+    { id: 'ms5', label: 'Tone of voice', category: 'tone', text: 'Confident, warm and plain-English. Lead with the customer’s goal, show savings before cost, never pushy.' },
+    { id: 'ms6', label: 'Words we avoid', category: 'banned', text: 'No “cheap”, no “free” (say “included”), never over-promise output — always “estimated”.' },
+  ]
+  const mediaAssets: import('./types').MediaAsset[] = [
+    { id: 'md1', name: 'Rooftop install — Manchester', type: 'image', tags: ['install', 'rooftop', 'hero'], source: 'upload', when: '3 days ago' },
+    { id: 'md2', name: 'Crew on site (team photo)', type: 'image', tags: ['team', 'people'], source: 'upload', when: '2 weeks ago' },
+    { id: 'md3', name: 'Battery unit — product shot', type: 'image', tags: ['product', 'battery'], source: 'upload', when: '1 month ago' },
+    { id: 'md4', name: 'Install timelapse', type: 'video', tags: ['video', 'social'], source: 'upload', when: '5 days ago', license: 'Owned' },
+    { id: 'md5', name: 'Savings explainer graphic', type: 'graphic', tags: ['social', 'explainer'], source: 'canva', when: 'Yesterday' },
+    { id: 'md6', name: 'Winter offer — story card', type: 'graphic', tags: ['campaign', 'story'], source: 'claude-design', when: 'Today' },
+  ]
+  const contentItems: import('./types').ContentItem[] = [
+    { id: 'ci1', title: 'Case study: Brightleaf Way install', channel: 'Blog', campaign: 'Winter warm-up', status: 'draft', owner: 'Sana Ali', date: 'Fri 29 Aug', note: 'From the won deal — savings + export income.' },
+    { id: 'ci2', title: 'Manchester install — before/after carousel', channel: 'Instagram', campaign: 'Winter warm-up', status: 'review', owner: 'Sana Ali', date: 'Wed 27 Aug' },
+    { id: 'ci3', title: '“Own your energy” — brand post', channel: 'LinkedIn', status: 'approved', owner: 'Sana Ali', date: 'Thu 28 Aug' },
+    { id: 'ci4', title: 'SEG export — how getting paid works', channel: 'Blog', status: 'idea', owner: 'Ovi', date: 'Next week' },
+    { id: 'ci5', title: 'Customer review spotlight — Helen T.', channel: 'X', status: 'scheduled', owner: 'Ovi', date: 'Mon 25 Aug 09:00' },
+    { id: 'ci6', title: 'October battery offer — launch email', channel: 'Email', campaign: 'Autumn battery', status: 'brief', owner: 'Sana Ali', date: '1 Oct' },
+    { id: 'ci7', title: 'Winter warm-up — teaser reel', channel: 'Instagram', campaign: 'Winter warm-up', status: 'published', owner: 'Sana Ali', date: '20 Aug' },
+  ]
+  const mktRequests: import('./types').MarketingRequest[] = [
+    { id: 'mr1', from: 'Marcus Webb (Sales)', ask: 'Latest pitch deck template for the Fenwick meeting', status: 'found', assetId: 'ba5', when: '10 min ago' },
+    { id: 'mr2', from: 'Priya Nair (Finance)', ask: 'Company logo in PNG for the invoice footer', status: 'new', when: '25 min ago' },
+    { id: 'mr3', from: 'Devan Rao (Ops)', ask: 'Branded letterhead for a supplier letter', status: 'new', when: '1 hour ago' },
+    { id: 'mr4', from: 'Jordan Miles (Sales)', ask: 'A social graphic for the Manchester install', status: 'in-progress', when: 'Yesterday', note: 'Sent to Canva with brand kit applied.' },
+  ]
+  const mktConnectors: import('./types').MarketingConnector[] = [
+    { id: 'mc1', name: 'Canva', kind: 'design', connected: true, account: 'TellOvi Solar (Team)', note: 'Designs sync back to Assets, tagged.' },
+    { id: 'mc2', name: 'Claude Design', kind: 'design', connected: true, account: 'Workspace', note: 'Outputs (HTML/PNG/PDF) land in Assets. Editor opens in a new tab.' },
+    { id: 'mc3', name: 'Figma', kind: 'design', connected: false, note: 'Connect to pull frames as brand assets.' },
+    { id: 'mc4', name: 'Google Drive', kind: 'storage', connected: true, account: 'marketing@tellovi.io' },
+    { id: 'mc5', name: 'LinkedIn Page', kind: 'social', connected: true, account: 'TellOvi Solar' },
+    { id: 'mc6', name: 'Instagram', kind: 'social', connected: true, account: '@tellovihq' },
+    { id: 'mc7', name: 'X (Twitter)', kind: 'social', connected: false },
+    { id: 'mc8', name: 'Google Analytics 4', kind: 'analytics', connected: true, account: 'veloxhouse.co.uk' },
+    { id: 'mc9', name: 'Mailchimp', kind: 'email', connected: false, note: 'Connect for email campaign sync.' },
+  ]
+
   const activeTrade = 'solar' as const
   const features = { ...tradeByKey(activeTrade).features }
 
-  return { deals, people, orgs, leads, activities, emails, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, linkedinThreads, enrolments, reachCampaigns, scheduledTasks, studioConfig, projects, playbooks, brandKit, docTemplates, brandDocs, products: mProducts, documents, emailCampaigns, customFields, activeTrade, features, onboarded: false, engineers, jobs, currentRole: 'owner', teamMembers, teamChannels, teamMessages, announcements, employees, leaveRequests, policies, certifications, expenses, stock, reviews, toasts: [], railExpanded: true }
+  return { deals, people, orgs, leads, activities, emails, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, linkedinThreads, enrolments, reachCampaigns, scheduledTasks, studioConfig, projects, playbooks, brandKit, docTemplates, brandDocs, products: mProducts, documents, emailCampaigns, customFields, activeTrade, features, onboarded: false, engineers, jobs, currentRole: 'owner', teamMembers, teamChannels, teamMessages, announcements, employees, leaveRequests, policies, certifications, expenses, stock, reviews, brandAssets, messaging, mediaAssets, contentItems, mktRequests, mktConnectors, toasts: [], railExpanded: true }
 }

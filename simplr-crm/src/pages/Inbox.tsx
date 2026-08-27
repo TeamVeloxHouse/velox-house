@@ -48,7 +48,7 @@ export function Inbox() {
   }
   function sendReply() {
     if (!active) return
-    act.sendEmail({ folder: 'sent', from: 'Jordan Miles', fromEmail: 'jordan@simplr.io', to: active.fromEmail, subject: `Re: ${active.subject}`, body: replyBody, dealId: active.dealId, personId: active.personId, dealLabel: active.dealLabel, time: 'Just now' })
+    act.sendEmail({ folder: 'sent', from: 'Jordan Miles', fromEmail: 'jordan@tellovi.io', to: active.fromEmail, subject: `Re: ${active.subject}`, body: replyBody, dealId: active.dealId, personId: active.personId, dealLabel: active.dealLabel, time: 'Just now' })
     setReplyOpen(false)
     setReplyBody('')
   }
@@ -166,7 +166,7 @@ export function Inbox() {
       </Modal>
 
       {/* compose */}
-      <ComposeModal open={composeOpen} onClose={() => setComposeOpen(false)} onSend={(to, subject, body) => { act.sendEmail({ folder: 'sent', from: 'Jordan Miles', fromEmail: 'jordan@simplr.io', to, subject, body, time: 'Just now' }); setComposeOpen(false) }} />
+      <ComposeModal open={composeOpen} onClose={() => setComposeOpen(false)} onSend={(to, subject, body) => { act.sendEmail({ folder: 'sent', from: 'Jordan Miles', fromEmail: 'jordan@tellovi.io', to, subject, body, time: 'Just now' }); setComposeOpen(false) }} />
     </>
   )
 }

@@ -30,7 +30,7 @@ export function OutreachOperator() {
       <div className="px-5 py-3.5 flex items-center gap-2.5 border-b border-[#EAE4FF]">
         <span className="w-8 h-8 rounded-[9px] text-white flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(180deg,#7C5CFF 0%,#5B29CC 100%)' }}><Sparkle size={17} /></span>
         <div className="flex-1">
-          <div className="text-[14px] font-bold text-ink flex items-center gap-2">Simplr AI · Outreach operator <Chip tone="positive" dot>Live</Chip></div>
+          <div className="text-[14px] font-bold text-ink flex items-center gap-2">TellOvi AI · Outreach operator <Chip tone="positive" dot>Live</Chip></div>
           <div className="text-[12px] text-muted-b">Tell it what to do in plain English — it prospects, writes, and runs the campaign for you.</div>
         </div>
       </div>
@@ -453,7 +453,7 @@ export function ReachSchedules() {
       <PageBody>
         <div className="rounded-card bg-gradient-to-br from-[#F6F3FF] to-white border border-[#E0D8FF] p-4 flex items-start gap-3">
           <span className="w-9 h-9 rounded-[10px] text-white flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(180deg,#7C5CFF 0%,#5B29CC 100%)' }}><Clock size={18} /></span>
-          <div><div className="text-[13px] font-semibold text-ink-2">Set-and-forget outreach</div><div className="text-[12.5px] text-muted-b mt-0.5">Schedule any AI operator command to run on a cadence — Simplr prospects, writes and sends, then reports the result back to you each time.</div></div>
+          <div><div className="text-[13px] font-semibold text-ink-2">Set-and-forget outreach</div><div className="text-[12.5px] text-muted-b mt-0.5">Schedule any AI operator command to run on a cadence — TellOvi prospects, writes and sends, then reports the result back to you each time.</div></div>
         </div>
         <div className="bg-surface border border-border rounded-card divide-y divide-divider">
           {scheduledTasks.map((t) => (

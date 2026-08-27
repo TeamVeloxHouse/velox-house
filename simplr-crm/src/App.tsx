@@ -18,7 +18,7 @@ import { Campaigns } from './pages/Campaigns'
 import { Automation } from './pages/Automation'
 import { Documents } from './pages/Documents'
 import { Settings } from './pages/Settings'
-import { SimplrAI } from './pages/SimplrAI'
+import { TellOviAI } from './pages/TellOviAI'
 import { Meetings } from './pages/Meetings'
 import { Agents } from './pages/Agents'
 import { Prospector } from './pages/Prospector'
@@ -33,14 +33,15 @@ import { EvCalculator } from './pages/EvCalculator'
 import { PeopleFinder } from './pages/PeopleFinder'
 import { BrandDocuments } from './pages/BrandDocuments'
 import { Team } from './pages/Team'
-import { Operations, Finance, HR, Marketing, DeliveryDept } from './pages/departments'
+import { Operations, Finance, HR, DeliveryDept } from './pages/departments'
 import {
   FinanceInvoices, FinanceExpenses, FinanceForecasting, FinanceReports,
   OpsSchedule, OpsStock, OpsPurchaseOrders, OpsSafety,
   HrPeople, HrLeave, HrPolicies, HrCompliance,
-  MktReviews, MktCampaigns, MktContent, MktReports,
+  MktReviews, MktCampaigns, MktReports,
   DelInstalls, DelField, DelCertificates, DelService,
 } from './pages/deptPages'
+import { MarketingOverview, BrandHub, MarketingAssets, ContentPlanner, MarketingSocial, MarketingRequests, MarketingConnectors } from './pages/marketing'
 
 export const router = createBrowserRouter([
   {
@@ -48,7 +49,7 @@ export const router = createBrowserRouter([
     element: <Layout />,
     children: [
       { index: true, element: <Home /> },
-      { path: 'ai', element: <SimplrAI /> },
+      { path: 'ai', element: <TellOviAI /> },
       { path: 'team', element: <Team /> },
       { path: 'operations', element: <Operations /> },
       { path: 'operations/schedule', element: <OpsSchedule /> },
@@ -65,10 +66,15 @@ export const router = createBrowserRouter([
       { path: 'hr/leave', element: <HrLeave /> },
       { path: 'hr/policies', element: <HrPolicies /> },
       { path: 'hr/compliance', element: <HrCompliance /> },
-      { path: 'marketing', element: <Marketing /> },
-      { path: 'marketing/reviews', element: <MktReviews /> },
+      { path: 'marketing', element: <MarketingOverview /> },
+      { path: 'marketing/brand', element: <BrandHub /> },
+      { path: 'marketing/assets', element: <MarketingAssets /> },
+      { path: 'marketing/content', element: <ContentPlanner /> },
       { path: 'marketing/campaigns', element: <MktCampaigns /> },
-      { path: 'marketing/content', element: <MktContent /> },
+      { path: 'marketing/social', element: <MarketingSocial /> },
+      { path: 'marketing/reviews', element: <MktReviews /> },
+      { path: 'marketing/requests', element: <MarketingRequests /> },
+      { path: 'marketing/connectors', element: <MarketingConnectors /> },
       { path: 'marketing/reports', element: <MktReports /> },
       { path: 'delivery', element: <DeliveryDept /> },
       { path: 'delivery/installs', element: <DelInstalls /> },
@@ -95,13 +101,13 @@ export const router = createBrowserRouter([
       { path: 'automation', element: <Automation /> },
       { path: 'documents', element: <Documents /> },
       { path: 'settings', element: <Settings /> },
-      // Simplr Reach — prospecting & outreach workspace
+      // TellOvi Reach — prospecting & outreach workspace
       { path: 'reach', element: <ReachOverview /> },
       { path: 'reach/ai', element: <ReachAI /> },
       { path: 'reach/finders', element: <Finders /> },
       { path: 'reach/solar', element: <SolarFinder /> },
       { path: 'reach/people-finder', element: <PeopleFinder /> },
-      // Simplr Studio — design, proposals & analytics
+      // TellOvi Studio — design, proposals & analytics
       { path: 'studio', element: <StudioOverview /> },
       { path: 'studio/design', element: <DesignStudio /> },
       { path: 'studio/proposal/:id', element: <Proposal /> },

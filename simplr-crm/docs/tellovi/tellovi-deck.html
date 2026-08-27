@@ -1,0 +1,620 @@
+<title>TellOvi Investor Deck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --ground:#0A0A14;
+  --ground-2:#0d0d1c;
+  --panel:rgba(255,255,255,.045);
+  --panel-2:rgba(255,255,255,.07);
+  --hair:rgba(255,255,255,.10);
+  --hair-strong:rgba(255,255,255,.16);
+  --ink:#ECECF7;
+  --muted:#9A9AB4;
+  --faint:#6C6C86;
+  --purple:#8B5CF6;
+  --purple-lo:#a78bfa;
+  --indigo:#4F46E5;
+  --cyan:#34E7E7;
+  --cyan-deep:#12B5C4;
+  --good:#34d399;
+  --warn:#fbbf24;
+  --maxw:1120px;
+  --slidepad:clamp(22px,4.5vw,84px);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{
+  background:var(--ground);
+  color:var(--ink);
+  font-family:"Figtree",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  -webkit-font-smoothing:antialiased;
+  overflow:hidden;
+  line-height:1.55;
+}
+@media (max-width:760px){ body{overflow:auto} }
+
+/* ---------- deck shell ---------- */
+.deck{position:relative;width:100vw;height:100vh;height:100dvh;overflow:hidden}
+@media (max-width:760px){ .deck{height:auto;overflow:visible} }
+
+.slide{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;justify-content:center;
+  padding:clamp(48px,7vh,90px) var(--slidepad) clamp(84px,12vh,120px);
+  opacity:0;visibility:hidden;
+  transform:translateY(14px);
+  transition:opacity .5s ease, transform .5s ease;
+  overflow:hidden;
+}
+.slide.active{opacity:1;visibility:visible;transform:none;z-index:2}
+@media (prefers-reduced-motion:reduce){ .slide{transition:opacity .2s ease;transform:none} }
+
+/* stacked, scrollable fallback on phones */
+@media (max-width:760px){
+  .deck{display:flex;flex-direction:column}
+  .slide{position:relative;inset:auto;opacity:1;visibility:visible;transform:none;
+    min-height:100vh;min-height:100dvh;border-bottom:1px solid var(--hair)}
+}
+
+/* atmospheric ground glows, painted per slide */
+.slide::before{
+  content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(60% 55% at 82% 8%, rgba(139,92,246,.20), transparent 70%),
+    radial-gradient(55% 60% at 6% 100%, rgba(79,70,229,.18), transparent 68%),
+    radial-gradient(40% 40% at 50% 120%, rgba(52,231,231,.06), transparent 70%);
+}
+.slide-inner{position:relative;z-index:1;width:100%;max-width:var(--maxw);margin:0 auto}
+.slide-inner.wide{max-width:1240px}
+
+/* ---------- shared type ---------- */
+.eyebrow{
+  font-family:"Space Mono",monospace;
+  font-size:12.5px;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--cyan);
+  display:inline-flex;align-items:center;gap:10px;margin:0 0 22px;
+}
+.eyebrow::before{content:"";width:26px;height:1px;background:linear-gradient(90deg,var(--cyan),transparent)}
+h1,h2,h3{font-family:"Bricolage Grotesque",sans-serif;margin:0;text-wrap:balance;letter-spacing:-.02em;line-height:1.02}
+.display{font-size:clamp(38px,6.4vw,82px);font-weight:800}
+.h2{font-size:clamp(30px,4.4vw,54px);font-weight:700;line-height:1.04}
+.lede{font-size:clamp(17px,1.7vw,22px);color:var(--muted);max-width:60ch;margin:22px 0 0}
+.kicker{color:var(--ink)}
+.grad{background:linear-gradient(100deg,var(--purple-lo),var(--cyan));-webkit-background-clip:text;background-clip:text;color:transparent}
+strong{color:var(--ink);font-weight:700}
+
+/* command chip — the recurring motif */
+.cmd{
+  font-family:"Space Mono",monospace;font-size:14px;
+  display:inline-flex;align-items:center;gap:9px;
+  padding:9px 14px;border-radius:10px;
+  background:linear-gradient(180deg,rgba(52,231,231,.08),rgba(52,231,231,.03));
+  border:1px solid rgba(52,231,231,.28);
+  color:#c8fbfb;white-space:nowrap;
+}
+.cmd .p{color:var(--cyan);font-weight:700}
+.cmd-list{display:flex;flex-direction:column;gap:12px;align-items:flex-start;margin-top:6px}
+
+/* generic panel / card */
+.card{
+  background:var(--panel);border:1px solid var(--hair);border-radius:18px;
+  padding:24px;backdrop-filter:blur(8px);
+}
+.grid{display:grid;gap:16px}
+@media (max-width:720px){ .grid{grid-template-columns:1fr!important} }
+
+/* ---------- fixed chrome ---------- */
+.brandmark{
+  position:fixed;top:22px;left:clamp(20px,4.5vw,44px);z-index:40;
+  display:flex;align-items:center;gap:10px;
+  font-family:"Bricolage Grotesque";font-weight:800;font-size:18px;letter-spacing:-.02em;
+}
+.brandmark .rob{width:26px;height:26px}
+.brandmark .t1{color:#cfd2ff}.brandmark .o{color:var(--purple-lo)}.brandmark .t2{color:#9aa0ff}
+@media (max-width:760px){ .brandmark{position:absolute} }
+
+.nav{
+  position:fixed;left:0;right:0;bottom:0;z-index:40;
+  display:flex;align-items:center;gap:18px;
+  padding:14px clamp(20px,4.5vw,44px);
+  background:linear-gradient(0deg,rgba(10,10,20,.9),rgba(10,10,20,0));
+}
+@media (max-width:760px){ .nav{display:none} }
+.progress{flex:1;height:3px;border-radius:3px;background:rgba(255,255,255,.10);overflow:hidden}
+.progress .fill{height:100%;width:0;background:linear-gradient(90deg,var(--indigo),var(--purple),var(--cyan));transition:width .5s ease}
+.counter{font-family:"Space Mono",monospace;font-size:12.5px;color:var(--muted);letter-spacing:.12em;min-width:66px;text-align:center}
+.arrows{display:flex;gap:8px}
+.arrows button{
+  width:38px;height:38px;border-radius:10px;cursor:pointer;
+  background:var(--panel-2);border:1px solid var(--hair);color:var(--ink);
+  font-size:16px;display:grid;place-items:center;transition:.15s;
+}
+.arrows button:hover{background:rgba(139,92,246,.22);border-color:var(--purple)}
+.arrows button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.arrows button:disabled{opacity:.3;cursor:default}
+.hint{position:fixed;bottom:70px;right:clamp(20px,4.5vw,44px);z-index:39;font-family:"Space Mono",monospace;font-size:11px;color:var(--faint);letter-spacing:.1em}
+@media (max-width:760px){ .hint{display:none} }
+
+/* placeholder token (numbers Tony fills) */
+.ph{border-bottom:1.5px dashed rgba(52,231,231,.5);color:#bff6f6;font-style:normal;white-space:nowrap}
+
+/* ===== slide-specific ===== */
+
+/* cover */
+.cover{align-items:center;text-align:center}
+.cover .rob-hero{width:clamp(120px,17vw,190px);height:auto;filter:drop-shadow(0 22px 46px rgba(124,58,237,.5));margin-bottom:26px}
+.wordmark{font-family:"Bricolage Grotesque";font-weight:800;font-size:clamp(52px,10vw,120px);letter-spacing:-.03em;line-height:.9}
+.wordmark .tell{color:#e7e9ff}.wordmark .ovi-o{color:var(--purple-lo)}.wordmark .ovi-vi{color:#aab0ff}
+.wm-rule{width:min(340px,62vw);height:2px;margin:14px auto 0;background:linear-gradient(90deg,transparent,var(--purple),var(--cyan),transparent)}
+.cover .tag{font-size:clamp(18px,2.3vw,27px);color:var(--muted);margin-top:26px;font-weight:500}
+.cover .tag b{color:var(--ink);font-weight:700}
+.cover .foot{margin-top:34px;font-family:"Space Mono",monospace;font-size:12px;letter-spacing:.2em;color:var(--faint);text-transform:uppercase}
+
+/* problem — fragmented stack */
+.stack-cols{display:grid;grid-template-columns:1.05fr 1fr;gap:34px;align-items:center;margin-top:30px}
+@media (max-width:860px){ .stack-cols{grid-template-columns:1fr} }
+.chips-mess{display:flex;flex-wrap:wrap;gap:10px;max-width:440px}
+.tool-chip{padding:8px 13px;border-radius:9px;background:var(--panel);border:1px solid var(--hair);font-size:13.5px;color:var(--muted)}
+.tool-chip.x{opacity:.55}
+.vs{display:flex;align-items:center;gap:14px;margin:24px 0}
+.vs .line{flex:1;height:1px;background:var(--hair)}
+.vs .word{font-family:"Space Mono",monospace;font-size:12px;color:var(--faint);letter-spacing:.2em}
+
+/* module suite grid */
+.mods{grid-template-columns:repeat(3,1fr);margin-top:34px}
+@media (max-width:900px){ .mods{grid-template-columns:repeat(2,1fr)} }
+.mod{position:relative;overflow:hidden}
+.mod .badge{font-family:"Bricolage Grotesque";font-weight:800;font-size:19px;letter-spacing:-.01em;margin-bottom:8px}
+.mod .badge .o{color:var(--cyan)}
+.mod p{margin:0;color:var(--muted);font-size:14.5px}
+.mod .dot{position:absolute;top:18px;right:18px;width:8px;height:8px;border-radius:50%;background:var(--cyan);box-shadow:0 0 12px var(--cyan)}
+
+/* chat mock (hero slide) */
+.chat-wrap{display:grid;grid-template-columns:1.02fr .98fr;gap:40px;align-items:center;margin-top:26px}
+@media (max-width:900px){ .chat-wrap{grid-template-columns:1fr} }
+.phone{
+  background:linear-gradient(180deg,#111120,#0c0c17);
+  border:1px solid var(--hair-strong);border-radius:22px;padding:16px;
+  box-shadow:0 30px 70px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.05);
+  max-width:440px;
+}
+.chan{display:flex;align-items:center;gap:10px;padding:2px 4px 14px;border-bottom:1px solid var(--hair);margin-bottom:14px}
+.chan .hash{color:var(--faint);font-family:"Space Mono",monospace}
+.chan .nm{font-weight:700;font-size:14px}
+.chan .who{margin-left:auto;font-size:11.5px;color:var(--faint);font-family:"Space Mono",monospace}
+.msg{display:flex;gap:11px;margin-bottom:16px}
+.msg .av{width:34px;height:34px;border-radius:9px;flex:none;display:grid;place-items:center;font-weight:700;font-size:13px;font-family:"Bricolage Grotesque"}
+.av.boss{background:linear-gradient(135deg,#3b3b57,#26263c);color:#c9cbef}
+.av.ovi{background:linear-gradient(135deg,var(--purple),var(--indigo));padding:5px}
+.av.ovi svg{width:100%;height:100%}
+.msg .body .name{font-size:13px;font-weight:700;margin-bottom:3px}
+.msg .body .name .badge-ai{font-family:"Space Mono",monospace;font-size:9.5px;letter-spacing:.1em;background:rgba(52,231,231,.14);color:var(--cyan);border:1px solid rgba(52,231,231,.3);padding:1px 6px;border-radius:5px;margin-left:7px;vertical-align:middle}
+.msg .body .name .t{color:var(--faint);font-weight:400;margin-left:6px;font-size:11px}
+.msg .body p{margin:0;font-size:14px;color:#dcdcec}
+.ovi-answer{background:linear-gradient(180deg,rgba(52,231,231,.06),rgba(139,92,246,.05));border:1px solid rgba(52,231,231,.22);border-radius:12px;padding:13px 15px;margin-top:6px}
+.metric-row{display:flex;gap:18px;margin:10px 0 4px}
+.metric{display:flex;flex-direction:column}
+.metric .n{font-family:"Bricolage Grotesque";font-weight:800;font-size:26px;line-height:1;color:#fff}
+.metric .n.up{color:var(--good)}
+.metric .l{font-size:11px;color:var(--muted);margin-top:4px;font-family:"Space Mono",monospace;letter-spacing:.04em}
+.spark{display:flex;align-items:flex-end;gap:4px;height:34px;margin-top:8px}
+.spark i{flex:1;background:linear-gradient(180deg,var(--cyan),var(--indigo));border-radius:3px 3px 0 0;opacity:.85}
+.act-row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.act{font-size:12px;font-family:"Space Mono",monospace;padding:6px 11px;border-radius:8px;background:var(--panel-2);border:1px solid var(--hair);color:#cdd0e6}
+.act.pri{background:linear-gradient(135deg,var(--purple),var(--indigo));border:none;color:#fff}
+.composer{display:flex;align-items:center;gap:9px;margin-top:6px;padding:11px 13px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid var(--hair)}
+.composer .txt{color:var(--faint);font-size:13px;flex:1}
+.composer .send{color:var(--cyan);font-family:"Space Mono",monospace;font-size:12px}
+
+/* lifecycle */
+.flow{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:34px}
+@media (max-width:860px){ .flow{grid-template-columns:repeat(2,1fr)} }
+.stage{position:relative}
+.stage .step{font-family:"Space Mono",monospace;font-size:12px;color:var(--cyan);letter-spacing:.1em}
+.stage h3{font-size:22px;margin:8px 0 8px}
+.stage .mod-tag{font-family:"Space Mono",monospace;font-size:11.5px;color:var(--purple-lo)}
+.stage p{margin:6px 0 0;color:var(--muted);font-size:14px}
+.stage .arrow{position:absolute;right:-11px;top:34px;color:var(--faint);z-index:3}
+@media (max-width:860px){ .stage .arrow{display:none} }
+
+/* stat band */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:34px}
+@media (max-width:760px){ .stats{grid-template-columns:1fr} }
+.stat .n{font-family:"Bricolage Grotesque";font-weight:800;font-size:clamp(34px,4vw,46px);line-height:1}
+.stat .n .grad2{background:linear-gradient(100deg,var(--cyan),var(--purple-lo));-webkit-background-clip:text;background-clip:text;color:transparent}
+.stat .l{color:var(--muted);margin-top:8px;font-size:14.5px}
+
+/* two-col list */
+.cols2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:30px}
+@media (max-width:760px){ .cols2{grid-template-columns:1fr} }
+.li{display:flex;gap:13px;align-items:flex-start}
+.li .ic{width:30px;height:30px;border-radius:8px;flex:none;display:grid;place-items:center;background:rgba(139,92,246,.16);border:1px solid rgba(139,92,246,.3);color:var(--purple-lo);font-weight:700;font-family:"Space Mono",monospace;font-size:13px}
+.li h3{font-size:17px;font-family:"Bricolage Grotesque";font-weight:700}
+.li p{margin:3px 0 0;color:var(--muted);font-size:14px}
+
+/* pricing */
+.tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:30px}
+@media (max-width:820px){ .tiers{grid-template-columns:1fr} }
+.tier{display:flex;flex-direction:column}
+.tier.hot{border-color:rgba(52,231,231,.4);background:linear-gradient(180deg,rgba(52,231,231,.06),var(--panel))}
+.tier .nm{font-family:"Space Mono",monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.tier .pr{font-family:"Bricolage Grotesque";font-weight:800;font-size:34px;margin:10px 0 2px}
+.tier .pr small{font-size:14px;color:var(--faint);font-weight:400;font-family:"Figtree"}
+.tier ul{list-style:none;padding:0;margin:14px 0 0;display:flex;flex-direction:column;gap:8px}
+.tier li{font-size:13.5px;color:var(--muted);padding-left:20px;position:relative}
+.tier li::before{content:"→";position:absolute;left:0;color:var(--cyan)}
+
+/* ask / use of funds */
+.ask-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:30px}
+@media (max-width:760px){ .ask-grid{grid-template-columns:1fr} }
+.fund{display:flex;flex-direction:column;gap:10px}
+.fund .row{display:flex;align-items:center;gap:12px}
+.fund .bar{flex:1;height:9px;border-radius:6px;background:rgba(255,255,255,.07);overflow:hidden}
+.fund .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--indigo),var(--cyan))}
+.fund .lab{font-size:13.5px;color:var(--ink);min-width:150px}
+.fund .pct{font-family:"Space Mono",monospace;font-size:12.5px;color:var(--muted);min-width:42px;text-align:right}
+
+/* close */
+.close{align-items:center;text-align:center}
+.close .rob-hero{width:clamp(96px,13vw,150px);margin-bottom:24px;filter:drop-shadow(0 20px 44px rgba(124,58,237,.5))}
+.close .big{font-family:"Bricolage Grotesque";font-weight:800;font-size:clamp(40px,7vw,84px);letter-spacing:-.02em}
+.close .contact{margin-top:26px;display:flex;gap:26px;flex-wrap:wrap;justify-content:center;font-family:"Space Mono",monospace;font-size:13px;color:var(--muted);letter-spacing:.06em}
+.close .contact span{color:var(--cyan)}
+</style>
+
+<!-- ===================== OVI MASCOT (reusable symbol) ===================== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <radialgradient id="silver" cx="38%" cy="30%" r="80%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="42%" stop-color="#e9e9f3"/>
+      <stop offset="78%" stop-color="#c2c2d6"/>
+      <stop offset="100%" stop-color="#9797b0"/>
+    </radialgradient>
+    <lineargradient id="helmet" x1="12%" y1="8%" x2="88%" y2="70%">
+      <stop offset="0%" stop-color="#9d6bff"/>
+      <stop offset="52%" stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#4338ca"/>
+    </lineargradient>
+    <radialgradient id="ball" cx="35%" cy="30%" r="75%">
+      <stop offset="0%" stop-color="#c4b0ff"/>
+      <stop offset="100%" stop-color="#6d28d9"/>
+    </radialgradient>
+    <lineargradient id="screen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#26283a"/>
+      <stop offset="100%" stop-color="#14151f"/>
+    </lineargradient>
+    <filter id="eyeglow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="2.4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <symbol id="ovi" viewBox="0 0 200 205">
+    <!-- antennae -->
+    <g stroke="#c9c9dc" stroke-width="4" stroke-linecap="round">
+      <line x1="72" y1="46" x2="58" y2="20"/>
+      <line x1="128" y1="46" x2="142" y2="20"/>
+    </g>
+    <circle cx="55" cy="16" r="9" fill="url(#ball)"/>
+    <circle cx="145" cy="16" r="9" fill="url(#ball)"/>
+    <!-- head sphere -->
+    <circle cx="100" cy="112" r="74" fill="url(#silver)"/>
+    <!-- side ears -->
+    <ellipse cx="28" cy="112" rx="11" ry="17" fill="#b9b9cf"/>
+    <ellipse cx="172" cy="112" rx="11" ry="17" fill="#b9b9cf"/>
+    <!-- helmet band (brow that wraps around the visor) -->
+    <path d="M100 38
+             a74 74 0 0 1 71 55
+             q-6 6 -16 6
+             q-4 -30 -30 -44
+             q-25 -13 -50 0
+             q-26 14 -30 44
+             q-10 0 -16 -6
+             a74 74 0 0 1 71 -55 Z" fill="url(#helmet)"/>
+    <!-- visor frame -->
+    <rect x="46" y="74" width="108" height="74" rx="24" fill="url(#helmet)"/>
+    <rect x="52" y="80" width="96" height="62" rx="19" fill="#d7d7e6"/>
+    <!-- screen -->
+    <rect x="58" y="85" width="84" height="52" rx="15" fill="url(#screen)"/>
+    <!-- happy cyan eyes -->
+    <g fill="none" stroke="#3af0f0" stroke-width="6.5" stroke-linecap="round" filter="url(#eyeglow)">
+      <path d="M74 118 q9 -16 18 0"/>
+      <path d="M108 118 q9 -16 18 0"/>
+    </g>
+  </symbol>
+</svg>
+
+<div class="brandmark">
+  <svg class="rob" viewBox="0 0 200 205"><use href="#ovi"/></svg>
+  <span><span class="t1">Tell</span><span class="o">O</span><span class="t2">vi</span></span>
+</div>
+
+<div class="deck" id="deck">
+
+  <!-- 1 · COVER -->
+  <section class="slide cover active">
+    <div class="slide-inner">
+      <svg class="rob-hero" viewBox="0 0 200 205"><use href="#ovi"/></svg>
+      <div class="wordmark"><span class="tell">Tell</span><span class="ovi-o">O</span><span class="ovi-vi">vi</span></div>
+      <div class="wm-rule"></div>
+      <div class="tag">The end-to-end AI platform that <b>runs your business</b>.</div>
+      <div class="foot">Investor Briefing · 2026 · Confidential</div>
+    </div>
+  </section>
+
+  <!-- 2 · PROBLEM -->
+  <section class="slide">
+    <div class="slide-inner">
+      <p class="eyebrow">The problem</p>
+      <h2 class="h2">Every growing business runs on <span class="grad">ten tools that don't talk</span> — and bolts AI on as a sidebar.</h2>
+      <div class="stack-cols">
+        <div>
+          <div class="chips-mess">
+            <span class="tool-chip x">CRM</span><span class="tool-chip x">Sales engagement</span>
+            <span class="tool-chip x">Email tool</span><span class="tool-chip x">BI dashboard</span>
+            <span class="tool-chip x">Meeting notes</span><span class="tool-chip x">Project tracker</span>
+            <span class="tool-chip x">Team chat</span><span class="tool-chip x">Spreadsheets</span>
+            <span class="tool-chip x">Data enrichment</span><span class="tool-chip x">Reporting deck</span>
+          </div>
+          <p class="lede">Data is siloed. Work is manual. The "AI" is a chatbot in the corner that can't touch any of it. Teams pay for ten seats and still do the joining-up by hand.</p>
+        </div>
+        <div class="card">
+          <div class="vs"><span class="word">TODAY</span><span class="line"></span></div>
+          <p style="margin:0;font-size:16px;color:var(--ink)">You <strong>operate</strong> software.</p>
+          <div class="vs"><span class="word">TELLOVI</span><span class="line"></span></div>
+          <p style="margin:0;font-size:16px;color:var(--ink)">Software <strong>operates for you.</strong></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 · WHAT WE ARE -->
+  <section class="slide">
+    <div class="slide-inner">
+      <p class="eyebrow">What we are</p>
+      <h2 class="h2">TellOvi is <span class="grad">one AI platform</span> for the entire revenue lifecycle.</h2>
+      <p class="lede">Not AI features stapled to old software. A system built <em>around</em> an AI operator that finds customers, works deals, closes revenue and delivers the work — reading and writing one shared source of truth the whole way through.</p>
+      <div class="flow">
+        <div class="stage"><div class="step">01</div><h3>Find</h3><p>Source and enrich the right prospects, automatically.</p><div class="arrow">→</div></div>
+        <div class="stage"><div class="step">02</div><h3>Engage</h3><p>Multichannel outreach that writes and sends itself.</p><div class="arrow">→</div></div>
+        <div class="stage"><div class="step">03</div><h3>Close</h3><p>Pipeline, follow-ups and forecasting, run for you.</p><div class="arrow">→</div></div>
+        <div class="stage"><div class="step">04</div><h3>Deliver</h3><p>Turn a won deal into a live project — no re-keying.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 · OVI = COMMAND -->
+  <section class="slide">
+    <div class="slide-inner">
+      <p class="eyebrow">The insight</p>
+      <h2 class="h2">The brand name is also the <span class="grad">command.</span></h2>
+      <p class="lede">You don't learn menus, tabs and settings. You just <strong>tell Ovi</strong> — in plain language — and it does the work across the whole platform. One operator, one interface, everything connected.</p>
+      <div class="cmd-list">
+        <span class="cmd"><span class="p">Ovi,</span> how many leads have we generated this week?</span>
+        <span class="cmd"><span class="p">Ovi,</span> draft the follow-ups for everyone who opened twice.</span>
+        <span class="cmd"><span class="p">Ovi,</span> who in the pipeline is about to go cold?</span>
+        <span class="cmd"><span class="p">Ovi,</span> build me the board report for Q3.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 · THE SUITE -->
+  <section class="slide">
+    <div class="slide-inner wide">
+      <p class="eyebrow">One brand · one operator · modular suite</p>
+      <h2 class="h2">Ovi runs every part of the business.</h2>
+      <div class="grid mods">
+        <div class="card mod"><span class="dot"></span><div class="badge"><span class="o">Ovi</span>CRM</div><p>Contacts, deals and pipeline that update themselves. Ovi logs the activity, spots the risk, tees up the next move.</p></div>
+        <div class="card mod"><span class="dot"></span><div class="badge"><span class="o">Ovi</span>Sales</div><p>Prospecting and outreach on autopilot — find, personalise and send across email and LinkedIn, then book the meeting.</p></div>
+        <div class="card mod"><span class="dot"></span><div class="badge"><span class="o">Ovi</span>Analytics</div><p>Ask for any number, any cut, any report — in words. Live answers and boardroom-ready charts, no dashboards to build.</p></div>
+        <div class="card mod"><span class="dot"></span><div class="badge">Ask <span class="o">Ovi</span></div><p>The always-on operator that sits over everything, answers instantly and takes action — including inside your team chat.</p></div>
+        <div class="card mod"><span class="dot"></span><div class="badge"><span class="o">Ovi</span>Deliver</div><p>A won deal becomes a live project — tasks, milestones and hand-off, generated the moment you close.</p></div>
+        <div class="card mod"><span class="dot"></span><div class="badge"><span class="o">Ovi</span>Teams</div><p>Internal messaging with Ovi <em>in</em> the conversation — the wedge that no legacy CRM can copy. →</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 · THE WEDGE: OVI IN TEAM CHAT (hero) -->
+  <section class="slide">
+    <div class="slide-inner wide">
+      <div class="chat-wrap">
+        <div>
+          <p class="eyebrow">The wedge · OviTeams</p>
+          <h2 class="h2">Ovi lives <span class="grad">inside your team chat.</span></h2>
+          <p class="lede">Your team already messages all day. Now Ovi is in the thread. Someone asks a question in plain English — Ovi answers with the <strong>real number</strong>, shows the chart, and offers to act. No app-switching, no analyst, no waiting.</p>
+          <div class="cmd-list" style="margin-top:20px">
+            <span class="cmd"><span class="p">→</span> Answers from live data, in the conversation</span>
+            <span class="cmd"><span class="p">→</span> Then <em>does</em> the thing — no context lost</span>
+          </div>
+        </div>
+
+        <div class="phone">
+          <div class="chan"><span class="hash">#</span><span class="nm">leadership</span><span class="who">3 online</span></div>
+
+          <div class="msg">
+            <div class="av boss">JD</div>
+            <div class="body">
+              <div class="name">Jordan (CEO) <span class="t">9:41</span></div>
+              <p>How many leads have we generated this week?</p>
+            </div>
+          </div>
+
+          <div class="msg">
+            <div class="av ovi"><svg viewBox="0 0 200 205"><use href="#ovi"/></svg></div>
+            <div class="body" style="flex:1">
+              <div class="name">Ovi <span class="badge-ai">AI</span> <span class="t">9:41</span></div>
+              <div class="ovi-answer">
+                <p style="margin:0 0 4px">This week you've generated <strong>184 leads</strong> — up 27% on last week.</p>
+                <div class="metric-row">
+                  <div class="metric"><span class="n">184</span><span class="l">leads · 7 days</span></div>
+                  <div class="metric"><span class="n up">+27%</span><span class="l">vs last week</span></div>
+                  <div class="metric"><span class="n">41</span><span class="l">MQLs</span></div>
+                </div>
+                <div class="spark"><i style="height:40%"></i><i style="height:55%"></i><i style="height:48%"></i><i style="height:70%"></i><i style="height:62%"></i><i style="height:85%"></i><i style="height:100%"></i></div>
+                <div class="act-row">
+                  <span class="act pri">Break down by source</span>
+                  <span class="act">Draft outreach to the 41 MQLs</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="composer"><span class="txt">Message #leadership… or just tell Ovi</span><span class="send">↵ send</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7 · ANSWERS + ACTS -->
+  <section class="slide">
+    <div class="slide-inner">
+      <p class="eyebrow">Not a chatbot</p>
+      <h2 class="h2">Ovi doesn't just answer. It <span class="grad">acts</span> — and shows its work.</h2>
+      <div class="cols2">
+        <div class="li"><div class="ic">1</div><div><h3>Reads everything</h3><p>One shared data spine across CRM, sales, delivery and comms — so an answer is always the real, current number.</p></div></div>
+        <div class="li"><div class="ic">2</div><div><h3>Takes the action</h3><p>Create tasks, draft and send follow-ups, start a project, pull a report — right where you asked, no hand-off.</p></div></div>
+        <div class="li"><div class="ic">3</div><div><h3>Works in the open</h3><p>Ovi streams each step — “found 41 · drafting · sending” — so the team can see and trust what it did.</p></div></div>
+        <div class="li"><div class="ic">4</div><div><h3>Stays in your flow</h3><p>Chat, CRM record, campaign or report — Ovi is the same operator everywhere, carrying full context.</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8 · WHY NOW -->
+  <section class="slide">
+    <div class="slide-inner">
+      <p class="eyebrow">Why now</p>
+      <h2 class="h2">The moment AI can <span class="grad">operate</span>, not just assist.</h2>
+      <div class="stats">
+        <div class="card stat"><div class="n">Models <span class="grad2">crossed the line</span></div><div class="l">Frontier models can now reliably chain tools and take multi-step action — the difference between a chatbot and an operator.</div></div>
+        <div class="card stat"><div class="n"><span class="grad2">10→1</span> tools</div><div class="l">Budgets are consolidating. Buyers want one system that does the work, not ten seats they stitch together by hand.</div></div>
+        <div class="card stat"><div class="n">RevOps <span class="grad2">for everyone</span></div><div class="l">Small teams can't hire analysts and SDRs. Ovi gives a five-person company an ops department in a text box.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9 · MARKET -->
+  <section class="slide">
+    <div class="slide-inner">
+      <p class="eyebrow">The opportunity</p>
+      <h2 class="h2">We replace the <span class="grad">whole stack</span>, not one box in it.</h2>
+      <p class="lede">TellOvi collapses four established software categories — and the manual glue between them — into a single AI operator. Each is a large market on its own; together they're the everyday operating system of a business.</p>
+      <div class="grid cols2" style="margin-top:26px">
+        <div class="card"><div class="mod"><div class="badge" style="color:var(--ink)">CRM</div><p>The system-of-record incumbents — where relationships and pipeline already live.</p></div></div>
+        <div class="card"><div class="mod"><div class="badge" style="color:var(--ink)">Sales engagement</div><p>Prospecting, outreach and enrichment — today a separate paid stack.</p></div></div>
+        <div class="card"><div class="mod"><div class="badge" style="color:var(--ink)">Analytics & BI</div><p>Dashboards and reporting — replaced by asking Ovi in words.</p></div></div>
+        <div class="card"><div class="mod"><div class="badge" style="color:var(--ink)">Internal comms</div><p>Team chat — our wedge, and the surface no CRM owns.</p></div></div>
+      </div>
+      <p style="margin-top:18px;font-family:'Space Mono',monospace;font-size:12px;color:var(--faint)">Combined serviceable market: <span class="ph">£[ TAM ]</span> — add your sized figure.</p>
+    </div>
+  </section>
+
+  <!-- 10 · BUSINESS MODEL -->
+  <section class="slide">
+    <div class="slide-inner">
+      <p class="eyebrow">Business model</p>
+      <h2 class="h2">Per-seat SaaS, expanding by <span class="grad">module and usage.</span></h2>
+      <div class="tiers">
+        <div class="card tier"><span class="nm">Starter</span><div class="pr">£<span class="ph">19</span><small>/seat·mo</small></div><ul><li>OviCRM + Ask Ovi</li><li>OviTeams chat</li><li>Core AI actions</li></ul></div>
+        <div class="card tier hot"><span class="nm">Growth · popular</span><div class="pr">£<span class="ph">49</span><small>/seat·mo</small></div><ul><li>Everything in Starter</li><li>OviSales + OviAnalytics</li><li>Higher AI action limits</li></ul></div>
+        <div class="card tier"><span class="nm">Scale</span><div class="pr">£<span class="ph">99</span><small>/seat·mo</small></div><ul><li>Full suite + OviDeliver</li><li>Priority AI + integrations</li><li>Admin, roles & audit</li></ul></div>
+      </div>
+      <p style="margin-top:20px" class="lede">Land with CRM + chat, expand across modules, and grow usage-based revenue as Ovi does more work. <span style="color:var(--faint);font-size:14px">Pricing shown is illustrative — set your live numbers.</span></p>
+    </div>
+  </section>
+
+  <!-- 11 · TRACTION -->
+  <section class="slide">
+    <div class="slide-inner">
+      <p class="eyebrow">Where we are</p>
+      <h2 class="h2">A <span class="grad">working product</span> — not a prototype.</h2>
+      <div class="cols2">
+        <div class="li"><div class="ic">✓</div><div><h3>Full product built</h3><p>Three connected workspaces — CRM, Sales/Reach and Delivery/Studio — live on one shared data spine today.</p></div></div>
+        <div class="li"><div class="ic">✓</div><div><h3>AI that acts, end to end</h3><p>Ovi creates tasks, drafts and sends outreach, runs designs and starts delivery — real actions, persisted.</p></div></div>
+        <div class="li"><div class="ic">✓</div><div><h3>Real integrations proven</h3><p>Live data integrations wired in and working — the plumbing for a genuine operator, not a demo shell.</p></div></div>
+        <div class="li"><div class="ic">→</div><div><h3>Next: the live AI backend</h3><p>Swapping the in-app engine for a hosted LLM backend and launching OviTeams — what this round funds.</p></div></div>
+      </div>
+      <div class="stats" style="margin-top:26px">
+        <div class="card stat"><div class="n"><span class="ph">[ X ]</span></div><div class="l">pilots / design partners</div></div>
+        <div class="card stat"><div class="n"><span class="ph">[ X ]</span></div><div class="l">on the waitlist</div></div>
+        <div class="card stat"><div class="n"><span class="ph">[ X ]</span></div><div class="l">early revenue / MRR</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 12 · THE ASK -->
+  <section class="slide">
+    <div class="slide-inner">
+      <p class="eyebrow">The ask</p>
+      <h2 class="h2">Raising <span class="grad">£<span class="ph">[ amount ]</span></span> to make Ovi live.</h2>
+      <div class="ask-grid">
+        <div>
+          <p class="lede" style="margin-top:6px">To ship the hosted AI backend, launch OviTeams, and turn our built product and early pilots into paying, expanding accounts over the next <span class="ph">[ 18 ]</span> months.</p>
+        </div>
+        <div class="card fund">
+          <div class="row"><span class="lab">Live AI backend + Ovi engine</span><span class="bar"><i style="width:40%"></i></span><span class="pct">40%</span></div>
+          <div class="row"><span class="lab">OviTeams + go-to-market</span><span class="bar"><i style="width:30%"></i></span><span class="pct">30%</span></div>
+          <div class="row"><span class="lab">Engineering hires</span><span class="bar"><i style="width:20%"></i></span><span class="pct">20%</span></div>
+          <div class="row"><span class="lab">Ops & runway buffer</span><span class="bar"><i style="width:10%"></i></span><span class="pct">10%</span></div>
+          <p style="margin:6px 0 0;font-size:12px;color:var(--faint);font-family:'Space Mono',monospace">Allocation illustrative — set your split.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 13 · CLOSE -->
+  <section class="slide close">
+    <div class="slide-inner">
+      <svg class="rob-hero" viewBox="0 0 200 205"><use href="#ovi"/></svg>
+      <div class="big">Just <span class="grad">tell Ovi.</span></div>
+      <p class="lede" style="margin:20px auto 0;text-align:center">The AI platform that runs the whole business — and answers your team from inside the chat.</p>
+      <div class="contact">
+        <div><span>web</span>&nbsp; tellovi.ai</div>
+        <div><span>contact</span>&nbsp; [ your email ]</div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- chrome -->
+<div class="hint">← / → to navigate</div>
+<nav class="nav">
+  <div class="arrows"><button id="prev" aria-label="Previous slide">‹</button><button id="next" aria-label="Next slide">›</button></div>
+  <div class="progress"><div class="fill" id="fill"></div></div>
+  <div class="counter" id="counter">01 / 13</div>
+</nav>
+
+<script>
+(function(){
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var i = 0, n = slides.length;
+  var fill = document.getElementById('fill');
+  var counter = document.getElementById('counter');
+  var prev = document.getElementById('prev');
+  var next = document.getElementById('next');
+  var pad = function(x){ return (x<10?'0':'')+x; };
+  var isStack = function(){ return window.matchMedia('(max-width:760px)').matches; };
+
+  function show(k){
+    i = Math.max(0, Math.min(n-1, k));
+    slides.forEach(function(s,idx){ s.classList.toggle('active', idx===i); });
+    fill.style.width = ((i+1)/n*100)+'%';
+    counter.textContent = pad(i+1)+' / '+pad(n);
+    prev.disabled = i===0; next.disabled = i===n-1;
+  }
+  function go(d){ if(isStack()) return; show(i+d); }
+
+  next.addEventListener('click', function(){ go(1); });
+  prev.addEventListener('click', function(){ go(-1); });
+  document.addEventListener('keydown', function(e){
+    if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown'){ e.preventDefault(); go(1); }
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){ e.preventDefault(); go(-1); }
+    else if(e.key==='Home'){ e.preventDefault(); show(0); }
+    else if(e.key==='End'){ e.preventDefault(); show(n-1); }
+  });
+  show(0);
+})();
+</script>

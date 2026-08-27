@@ -1,4 +1,4 @@
-/* Placeholder sample data for the Simplr CRM prototype.
+/* Placeholder sample data for the TellOvi CRM prototype.
    All figures are sample values; currency + relative dates are derived in the UI. */
 
 export type Health = 'Healthy' | 'At risk' | 'Stalled' | 'No next step'

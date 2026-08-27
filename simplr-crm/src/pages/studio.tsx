@@ -41,7 +41,7 @@ export function StudioOverview() {
 
   return (
     <>
-      <TopBar title="Simplr Studio" crumbs={['Overview']} actions={<Button variant="primary" icon={<Sun size={16} />} onClick={() => nav('/studio/design')}>New design</Button>} />
+      <TopBar title="TellOvi Studio" crumbs={['Overview']} actions={<Button variant="primary" icon={<Sun size={16} />} onClick={() => nav('/studio/design')}>New design</Button>} />
       <PageBody>
         <div className="rounded-card p-6 text-white relative overflow-hidden" style={{ background: 'linear-gradient(150deg,#1c3a72,#0c1b38)' }}>
           <div className="absolute inset-0" style={{ background: 'radial-gradient(80% 100% at 90% -10%, rgba(245,166,35,0.25), transparent 55%)' }} />

@@ -27,7 +27,7 @@ export function AiAssistant() {
           className="fixed bottom-6 right-6 z-[80] h-12 pl-3.5 pr-4 rounded-full bg-accent-gradient text-white shadow-primary flex items-center gap-2 font-semibold text-[13.5px] hover:brightness-[0.97] active:translate-y-px transition-all"
         >
           <Sparkle size={19} />
-          Ask Simplr AI
+          Ask TellOvi AI
         </button>
       )}
 
@@ -38,7 +38,7 @@ export function AiAssistant() {
             <div className="w-7 h-7 rounded-lg bg-accent-gradient text-white flex items-center justify-center shadow-primary">
               <Sparkle size={15} />
             </div>
-            <div className="text-[13.5px] font-bold text-ink flex-1">Simplr AI</div>
+            <div className="text-[13.5px] font-bold text-ink flex-1">TellOvi AI</div>
             <Link to="/ai" onClick={() => setOpen(false)} title="Open full chat" className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-2 hover:bg-control hover:text-ink-3">
               <Expand size={16} />
             </Link>

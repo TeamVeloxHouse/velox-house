@@ -87,7 +87,7 @@ export function Meetings() {
 
           <div className="px-7 py-4 border-b border-border bg-[#FBFCFF] flex items-center gap-3">
             <span className="w-9 h-9 rounded-[10px] bg-accent-gradient text-white flex items-center justify-center shadow-primary shrink-0"><Robot size={18} /></span>
-            <div className="flex-1"><div className="text-[13.5px] font-semibold text-ink-2">Simplr Notetaker</div><div className="text-[12px] text-muted-2">Joins the call, transcribes live, and writes notes + action items to {active.dealOrg}’s card.</div></div>
+            <div className="flex-1"><div className="text-[13.5px] font-semibold text-ink-2">TellOvi Notetaker</div><div className="text-[12px] text-muted-2">Joins the call, transcribes live, and writes notes + action items to {active.dealOrg}’s card.</div></div>
             <button onClick={() => act.toggleMeetingBot(active.id, active.bot)} className={classNames('w-11 h-6 rounded-full flex items-center px-0.5 transition-colors', active.bot ? 'bg-accent justify-end' : 'bg-input-border justify-start')}><span className="w-5 h-5 rounded-full bg-white shadow" /></button>
           </div>
 
@@ -164,7 +164,7 @@ function ScheduleMeetingModal({ open, onClose, onScheduled }: { open: boolean; o
       <Field label="Organisation / deal"><Input value={org} onChange={(e) => setOrg(e.target.value)} placeholder="Acme Ltd" /></Field>
       <label className="flex items-center gap-2.5 mt-1 cursor-pointer">
         <button type="button" onClick={() => setBot(!bot)} className={classNames('w-10 h-6 rounded-full flex items-center px-0.5 transition-colors', bot ? 'bg-accent justify-end' : 'bg-input-border justify-start')}><span className="w-5 h-5 rounded-full bg-white shadow" /></button>
-        <span className="text-[13px] text-ink-2">Simplr Notetaker joins &amp; summarises</span>
+        <span className="text-[13px] text-ink-2">TellOvi Notetaker joins &amp; summarises</span>
       </label>
     </Modal>
   )

@@ -39,7 +39,7 @@ export function StudioPricing() {
             <span className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center shrink-0"><Sparkle size={22} /></span>
             <div className="flex-1">
               <div className="text-[15px] font-bold">Build your calculator with AI</div>
-              <div className="text-[13px] mt-0.5" style={{ color: '#c3ccdb' }}>Upload your current price list or a recent quote — Simplr AI extracts your cost/kWp, adders and margins into the calculator below for you to review.</div>
+              <div className="text-[13px] mt-0.5" style={{ color: '#c3ccdb' }}>Upload your current price list or a recent quote — TellOvi AI extracts your cost/kWp, adders and margins into the calculator below for you to review.</div>
             </div>
             <button onClick={() => fileRef.current?.click()} className="h-9 px-4 rounded-lg text-white text-[13px] font-semibold flex items-center gap-1.5 shrink-0" style={{ background: 'linear-gradient(150deg,#F5A623,#E8721A)' }}><File size={15} /> Upload price list</button>
           </div>
@@ -82,7 +82,7 @@ export function StudioPricing() {
                 ))}
                 {cfg.finance.length === 0 && <div className="text-[12px] text-muted-2">No finance products yet — add your lender agreements.</div>}
               </div>
-              <div className="text-[11px] text-muted-3 mt-2.5 leading-snug">Finance is provided under your own lender agreements — Simplr just shows the payments. UK: displaying consumer finance may require FCA authorisation; take advice before going live.</div>
+              <div className="text-[11px] text-muted-3 mt-2.5 leading-snug">Finance is provided under your own lender agreements — TellOvi just shows the payments. UK: displaying consumer finance may require FCA authorisation; take advice before going live.</div>
             </div>
           </div>
 

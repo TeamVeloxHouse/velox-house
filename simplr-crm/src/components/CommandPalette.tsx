@@ -18,7 +18,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     const pItems: Item[] = people.map((p) => ({ id: p.id, group: 'People', label: p.name, sub: `${p.role} · ${p.org}`, icon: 'person', to: `/people/${p.id}` }))
     const oItems: Item[] = orgs.map((o) => ({ id: o.id, group: 'People', label: o.name, sub: o.industry, icon: 'org', to: '/organisations' }))
     const actions: Item[] = [
-      { id: 'a0', group: 'Actions', label: 'Ask Simplr AI', sub: 'Open your CRM copilot', icon: 'action', to: '/ai' },
+      { id: 'a0', group: 'Actions', label: 'Ask TellOvi AI', sub: 'Open your CRM copilot', icon: 'action', to: '/ai' },
       { id: 'a1', group: 'Actions', label: 'Go to pipeline', sub: 'Your deals board', icon: 'action', to: '/deals' },
       { id: 'a2', group: 'Actions', label: 'Add lead', sub: 'Log an inbound lead', icon: 'action', to: '/leads' },
       { id: 'a3', group: 'Actions', label: 'Meetings & notetaker', sub: 'Upcoming and recorded calls', icon: 'action', to: '/meetings' },
