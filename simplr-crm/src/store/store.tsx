@@ -4,7 +4,7 @@ import type { State, Deal, Person, Lead, Org, Activity, EmailMsg, Toast, ID } fr
 import { AI_MEMBER_ID, YOU_MEMBER_ID } from './types'
 import type { StageName } from '../data/mock'
 
-const KEY = 'simplr.state.v13'
+const KEY = 'simplr.state.v14'
 let idc = 1000
 export const uid = (p = 'x') => `${p}${Date.now().toString(36)}${idc++}`
 
@@ -27,6 +27,7 @@ type Action =
   | { type: 'ARCHIVE_LEAD'; id: ID }
   | { type: 'CONVERT_LEAD'; id: ID; deal: Deal; person: Person }
   | { type: 'ADD_ACTIVITY'; activity: Activity }
+  | { type: 'UPDATE_ACTIVITY'; id: ID; patch: Partial<Activity> }
   | { type: 'TOGGLE_ACTIVITY'; id: ID }
   | { type: 'SEND_EMAIL'; email: EmailMsg; activity?: Activity }
   | { type: 'MARK_READ'; id: ID }
@@ -185,8 +186,10 @@ function reducer(state: State, action: Action): State {
       }
     case 'ADD_ACTIVITY':
       return { ...state, activities: [action.activity, ...state.activities] }
+    case 'UPDATE_ACTIVITY':
+      return { ...state, activities: state.activities.map((a) => (a.id === action.id ? { ...a, ...action.patch } : a)) }
     case 'TOGGLE_ACTIVITY':
-      return { ...state, activities: state.activities.map((a) => (a.id === action.id ? { ...a, done: !a.done } : a)) }
+      return { ...state, activities: state.activities.map((a) => (a.id === action.id ? { ...a, done: !a.done, completedAt: !a.done ? Date.now() : undefined } : a)) }
     case 'SEND_EMAIL':
       return {
         ...state,
@@ -529,6 +532,12 @@ export function useActions() {
       return activity
     },
     toggleActivity: (id: ID) => dispatch({ type: 'TOGGLE_ACTIVITY', id }),
+    updateActivity: (id: ID, patch: Partial<Activity>, toastMsg?: string) => { dispatch({ type: 'UPDATE_ACTIVITY', id, patch }); if (toastMsg) toast(toastMsg) },
+    toggleSubtask: (id: ID, subId: ID) => {
+      const a = live.state?.activities.find((x) => x.id === id)
+      if (!a?.subtasks) return
+      dispatch({ type: 'UPDATE_ACTIVITY', id, patch: { subtasks: a.subtasks.map((s) => (s.id === subId ? { ...s, done: !s.done } : s)) } })
+    },
 
     sendEmail: (email: Omit<EmailMsg, 'id' | 'createdAt' | 'folder'> & { folder?: EmailMsg['folder'] }) => {
       const full: EmailMsg = { id: uid('em'), createdAt: Date.now(), folder: email.folder ?? 'sent', ...email }

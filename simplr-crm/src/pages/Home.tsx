@@ -8,7 +8,8 @@ import { useState_, useSelectors, useActions } from '../store/store'
 import { money, classNames } from '../lib/format'
 import { RoleDashboard } from '../components/RoleDashboards'
 import { ROLES, roleByKey } from '../lib/roles'
-import type { UserRole } from '../store/types'
+import { YOU_MEMBER_ID, type UserRole, type Activity } from '../store/types'
+import { isTask, bucketOf, isYesterday, fmtMins } from '../lib/tasks'
 
 export function Home() {
   const nav = useNavigate()
@@ -62,10 +63,53 @@ export function Home() {
           <button onClick={() => nav('/ai')} className="shrink-0 h-8 px-3 rounded-lg bg-white/10 hover:bg-white/15 text-white text-[12.5px] font-semibold flex items-center gap-1.5 transition-colors"><Sparkle size={14} /> Open TellOvi AI</button>
         </div>
 
+        {/* today's tasks — your daily to-do, straight on the dashboard */}
+        <TodayTasks />
+
         {/* the role's dashboard */}
         <RoleDashboard role={currentRole} />
       </PageBody>
     </>
+  )
+}
+
+function TodayTasks() {
+  const nav = useNavigate()
+  const { activities } = useState_()
+  const act = useActions()
+  const mine = (a: Activity) => (a.assigneeIds?.length ? a.assigneeIds.includes(YOU_MEMBER_ID) : a.who === 'Jordan Miles')
+  const tasks = activities.filter(isTask).filter(mine)
+  const today = tasks.filter((a) => !a.done && ['overdue', 'today'].includes(bucketOf(a))).sort((a, b) => (a.priority === 'High' ? -1 : 1))
+  const yesterday = tasks.filter(isYesterday)
+  const yDone = yesterday.filter((a) => a.done).length
+  const mins = today.reduce((s, a) => s + (a.estimateMins ?? 0), 0)
+
+  return (
+    <div className="bg-surface border border-border rounded-card overflow-hidden">
+      <div className="flex items-center gap-2.5 px-5 py-3 border-b border-divider">
+        <Check size={16} className="text-accent" />
+        <span className="text-[14px] font-semibold text-ink">Today’s tasks</span>
+        {mins > 0 && <span className="text-[12px] text-muted-2">· {fmtMins(mins)} planned</span>}
+        <button onClick={() => nav('/tasks')} className="ml-auto text-[12.5px] text-accent font-semibold">Open My Tasks →</button>
+      </div>
+      {today.length === 0 ? (
+        <div className="px-5 py-6 text-[13px] text-muted-b text-center">Nothing due today. {yDone > 0 ? `You cleared ${yDone} yesterday.` : ''} <button onClick={() => nav('/tasks')} className="text-accent font-medium">Add a task</button>.</div>
+      ) : (
+        <div className="divide-y divide-divider">
+          {today.slice(0, 6).map((a) => (
+            <div key={a.id} className="flex items-center gap-3 px-5 py-2.5 hover:bg-surface-tint cursor-pointer" onClick={() => nav('/tasks')}>
+              <button onClick={(e) => { e.stopPropagation(); act.toggleActivity(a.id) }} className="w-[18px] h-[18px] rounded-full border flex items-center justify-center shrink-0" style={{ borderColor: '#C3CBD8' }}>
+                {a.done && <Check size={11} className="text-positive" />}
+              </button>
+              <span className="text-[13px] text-ink-2 font-medium truncate flex-1">{a.subject}</span>
+              {a.priority === 'High' && <span className="text-[11px] font-semibold text-negative">High</span>}
+              {a.estimateMins ? <span className="text-[11.5px] text-muted-2 tabular-nums">{fmtMins(a.estimateMins)}</span> : null}
+              {bucketOf(a) === 'overdue' && <span className="text-[11px] font-semibold text-warning">Overdue</span>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 

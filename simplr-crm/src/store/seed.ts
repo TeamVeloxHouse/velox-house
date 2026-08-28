@@ -61,6 +61,45 @@ export function buildSeed(): State {
     { id: 'act11', type: 'task', subject: 'Chase PO', dealId: 'd6', personId: 'p6', due: '5 days overdue', done: false, priority: 'High', who: 'Marcus Webb', createdAt: days(5) },
     { id: 'act12', type: 'call', subject: 'Call · 12 min', dealId: 'd1', personId: 'p1', done: true, who: 'Jordan Miles', createdAt: hrs(2) },
     { id: 'act13', type: 'email', subject: 'Email opened', personId: 'p2', dealId: 'd9', done: true, who: 'System', createdAt: hrs(4) },
+    // ── richer tasks: assignees, time estimates, checklists, files, real due dates ──
+    {
+      id: 'act20', type: 'task', subject: 'Build the Cirrus proposal v4', body: 'Legal cleared the liability caps — rebuild the proposal with the phased rollout and the maintenance retainer as a line item.',
+      dealId: 'd9', personId: 'p2', due: 'Today', dueDate: isoDay(0), done: false, priority: 'High', who: 'Jordan Miles', createdAt: hrs(3), source: 'manual',
+      assigneeIds: [YOU_MEMBER_ID], estimateMins: 120,
+      subtasks: [
+        { id: 'st20a', label: 'Confirm final scope with Callum', done: true },
+        { id: 'st20b', label: 'Add phased-rollout pricing', done: false },
+        { id: 'st20c', label: 'Insert maintenance retainer line', done: false },
+        { id: 'st20d', label: 'Send to Dana for sign-off', done: false },
+      ],
+      files: [{ id: 'f20a', name: 'Cirrus-proposal-v3.pdf', kind: 'application/pdf' }, { id: 'f20b', name: 'liability-redlines.docx' }],
+    },
+    {
+      id: 'act21', type: 'meeting', subject: 'Joint legal walkthrough — Cirrus', body: 'Get both legal teams on a call to close the liability-cap wording.',
+      dealId: 'd9', personId: 'p2', due: 'Today', dueDate: isoDay(0), done: false, priority: 'High', who: 'Jordan Miles', createdAt: hrs(5), source: 'manual',
+      assigneeIds: [YOU_MEMBER_ID, 'tm-priya'], estimateMins: 60,
+    },
+    {
+      id: 'act22', type: 'task', subject: 'Prep Fenwick microgrid deck', dealId: 'd8', personId: 'p3', due: 'Tomorrow', dueDate: isoDay(1), done: false, priority: 'Medium', who: 'Jordan Miles', createdAt: hrs(7),
+      assigneeIds: [YOU_MEMBER_ID], estimateMins: 90,
+      subtasks: [{ id: 'st22a', label: 'Pull site survey numbers', done: false }, { id: 'st22b', label: 'Draw the single-line diagram', done: false }],
+    },
+    {
+      id: 'act23', type: 'task', subject: 'Chase Ashford revised quote', dealId: 'd7', personId: 'p4', due: 'Overdue', dueDate: isoDay(-2), done: false, priority: 'High', who: 'Jordan Miles', createdAt: days(2),
+      assigneeIds: [YOU_MEMBER_ID], estimateMins: 30,
+    },
+    {
+      id: 'act24', type: 'task', subject: 'Send Meridian the case study', dealId: 'd1', personId: 'p1', due: 'Yesterday', dueDate: isoDay(-1), done: true, who: 'Jordan Miles', createdAt: days(1), completedAt: days(1),
+      assigneeIds: [YOU_MEMBER_ID], estimateMins: 15,
+    },
+    {
+      id: 'act25', type: 'call', subject: 'Priya: qualify Harbour Logistics', dealId: 'd6', due: 'Today', dueDate: isoDay(0), done: false, priority: 'Medium', who: 'Priya Nair', createdAt: hrs(6),
+      assigneeIds: ['tm-priya'], estimateMins: 30,
+    },
+    {
+      id: 'act26', type: 'task', subject: 'Marcus: build Q3 renewals list', due: 'In 3 days', dueDate: isoDay(3), done: false, priority: 'Low', who: 'Marcus Webb', createdAt: hrs(9),
+      assigneeIds: ['tm-marcus'], estimateMins: 60,
+    },
   ]
 
   const emails: EmailMsg[] = [

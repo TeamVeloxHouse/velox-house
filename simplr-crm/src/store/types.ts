@@ -4,6 +4,9 @@ export type ID = string
 
 export type ActivityType = 'call' | 'meeting' | 'task' | 'email' | 'note' | 'change' | 'file'
 
+export interface TaskFile { id: ID; name: string; kind?: string; size?: number }
+export interface SubTask { id: ID; label: string; done: boolean }
+
 export interface Activity {
   id: ID
   type: ActivityType
@@ -12,12 +15,20 @@ export interface Activity {
   dealId?: ID
   personId?: ID
   orgId?: ID
+  jobId?: ID
   due?: string
+  dueDate?: string // ISO yyyy-mm-dd — the machine-readable due date (drives Today/Yesterday buckets)
   done: boolean
   priority?: 'High' | 'Medium' | 'Low'
   who: string
   createdAt: number // epoch ms
+  completedAt?: number // epoch ms — when it was ticked off
   source?: 'manual' | 'ai' | 'meeting' | 'email'
+  // ── richer task fields ──
+  assigneeIds?: ID[] // TeamMember ids this task is assigned to / shared with
+  estimateMins?: number // planned time
+  files?: TaskFile[]
+  subtasks?: SubTask[]
 }
 
 export interface ProjectMilestone { key: string; label: string; done: boolean; date?: string }

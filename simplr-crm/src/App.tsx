@@ -1,6 +1,7 @@
 import { createBrowserRouter } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { Home } from './pages/Home'
+import { MyTasks } from './pages/MyTasks'
 import { DealsBoard } from './pages/DealsBoard'
 import { DealDetail } from './pages/DealDetail'
 import { Leads } from './pages/Leads'
@@ -49,6 +50,7 @@ export const router = createBrowserRouter([
     element: <Layout />,
     children: [
       { index: true, element: <Home /> },
+      { path: 'tasks', element: <MyTasks /> },
       { path: 'ai', element: <TellOviAI /> },
       { path: 'team', element: <Team /> },
       { path: 'operations', element: <Operations /> },

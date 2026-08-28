@@ -14,6 +14,7 @@ type Group = { label: string; items: Item[] }
 const crmGroups: Group[] = [
   { label: 'Workspace', items: [
     { to: '/', icon: Grid, label: 'Home', end: true },
+    { to: '/tasks', icon: Check, label: 'My Tasks' },
     { to: '/team', icon: Users, label: 'Team' },
     { to: '/agents', icon: Robot, label: 'Agents' },
   ] },
@@ -31,7 +32,6 @@ const crmGroups: Group[] = [
     { to: '/meetings', icon: Video, label: 'Meetings' },
     { to: '/inbox', icon: Envelope, label: 'Sales Inbox' },
     { to: '/linkedin', icon: Person, label: 'LinkedIn' },
-    { to: '/campaigns', icon: Megaphone, label: 'Campaigns' },
     { to: '/automation', icon: Layers, label: 'Automation' },
   ] },
   { label: 'Operations', items: [
