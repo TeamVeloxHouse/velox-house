@@ -324,6 +324,9 @@ export interface Meeting {
   bot: boolean
   duration?: string
   processed?: boolean // action items pushed to card
+  inPerson?: boolean // an in-the-room recording (vs. an online call)
+  summary?: string // Ovi's post-meeting summary
+  tasksDished?: number // how many action items were sent to people
 }
 
 export interface Agent {
@@ -499,6 +502,7 @@ export interface TeamMember {
   bot?: boolean // TellOvi AI
   boss?: boolean // your manager
   you?: boolean // the current viewer
+  voiceEnrolled?: boolean // Ovi can recognise this person's voice in a room recording
 }
 
 export type ChannelKind = 'channel' | 'group' | 'dm'

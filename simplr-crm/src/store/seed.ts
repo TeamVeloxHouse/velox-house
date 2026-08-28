@@ -427,9 +427,9 @@ export function buildSeed(): State {
 
   // ── Team space — one internal chat + announcements board across every workspace ──
   const teamMembers: TeamMember[] = [
-    { id: YOU_MEMBER_ID, name: 'Jordan Miles', role: 'Account Executive', color: '#1D4ED8', status: 'online', you: true },
-    { id: 'tm-dana', name: 'Dana Okafor', role: 'CEO & Founder', color: '#B01B4F', status: 'online', boss: true },
-    { id: 'tm-priya', name: 'Priya Nair', role: 'Account Executive', color: '#0E9F6E', status: 'online' },
+    { id: YOU_MEMBER_ID, name: 'Jordan Miles', role: 'Account Executive', color: '#1D4ED8', status: 'online', you: true, voiceEnrolled: true },
+    { id: 'tm-dana', name: 'Dana Okafor', role: 'CEO & Founder', color: '#B01B4F', status: 'online', boss: true, voiceEnrolled: true },
+    { id: 'tm-priya', name: 'Priya Nair', role: 'Account Executive', color: '#0E9F6E', status: 'online', voiceEnrolled: true },
     { id: 'tm-marcus', name: 'Marcus Webb', role: 'Sales Lead', color: '#E8721A', status: 'away' },
     { id: 'tm-sofia', name: 'Sofia Reyes', role: 'Marketing', color: '#7C5CFF', status: 'dnd' },
     { id: 'tm-ryan', name: 'Ryan Cole', role: 'Lead Installer', color: '#0891B2', status: 'offline' },

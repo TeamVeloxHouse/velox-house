@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { TopBar } from '../components/TopBar'
 import { Button, Avatar, Chip } from '../components/ui'
-import { Plus, Video, Robot, Sparkle, Check, Waveform, Play, Note, Task, Envelope, Link as LinkIcon } from '../components/icons'
+import { Plus, Video, Robot, Sparkle, Check, Waveform, Play, Note, Task, Envelope, Link as LinkIcon, Mic } from '../components/icons'
 import { Modal, Field, Input, Select } from '../components/overlays'
 import { useState_, useActions } from '../store/store'
 import type { Meeting } from '../store/types'
@@ -42,7 +42,7 @@ export function Meetings() {
       <TopBar
         title="Meetings"
         crumbs={['AI notetaker']}
-        actions={<><Button icon={<LinkIcon size={16} />} onClick={() => act.toast('Manage connections in Settings', 'accent')}>Connections</Button><Button variant="primary" icon={<Plus size={16} />} onClick={() => setSchedOpen(true)}>Schedule</Button></>}
+        actions={<><Button icon={<LinkIcon size={16} />} onClick={() => act.toast('Manage connections in Settings', 'accent')}>Connections</Button><button onClick={() => nav('/meetings/live')} className="h-9 inline-flex items-center gap-2 px-3.5 rounded-control bg-[#B01B4F] text-white text-[13px] font-semibold shadow-primary hover:brightness-95 active:translate-y-px transition"><Mic size={16} /> Record live meeting</button><Button variant="primary" icon={<Plus size={16} />} onClick={() => setSchedOpen(true)}>Schedule</Button></>}
       />
       <ScheduleMeetingModal open={schedOpen} onClose={() => setSchedOpen(false)} onScheduled={(id) => setSel(id)} />
       <div className="flex-1 flex min-h-0">

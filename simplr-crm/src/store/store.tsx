@@ -4,7 +4,7 @@ import type { State, Deal, Person, Lead, Org, Activity, EmailMsg, Toast, ID } fr
 import { AI_MEMBER_ID, YOU_MEMBER_ID } from './types'
 import type { StageName } from '../data/mock'
 
-const KEY = 'simplr.state.v14'
+const KEY = 'simplr.state.v15'
 let idc = 1000
 export const uid = (p = 'x') => `${p}${Date.now().toString(36)}${idc++}`
 
@@ -87,6 +87,7 @@ type Action =
   | { type: 'REMOVE_JOB'; id: ID }
   | { type: 'ADD_TEAM_MESSAGE'; message: import('./types').TeamMessage }
   | { type: 'UPDATE_TEAM_MESSAGE'; id: ID; patch: Partial<import('./types').TeamMessage> }
+  | { type: 'UPDATE_TEAM_MEMBER'; id: ID; patch: Partial<import('./types').TeamMember> }
   | { type: 'ADD_TEAM_CHANNEL'; channel: import('./types').TeamChannel }
   | { type: 'MARK_CHANNEL_READ'; id: ID }
   | { type: 'ADD_ANNOUNCEMENT'; announcement: import('./types').Announcement }
@@ -341,6 +342,8 @@ function reducer(state: State, action: Action): State {
       }
     case 'UPDATE_TEAM_MESSAGE':
       return { ...state, teamMessages: state.teamMessages.map((m) => (m.id === action.id ? { ...m, ...action.patch } : m)) }
+    case 'UPDATE_TEAM_MEMBER':
+      return { ...state, teamMembers: state.teamMembers.map((m) => (m.id === action.id ? { ...m, ...action.patch } : m)) }
     case 'ADD_TEAM_CHANNEL':
       return { ...state, teamChannels: [...state.teamChannels, action.channel] }
     case 'MARK_CHANNEL_READ':
@@ -896,6 +899,10 @@ export function useActions() {
       return channel
     },
     markChannelRead: (id: ID) => dispatch({ type: 'MARK_CHANNEL_READ', id }),
+    trainVoice: (id: ID, name: string) => {
+      dispatch({ type: 'UPDATE_TEAM_MEMBER', id, patch: { voiceEnrolled: true } })
+      toast(`Voice trained — Ovi can now attribute ${name.split(' ')[0]}’s tasks`)
+    },
     postAnnouncement: (kind: import('./types').AnnouncementKind, title: string, body: string, value?: number) => {
       const a: import('./types').Announcement = { id: uid('an'), kind, title, body, authorId: YOU_MEMBER_ID, createdAt: Date.now(), value, cheers: [] }
       dispatch({ type: 'ADD_ANNOUNCEMENT', announcement: a })
