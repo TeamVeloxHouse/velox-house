@@ -29,6 +29,7 @@ export function DealDetail() {
   const [draft, setDraft] = useState('')
   const [lostOpen, setLostOpen] = useState(false)
   const [lostReason, setLostReason] = useState('Price')
+  const [delOpen, setDelOpen] = useState(false)
 
   if (!deal) {
     return (
@@ -65,6 +66,7 @@ export function DealDetail() {
         actions={
           <>
             <Button icon={<Note size={16} />} onClick={() => { setTab('Note'); document.getElementById('composer')?.focus() }}>Log activity</Button>
+            <Button onClick={() => setDelOpen(true)}>Delete</Button>
             <Button onClick={() => setLostOpen(true)}>Mark lost</Button>
             <Button variant="primary" color="#0E7C66" icon={<Check size={16} />} onClick={() => act.markWon(deal.id, deal.name)}>Mark won</Button>
           </>
@@ -223,6 +225,16 @@ export function DealDetail() {
             {['Price', 'Timing / budget frozen', 'Lost to competitor', 'No decision', 'Other'].map((r) => (<option key={r}>{r}</option>))}
           </Select>
         </Field>
+      </Modal>
+
+      <Modal
+        open={delOpen}
+        onClose={() => setDelOpen(false)}
+        title="Delete this deal?"
+        subtitle={deal.name}
+        footer={<><Button onClick={() => setDelOpen(false)}>Cancel</Button><Button variant="primary" color="#B01B4F" onClick={() => { act.removeDeal(deal.id, deal.name); nav('/deals') }}>Delete deal</Button></>}
+      >
+        <div className="text-[13px] text-muted-b leading-relaxed">This permanently removes <span className="font-semibold text-ink-2">{deal.name}</span> and its timeline ({timeline.length} {timeline.length === 1 ? 'entry' : 'entries'}). Contacts and the organisation are kept. To keep the deal for reporting, use <span className="font-medium">Mark lost</span> instead.</div>
       </Modal>
     </>
   )

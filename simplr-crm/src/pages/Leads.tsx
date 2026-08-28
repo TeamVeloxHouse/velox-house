@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useMemo, useEffect } from 'react'
 import { TopBar } from '../components/TopBar'
 import { Button, Segmented, Kpi, Avatar } from '../components/ui'
 import { Table, Row, Cell } from '../components/Table'
@@ -186,16 +186,124 @@ function NewLeadModal({ open, onClose, onCreate }: { open: boolean; onClose: () 
   )
 }
 
+/** Minimal RFC-4180-ish CSV/TSV parser: handles quoted fields, escaped quotes, and \r\n. */
+function parseDelimited(text: string): string[][] {
+  const rows: string[][] = []
+  let row: string[] = []
+  let field = ''
+  let inQ = false
+  const push = () => { row.push(field); field = '' }
+  const endRow = () => { push(); if (row.some((c) => c.trim() !== '')) rows.push(row); row = [] }
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i]
+    if (inQ) {
+      if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++ } else inQ = false }
+      else field += c
+    } else if (c === '"') inQ = true
+    else if (c === ',' || c === '\t') push()
+    else if (c === '\n') endRow()
+    else if (c === '\r') { if (text[i + 1] === '\n') i++; endRow() }
+    else field += c
+  }
+  if (field !== '' || row.length) endRow()
+  return rows.map((r) => r.map((c) => c.trim()))
+}
+
+type MapKey = 'name' | 'company' | 'role' | 'score'
+const HEADER_HINTS: Record<MapKey, string[]> = {
+  name: ['name', 'full name', 'contact', 'lead'],
+  company: ['company', 'organisation', 'organization', 'account', 'business'],
+  role: ['role', 'title', 'job', 'position'],
+  score: ['score', 'rating'],
+}
+
 function ImportLeadsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const act = useActions()
+  const fileRef = useRef<HTMLInputElement>(null)
   const [text, setText] = useState('')
-  const rows = text.split('\n').map((l) => l.split(/[,\t]/).map((c) => c.trim())).filter((c) => c[0])
-  const parsed = rows.map((c) => ({ name: c[0], company: c[1] || '—', role: c[2] || '', score: 65 }))
+  const [fileName, setFileName] = useState('')
+
+  const grid = useMemo(() => parseDelimited(text), [text])
+  // Treat the first row as a header if any cell matches a known column name.
+  const firstRowIsHeader = useMemo(() => {
+    if (grid.length < 2) return false
+    const all = Object.values(HEADER_HINTS).flat()
+    return grid[0].some((c) => all.some((hint) => c.toLowerCase().includes(hint)))
+  }, [grid])
+  const headers = firstRowIsHeader ? grid[0] : grid[0]?.map((_, i) => `Column ${i + 1}`) ?? []
+  const dataRows = firstRowIsHeader ? grid.slice(1) : grid
+
+  // Auto-map columns from the header, else fall back to position (0=name,1=company,2=role).
+  const autoMap = useMemo<Record<MapKey, number>>(() => {
+    const m: Record<MapKey, number> = { name: 0, company: 1, role: 2, score: -1 }
+    if (firstRowIsHeader) {
+      ;(Object.keys(HEADER_HINTS) as MapKey[]).forEach((k) => {
+        const idx = grid[0].findIndex((h) => HEADER_HINTS[k].some((hint) => h.toLowerCase().includes(hint)))
+        m[k] = idx
+      })
+    }
+    return m
+  }, [grid, firstRowIsHeader])
+  const [map, setMap] = useState<Record<MapKey, number>>(autoMap)
+  // Re-sync mapping whenever the parsed shape changes (new paste / new file).
+  const mapKey = `${headers.join('|')}·${firstRowIsHeader}`
+  useEffect(() => { setMap(autoMap) /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [mapKey])
+
+  const at = (row: string[], k: MapKey) => (map[k] >= 0 ? (row[map[k]] ?? '').trim() : '')
+  const parsed = dataRows
+    .map((r) => ({ name: at(r, 'name'), company: at(r, 'company') || '—', role: at(r, 'role'), score: Math.min(100, Math.max(0, Number(at(r, 'score')) || 65)) }))
+    .filter((p) => p.name)
+
+  function loadFile(f?: File) {
+    if (!f) return
+    const reader = new FileReader()
+    reader.onload = () => { setText(String(reader.result || '')); setFileName(f.name) }
+    reader.readAsText(f)
+  }
+
+  const cols = headers.length
+  const colOptions = [{ i: -1, label: '— none —' }, ...headers.map((h, i) => ({ i, label: h }))]
+
   return (
-    <Modal open={open} onClose={onClose} title="Import leads" subtitle="Paste rows as: Name, Company, Role — one per line"
-      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" onClick={() => { if (parsed.length) { act.bulkAddLeads(parsed); act.toast(`Imported ${parsed.length} lead${parsed.length === 1 ? '' : 's'}`); setText(''); onClose() } }}>Import {parsed.length || ''} lead{parsed.length === 1 ? '' : 's'}</Button></>}>
-      <Field label="Paste your list"><Textarea rows={7} value={text} onChange={(e) => setText(e.target.value)} placeholder={'Jane Smith, Acme Solar, Director\nTom Reyes, Sunhill Renewables, Ops Manager'} autoFocus /></Field>
-      <div className="text-[12px] text-muted-2">{parsed.length} row{parsed.length === 1 ? '' : 's'} detected. CSV file upload &amp; column mapping connect with the import backend.</div>
+    <Modal open={open} onClose={onClose} title="Import leads" width={620}
+      subtitle="Upload a CSV or paste rows — map the columns, then import"
+      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" onClick={() => { if (parsed.length) { act.bulkAddLeads(parsed, 'CSV import'); act.toast(`Imported ${parsed.length} lead${parsed.length === 1 ? '' : 's'}`); setText(''); setFileName(''); onClose() } }}>Import {parsed.length || ''} lead{parsed.length === 1 ? '' : 's'}</Button></>}>
+      <input ref={fileRef} type="file" accept=".csv,.tsv,.txt,text/csv" className="hidden" onChange={(e) => loadFile(e.target.files?.[0])} />
+      <button
+        onClick={() => fileRef.current?.click()}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => { e.preventDefault(); loadFile(e.dataTransfer.files?.[0]) }}
+        className="w-full rounded-control border border-dashed border-input-border bg-surface-tint hover:border-accent hover:bg-accent-wash/40 transition-colors py-4 flex flex-col items-center gap-1 text-center"
+      >
+        <Download size={18} className="text-accent rotate-180" />
+        <span className="text-[13px] font-medium text-ink-2">{fileName || 'Choose a CSV file or drag it here'}</span>
+        <span className="text-[11.5px] text-muted-2">Headers are detected automatically · or paste below</span>
+      </button>
+
+      <Field label="…or paste rows (CSV / TSV)"><Textarea rows={5} value={text} onChange={(e) => { setText(e.target.value); setFileName('') }} placeholder={'name, company, role\nJane Smith, Acme Solar, Director\nTom Reyes, Sunhill Renewables, Ops Manager'} /></Field>
+
+      {cols > 0 && (
+        <div className="rounded-control border border-border bg-surface p-3 flex flex-col gap-3">
+          <div className="text-[12px] font-semibold text-ink-3">Match your columns</div>
+          <div className="grid grid-cols-2 gap-2.5">
+            {(['name', 'company', 'role', 'score'] as MapKey[]).map((k) => (
+              <label key={k} className="flex items-center justify-between gap-2 text-[12.5px]">
+                <span className="text-muted-2 capitalize">{k}{k === 'name' ? ' *' : ''}</span>
+                <select value={map[k]} onChange={(e) => setMap((m) => ({ ...m, [k]: Number(e.target.value) }))} className="h-8 px-2 rounded-control border border-input-border bg-white text-[12.5px] text-ink-2 outline-none focus:border-accent max-w-[62%]">
+                  {colOptions.map((o) => (<option key={o.i} value={o.i}>{o.label}</option>))}
+                </select>
+              </label>
+            ))}
+          </div>
+          {parsed.length > 0 && (
+            <div className="text-[11.5px] text-muted-2 leading-relaxed border-t border-divider pt-2">
+              <span className="font-semibold text-ink-3">Preview:</span> {parsed.slice(0, 3).map((p) => `${p.name}${p.company !== '—' ? ` · ${p.company}` : ''}`).join('  •  ')}{parsed.length > 3 ? ` …+${parsed.length - 3} more` : ''}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="text-[12px] text-muted-2">{parsed.length} lead{parsed.length === 1 ? '' : 's'} ready to import{map.name < 0 ? ' — map the Name column first' : ''}.</div>
     </Modal>
   )
 }

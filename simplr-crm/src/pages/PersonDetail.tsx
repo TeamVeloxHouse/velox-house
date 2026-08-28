@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { TopBar } from '../components/TopBar'
 import { PageBody } from '../components/Page'
 import { Button, Avatar, Chip } from '../components/ui'
+import { Modal, Field, Select } from '../components/overlays'
 import { Note, Phone, Envelope, Plus, ChevronDown, Meeting, Task, Sparkle } from '../components/icons'
 import { useSelectors, useActions, useState_ } from '../store/store'
 import { RecordSummary, CompletenessMeter } from '../components/ai-widgets'
@@ -24,6 +25,9 @@ export function PersonDetail() {
   const [tab, setTab] = useState<(typeof composerTabs)[number]>('Note')
   const [draft, setDraft] = useState('')
   const [hist, setHist] = useState('All')
+  const [delOpen, setDelOpen] = useState(false)
+  const [mergeOpen, setMergeOpen] = useState(false)
+  const [mergeTarget, setMergeTarget] = useState('')
 
   if (!p) {
     return (<><TopBar title="People" /><PageBody><div className="text-muted-b">Contact not found. <button onClick={() => nav('/people')} className="text-accent font-semibold">Back to people</button>.</div></PageBody></>)
@@ -58,6 +62,8 @@ export function PersonDetail() {
               <div className="text-[12px] leading-tight"><div className="font-semibold text-ink-2">{p.owner}</div><div className="text-muted-2">Owner</div></div>
             </div>
             <Button icon={<Phone size={16} />} onClick={() => act.logActivity({ type: 'call', subject: `Call with ${p.name}`, personId: p.id, dealId: personDeals[0]?.id, done: true }, 'Call logged')}>Call</Button>
+            <Button onClick={() => { setMergeTarget(''); setMergeOpen(true) }}>Merge</Button>
+            <Button onClick={() => setDelOpen(true)}>Delete</Button>
             <Button variant="primary" icon={<Plus size={16} />} onClick={() => nav('/deals')}>Deal</Button>
           </>
         }
@@ -148,6 +154,32 @@ export function PersonDetail() {
           </div>
         </div>
       </PageBody>
+
+      <Modal
+        open={delOpen}
+        onClose={() => setDelOpen(false)}
+        title="Delete this contact?"
+        subtitle={p.name}
+        footer={<><Button onClick={() => setDelOpen(false)}>Cancel</Button><Button variant="primary" color="#B01B4F" onClick={() => { act.removePerson(p.id, p.name); nav('/people') }}>Delete contact</Button></>}
+      >
+        <div className="text-[13px] text-muted-b leading-relaxed">This removes <span className="font-semibold text-ink-2">{p.name}</span> and unlinks them from {personDeals.length} {personDeals.length === 1 ? 'deal' : 'deals'}. Those deals stay. If this is a duplicate, use <span className="font-medium">Merge</span> instead to keep the history.</div>
+      </Modal>
+
+      <Modal
+        open={mergeOpen}
+        onClose={() => setMergeOpen(false)}
+        title="Merge a duplicate into this contact"
+        subtitle={`Keep ${p.name} — fold another record's deals & history in`}
+        footer={<><Button onClick={() => setMergeOpen(false)}>Cancel</Button><Button variant="primary" onClick={() => { const t = people.find((x) => x.id === mergeTarget); if (!t) return; act.mergePeople(p.id, t.id, t.name); setMergeOpen(false) }}>Merge in</Button></>}
+      >
+        <Field label="Duplicate to merge in (it will be removed)">
+          <Select value={mergeTarget} onChange={(e) => setMergeTarget(e.target.value)}>
+            <option value="">Select a contact…</option>
+            {people.filter((x) => x.id !== p.id).map((x) => (<option key={x.id} value={x.id}>{x.name}{x.org ? ` · ${x.org}` : ''}</option>))}
+          </Select>
+        </Field>
+        <div className="text-[12px] text-muted-2 leading-relaxed">The selected contact's deals, notes and emails move onto <span className="font-medium text-ink-2">{p.name}</span>, then the duplicate is deleted. {p.name}'s own details win where both have a value.</div>
+      </Modal>
     </>
   )
 }

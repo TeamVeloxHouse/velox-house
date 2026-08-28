@@ -35,7 +35,10 @@ export function Organisations() {
   const [q, setQ] = useState('')
   const [fIndustry, setFIndustry] = useState('All')
   const [fRel, setFRel] = useState('All')
-  const template = '2fr 1.2fr 0.8fr 1fr 1fr 1fr 0.9fr'
+  const [delOrg, setDelOrg] = useState<Org | null>(null)
+  const [mergeOrg, setMergeOrg] = useState<Org | null>(null)
+  const [mergeTarget, setMergeTarget] = useState('')
+  const template = '2fr 1.1fr 0.7fr 0.9fr 0.9fr 0.9fr 0.9fr 0.8fr'
 
   const industries = [...new Set(orgs.map((o) => o.industry))].filter(Boolean).sort()
   const filtered = orgs.filter((o) => {
@@ -118,6 +121,7 @@ export function Organisations() {
             { key: 'won', header: 'Won lifetime', align: 'right' },
             { key: 'owner', header: 'Owner' },
             { key: 'rel', header: 'Relationship' },
+            { key: 'act', header: '' },
           ]}
           footer={<><span>{filtered.length} of {orgs.length} organisations</span></>}
         >
@@ -136,11 +140,44 @@ export function Organisations() {
               <Cell align="right" muted>{money(o.wonLifetime, { compact: true })}</Cell>
               <Cell muted>{o.owner}</Cell>
               <Cell><Chip tone={relTone[o.relationship]} dot>{o.relationship}</Chip></Cell>
+              <Cell>
+                <div className="flex items-center gap-1.5 justify-end">
+                  <button onClick={() => { setMergeTarget(''); setMergeOrg(o) }} className="text-[12px] font-medium text-muted-b hover:text-accent">Merge</button>
+                  <span className="text-muted-3">·</span>
+                  <button onClick={() => setDelOrg(o)} className="text-[12px] font-medium text-muted-b hover:text-[#B01B4F]">Delete</button>
+                </div>
+              </Cell>
             </Row>
           ))}
         </Table>
         )}
       </PageBody>
+
+      <Modal
+        open={!!delOrg}
+        onClose={() => setDelOrg(null)}
+        title="Delete this organisation?"
+        subtitle={delOrg?.name}
+        footer={<><Button onClick={() => setDelOrg(null)}>Cancel</Button><Button variant="primary" color="#B01B4F" onClick={() => { if (delOrg) act.removeOrg(delOrg.id, delOrg.name); setDelOrg(null) }}>Delete organisation</Button></>}
+      >
+        <div className="text-[13px] text-muted-b leading-relaxed">This removes the <span className="font-semibold text-ink-2">{delOrg?.name}</span> account. Its deals and contacts stay in your CRM and keep the company name. If it's a duplicate, use <span className="font-medium">Merge</span> to combine the records instead.</div>
+      </Modal>
+
+      <Modal
+        open={!!mergeOrg}
+        onClose={() => setMergeOrg(null)}
+        title="Merge a duplicate into this account"
+        subtitle={mergeOrg ? `Keep ${mergeOrg.name} — fold another account's deals & people in` : undefined}
+        footer={<><Button onClick={() => setMergeOrg(null)}>Cancel</Button><Button variant="primary" onClick={() => { const t = orgs.find((x) => x.id === mergeTarget); if (!mergeOrg || !t) return; act.mergeOrgs(mergeOrg.id, t.id, t.name); setMergeOrg(null) }}>Merge in</Button></>}
+      >
+        <Field label="Duplicate to merge in (it will be removed)">
+          <Select value={mergeTarget} onChange={(e) => setMergeTarget(e.target.value)}>
+            <option value="">Select an account…</option>
+            {orgs.filter((x) => x.id !== mergeOrg?.id).map((x) => (<option key={x.id} value={x.id}>{x.name}</option>))}
+          </Select>
+        </Field>
+        <div className="text-[12px] text-muted-2 leading-relaxed">The selected account's deals and people move onto <span className="font-medium text-ink-2">{mergeOrg?.name}</span>, its totals are added in, then the duplicate is removed.</div>
+      </Modal>
     </>
   )
 }

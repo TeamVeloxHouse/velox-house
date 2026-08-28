@@ -17,7 +17,12 @@ type Action =
   | { type: 'MOVE_STAGE'; id: ID; stage: StageName }
   | { type: 'MARK_WON'; id: ID }
   | { type: 'MARK_LOST'; id: ID; reason?: string }
+  | { type: 'REMOVE_DEAL'; id: ID }
   | { type: 'ADD_PERSON'; person: Person }
+  | { type: 'REMOVE_PERSON'; id: ID }
+  | { type: 'REMOVE_ORG'; id: ID }
+  | { type: 'MERGE_PERSON'; keepId: ID; dropId: ID }
+  | { type: 'MERGE_ORG'; keepId: ID; dropId: ID }
   | { type: 'ADD_LEAD'; lead: Lead }
   | { type: 'ARCHIVE_LEAD'; id: ID }
   | { type: 'CONVERT_LEAD'; id: ID; deal: Deal; person: Person }
@@ -118,8 +123,55 @@ function reducer(state: State, action: Action): State {
       return { ...state, deals: state.deals.map((d) => (d.id === action.id ? { ...d, won: true, lost: false, health: 'Healthy' } : d)) }
     case 'MARK_LOST':
       return { ...state, deals: state.deals.map((d) => (d.id === action.id ? { ...d, lost: true, won: false, lostReason: action.reason } : d)) }
+    case 'REMOVE_DEAL':
+      return {
+        ...state,
+        deals: state.deals.filter((d) => d.id !== action.id),
+        activities: state.activities.filter((a) => a.dealId !== action.id),
+        emails: state.emails.filter((e) => e.dealId !== action.id),
+      }
     case 'ADD_PERSON':
       return { ...state, people: [action.person, ...state.people] }
+    case 'REMOVE_PERSON':
+      return {
+        ...state,
+        people: state.people.filter((p) => p.id !== action.id),
+        // pull the contact off every deal it was linked to
+        deals: state.deals.map((d) => (d.personIds.includes(action.id) ? { ...d, personIds: d.personIds.filter((id) => id !== action.id) } : d)),
+        // drop notes that only belonged to this contact; keep deal-linked ones but unlink the person
+        activities: state.activities.filter((a) => !(a.personId === action.id && !a.dealId)).map((a) => (a.personId === action.id ? { ...a, personId: undefined } : a)),
+        emails: state.emails.filter((e) => !(e.personId === action.id && !e.dealId)).map((e) => (e.personId === action.id ? { ...e, personId: undefined } : e)),
+      }
+    case 'REMOVE_ORG':
+      return { ...state, orgs: state.orgs.filter((o) => o.id !== action.id) }
+    case 'MERGE_PERSON': {
+      const keep = state.people.find((p) => p.id === action.keepId)
+      const drop = state.people.find((p) => p.id === action.dropId)
+      if (!keep || !drop || keep.id === drop.id) return state
+      const labels = [...new Set([...keep.labels, ...drop.labels])]
+      return {
+        ...state,
+        people: state.people
+          .filter((p) => p.id !== action.dropId)
+          .map((p) => (p.id === action.keepId ? { ...p, labels, phone: p.phone || drop.phone, email: p.email || drop.email, role: p.role || drop.role, org: p.org || drop.org, custom: { ...drop.custom, ...p.custom } } : p)),
+        deals: state.deals.map((d) => (d.personIds.includes(action.dropId) ? { ...d, personIds: [...new Set(d.personIds.map((id) => (id === action.dropId ? action.keepId : id)))] } : d)),
+        activities: state.activities.map((a) => (a.personId === action.dropId ? { ...a, personId: action.keepId } : a)),
+        emails: state.emails.map((e) => (e.personId === action.dropId ? { ...e, personId: action.keepId } : e)),
+      }
+    }
+    case 'MERGE_ORG': {
+      const keep = state.orgs.find((o) => o.id === action.keepId)
+      const drop = state.orgs.find((o) => o.id === action.dropId)
+      if (!keep || !drop || keep.id === drop.id) return state
+      return {
+        ...state,
+        orgs: state.orgs
+          .filter((o) => o.id !== action.dropId)
+          .map((o) => (o.id === action.keepId ? { ...o, people: o.people + drop.people, openValue: o.openValue + drop.openValue, wonLifetime: o.wonLifetime + drop.wonLifetime } : o)),
+        deals: state.deals.map((d) => (d.orgId === action.dropId || d.org === drop.name ? { ...d, orgId: action.keepId, org: keep.name } : d)),
+        people: state.people.map((p) => (p.orgId === action.dropId || p.org === drop.name ? { ...p, orgId: action.keepId, org: keep.name } : p)),
+      }
+    }
     case 'ADD_LEAD':
       return { ...state, leads: [action.lead, ...state.leads] }
     case 'ARCHIVE_LEAD':
@@ -409,6 +461,7 @@ export function useActions() {
       toast(`“${name}” marked lost`, 'warning')
     },
     updateDeal: (id: ID, patch: Partial<Deal>) => dispatch({ type: 'UPDATE_DEAL', id, patch }),
+    removeDeal: (id: ID, name: string) => { dispatch({ type: 'REMOVE_DEAL', id }); toast(`Deal “${name}” deleted`, 'warning') },
 
     addPerson: (partial: Partial<Person> & { name: string }) => {
       const person: Person = {
@@ -426,6 +479,8 @@ export function useActions() {
       toast(`Contact “${person.name}” added`)
       return person
     },
+    removePerson: (id: ID, name: string) => { dispatch({ type: 'REMOVE_PERSON', id }); toast(`Contact “${name}” deleted`, 'warning') },
+    mergePeople: (keepId: ID, dropId: ID, dropName: string) => { dispatch({ type: 'MERGE_PERSON', keepId, dropId }); toast(`Merged “${dropName}” — duplicate removed & history kept`) },
 
     addLead: (partial: Partial<Lead> & { name: string; company: string }) => {
       const lead: Lead = {
@@ -611,6 +666,8 @@ export function useActions() {
       toast(`Organisation “${org.name}” added`)
       return org
     },
+    removeOrg: (id: ID, name: string) => { dispatch({ type: 'REMOVE_ORG', id }); toast(`Organisation “${name}” deleted`, 'warning') },
+    mergeOrgs: (keepId: ID, dropId: ID, dropName: string) => { dispatch({ type: 'MERGE_ORG', keepId, dropId }); toast(`Merged “${dropName}” — duplicate removed & deals kept`) },
     addMeeting: (partial: Partial<import('./types').Meeting> & { title: string }) => {
       const meeting: import('./types').Meeting = {
         id: uid('mt'), platform: 'Teams', when: 'Soon', dealOrg: '', attendees: [], status: 'upcoming', bot: true, ...partial,
@@ -733,8 +790,8 @@ export function useActions() {
       dispatch({ type: 'LI_UPDATE', id: t.id, patch: { status: 'accepted', kind: 'message', preview: 'Connected. Send a first message.' }, activity })
       toast(`Connected with ${t.name}`)
     },
-    bulkAddLeads: (rows: { name: string; company: string; role: string; score: number }[]) => {
-      const leads: Lead[] = rows.map((r) => ({ id: uid('l'), name: r.name, role: r.role, company: r.company, source: 'TellOvi AI', owner: 'Jordan Miles', created: 'Just now', createdAt: Date.now(), score: r.score }))
+    bulkAddLeads: (rows: { name: string; company: string; role: string; score: number }[], source = 'TellOvi AI') => {
+      const leads: Lead[] = rows.map((r) => ({ id: uid('l'), name: r.name, role: r.role, company: r.company, source, owner: 'Jordan Miles', created: 'Just now', createdAt: Date.now(), score: r.score }))
       dispatch({ type: 'BULK_ADD_LEADS', leads })
       return leads
     },

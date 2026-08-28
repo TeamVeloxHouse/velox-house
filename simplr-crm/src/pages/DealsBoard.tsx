@@ -328,7 +328,7 @@ function NewDealModal({ open, initialStage, onClose, orgs, onCreate }: { open: b
         <datalist id="org-list">{orgs.map((o) => (<option key={o.name} value={o.name} />))}</datalist>
       </Field>
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Value ($)"><Input type="number" value={value} onChange={(e) => setValue(e.target.value)} placeholder="0" /></Field>
+        <Field label="Value (£)"><Input type="number" value={value} onChange={(e) => setValue(e.target.value)} placeholder="0" /></Field>
         <Field label="Stage">
           <Select value={stage} onChange={(e) => setStage(e.target.value as StageName)}>
             {stages.map((s) => (<option key={s} value={s}>{s}</option>))}
