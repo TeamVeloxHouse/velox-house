@@ -9,7 +9,7 @@ import { classNames, initials, money } from '../lib/format'
 import { useState_, useActions } from '../store/store'
 import { AI_MEMBER_ID, YOU_MEMBER_ID } from '../store/types'
 import type { TeamAiBlock, TeamChannel, TeamMessage, TeamMember, Announcement, AnnouncementKind, TeamActionRef } from '../store/types'
-import { teamAnswer, wantsAi, type PlannedAction } from '../lib/teamAi'
+import { useTeamChat } from '../components/useTeamChat'
 
 /* ---------- small helpers ---------- */
 function ago(ts: number): string {
@@ -352,70 +352,11 @@ function AnnouncementsBoard() {
 
 /* ================= Channel chat ================= */
 function ChannelView({ channel }: { channel: TeamChannel }) {
-  const { teamMessages, teamMembers, deals } = useState_()
   const act = useActions()
   const scroller = useRef<HTMLDivElement>(null)
-  const busy = useRef(false)
-  const [work, setWork] = useState<{ steps: string[]; i: number } | null>(null)
-
-  const msgs = useMemo(() => teamMessages.filter((m) => m.channelId === channel.id).sort((a, b) => a.createdAt - b.createdAt), [teamMessages, channel.id])
-  const members = teamMembers.filter((m) => channel.memberIds.includes(m.id))
+  const { msgs, members, work, send, handle } = useTeamChat(channel)
 
   useEffect(() => { scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: 'smooth' }) }, [msgs.length, work])
-
-  // Execute an AI plan's concrete actions against the store (across every app).
-  function execute(actions: PlannedAction[] | undefined): TeamActionRef[] {
-    if (!actions) return []
-    return actions.map((a) => {
-      if (a.kind === 'deck') {
-        act.addBrandDoc({ title: a.label, kind: 'deck', format: 'pptx', source: 'template' })
-      } else if (a.kind === 'meeting') {
-        act.addMeeting({ title: 'Board / prep meeting', platform: 'Teams', when: 'Next week', status: 'upcoming' })
-      } else if (a.kind === 'task') {
-        if (/prep/i.test(a.label)) {
-          ;['Draft the board narrative', 'Pull Q3 pipeline & win figures', 'Design the deck & rehearse'].forEach((t, k) =>
-            act.addActivity({ type: 'task', subject: t, due: k === 0 ? 'Tomorrow' : 'This week', priority: 'High', who: 'TellOvi AI', source: 'ai' }))
-        } else if (/each/i.test(a.label)) {
-          const risk = deals.filter((d) => !d.won && !d.lost && (d.health === 'At risk' || d.health === 'Stalled' || d.health === 'No next step'))
-          risk.slice(0, 3).forEach((d) => act.addActivity({ type: 'task', subject: `Add a next step — ${d.org}`, dealId: d.id, personId: d.personIds[0], due: 'Tomorrow', priority: 'High', who: 'TellOvi AI', source: 'ai' }))
-        } else {
-          act.addActivity({ type: 'task', subject: 'Follow up', due: 'Tomorrow', priority: 'Medium', who: 'TellOvi AI', source: 'ai' })
-        }
-      }
-      return { kind: a.kind, label: a.label, to: a.to }
-    })
-  }
-
-  function runAi(sourceText: string) {
-    if (busy.current) return
-    busy.current = true
-    const plan = teamAnswer(sourceText)
-    setWork({ steps: plan.working, i: 0 })
-    let i = 0
-    const tick = () => {
-      setWork({ steps: plan.working, i })
-      setTimeout(() => {
-        i += 1
-        if (i < plan.working.length) tick()
-        else {
-          const refs = execute(plan.actions)
-          act.postAiMessage(channel.id, plan.text, plan.blocks, refs.length ? refs : undefined)
-          setWork(null)
-          busy.current = false
-        }
-      }, 620 + Math.random() * 380)
-    }
-    tick()
-  }
-
-  function send(text: string) {
-    act.postMessage(channel.id, text)
-    if (channel.ai && wantsAi(text, true)) setTimeout(() => runAi(text), 350)
-  }
-  function handle(msg: TeamMessage) {
-    act.markMessageHandled(msg.id)
-    runAi(msg.text)
-  }
 
   const kindLabel = channel.kind === 'dm' ? 'Direct message' : channel.kind === 'group' ? 'Group' : 'Channel'
   const heading = channel.kind === 'channel' ? `# ${channel.name}` : channel.name

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { Rail } from './Rail'
 import { CommandPalette } from './CommandPalette'
-import { AiAssistant } from './AiAssistant'
+import { Dock } from './Dock'
 import { Onboarding } from './Onboarding'
 import { Toaster } from './overlays'
 
@@ -32,7 +32,7 @@ export function Layout() {
         <Outlet context={{ openPalette: () => setPaletteOpen(true) }} />
       </div>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
-      <AiAssistant />
+      <Dock />
       <Onboarding />
       <Toaster />
     </div>
