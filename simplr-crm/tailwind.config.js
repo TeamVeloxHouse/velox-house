@@ -61,7 +61,7 @@ export default {
         modal: '0 30px 70px rgba(11,18,32,0.35)',
       },
       backgroundImage: {
-        'accent-gradient': 'linear-gradient(180deg,#3B6BF5 0%,#1D4ED8 100%)',
+        'accent-gradient': 'linear-gradient(135deg,#3B6BF5 0%,#7C3AED 100%)',
         'deep-panel': 'linear-gradient(158deg,#1C3A72 0%,#0C1B38 100%)',
         'kpi-blue': 'linear-gradient(180deg,#F4F8FF 0%,#FFFFFF 60%)',
       },

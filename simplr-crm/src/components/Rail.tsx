@@ -158,16 +158,18 @@ const deliveryGroups: Group[] = [
   ] },
 ]
 
+// One consistent highlight across every workspace — a blue→purple gradient, no per-workspace hues.
+const GRAD = 'linear-gradient(135deg,#3B6BF5 0%,#7C3AED 100%)'
 const workspaces = [
-  { id: 'crm', name: 'TellOvi CRM', desc: 'Pipeline & customers', to: '/', icon: Bars, grad: 'linear-gradient(180deg,#3B6BF5 0%,#1D4ED8 100%)', feature: undefined as FeatureKey | undefined },
-  { id: 'reach', name: 'TellOvi Reach', desc: 'Prospecting & outreach', to: '/reach', icon: Radar, grad: 'linear-gradient(180deg,#7C5CFF 0%,#5B29CC 100%)', feature: 'reach' as FeatureKey },
-  { id: 'studio', name: 'TellOvi Studio', desc: 'Design & proposals', to: '/studio', icon: Sun, grad: 'linear-gradient(180deg,#F5A623 0%,#E8721A 100%)', feature: 'studio' as FeatureKey },
-  { id: 'finance', name: 'TellOvi Finance', desc: 'Money & forecasting', to: '/finance', icon: Dollar, grad: 'linear-gradient(180deg,#10B981 0%,#0E7C66 100%)', feature: undefined as FeatureKey | undefined },
-  { id: 'operations', name: 'TellOvi Operations', desc: 'Scheduling & stock', to: '/operations', icon: Sliders, grad: 'linear-gradient(180deg,#64748B 0%,#334155 100%)', feature: undefined as FeatureKey | undefined },
-  { id: 'hr', name: 'TellOvi People', desc: 'HR & compliance', to: '/hr', icon: Person, grad: 'linear-gradient(180deg,#6366F1 0%,#4338CA 100%)', feature: undefined as FeatureKey | undefined },
-  { id: 'marketing', name: 'TellOvi Marketing', desc: 'Brand & content ops', to: '/marketing', icon: Megaphone, grad: 'linear-gradient(180deg,#F43F5E 0%,#BE123C 100%)', feature: undefined as FeatureKey | undefined },
-  { id: 'delivery', name: 'TellOvi Delivery', desc: 'Installs & handover', to: '/delivery', icon: Box, grad: 'linear-gradient(180deg,#06B6D4 0%,#0E7490 100%)', feature: undefined as FeatureKey | undefined },
-  { id: 'customers', name: 'TellOvi Customers', desc: 'Portals & aftercare', to: '/customers', icon: Sun, grad: 'linear-gradient(180deg,#14B8A6 0%,#0E7C66 100%)', feature: undefined as FeatureKey | undefined },
+  { id: 'crm', name: 'TellOvi CRM', desc: 'Pipeline & customers', to: '/', icon: Bars, grad: GRAD, feature: undefined as FeatureKey | undefined },
+  { id: 'reach', name: 'TellOvi Reach', desc: 'Prospecting & outreach', to: '/reach', icon: Radar, grad: GRAD, feature: 'reach' as FeatureKey },
+  { id: 'studio', name: 'TellOvi Studio', desc: 'Design & proposals', to: '/studio', icon: Sun, grad: GRAD, feature: 'studio' as FeatureKey },
+  { id: 'finance', name: 'TellOvi Finance', desc: 'Money & forecasting', to: '/finance', icon: Dollar, grad: GRAD, feature: undefined as FeatureKey | undefined },
+  { id: 'operations', name: 'TellOvi Operations', desc: 'Scheduling & stock', to: '/operations', icon: Sliders, grad: GRAD, feature: undefined as FeatureKey | undefined },
+  { id: 'hr', name: 'TellOvi People', desc: 'HR & compliance', to: '/hr', icon: Person, grad: GRAD, feature: undefined as FeatureKey | undefined },
+  { id: 'marketing', name: 'TellOvi Marketing', desc: 'Brand & content ops', to: '/marketing', icon: Megaphone, grad: GRAD, feature: undefined as FeatureKey | undefined },
+  { id: 'delivery', name: 'TellOvi Delivery', desc: 'Installs & handover', to: '/delivery', icon: Box, grad: GRAD, feature: undefined as FeatureKey | undefined },
+  { id: 'customers', name: 'TellOvi Customers', desc: 'Portals & aftercare', to: '/customers', icon: Sun, grad: GRAD, feature: undefined as FeatureKey | undefined },
 ]
 
 // Path prefix → workspace id (longest-specific first; CRM is the fallback).
@@ -179,9 +181,10 @@ const groupsById: Record<string, Group[]> = {
   crm: crmGroups, reach: reachGroups, studio: studioGroups,
   finance: financeGroups, operations: opsGroups, hr: hrGroups, marketing: marketingGroups, delivery: deliveryGroups, customers: customersGroups,
 }
+// Same subtle active tint for every workspace — no per-workspace colour.
 const activeFillById: Record<string, string> = {
-  crm: 'bg-white/10', reach: 'bg-[#5B29CC]/25', studio: 'bg-[#E8721A]/30',
-  finance: 'bg-[#0E7C66]/35', operations: 'bg-white/10', hr: 'bg-[#4338CA]/40', marketing: 'bg-[#BE123C]/30', delivery: 'bg-[#0E7490]/40', customers: 'bg-[#0E7C66]/35',
+  crm: 'bg-[#7C3AED]/25', reach: 'bg-[#7C3AED]/25', studio: 'bg-[#7C3AED]/25',
+  finance: 'bg-[#7C3AED]/25', operations: 'bg-[#7C3AED]/25', hr: 'bg-[#7C3AED]/25', marketing: 'bg-[#7C3AED]/25', delivery: 'bg-[#7C3AED]/25', customers: 'bg-[#7C3AED]/25',
 }
 
 function itemClasses(expanded: boolean, accent: string) {
@@ -284,7 +287,7 @@ export function Rail() {
 
       {/* featured: Reach AI operator (Reach only) */}
       {isReach && (
-        <NavLink to="/reach/ai" title={expanded ? undefined : 'Reach AI'} className={({ isActive }) => classNames('group relative flex items-center mb-3 transition-all duration-150', expanded ? 'h-10 rounded-[10px] px-2.5 gap-3' : 'w-11 h-11 rounded-[12px] justify-center', isActive ? 'text-white shadow-primary' : 'text-white bg-white/[0.06] hover:bg-white/10 ring-1 ring-inset ring-white/10')} style={({ isActive }) => (isActive ? { background: 'linear-gradient(180deg,#7C5CFF 0%,#5B29CC 100%)' } : {})}>
+        <NavLink to="/reach/ai" title={expanded ? undefined : 'Reach AI'} className={({ isActive }) => classNames('group relative flex items-center mb-3 transition-all duration-150', expanded ? 'h-10 rounded-[10px] px-2.5 gap-3' : 'w-11 h-11 rounded-[12px] justify-center', isActive ? 'bg-accent-gradient text-white shadow-primary' : 'text-white bg-white/[0.06] hover:bg-white/10 ring-1 ring-inset ring-white/10')}>
           <Sparkle size={19} className="shrink-0" />
           {expanded && <span className="text-[13.5px] font-semibold flex-1 truncate">Reach AI</span>}
           {expanded && <span className="eyebrow text-[9px] bg-white/20 rounded px-1.5 py-0.5">Operator</span>}
