@@ -728,10 +728,23 @@ export interface MarketingConnector {
   note?: string
 }
 
+// ── Editable dashboard widgets (build-your-own, computed live from deals) ──
+export type WidgetMetric = 'open' | 'weighted' | 'won' | 'count'
+export type WidgetGroup = 'stage' | 'owner' | 'health'
+export type WidgetChart = 'bar' | 'donut' | 'table'
+export interface DashboardWidget {
+  id: ID
+  title: string
+  metric: WidgetMetric
+  groupBy: WidgetGroup
+  chart: WidgetChart
+}
+
 export interface State {
   deals: Deal[]
   pipelines: Pipeline[]
   activePipelineId: ID
+  dashboardWidgets: DashboardWidget[]
   people: Person[]
   orgs: Org[]
   leads: Lead[]

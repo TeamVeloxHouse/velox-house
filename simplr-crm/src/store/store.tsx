@@ -23,6 +23,9 @@ type Action =
   | { type: 'MARK_WON'; id: ID }
   | { type: 'MARK_LOST'; id: ID; reason?: string }
   | { type: 'REMOVE_DEAL'; id: ID }
+  | { type: 'ADD_WIDGET'; widget: import('./types').DashboardWidget }
+  | { type: 'REMOVE_WIDGET'; id: ID }
+  | { type: 'REORDER_WIDGETS'; widgets: import('./types').DashboardWidget[] }
   | { type: 'ADD_PIPELINE'; pipeline: import('./types').Pipeline }
   | { type: 'UPDATE_PIPELINE'; id: ID; patch: Partial<import('./types').Pipeline> }
   | { type: 'REMOVE_PIPELINE'; id: ID; reassignTo: ID }
@@ -149,6 +152,12 @@ function reducer(state: State, action: Action): State {
         activities: state.activities.filter((a) => a.dealId !== action.id),
         emails: state.emails.filter((e) => e.dealId !== action.id),
       }
+    case 'ADD_WIDGET':
+      return { ...state, dashboardWidgets: [...state.dashboardWidgets, action.widget] }
+    case 'REMOVE_WIDGET':
+      return { ...state, dashboardWidgets: state.dashboardWidgets.filter((w) => w.id !== action.id) }
+    case 'REORDER_WIDGETS':
+      return { ...state, dashboardWidgets: action.widgets }
     case 'ADD_PIPELINE':
       return { ...state, pipelines: [...state.pipelines, action.pipeline] }
     case 'UPDATE_PIPELINE':
@@ -534,6 +543,14 @@ export function useActions() {
     },
     updateDeal: (id: ID, patch: Partial<Deal>) => dispatch({ type: 'UPDATE_DEAL', id, patch }),
     removeDeal: (id: ID, name: string) => { dispatch({ type: 'REMOVE_DEAL', id }); toast(`Deal “${name}” deleted`, 'warning') },
+
+    // ── Editable dashboard widgets ──
+    addWidget: (w: Omit<import('./types').DashboardWidget, 'id'>) => {
+      dispatch({ type: 'ADD_WIDGET', widget: { ...w, id: uid('w') } })
+      toast(`“${w.title}” added to your dashboard`)
+    },
+    removeWidget: (id: ID) => dispatch({ type: 'REMOVE_WIDGET', id }),
+    reorderWidgets: (widgets: import('./types').DashboardWidget[]) => dispatch({ type: 'REORDER_WIDGETS', widgets }),
 
     // ── Configurable pipelines ──
     setActivePipeline: (id: ID) => dispatch({ type: 'SET_ACTIVE_PIPELINE', id }),

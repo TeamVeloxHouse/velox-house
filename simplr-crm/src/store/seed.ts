@@ -646,5 +646,12 @@ export function buildSeed(): State {
   const pipelines = [defaultPipeline]
   const activePipelineId = 'pipe-default'
 
-  return { deals, pipelines, activePipelineId, people, orgs, leads, activities, emails, inboxAutoReply: 'off' as const, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, linkedinThreads, enrolments, reachCampaigns, scheduledTasks, studioConfig, projects, playbooks, brandKit, docTemplates, brandDocs, products: mProducts, documents, emailCampaigns, customFields, activeTrade, features, onboarded: false, engineers, jobs, currentRole: 'owner', teamMembers, teamChannels, teamMessages, announcements, employees, leaveRequests, policies, certifications, expenses, stock, reviews, brandAssets, messaging, mediaAssets, contentItems, mktRequests, mktConnectors, toasts: [], railExpanded: true }
+  const dashboardWidgets: import('./types').DashboardWidget[] = [
+    { id: 'w1', title: 'Open value by stage', metric: 'open', groupBy: 'stage', chart: 'bar' },
+    { id: 'w2', title: 'Weighted value by owner', metric: 'weighted', groupBy: 'owner', chart: 'bar' },
+    { id: 'w3', title: 'Deals by stage', metric: 'count', groupBy: 'stage', chart: 'donut' },
+    { id: 'w4', title: 'Won value by owner', metric: 'won', groupBy: 'owner', chart: 'table' },
+  ]
+
+  return { deals, pipelines, activePipelineId, dashboardWidgets, people, orgs, leads, activities, emails, inboxAutoReply: 'off' as const, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, linkedinThreads, enrolments, reachCampaigns, scheduledTasks, studioConfig, projects, playbooks, brandKit, docTemplates, brandDocs, products: mProducts, documents, emailCampaigns, customFields, activeTrade, features, onboarded: false, engineers, jobs, currentRole: 'owner', teamMembers, teamChannels, teamMessages, announcements, employees, leaveRequests, policies, certifications, expenses, stock, reviews, brandAssets, messaging, mediaAssets, contentItems, mktRequests, mktConnectors, toasts: [], railExpanded: true }
 }
