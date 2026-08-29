@@ -646,6 +646,41 @@ export function buildSeed(): State {
   const pipelines = [defaultPipeline]
   const activePipelineId = 'pipe-default'
 
+  // ── Customer portals + analytics + resource library ──
+  const portals: import('./types').CustomerPortal[] = [
+    { id: 'cp1', dealId: 'd3', customer: 'Dana Kirk', email: 'dana@brightleaf.com', address: '14 Brightleaf Way, Manchester', systemKwp: 8.2, systemCost: 11480, annualSavings: 1420, installDate: isoDay(-40), status: 'active', invitedAt: days(45), lastActiveAt: hrs(3) },
+    { id: 'cp2', dealId: 'd1', customer: 'Elena Voss', email: 'elena@meridianpower.com', address: '8 Meridian Road, Leeds', systemKwp: 6.4, systemCost: 9200, annualSavings: 1090, status: 'active', invitedAt: days(9), lastActiveAt: hrs(26) },
+    { id: 'cp3', dealId: 'd9', customer: 'Callum Reed', email: 'callum@cirrus.io', address: 'Cirrus DC, Warrington', systemKwp: 24, systemCost: 31200, annualSavings: 4180, status: 'invited', invitedAt: hrs(20) },
+  ]
+  let _pe = 0
+  const ev = (portalId: string, section: string, label: string, kind: import('./types').PortalEventKind, at: number, dwellMs?: number): import('./types').PortalEvent => ({ id: `pe${++_pe}`, portalId, section, label, kind, at, dwellMs })
+  const portalEvents: import('./types').PortalEvent[] = [
+    ev('cp1', 'Ask Ovi', 'Logged in', 'login', hrs(3)),
+    ev('cp1', 'Proposal', 'System design & savings', 'view', hrs(3), 254_000),
+    ev('cp1', 'Energy', 'Live generation', 'view', hrs(3), 132_000),
+    ev('cp1', 'Documents', 'Handover certificate', 'download', hrs(3), 0),
+    ev('cp1', 'Resources', 'Using the monitoring app', 'video', days(2), 96_000),
+    ev('cp1', 'Ask Ovi', '“How do I read my export figures?”', 'chat', days(2)),
+    ev('cp1', 'Resources', 'Tesla Powerwall — manual', 'view', days(5), 210_000),
+    ev('cp2', 'Proposal', 'System design & savings', 'view', hrs(26), 188_000),
+    ev('cp2', 'Proposal', 'Payment & finance options', 'click', hrs(26), 61_000),
+    ev('cp2', 'Documents', 'Your proposal (PDF)', 'download', hrs(26), 0),
+    ev('cp2', 'Ask Ovi', '“What happens on install day?”', 'chat', hrs(25)),
+    ev('cp2', 'Energy', 'Projected savings', 'view', hrs(25), 74_000),
+    ev('cp3', 'Proposal', 'System design & savings', 'view', hrs(20), 143_000),
+    ev('cp3', 'Ask Ovi', 'Logged in', 'login', hrs(20)),
+  ]
+  const portalResources: import('./types').PortalResource[] = [
+    { id: 'pr1', type: 'video', title: 'Welcome to your solar system', desc: 'A 3-minute tour of your new system and what to expect.', duration: '3:12', global: true },
+    { id: 'pr2', type: 'video', title: 'Using the monitoring app', desc: 'Track generation, usage and savings from your phone.', duration: '4:48', global: true },
+    { id: 'pr3', type: 'case-study', title: 'Brightleaf Farms — 62% off their bills', desc: 'How an 8.2 kWp system with battery transformed a working farm’s energy costs.', global: true },
+    { id: 'pr4', type: 'guide', title: 'Getting the most from your battery', desc: 'Charge on cheap overnight rates, run the house on stored solar by day.', content: 'To maximise savings, set your battery to charge during your off-peak window (typically 00:30–04:30). Use the app’s schedule tab. In summer, leave 20% headroom so the battery can soak up midday solar. In winter, prioritise grid-charging overnight on a cheap tariff.', global: true },
+    { id: 'pr5', type: 'manual', title: 'Tesla Powerwall — owner’s manual', manufacturer: 'Tesla', desc: 'Install, operation and troubleshooting for the Powerwall battery.', content: 'TROUBLESHOOTING. If the Powerwall shows a red light or the app reports it is offline: 1) Check the Powerwall is switched on — the ON/OFF switch is on the side of the unit; flip it to ON and wait 60 seconds. 2) Restart the Gateway: turn the grid isolator off for 30 seconds, then back on. 3) Re-connect Wi-Fi in the Tesla app under Settings → Network. 4) If it still shows offline after 5 minutes, the system is likely fine and just needs a Gateway reboot; if the red light persists, contact your installer. A flashing green light means it is charging normally.', global: true },
+    { id: 'pr6', type: 'manual', title: 'SolarEdge inverter — quick guide', manufacturer: 'SolarEdge', desc: 'Reading the display, error codes and resets.', content: 'ERROR CODES. Error 18xx (AC voltage) usually clears itself when the grid stabilises. To reset the inverter: switch the ON/OFF/P switch to OFF, wait for the screen to power down, then back to ON. A steady green LED means normal production; a red LED indicates a fault — note the code on the display and share it with your installer.', global: true },
+    { id: 'pr7', type: 'manual', title: 'GivEnergy battery — maintenance', manufacturer: 'GivEnergy', desc: 'Keeping your battery healthy year-round.', content: 'Keep the area around the battery clear and ventilated. Update firmware via the portal when prompted. If the battery stops charging, check the breaker and the app’s system status page before calling out an engineer.', global: true },
+    { id: 'pr8', type: 'manual', title: 'Your Powerwall guide', manufacturer: 'Tesla', desc: 'Personalised for your install.', content: 'Your system pairs a Tesla Powerwall with a SolarEdge inverter. See the Tesla and SolarEdge manuals for troubleshooting. Your installer commissioned the system on your handover date.', global: false, portalId: 'cp1' },
+  ]
+
   const dashboardWidgets: import('./types').DashboardWidget[] = [
     { id: 'w1', title: 'Open value by stage', metric: 'open', groupBy: 'stage', chart: 'bar' },
     { id: 'w2', title: 'Weighted value by owner', metric: 'weighted', groupBy: 'owner', chart: 'bar' },
@@ -653,5 +688,5 @@ export function buildSeed(): State {
     { id: 'w4', title: 'Won value by owner', metric: 'won', groupBy: 'owner', chart: 'table' },
   ]
 
-  return { deals, pipelines, activePipelineId, dashboardWidgets, people, orgs, leads, activities, emails, inboxAutoReply: 'off' as const, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, linkedinThreads, enrolments, reachCampaigns, scheduledTasks, studioConfig, projects, playbooks, brandKit, docTemplates, brandDocs, products: mProducts, documents, emailCampaigns, customFields, activeTrade, features, onboarded: false, engineers, jobs, currentRole: 'owner', teamMembers, teamChannels, teamMessages, announcements, employees, leaveRequests, policies, certifications, expenses, stock, reviews, brandAssets, messaging, mediaAssets, contentItems, mktRequests, mktConnectors, toasts: [], railExpanded: true }
+  return { deals, pipelines, activePipelineId, dashboardWidgets, portals, portalEvents, portalResources, people, orgs, leads, activities, emails, inboxAutoReply: 'off' as const, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, linkedinThreads, enrolments, reachCampaigns, scheduledTasks, studioConfig, projects, playbooks, brandKit, docTemplates, brandDocs, products: mProducts, documents, emailCampaigns, customFields, activeTrade, features, onboarded: true, engineers, jobs, currentRole: 'owner', teamMembers, teamChannels, teamMessages, announcements, employees, leaveRequests, policies, certifications, expenses, stock, reviews, brandAssets, messaging, mediaAssets, contentItems, mktRequests, mktConnectors, toasts: [], railExpanded: true }
 }

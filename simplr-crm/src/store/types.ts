@@ -740,11 +740,52 @@ export interface DashboardWidget {
   chart: WidgetChart
 }
 
+// ── Customer portal — what a customer sees after a proposal, + its analytics ──
+export interface CustomerPortal {
+  id: ID
+  dealId?: ID
+  customer: string
+  email: string
+  address: string
+  systemKwp: number
+  systemCost: number
+  annualSavings: number
+  installDate?: string
+  status: 'invited' | 'active'
+  invitedAt: number
+  lastActiveAt?: number
+}
+export type PortalEventKind = 'view' | 'click' | 'download' | 'chat' | 'video' | 'login'
+export interface PortalEvent {
+  id: ID
+  portalId: ID
+  section: string // Proposal · Energy · Documents · Resources · Ask Ovi
+  label: string // the specific thing viewed / clicked
+  kind: PortalEventKind
+  at: number
+  dwellMs?: number // how long they spent
+}
+export type ResourceType = 'video' | 'manual' | 'case-study' | 'guide'
+export interface PortalResource {
+  id: ID
+  type: ResourceType
+  title: string
+  manufacturer?: string // Tesla · SolarEdge · GivEnergy…
+  desc: string
+  content?: string // the searchable body Ovi reads (manual text, troubleshooting steps)
+  duration?: string // videos
+  global: boolean // in every customer's portal vs. a specific one
+  portalId?: ID
+}
+
 export interface State {
   deals: Deal[]
   pipelines: Pipeline[]
   activePipelineId: ID
   dashboardWidgets: DashboardWidget[]
+  portals: CustomerPortal[]
+  portalEvents: PortalEvent[]
+  portalResources: PortalResource[]
   people: Person[]
   orgs: Org[]
   leads: Lead[]

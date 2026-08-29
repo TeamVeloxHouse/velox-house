@@ -6,7 +6,7 @@ import type { State, Deal, Person, Lead, Org, Activity, EmailMsg, Toast, ID } fr
 import { AI_MEMBER_ID, YOU_MEMBER_ID } from './types'
 import type { StageName } from '../data/mock'
 
-const KEY = 'simplr.state.v17'
+const KEY = 'simplr.state.v18'
 let idc = 1000
 export const uid = (p = 'x') => `${p}${Date.now().toString(36)}${idc++}`
 
@@ -23,6 +23,11 @@ type Action =
   | { type: 'MARK_WON'; id: ID }
   | { type: 'MARK_LOST'; id: ID; reason?: string }
   | { type: 'REMOVE_DEAL'; id: ID }
+  | { type: 'ADD_PORTAL'; portal: import('./types').CustomerPortal }
+  | { type: 'UPDATE_PORTAL'; id: ID; patch: Partial<import('./types').CustomerPortal> }
+  | { type: 'ADD_PORTAL_EVENT'; event: import('./types').PortalEvent }
+  | { type: 'ADD_RESOURCE'; resource: import('./types').PortalResource }
+  | { type: 'REMOVE_RESOURCE'; id: ID }
   | { type: 'ADD_WIDGET'; widget: import('./types').DashboardWidget }
   | { type: 'REMOVE_WIDGET'; id: ID }
   | { type: 'REORDER_WIDGETS'; widgets: import('./types').DashboardWidget[] }
@@ -152,6 +157,16 @@ function reducer(state: State, action: Action): State {
         activities: state.activities.filter((a) => a.dealId !== action.id),
         emails: state.emails.filter((e) => e.dealId !== action.id),
       }
+    case 'ADD_PORTAL':
+      return { ...state, portals: [action.portal, ...state.portals] }
+    case 'UPDATE_PORTAL':
+      return { ...state, portals: state.portals.map((p) => (p.id === action.id ? { ...p, ...action.patch } : p)) }
+    case 'ADD_PORTAL_EVENT':
+      return { ...state, portalEvents: [action.event, ...state.portalEvents] }
+    case 'ADD_RESOURCE':
+      return { ...state, portalResources: [action.resource, ...state.portalResources] }
+    case 'REMOVE_RESOURCE':
+      return { ...state, portalResources: state.portalResources.filter((r) => r.id !== action.id) }
     case 'ADD_WIDGET':
       return { ...state, dashboardWidgets: [...state.dashboardWidgets, action.widget] }
     case 'REMOVE_WIDGET':
@@ -543,6 +558,28 @@ export function useActions() {
     },
     updateDeal: (id: ID, patch: Partial<Deal>) => dispatch({ type: 'UPDATE_DEAL', id, patch }),
     removeDeal: (id: ID, name: string) => { dispatch({ type: 'REMOVE_DEAL', id }); toast(`Deal “${name}” deleted`, 'warning') },
+
+    // ── Customer portals ──
+    createPortal: (p: Omit<import('./types').CustomerPortal, 'id' | 'invitedAt' | 'status'> & { status?: import('./types').CustomerPortal['status'] }) => {
+      const portal: import('./types').CustomerPortal = { id: uid('cp'), invitedAt: Date.now(), status: p.status ?? 'invited', ...p }
+      dispatch({ type: 'ADD_PORTAL', portal })
+      toast(`Portal created for ${portal.customer}`)
+      return portal
+    },
+    sendPortalInvite: (id: ID, customer: string) => {
+      dispatch({ type: 'UPDATE_PORTAL', id, patch: { invitedAt: Date.now() } })
+      toast(`Portal invite emailed to ${customer}`)
+    },
+    updatePortal: (id: ID, patch: Partial<import('./types').CustomerPortal>) => dispatch({ type: 'UPDATE_PORTAL', id, patch }),
+    logPortalEvent: (portalId: ID, section: string, label: string, kind: import('./types').PortalEventKind, dwellMs?: number) => {
+      dispatch({ type: 'ADD_PORTAL_EVENT', event: { id: uid('pe'), portalId, section, label, kind, at: Date.now(), dwellMs } })
+      dispatch({ type: 'UPDATE_PORTAL', id: portalId, patch: { lastActiveAt: Date.now() } })
+    },
+    addResource: (r: Omit<import('./types').PortalResource, 'id'>) => {
+      dispatch({ type: 'ADD_RESOURCE', resource: { ...r, id: uid('pr') } })
+      toast(`“${r.title}” added to the resource library`)
+    },
+    removeResource: (id: ID) => dispatch({ type: 'REMOVE_RESOURCE', id }),
 
     // ── Editable dashboard widgets ──
     addWidget: (w: Omit<import('./types').DashboardWidget, 'id'>) => {
