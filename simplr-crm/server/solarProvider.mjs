@@ -29,7 +29,7 @@ function irradianceFactor(azimuthDeg, pitchDeg) {
   return Math.max(0.55, Math.min(1, azFactor * pitchFactor))
 }
 
-async function geocode(address, key) {
+export async function geocode(address, key) {
   const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${key}`
   const r = await fetch(url)
   const j = await r.json()

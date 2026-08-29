@@ -29,6 +29,7 @@ export type CommercialCriteria = {
   minKwp?: number // hard floor for the roof gate (default = 40% of target)
   jobTitles?: string[] // decision-makers to find (e.g. ["Managing Director", "Facilities Manager"])
   count?: number // how many qualified prospects to return (default 20)
+  skipPeople?: boolean // don't spend PDL credits during the scan — contacts are revealed on demand
 }
 
 // ── Building discovered by Places (pre-roof) ─────────────────────────────────
@@ -168,6 +169,7 @@ function postcodeOf(address: string): string | undefined {
 export async function runCommercialSolarEngine(
   c: CommercialCriteria,
   onProgress?: (p: EngineProgress) => void,
+  onProspect?: (p: CommercialProspect) => void, // fires as each qualified prospect is assembled (live cards)
 ): Promise<{ prospects: CommercialProspect[]; scanned: number; live: boolean; reason?: string }> {
   const want = c.count ?? 20
   const minKwp = c.minKwp ?? Math.round(c.targetKwp * 0.4)
@@ -200,19 +202,16 @@ export async function runCommercialSolarEngine(
     const epc = await lookupEpc(b.address, postcodeOf(b.address))
 
     // 5) People (PDL credits) — survivors only, scoped to THIS company by domain.
-    report({ stage: 'people', message: `Finding decision-makers at ${b.name}…`, found: prospects.length, scanned, total: buildings.length })
-    const { leads } = await sourceLeads({
-      company: b.name,
-      domain: b.domain,
-      location: c.area,
-      titles: c.jobTitles,
-      title: c.jobTitles?.[0],
-      limit: 5,
-    })
+    // Skipped during a scan when contacts are revealed on demand (the reveal = spend model).
+    let leads: SourcedLead[] = []
+    if (!c.skipPeople) {
+      report({ stage: 'people', message: `Finding decision-makers at ${b.name}…`, found: prospects.length, scanned, total: buildings.length })
+      leads = (await sourceLeads({ company: b.name, domain: b.domain, location: c.area, titles: c.jobTitles, title: c.jobTitles?.[0], limit: 5 })).leads
+    }
 
     // 6) Score + assemble the card.
     const { score, reasons } = scoreProspect(design, epc, leads, c.targetKwp)
-    prospects.push({
+    const prospect: CommercialProspect = {
       id: `csp-${scanned}-${(b.domain || b.name).replace(/[^a-z0-9]/gi, '').slice(0, 10)}`,
       company: b.name,
       address: b.address,
@@ -227,7 +226,9 @@ export async function runCommercialSolarEngine(
       imageUrl: (analysis.center || b.center) ? roofImageUrl(analysis.center || b.center!) : undefined,
       roofMeasured: design.source === 'google',
       distanceM: b.distanceM,
-    })
+    }
+    prospects.push(prospect)
+    onProspect?.(prospect)
   }
 
   prospects.sort((a, b) => b.score - a.score)
