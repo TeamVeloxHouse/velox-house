@@ -333,7 +333,13 @@ export interface EmailMsg {
   unread?: boolean
   time: string
   createdAt: number
+  aiDrafted?: boolean // an Ovi-drafted reply awaiting approval
+  replyToId?: ID // the inbound email this is a reply to
+  handled?: boolean // Ovi has drafted/handled a reply for this inbound email
 }
+
+// Inbox auto-reply mode: off · draft for approval · auto-send.
+export type AutoReplyMode = 'off' | 'draft' | 'send'
 
 export interface Meeting {
   id: ID
@@ -731,6 +737,7 @@ export interface State {
   leads: Lead[]
   activities: Activity[]
   emails: EmailMsg[]
+  inboxAutoReply: AutoReplyMode
   meetings: Meeting[]
   agents: Agent[]
   agentRuns: AgentRun[]

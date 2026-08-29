@@ -41,6 +41,10 @@ type Action =
   | { type: 'UPDATE_ACTIVITY'; id: ID; patch: Partial<Activity> }
   | { type: 'TOGGLE_ACTIVITY'; id: ID }
   | { type: 'SEND_EMAIL'; email: EmailMsg; activity?: Activity }
+  | { type: 'ADD_EMAIL'; email: EmailMsg }
+  | { type: 'UPDATE_EMAIL'; id: ID; patch: Partial<EmailMsg> }
+  | { type: 'REMOVE_EMAIL'; id: ID }
+  | { type: 'SET_AUTO_REPLY'; mode: import('./types').AutoReplyMode }
   | { type: 'MARK_READ'; id: ID }
   | { type: 'TOGGLE_MEETING_BOT'; id: ID }
   | { type: 'PROCESS_MEETING'; id: ID; activities: Activity[] }
@@ -237,6 +241,14 @@ function reducer(state: State, action: Action): State {
         emails: [action.email, ...state.emails],
         activities: action.activity ? [action.activity, ...state.activities] : state.activities,
       }
+    case 'ADD_EMAIL':
+      return { ...state, emails: [action.email, ...state.emails] }
+    case 'UPDATE_EMAIL':
+      return { ...state, emails: state.emails.map((e) => (e.id === action.id ? { ...e, ...action.patch } : e)) }
+    case 'REMOVE_EMAIL':
+      return { ...state, emails: state.emails.filter((e) => e.id !== action.id) }
+    case 'SET_AUTO_REPLY':
+      return { ...state, inboxAutoReply: action.mode }
     case 'MARK_READ':
       return { ...state, emails: state.emails.map((e) => (e.id === action.id ? { ...e, unread: false } : e)) }
     case 'TOGGLE_MEETING_BOT':
@@ -661,6 +673,34 @@ export function useActions() {
       return full
     },
     markRead: (id: ID) => dispatch({ type: 'MARK_READ', id }),
+    setAutoReply: (mode: import('./types').AutoReplyMode) => {
+      dispatch({ type: 'SET_AUTO_REPLY', mode })
+      toast(mode === 'off' ? 'Ovi auto-reply off' : mode === 'draft' ? 'Ovi will draft replies for your approval' : 'Ovi will auto-send replies', mode === 'send' ? 'accent' : 'positive')
+    },
+    /** Ovi drafts (or, in send mode, sends) a reply to an inbound email. */
+    oviDraftReply: (original: EmailMsg, body: string, send: boolean) => {
+      dispatch({ type: 'UPDATE_EMAIL', id: original.id, patch: { handled: true } })
+      if (send) {
+        const sent: EmailMsg = { id: uid('em'), folder: 'sent', from: 'TellOvi AI', fromEmail: 'jordan@tellovi.io', to: original.fromEmail, subject: `Re: ${original.subject}`, body, dealId: original.dealId, personId: original.personId, dealLabel: original.dealLabel, replyToId: original.id, time: 'Just now', createdAt: Date.now() }
+        const activity: Activity | undefined = original.dealId || original.personId
+          ? { id: uid('act'), type: 'email', subject: `Auto-reply sent: ${original.subject}`, body: body.slice(0, 140), dealId: original.dealId, personId: original.personId, done: true, who: 'TellOvi AI', createdAt: Date.now(), source: 'ai' }
+          : undefined
+        dispatch({ type: 'SEND_EMAIL', email: sent, activity })
+        return sent
+      }
+      const draft: EmailMsg = { id: uid('em'), folder: 'drafts', from: 'Jordan Miles', fromEmail: 'jordan@tellovi.io', to: original.fromEmail, subject: `Re: ${original.subject}`, body, dealId: original.dealId, personId: original.personId, dealLabel: original.dealLabel, replyToId: original.id, aiDrafted: true, time: 'Just now', createdAt: Date.now() }
+      dispatch({ type: 'ADD_EMAIL', email: draft })
+      return draft
+    },
+    approveDraft: (draft: EmailMsg) => {
+      dispatch({ type: 'UPDATE_EMAIL', id: draft.id, patch: { folder: 'sent', aiDrafted: false, time: 'Just now' } })
+      if (draft.dealId || draft.personId) {
+        dispatch({ type: 'ADD_ACTIVITY', activity: { id: uid('act'), type: 'email', subject: `Reply sent: ${draft.subject}`, body: draft.body.slice(0, 140), dealId: draft.dealId, personId: draft.personId, done: true, who: 'Jordan Miles', createdAt: Date.now(), source: 'ai' } })
+      }
+      toast(`Reply sent to ${draft.to}`)
+    },
+    updateDraft: (id: ID, body: string) => dispatch({ type: 'UPDATE_EMAIL', id, patch: { body } }),
+    dismissDraft: (id: ID) => { dispatch({ type: 'REMOVE_EMAIL', id }); toast('Draft dismissed', 'warning') },
 
     toggleMeetingBot: (id: ID, on: boolean) => {
       dispatch({ type: 'TOGGLE_MEETING_BOT', id })

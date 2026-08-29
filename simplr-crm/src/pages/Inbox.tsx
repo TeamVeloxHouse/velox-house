@@ -4,8 +4,10 @@ import { TopBar } from '../components/TopBar'
 import { Button, Segmented, Avatar, Chip } from '../components/ui'
 import { SubSidebar } from '../components/chrome'
 import { Modal, Field, Input, Textarea } from '../components/overlays'
-import { Plus, Envelope, File, Note, ArrowUpRight, Box, Sparkle, Check, Send } from '../components/icons'
+import { Plus, Envelope, File, Note, ArrowUpRight, Box, Sparkle, Check, Send, Robot } from '../components/icons'
 import { useState_, useActions } from '../store/store'
+import { triageEmail, draftReply } from '../lib/inbox'
+import type { EmailMsg } from '../store/types'
 import { classNames } from '../lib/format'
 
 const folders = [
@@ -18,14 +20,36 @@ const folders = [
 
 export function Inbox() {
   const nav = useNavigate()
-  const { emails, connections } = useState_()
+  const { emails, connections, deals, inboxAutoReply } = useState_()
   const act = useActions()
   const [view, setView] = useState('All')
   const [folder, setFolder] = useState('Inbox')
   const [sel, setSel] = useState<string | null>(null)
   const [replyOpen, setReplyOpen] = useState(false)
   const [replyBody, setReplyBody] = useState('')
+  const [editDraft, setEditDraft] = useState<EmailMsg | null>(null)
   const [composeOpen, setComposeOpen] = useState(false)
+  const [drafting, setDrafting] = useState(false)
+
+  const dealNameOf = (id?: string) => deals.find((d) => d.id === id)?.name
+  const pendingDrafts = emails.filter((e) => e.aiDrafted && e.folder === 'drafts').sort((a, b) => b.createdAt - a.createdAt)
+
+  // Ovi auto-reply: when turned on, draft (or auto-send) replies to un-handled inbound mail.
+  useEffect(() => {
+    if (inboxAutoReply === 'off') return
+    const inbound = emails.filter((e) => e.folder === 'inbox' && !e.handled && e.fromEmail !== 'jordan@tellovi.io')
+    if (inbound.length === 0) return
+    setDrafting(true)
+    const timer = setTimeout(() => {
+      inbound.forEach((e) => {
+        const { body } = draftReply(e, { dealName: dealNameOf(e.dealId), contactFirst: e.from.split(' ')[0] })
+        act.oviDraftReply(e, body, inboxAutoReply === 'send')
+      })
+      setDrafting(false)
+    }, 1200)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inboxAutoReply])
 
   const folderKey = folders.find((f) => f.label === folder)?.key ?? 'inbox'
   const list = emails
@@ -34,6 +58,8 @@ export function Inbox() {
     .sort((a, b) => b.createdAt - a.createdAt)
 
   const active = list.find((m) => m.id === sel) ?? list[0]
+  const activeTriage = active && active.folder === 'inbox' ? triageEmail(active) : null
+  const activeDraft = active && active.folder === 'inbox' ? draftReply(active, { dealName: dealNameOf(active.dealId), contactFirst: active.from.split(' ')[0] }) : null
 
   useEffect(() => {
     if (active?.unread) act.markRead(active.id)
@@ -43,14 +69,23 @@ export function Inbox() {
 
   function openReply(withAI = false) {
     if (!active) return
-    setReplyBody(withAI ? aiDraft(active.from) : '')
+    setEditDraft(null)
+    setReplyBody(withAI ? draftReply(active, { dealName: dealNameOf(active.dealId), contactFirst: active.from.split(' ')[0] }).body : '')
+    setReplyOpen(true)
+  }
+  function openEditDraft(d: EmailMsg) {
+    setEditDraft(d)
+    setReplyBody(d.body)
     setReplyOpen(true)
   }
   function sendReply() {
-    if (!active) return
-    act.sendEmail({ folder: 'sent', from: 'Jordan Miles', fromEmail: 'jordan@tellovi.io', to: active.fromEmail, subject: `Re: ${active.subject}`, body: replyBody, dealId: active.dealId, personId: active.personId, dealLabel: active.dealLabel, time: 'Just now' })
-    setReplyOpen(false)
-    setReplyBody('')
+    if (editDraft) {
+      act.updateDraft(editDraft.id, replyBody)
+      act.approveDraft({ ...editDraft, body: replyBody })
+    } else if (active) {
+      act.sendEmail({ folder: 'sent', from: 'Jordan Miles', fromEmail: 'jordan@tellovi.io', to: active.fromEmail, subject: `Re: ${active.subject}`, body: replyBody, dealId: active.dealId, personId: active.personId, dealLabel: active.dealLabel, time: 'Just now' })
+    }
+    setReplyOpen(false); setReplyBody(''); setEditDraft(null)
   }
 
   return (
@@ -58,7 +93,19 @@ export function Inbox() {
       <TopBar
         title="Sales Inbox"
         center={<Segmented options={['All', 'Unread', 'Deal-linked', 'Sent']} value={view} onChange={setView} />}
-        actions={<><Button icon={<File size={16} />} onClick={() => act.toast('Templates — 6 available', 'accent')}>Templates</Button><Button>Tracking · on</Button><Button variant="primary" icon={<Plus size={16} />} onClick={() => setComposeOpen(true)}>Compose</Button></>}
+        actions={<>
+          <label className="flex items-center gap-1.5 text-[12.5px] text-muted-b">
+            <Robot size={15} className={inboxAutoReply === 'off' ? 'text-muted-3' : 'text-accent'} />
+            <span className="hidden md:inline">Ovi auto-reply</span>
+            <select value={inboxAutoReply} onChange={(e) => act.setAutoReply(e.target.value as 'off' | 'draft' | 'send')} className="h-8 px-2 rounded-control border border-input-border bg-white text-[12.5px] font-medium text-ink-2 outline-none focus:border-accent">
+              <option value="off">Off</option>
+              <option value="draft">Draft for me</option>
+              <option value="send">Auto-send</option>
+            </select>
+          </label>
+          <Button icon={<File size={16} />} onClick={() => act.toast('Templates — 6 available', 'accent')}>Templates</Button>
+          <Button variant="primary" icon={<Plus size={16} />} onClick={() => setComposeOpen(true)}>Compose</Button>
+        </>}
       />
       <div className="flex-1 flex min-h-0">
         <SubSidebar
@@ -86,12 +133,31 @@ export function Inbox() {
 
         {/* list */}
         <div className="w-[380px] shrink-0 bg-surface border-r border-border overflow-y-auto">
+          {(drafting || pendingDrafts.length > 0) && folder === 'Inbox' && (
+            <div className="border-b-2 border-border-blue bg-accent-wash-4 px-3 py-2.5">
+              <div className="flex items-center gap-1.5 text-[12px] font-bold text-accent-700 mb-2">
+                <Sparkle size={13} className={drafting ? 'animate-pulse' : ''} /> {drafting ? 'Ovi is drafting replies…' : `Ovi drafted ${pendingDrafts.length} repl${pendingDrafts.length === 1 ? 'y' : 'ies'} for approval`}
+              </div>
+              {pendingDrafts.map((d) => (
+                <div key={d.id} className="rounded-lg bg-surface border border-border-blue p-2.5 mb-1.5">
+                  <div className="flex items-center gap-1.5"><span className="text-[12px] font-semibold text-ink-2 truncate flex-1">To {d.to}</span>{d.dealLabel && <Chip tone="accent">{d.dealLabel}</Chip>}</div>
+                  <div className="text-[11.5px] text-muted-2 mt-0.5 line-clamp-2">{d.body.split('\n').filter(Boolean)[0]}</div>
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <button onClick={() => act.approveDraft(d)} className="h-7 px-2.5 rounded-lg bg-accent text-white text-[11.5px] font-semibold inline-flex items-center gap-1"><Send size={11} /> Approve &amp; send</button>
+                    <button onClick={() => openEditDraft(d)} className="h-7 px-2.5 rounded-lg border border-border text-ink-3 text-[11.5px] font-medium hover:bg-control">Edit</button>
+                    <button onClick={() => act.dismissDraft(d.id)} className="h-7 px-2.5 rounded-lg text-muted-2 text-[11.5px] font-medium hover:bg-control ml-auto">Dismiss</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
           {list.length === 0 && <div className="p-6 text-center text-[13px] text-muted-2">No messages in {folder}.</div>}
           {list.map((m) => (
             <button key={m.id} onClick={() => setSel(m.id)} className={classNames('w-full text-left px-4 py-3.5 border-b border-divider flex flex-col gap-1', m.id === active?.id ? 'bg-accent-wash-4' : m.unread ? 'bg-[#F1F6FF]' : 'hover:bg-[#F7F9FC]')}>
               <div className="flex items-center gap-2">
                 <span className={classNames('text-[13px] truncate', m.unread ? 'font-bold text-ink' : 'font-semibold text-ink-2')}>{m.folder === 'sent' ? `To: ${m.to}` : m.from}</span>
                 {m.dealLabel && <Chip tone="accent">{m.dealLabel}</Chip>}
+                {m.folder === 'inbox' && (() => { const tr = triageEmail(m); return tr.intent !== 'other' ? <Chip tone={tr.tone}>{tr.label}</Chip> : null })()}
                 <span className="ml-auto text-[11px] text-muted-3 shrink-0">{m.time}</span>
               </div>
               <div className={classNames('text-[13px] truncate', m.unread ? 'font-semibold text-ink-2' : 'text-ink-3')}>{m.subject}</div>
@@ -118,15 +184,15 @@ export function Inbox() {
                 </div>
               </div>
 
-              {active.dealId && (
+              {activeDraft && (
                 <div className="px-7 pt-5">
                   <div className="rounded-card border border-border-blue bg-accent-wash-4 p-4">
-                    <div className="flex items-center gap-2 text-[13px] font-semibold text-accent-700"><Sparkle size={15} /> AI summary</div>
-                    <div className="text-[13px] text-ink-3 leading-relaxed mt-2">{aiSummary(active.from)}</div>
+                    <div className="flex items-center gap-2 text-[13px] font-semibold text-accent-700"><Sparkle size={15} /> Ovi triage{activeTriage && <Chip tone={activeTriage.tone}>{activeTriage.label}</Chip>}</div>
+                    <div className="text-[13px] text-ink-3 leading-relaxed mt-2">{activeDraft.summary}</div>
                     <div className="flex items-center gap-2 mt-3 flex-wrap">
                       <span className="text-[12px] text-muted-2">Suggested replies:</span>
-                      {suggestions(active.from).map((s, i) => (
-                        <button key={s} onClick={() => { setReplyBody(aiDraft(active.from)); setReplyOpen(true) }} className={classNames('h-7 px-2.5 rounded-full text-[12px] font-medium', i === 0 ? 'bg-accent text-white' : 'bg-surface border border-border-blue text-accent')}>{s}</button>
+                      {activeDraft.suggestions.map((s, i) => (
+                        <button key={s} onClick={() => openReply(true)} className={classNames('h-7 px-2.5 rounded-full text-[12px] font-medium', i === 0 ? 'bg-accent text-white' : 'bg-surface border border-border-blue text-accent')}>{s}</button>
                       ))}
                     </div>
                   </div>
@@ -157,10 +223,10 @@ export function Inbox() {
       <Modal
         open={replyOpen}
         onClose={() => setReplyOpen(false)}
-        title={active ? `Reply to ${active.from}` : 'Reply'}
-        subtitle={active?.subject}
+        title={editDraft ? `Edit Ovi's reply to ${editDraft.to}` : active ? `Reply to ${active.from}` : 'Reply'}
+        subtitle={editDraft?.subject ?? active?.subject}
         width={600}
-        footer={<><Button onClick={() => setReplyBody(aiDraft(active?.from ?? ''))} icon={<Sparkle size={15} />}>Rewrite with AI</Button><Button variant="primary" icon={<Send size={15} />} onClick={sendReply}>Send</Button></>}
+        footer={<><Button onClick={() => { const src = editDraft ?? active; if (src) setReplyBody(draftReply(src, { dealName: dealNameOf(src.dealId), contactFirst: (src.folder === 'drafts' ? src.to : src.from).split(' ')[0] }).body) }} icon={<Sparkle size={15} />}>Rewrite with AI</Button><Button variant="primary" icon={<Send size={15} />} onClick={sendReply}>{editDraft ? 'Approve & send' : 'Send'}</Button></>}
       >
         <Textarea rows={10} value={replyBody} onChange={(e) => setReplyBody(e.target.value)} placeholder="Write your reply…" autoFocus />
       </Modal>
@@ -184,13 +250,3 @@ function ComposeModal({ open, onClose, onSend }: { open: boolean; onClose: () =>
   )
 }
 
-function aiSummary(from: string) {
-  return `${from.split(' ')[0]} is ready to move — the phased rollout works. The one blocker is the liability caps, which finance needs resolved in the SOW before sign-off. Decision expected end of next week. Sentiment: positive.`
-}
-function suggestions(_from: string) {
-  return ['Confirm liability caps + attach SOW', 'Offer a legal call this week', 'Thank + hold pricing']
-}
-function aiDraft(from: string) {
-  const f = from.split(' ')[0]
-  return `Hi ${f},\n\nThanks for the quick turnaround. To close out the liability caps: our standard is a 12-month fees cap, and I’ve reflected that in the SOW so finance has it in writing. I’ve also split out the maintenance retainer so it’s explicit.\n\nHappy to get legal on a short call this week if that helps you move to sign-off. I’ll hold the current pricing until then.\n\nBest,\nJordan`
-}
