@@ -28,7 +28,8 @@ const crmGroups: Group[] = [
     { to: '/organisations', icon: Building, label: 'Organisations' },
   ] },
   { label: 'Engage', items: [
-    { to: '/activities', icon: Calendar, label: 'Activities', badge: 6 },
+    { to: '/activities', icon: Bars, label: 'Activities', badge: 6 },
+    { to: '/calendar', icon: Calendar, label: 'Calendar' },
     { to: '/meetings', icon: Video, label: 'Meetings' },
     { to: '/inbox', icon: Envelope, label: 'Sales Inbox' },
     { to: '/linkedin', icon: Person, label: 'LinkedIn' },

@@ -6,7 +6,7 @@ import type { State, Deal, Person, Lead, Org, Activity, EmailMsg, Toast, ID } fr
 import { AI_MEMBER_ID, YOU_MEMBER_ID } from './types'
 import type { StageName } from '../data/mock'
 
-const KEY = 'simplr.state.v16'
+const KEY = 'simplr.state.v17'
 let idc = 1000
 export const uid = (p = 'x') => `${p}${Date.now().toString(36)}${idc++}`
 

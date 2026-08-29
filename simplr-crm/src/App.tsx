@@ -22,6 +22,7 @@ import { Settings } from './pages/Settings'
 import { TellOviAI } from './pages/TellOviAI'
 import { Meetings } from './pages/Meetings'
 import { LiveMeeting } from './pages/LiveMeeting'
+import { Calendar } from './pages/Calendar'
 import { Agents } from './pages/Agents'
 import { Prospector } from './pages/Prospector'
 import { LinkedInInbox } from './pages/LinkedInInbox'
@@ -87,6 +88,7 @@ export const router = createBrowserRouter([
       { path: 'agents', element: <Agents /> },
       { path: 'meetings', element: <Meetings /> },
       { path: 'meetings/live', element: <LiveMeeting /> },
+      { path: 'calendar', element: <Calendar /> },
       { path: 'deals', element: <DealsBoard /> },
       { path: 'deals/:id', element: <DealDetail /> },
       { path: 'leads', element: <Leads /> },

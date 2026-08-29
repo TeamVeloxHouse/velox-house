@@ -340,6 +340,8 @@ export interface Meeting {
   title: string
   platform: 'Teams' | 'Google Meet' | 'Zoom'
   when: string
+  date?: string // ISO yyyy-mm-dd — for the calendar
+  start?: string // 'HH:MM'
   dealOrg: string
   dealId?: ID
   personId?: ID

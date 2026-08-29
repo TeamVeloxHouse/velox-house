@@ -112,11 +112,11 @@ export function buildSeed(): State {
   ]
 
   const meetings: Meeting[] = [
-    { id: 'mtg1', title: 'UPS refresh — legal & scope call', platform: 'Teams', when: 'Today · 16:00', dealOrg: 'Cirrus Hosting', dealId: 'd9', personId: 'p2', attendees: ['Callum Reed', 'Marta Lund', 'Jordan Miles'], status: 'live', bot: true, duration: '18:42' },
-    { id: 'mtg2', title: 'Microgrid proposal review', platform: 'Google Meet', when: 'Tomorrow · 10:00', dealOrg: 'Fenwick University', dealId: 'd8', personId: 'p3', attendees: ['Sam Idris', 'Jordan Miles'], status: 'upcoming', bot: true },
-    { id: 'mtg3', title: 'Discovery — substation upgrade', platform: 'Teams', when: 'Thu · 09:30', dealOrg: 'Meridian Power', dealId: 'd1', personId: 'p1', attendees: ['Elena Voss', 'Jordan Miles'], status: 'upcoming', bot: false },
-    { id: 'mtg4', title: 'Solar + storage kickoff', platform: 'Zoom', when: 'Mon · 14:00', dealOrg: 'Brightleaf Farms', dealId: 'd3', personId: 'p5', attendees: ['Dana Kirk', 'Jordan Miles', 'Priya Nair'], status: 'recorded', bot: true, duration: '42:10' },
-    { id: 'mtg5', title: 'Renewal check-in', platform: 'Google Meet', when: 'Last Fri', dealOrg: 'Northgate Rail', dealId: 'd6', personId: 'p6', attendees: ['Nadia Frost', 'Jordan Miles'], status: 'recorded', bot: true, duration: '27:55' },
+    { id: 'mtg1', title: 'UPS refresh — legal & scope call', platform: 'Teams', when: 'Today · 16:00', date: isoDay(0), start: '16:00', dealOrg: 'Cirrus Hosting', dealId: 'd9', personId: 'p2', attendees: ['Callum Reed', 'Marta Lund', 'Jordan Miles'], status: 'live', bot: true, duration: '18:42' },
+    { id: 'mtg2', title: 'Microgrid proposal review', platform: 'Google Meet', when: 'Tomorrow · 10:00', date: isoDay(1), start: '10:00', dealOrg: 'Fenwick University', dealId: 'd8', personId: 'p3', attendees: ['Sam Idris', 'Jordan Miles'], status: 'upcoming', bot: true },
+    { id: 'mtg3', title: 'Discovery — substation upgrade', platform: 'Teams', when: 'In 2 days · 09:30', date: isoDay(2), start: '09:30', dealOrg: 'Meridian Power', dealId: 'd1', personId: 'p1', attendees: ['Elena Voss', 'Jordan Miles'], status: 'upcoming', bot: false },
+    { id: 'mtg4', title: 'Solar + storage kickoff', platform: 'Zoom', when: 'In 4 days · 14:00', date: isoDay(4), start: '14:00', dealOrg: 'Brightleaf Farms', dealId: 'd3', personId: 'p5', attendees: ['Dana Kirk', 'Jordan Miles', 'Priya Nair'], status: 'upcoming', bot: true },
+    { id: 'mtg5', title: 'Renewal check-in', platform: 'Google Meet', when: 'Yesterday', date: isoDay(-1), start: '11:00', dealOrg: 'Northgate Rail', dealId: 'd6', personId: 'p6', attendees: ['Nadia Frost', 'Jordan Miles'], status: 'recorded', bot: true, duration: '27:55' },
   ]
 
   const agents: Agent[] = [

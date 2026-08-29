@@ -7,24 +7,14 @@ import { Table, Row, Cell } from '../components/Table'
 import { Modal, Field, Input, Select } from '../components/overlays'
 import { Plus, Bars, Calendar, Phone, Meeting, Task, Envelope, Check, Filter, Note } from '../components/icons'
 import { useState_, useActions } from '../store/store'
+import { CalendarView } from './Calendar'
+import { bucketOf, effectiveDueDate, BUCKET_META } from '../lib/tasks'
 import type { Activity, ActivityType } from '../store/types'
 
 const typeColor: Record<string, string> = { call: '#1D4ED8', meeting: '#0E7C66', task: '#C2410C', email: '#3A67E4', note: '#7A8494' }
 const typeWash: Record<string, string> = { call: '#EEF2FB', meeting: '#E9F5F1', task: '#FDF1E7', email: '#EEF2FB', note: '#F1F3F7' }
 const typeIcon: Record<string, any> = { call: Phone, meeting: Meeting, task: Task, email: Envelope, note: Note }
 const prioTone: Record<string, 'negative' | 'warning' | 'neutral'> = { High: 'negative', Medium: 'warning', Low: 'neutral' }
-
-const hours = Array.from({ length: 10 }, (_, i) => 8 + i)
-const days = [{ d: 'Mon', n: 14 }, { d: 'Tue', n: 15, today: true }, { d: 'Wed', n: 16 }, { d: 'Thu', n: 17 }, { d: 'Fri', n: 18 }, { d: 'Sat', n: 19 }, { d: 'Sun', n: 20 }]
-const HOUR = 70
-const calEvents = [
-  { day: 0, start: 9, dur: 1, title: 'Call — Callum Reed', sub: 'Cirrus Hosting', type: 'call' },
-  { day: 1, start: 10, dur: 1.5, title: 'Microgrid proposal review', sub: 'Fenwick University', type: 'meeting' },
-  { day: 1, start: 14, dur: 1, title: 'Send revised quote', sub: 'Ashford Utilities', type: 'task' },
-  { day: 3, start: 9.5, dur: 1, title: 'Call — Elena Voss', sub: 'Meridian Power', type: 'call' },
-  { day: 3, start: 15, dur: 2, title: 'Site survey — Brightleaf', sub: 'On-site', type: 'meeting' },
-  { day: 4, start: 13, dur: 1, title: 'Follow up redlines', sub: 'Cirrus Hosting', type: 'task' },
-]
 
 export function Activities() {
   const nav = useNavigate()
@@ -38,7 +28,7 @@ export function Activities() {
   const rows = activities
     .filter((a) => a.type === 'task' || a.type === 'call' || a.type === 'meeting' || a.type === 'email')
     .filter((a) => (type === 'all' ? true : a.type === type))
-    .filter((a) => (period === 'todo' ? !a.done : period === 'overdue' ? !a.done && (a.due ?? '').includes('overdue') : true))
+    .filter((a) => (period === 'todo' ? !a.done : period === 'overdue' ? bucketOf(a) === 'overdue' : true))
     .sort((a, b) => Number(a.done) - Number(b.done) || b.createdAt - a.createdAt)
 
   const template = '40px 2fr 1.6fr 0.9fr 1.2fr 1fr'
@@ -69,7 +59,8 @@ export function Activities() {
           >
             {rows.map((r) => {
               const Icon = typeIcon[r.type] ?? Task
-              const overdue = (r.due ?? '').includes('overdue')
+              const bucket = bucketOf(r)
+              const overdue = bucket === 'overdue'
               return (
                 <Row key={r.id} template={template} onClick={() => r.dealId && nav(`/deals/${r.dealId}`)}>
                   <Cell>
@@ -81,34 +72,14 @@ export function Activities() {
                   <Cell muted>{dealName(r.dealId)}</Cell>
                   <Cell>{r.priority ? <Chip tone={prioTone[r.priority]}>{r.priority}</Chip> : <span className="text-muted-3">—</span>}</Cell>
                   <Cell muted>{personName(r.personId)}</Cell>
-                  <Cell><span className={overdue ? 'text-warning font-semibold' : 'text-muted'}>{r.due ?? (r.done ? 'Done' : '—')}</span></Cell>
+                  <Cell><span className="font-medium" style={{ color: BUCKET_META[bucket].tone }}>{effectiveDueDate(r) ? BUCKET_META[bucket].label : (r.done ? 'Done' : '—')}</span></Cell>
                 </Row>
               )
             })}
           </Table>
         </main>
       ) : (
-        <main className="flex-1 overflow-auto">
-          <div className="min-w-[840px]">
-            <div className="grid sticky top-0 bg-surface z-10 border-b border-border" style={{ gridTemplateColumns: `56px repeat(7,1fr)` }}>
-              <div />
-              {days.map((d) => (<div key={d.d} className={'h-14 flex flex-col items-center justify-center border-l border-divider ' + (d.today ? 'bg-[#EEF4FE]' : '')}><span className="text-[11px] uppercase tracking-wide text-muted-2">{d.d}</span><span className={'text-[15px] font-bold ' + (d.today ? 'text-accent' : 'text-ink-2')}>{d.n}</span></div>))}
-            </div>
-            <div className="grid relative" style={{ gridTemplateColumns: `56px repeat(7,1fr)` }}>
-              <div>{hours.map((h) => (<div key={h} className="text-[11px] text-muted-3 text-right pr-2 -mt-1.5" style={{ height: HOUR }}>{String(h).padStart(2, '0')}:00</div>))}</div>
-              {days.map((d, di) => (
-                <div key={d.d} className={'relative border-l border-divider ' + (d.today ? 'bg-[#EEF4FE]/40' : '')} style={{ height: hours.length * HOUR }}>
-                  {hours.map((h) => (<div key={h} className="border-b border-divider" style={{ height: HOUR }} />))}
-                  {calEvents.filter((e) => e.day === di).map((e, ei) => (
-                    <div key={ei} className="absolute left-1 right-1 rounded-md px-2 py-1.5 overflow-hidden" style={{ top: (e.start - 8) * HOUR + 2, height: e.dur * HOUR - 4, background: typeWash[e.type], borderLeft: `3px solid ${typeColor[e.type]}` }}>
-                      <div className="text-[12px] font-semibold text-ink-2 truncate">{e.title}</div><div className="text-[11px] text-muted-2 truncate">{e.sub}</div>
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
-          </div>
-        </main>
+        <CalendarView />
       )}
 
       <NewActivityModal open={showNew} onClose={() => setShowNew(false)} deals={deals} onCreate={(a) => { act.logActivity(a, 'Activity created'); setShowNew(false) }} />
