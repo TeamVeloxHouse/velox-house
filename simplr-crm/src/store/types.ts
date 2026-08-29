@@ -780,6 +780,72 @@ export interface PortalResource {
   portalId?: ID
 }
 
+// ── Commercial Solar Finder ────────────────────────────────────────────────
+// A saved area/pin scan (a "campaign") and the scored building prospects it produced. Prospects move
+// through a pipeline from first scan all the way to a won deal (which hands off to a CRM deal/project).
+export type SolarProspectStatus =
+  | 'prospected' | 'researched' | 'contacted' | 'replied' | 'meeting' | 'proposal' | 'won' | 'lost'
+
+export const SOLAR_STATUSES: SolarProspectStatus[] = ['prospected', 'researched', 'contacted', 'replied', 'meeting', 'proposal', 'won', 'lost']
+
+export interface SolarContact {
+  id: ID
+  name: string
+  title: string
+  email?: string
+  linkedin?: string
+  seniority?: string
+  revealed: boolean // false until a PDL credit is spent to reveal (then cached forever)
+}
+
+export interface SolarProspect {
+  id: ID
+  campaignId: ID
+  company: string
+  address: string
+  domain?: string
+  center?: { lat: number; lng: number }
+  category?: string
+  distanceM?: number // from the dropped pin
+  // Roof + calculation snapshot (denormalised so lists render without recompute).
+  systemKwp: number
+  panels: number
+  annualGenKwh: number
+  year1Saving: number
+  lifetimeSaving: number
+  paybackYears: number
+  npv: number
+  co2PerYearTonnes: number
+  roofMeasured: boolean // true = real Google Solar
+  imageUrl?: string
+  epcRating?: string | null
+  score: number
+  reasons: string[]
+  status: SolarProspectStatus
+  contacts: SolarContact[]
+  contactsRevealed: boolean // whether a PDL credit has been spent on this company
+  calc?: import('../lib/commercialModel').CommercialCalc // full detail for the single-site page
+  dealId?: ID // set when converted to a CRM deal
+  createdAt: number
+  updatedAt: number
+}
+
+export interface SolarCampaign {
+  id: ID
+  name: string // editable
+  createdAt: number
+  // Search parameters (so a campaign can be re-run / understood later).
+  industry?: string
+  area?: string
+  pin?: { lat: number; lng: number }
+  radiusM?: number
+  targetKwp: number
+  jobTitles?: string[]
+  count?: number
+  scanned: number // buildings looked at
+  status: 'draft' | 'scanning' | 'complete'
+}
+
 export interface State {
   deals: Deal[]
   pipelines: Pipeline[]
@@ -846,6 +912,9 @@ export interface State {
   contentItems: ContentItem[]
   mktRequests: MarketingRequest[]
   mktConnectors: MarketingConnector[]
+  // Commercial Solar Finder
+  solarCampaigns: SolarCampaign[]
+  solarProspects: SolarProspect[]
   toasts: Toast[]
   railExpanded: boolean
 }

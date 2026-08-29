@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useReducer, type ReactNo
 import { buildSeed } from './seed'
 import * as pipelineHelpers from '../lib/pipelines'
 import type { PipelineStage } from './types'
-import type { State, Deal, Person, Lead, Org, Activity, EmailMsg, Toast, ID } from './types'
+import type { State, Deal, Person, Lead, Org, Activity, EmailMsg, Toast, ID, SolarCampaign, SolarProspect, SolarContact, SolarProspectStatus } from './types'
 import { AI_MEMBER_ID, YOU_MEMBER_ID } from './types'
 import type { StageName } from '../data/mock'
 
@@ -62,6 +62,13 @@ type Action =
   | { type: 'TOAST'; toast: Toast }
   | { type: 'DISMISS_TOAST'; id: ID }
   | { type: 'SET_RAIL'; expanded: boolean }
+  | { type: 'ADD_SOLAR_CAMPAIGN'; campaign: import('./types').SolarCampaign }
+  | { type: 'UPDATE_SOLAR_CAMPAIGN'; id: ID; patch: Partial<import('./types').SolarCampaign> }
+  | { type: 'REMOVE_SOLAR_CAMPAIGN'; id: ID }
+  | { type: 'ADD_SOLAR_PROSPECTS'; prospects: import('./types').SolarProspect[] }
+  | { type: 'UPDATE_SOLAR_PROSPECT'; id: ID; patch: Partial<import('./types').SolarProspect> }
+  | { type: 'REVEAL_SOLAR_CONTACTS'; id: ID; contacts: import('./types').SolarContact[] }
+  | { type: 'REMOVE_SOLAR_PROSPECT'; id: ID }
   | { type: 'ADD_FIELD'; field: import('./types').CustomField }
   | { type: 'REMOVE_FIELD'; id: ID }
   | { type: 'SET_CUSTOM'; entity: 'deal' | 'person' | 'org'; id: ID; fieldId: ID; value: string }
@@ -302,6 +309,20 @@ function reducer(state: State, action: Action): State {
       return { ...state, toasts: state.toasts.filter((t) => t.id !== action.id) }
     case 'SET_RAIL':
       return { ...state, railExpanded: action.expanded }
+    case 'ADD_SOLAR_CAMPAIGN':
+      return { ...state, solarCampaigns: [action.campaign, ...state.solarCampaigns] }
+    case 'UPDATE_SOLAR_CAMPAIGN':
+      return { ...state, solarCampaigns: state.solarCampaigns.map((c) => (c.id === action.id ? { ...c, ...action.patch } : c)) }
+    case 'REMOVE_SOLAR_CAMPAIGN':
+      return { ...state, solarCampaigns: state.solarCampaigns.filter((c) => c.id !== action.id), solarProspects: state.solarProspects.filter((p) => p.campaignId !== action.id) }
+    case 'ADD_SOLAR_PROSPECTS':
+      return { ...state, solarProspects: [...action.prospects, ...state.solarProspects] }
+    case 'UPDATE_SOLAR_PROSPECT':
+      return { ...state, solarProspects: state.solarProspects.map((p) => (p.id === action.id ? { ...p, ...action.patch, updatedAt: Date.now() } : p)) }
+    case 'REVEAL_SOLAR_CONTACTS':
+      return { ...state, solarProspects: state.solarProspects.map((p) => (p.id === action.id ? { ...p, contacts: action.contacts, contactsRevealed: true, updatedAt: Date.now() } : p)) }
+    case 'REMOVE_SOLAR_PROSPECT':
+      return { ...state, solarProspects: state.solarProspects.filter((p) => p.id !== action.id) }
     case 'ADD_FIELD':
       return { ...state, customFields: [...state.customFields, action.field] }
     case 'REMOVE_FIELD':
@@ -836,6 +857,30 @@ export function useActions() {
       toast(connected ? `${provider} disconnected` : `${provider} connected`, connected ? 'warning' : 'positive')
     },
     setRail: (expanded: boolean) => dispatch({ type: 'SET_RAIL', expanded }),
+
+    // ── Commercial Solar Finder ──────────────────────────────────────────────
+    createSolarCampaign: (partial: Partial<SolarCampaign> & { name: string; targetKwp: number }) => {
+      const campaign: SolarCampaign = {
+        id: uid('scamp'),
+        createdAt: Date.now(),
+        scanned: 0,
+        status: partial.status ?? 'draft',
+        ...partial,
+      }
+      dispatch({ type: 'ADD_SOLAR_CAMPAIGN', campaign })
+      return campaign
+    },
+    updateSolarCampaign: (id: ID, patch: Partial<SolarCampaign>) => dispatch({ type: 'UPDATE_SOLAR_CAMPAIGN', id, patch }),
+    renameSolarCampaign: (id: ID, name: string) => { dispatch({ type: 'UPDATE_SOLAR_CAMPAIGN', id, patch: { name } }); toast('Campaign renamed') },
+    removeSolarCampaign: (id: ID) => { dispatch({ type: 'REMOVE_SOLAR_CAMPAIGN', id }); toast('Campaign deleted', 'warning') },
+    addSolarProspects: (prospects: SolarProspect[]) => dispatch({ type: 'ADD_SOLAR_PROSPECTS', prospects }),
+    updateSolarProspect: (id: ID, patch: Partial<SolarProspect>) => dispatch({ type: 'UPDATE_SOLAR_PROSPECT', id, patch }),
+    setSolarProspectStatus: (id: ID, status: SolarProspectStatus) => dispatch({ type: 'UPDATE_SOLAR_PROSPECT', id, patch: { status } }),
+    revealSolarContacts: (id: ID, contacts: SolarContact[]) => {
+      dispatch({ type: 'REVEAL_SOLAR_CONTACTS', id, contacts })
+      toast(`${contacts.length} contact${contacts.length === 1 ? '' : 's'} revealed`)
+    },
+    removeSolarProspect: (id: ID) => dispatch({ type: 'REMOVE_SOLAR_PROSPECT', id }),
     updateStudioConfig: (patch: Partial<import('./types').StudioConfig>) => dispatch({ type: 'UPDATE_STUDIO_CONFIG', patch }),
     startProject: (project: import('./types').StudioProject) => {
       dispatch({ type: 'ADD_PROJECT', project })
