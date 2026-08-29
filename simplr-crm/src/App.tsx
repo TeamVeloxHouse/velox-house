@@ -23,7 +23,7 @@ import { TellOviAI } from './pages/TellOviAI'
 import { Meetings } from './pages/Meetings'
 import { LiveMeeting } from './pages/LiveMeeting'
 import { Calendar } from './pages/Calendar'
-import { CustomerPortals, CustomerPortal, SupportRequests, ResourceLibrary } from './pages/CustomerPortal'
+import { CustomerPortals, CustomerPortal, SupportRequests, ResourceLibrary, PortalWelcome } from './pages/CustomerPortal'
 import { Agents } from './pages/Agents'
 import { Prospector } from './pages/Prospector'
 import { LinkedInInbox } from './pages/LinkedInInbox'
@@ -48,6 +48,8 @@ import {
 import { MarketingOverview, BrandHub, MarketingAssets, ContentPlanner, MarketingSocial, MarketingRequests, MarketingConnectors } from './pages/marketing'
 
 export const router = createBrowserRouter([
+  // Customer-facing login/welcome — full screen, outside the CRM shell
+  { path: '/customers/:id/welcome', element: <PortalWelcome /> },
   {
     path: '/',
     element: <Layout />,

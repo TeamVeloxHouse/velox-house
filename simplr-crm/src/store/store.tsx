@@ -566,9 +566,30 @@ export function useActions() {
       toast(`Portal created for ${portal.customer}`)
       return portal
     },
-    sendPortalInvite: (id: ID, customer: string) => {
-      dispatch({ type: 'UPDATE_PORTAL', id, patch: { invitedAt: Date.now() } })
-      toast(`Portal invite emailed to ${customer}`)
+    sendPortalInvite: (portal: import('./types').CustomerPortal) => {
+      dispatch({ type: 'UPDATE_PORTAL', id: portal.id, patch: { invitedAt: Date.now() } })
+      const link = `https://portal.tellovi.io/welcome/${portal.id}`
+      const email: EmailMsg = {
+        id: uid('em'), folder: 'sent', from: 'TellOvi', fromEmail: 'hello@tellovi.io', to: portal.email || portal.customer,
+        subject: 'Your solar portal is ready',
+        body: `Hi ${portal.customer.split(' ')[0]},\n\nYour personal solar portal is live. It's where you'll find your system, live savings, all your documents, and help whenever you need it.\n\nLog in here: ${link}\n\n— The TellOvi team`,
+        replyToId: undefined, time: 'Just now', createdAt: Date.now(),
+      }
+      dispatch({ type: 'SEND_EMAIL', email })
+      dispatch({ type: 'ADD_PORTAL_EVENT', event: { id: uid('pe'), portalId: portal.id, section: 'Ask Ovi', label: 'Invite sent', kind: 'login', at: Date.now() } })
+      toast(`Portal invite emailed to ${portal.customer}`)
+    },
+    activatePortal: (id: ID) => {
+      dispatch({ type: 'UPDATE_PORTAL', id, patch: { status: 'active', lastActiveAt: Date.now() } })
+      dispatch({ type: 'ADD_PORTAL_EVENT', event: { id: uid('pe'), portalId: id, section: 'Ask Ovi', label: 'Logged in', kind: 'login', at: Date.now() } })
+    },
+    referFriend: (portal: import('./types').CustomerPortal, name: string, company: string, note: string) => {
+      const lead: Lead = { id: uid('l'), name, role: '', company: company || 'Homeowner', source: 'Customer referral', owner: portal.customer.split(' ')[0] === '' ? 'Jordan Miles' : 'Jordan Miles', created: 'Just now', createdAt: Date.now(), score: 78, status: 'new', referredByPortal: portal.id }
+      dispatch({ type: 'ADD_LEAD', lead })
+      dispatch({ type: 'ADD_PORTAL_EVENT', event: { id: uid('pe'), portalId: portal.id, section: 'Referrals', label: `Referred ${name}`, kind: 'click', at: Date.now() } })
+      toast(`Thanks! ${name} sent to the team as a referral 🎉`, 'positive')
+      void note
+      return lead
     },
     updatePortal: (id: ID, patch: Partial<import('./types').CustomerPortal>) => dispatch({ type: 'UPDATE_PORTAL', id, patch }),
     logPortalEvent: (portalId: ID, section: string, label: string, kind: import('./types').PortalEventKind, dwellMs?: number) => {

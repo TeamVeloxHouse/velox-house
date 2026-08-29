@@ -316,6 +316,7 @@ export interface Lead {
   email?: string
   phone?: string
   value?: number // estimated opportunity value, £
+  referredByPortal?: ID // a referral raised by an existing customer from their portal
   archived?: boolean
   converted?: boolean
 }

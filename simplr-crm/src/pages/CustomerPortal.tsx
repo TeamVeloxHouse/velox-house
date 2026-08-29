@@ -5,7 +5,7 @@ import { PageBody } from '../components/Page'
 import { Button, Kpi, Chip, Avatar } from '../components/ui'
 import { Table, Row, Cell } from '../components/Table'
 import { Modal, Field, Input, Select, Textarea } from '../components/overlays'
-import { Plus, Sparkle, Sun, File as FileIcon, Play, Bolt, Check, Send, MapPin, Clock, Download, Robot, Building, Wrench } from '../components/icons'
+import { Plus, Sparkle, Sun, File as FileIcon, Play, Bolt, Check, Send, MapPin, Clock, Download, Robot, Building, Wrench, Dollar, Bell } from '../components/icons'
 import { useState_, useActions } from '../store/store'
 import { customerAnswer, portalStarters, type PortalBlock } from '../lib/portalAi'
 import type { CustomerPortal as Portal, PortalResource, PortalEvent } from '../store/types'
@@ -60,7 +60,7 @@ export function CustomerPortals() {
                 <Cell><Chip tone={p.status === 'active' ? 'positive' : 'warning'} dot>{p.status === 'active' ? 'Active' : 'Invited'}</Chip></Cell>
                 <Cell muted>{p.lastActiveAt ? rel(p.lastActiveAt) : '—'}</Cell>
                 <Cell muted>{st.events} events · {st.mins}m viewed</Cell>
-                <Cell align="right"><span className="text-accent font-semibold text-[13px]">Open →</span></Cell>
+                <Cell align="right">{p.status === 'invited' ? <button onClick={(e) => { e.stopPropagation(); act.sendPortalInvite(p) }} className="text-accent font-semibold text-[13px]">Send invite</button> : <span className="text-accent font-semibold text-[13px]">Open →</span>}</Cell>
               </Row>
             )
           })}
@@ -118,23 +118,29 @@ function NewPortalModal({ open, onClose, onCreated }: { open: boolean; onClose: 
 }
 
 /* ============================ The portal itself ============================ */
-type Tab = 'Account' | 'Overview' | 'Energy' | 'Documents' | 'Support' | 'Resources' | 'Analytics'
+type Tab = 'Account' | 'Overview' | 'Energy' | 'Savings' | 'Documents' | 'Support' | 'Refer a friend' | 'Resources' | 'Analytics'
 const TEAM_TABS: Tab[] = ['Account', 'Analytics']
 const TABS: { id: Tab; icon: any }[] = [
-  { id: 'Account', icon: Building }, { id: 'Overview', icon: Sun }, { id: 'Energy', icon: Bolt }, { id: 'Documents', icon: FileIcon }, { id: 'Support', icon: Wrench }, { id: 'Resources', icon: Play }, { id: 'Analytics', icon: Sparkle },
+  { id: 'Account', icon: Building }, { id: 'Overview', icon: Sun }, { id: 'Energy', icon: Bolt }, { id: 'Savings', icon: Dollar }, { id: 'Documents', icon: FileIcon }, { id: 'Support', icon: Wrench }, { id: 'Refer a friend', icon: Sparkle }, { id: 'Resources', icon: Play }, { id: 'Analytics', icon: Sparkle },
 ]
 
 export function CustomerPortal() {
   const { id } = useParams()
   const nav = useNavigate()
   const { portals } = useState_()
+  const act = useActions()
   const portal = portals.find((p) => p.id === id)
   const [tab, setTab] = useState<Tab>('Account')
   if (!portal) return (<><TopBar title="Customer portals" /><PageBody><div className="text-muted-b">Portal not found. <button onClick={() => nav('/customers')} className="text-accent font-semibold">Back</button>.</div></PageBody></>)
 
   return (
     <>
-      <TopBar title={portal.customer} crumbs={['Customers']} actions={<><Chip tone={portal.status === 'active' ? 'positive' : 'warning'} dot>{portal.status === 'active' ? 'Active' : 'Invited'}</Chip><Button onClick={() => nav('/customers')}>All customers</Button></>} />
+      <TopBar title={portal.customer} crumbs={['Customers']} actions={<>
+        <Chip tone={portal.status === 'active' ? 'positive' : 'warning'} dot>{portal.status === 'active' ? 'Active' : 'Invited'}</Chip>
+        <Button icon={<Send size={15} />} onClick={() => act.sendPortalInvite(portal)}>{portal.status === 'invited' ? 'Send invite' : 'Resend invite'}</Button>
+        <Button onClick={() => nav(`/customers/${portal.id}/welcome`)}>Preview login</Button>
+        <Button onClick={() => nav('/customers')}>All customers</Button>
+      </>} />
       {/* preview banner — only on the customer-facing tabs */}
       {!TEAM_TABS.includes(tab) && (
         <div className="shrink-0 px-7 py-2 text-[12px] font-medium text-white flex items-center gap-2" style={{ background: CUSTOMER_ACCENT }}>
@@ -153,10 +159,12 @@ export function CustomerPortal() {
         {/* content */}
         <main className="flex-1 overflow-y-auto p-6 min-w-0">
           {tab === 'Account' && <AccountTab portal={portal} />}
-          {tab === 'Overview' && <OverviewTab portal={portal} />}
+          {tab === 'Overview' && <OverviewTab portal={portal} onGo={setTab} />}
           {tab === 'Energy' && <EnergyTab portal={portal} />}
+          {tab === 'Savings' && <SavingsTab portal={portal} />}
           {tab === 'Documents' && <DocumentsTab portal={portal} />}
           {tab === 'Support' && <SupportTab portal={portal} />}
+          {tab === 'Refer a friend' && <ReferTab portal={portal} />}
           {tab === 'Resources' && <ResourcesTab portal={portal} />}
           {tab === 'Analytics' && <AnalyticsTab portal={portal} />}
         </main>
@@ -164,6 +172,47 @@ export function CustomerPortal() {
         <PortalChat portal={portal} />
       </div>
     </>
+  )
+}
+
+/* ============================ Welcome / login ============================ */
+export function PortalWelcome() {
+  const { id } = useParams()
+  const nav = useNavigate()
+  const { portals } = useState_()
+  const act = useActions()
+  const portal = portals.find((p) => p.id === id)
+  const [email, setEmail] = useState(portal?.email ?? '')
+  const [sent, setSent] = useState(false)
+  if (!portal) return <div className="h-full flex items-center justify-center text-muted-b">Portal not found.</div>
+  const login = () => { act.activatePortal(portal.id); nav(`/customers/${portal.id}`) }
+  return (
+    <div className="h-full overflow-y-auto flex flex-col items-center justify-center p-6" style={{ background: 'radial-gradient(1200px 600px at 50% -10%, #0E7C66 0%, #0a5a4a 55%, #073f34 100%)' }}>
+      <div className="w-full max-w-[440px] flex flex-col items-center text-center gap-5">
+        <div className="flex items-center gap-2 text-white"><span className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center"><Sun size={20} /></span><span className="text-[18px] font-bold tracking-tight">TellOvi</span></div>
+        <div>
+          <div className="text-[26px] font-bold text-white">Welcome back, {portal.customer.split(' ')[0]}</div>
+          <div className="text-[14px] mt-1.5" style={{ color: '#C7EFE4' }}>Your {portal.systemKwp} kWp system, live savings, documents and help — all in one place.</div>
+        </div>
+        <div className="w-full bg-white rounded-2xl shadow-modal p-6 flex flex-col gap-3.5">
+          {!sent ? (
+            <>
+              <div className="text-[13px] text-muted-b text-left">Log in with a secure link — no password needed.</div>
+              <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" className="h-11 px-3.5 rounded-control border border-input-border bg-white text-[14px] outline-none focus:border-[#0E7C66]" />
+              <button onClick={() => setSent(true)} className="h-11 rounded-control text-white font-semibold text-[14px]" style={{ background: CUSTOMER_ACCENT }}>Email me a login link</button>
+            </>
+          ) : (
+            <>
+              <span className="w-12 h-12 rounded-full bg-[#E9F5F1] text-[#0E7C66] flex items-center justify-center mx-auto"><Send size={22} /></span>
+              <div className="text-[15px] font-semibold text-ink">Check your inbox</div>
+              <div className="text-[13px] text-muted-b">We sent a secure link to <b className="text-ink-3">{email || portal.email}</b>. For this preview, continue straight in:</div>
+              <button onClick={login} className="h-11 rounded-control text-white font-semibold text-[14px]" style={{ background: CUSTOMER_ACCENT }}>Continue to my portal →</button>
+            </>
+          )}
+        </div>
+        <button onClick={() => nav(`/customers/${portal.id}`)} className="text-[12.5px] text-white/70 hover:text-white">Skip (team preview)</button>
+      </div>
+    </div>
   )
 }
 
@@ -304,10 +353,16 @@ function ReportProblemModal({ open, onClose, portal }: { open: boolean; onClose:
   )
 }
 
-function OverviewTab({ portal }: { portal: Portal }) {
+function OverviewTab({ portal, onGo }: { portal: Portal; onGo: (t: Tab) => void }) {
   const payback = portal.annualSavings ? Math.round((portal.systemCost / portal.annualSavings) * 10) / 10 : 0
+  const w = warranties(portal)
+  const updates = [
+    { icon: Bolt, title: 'Great generation yesterday', body: `Your system made ${Math.round(portal.systemKwp * 5.1)} kWh — one of your best days this month.`, tone: '#0E7C66' },
+    { icon: Bell, title: 'Firmware update available', body: 'A free update for your inverter improves battery scheduling. Tap to apply.', tone: '#1D4ED8' },
+    { icon: Sun, title: 'Tip: shift your washing to midday', body: 'You’re generating most between 11am–3pm — run appliances then to use free solar.', tone: '#C79A3A' },
+  ]
   return (
-    <div className="max-w-[720px] flex flex-col gap-4">
+    <div className="max-w-[760px] flex flex-col gap-4">
       <div className="rounded-card p-6 text-white" style={{ background: 'linear-gradient(150deg,#0E7C66,#0a5a4a)' }}>
         <div className="flex items-center gap-1.5 text-[12px] font-semibold" style={{ color: '#9BE8D4' }}><Sun size={14} /> YOUR SOLAR SYSTEM</div>
         <div className="text-[26px] font-bold mt-1.5">{portal.systemKwp} kWp · saving £{portal.annualSavings.toLocaleString()}/yr</div>
@@ -318,10 +373,124 @@ function OverviewTab({ portal }: { portal: Portal }) {
         <Kpi variant="blue" label="Yearly saving" value={money(portal.annualSavings)} delta="Projected" />
         <Kpi label="Payback" value={`${payback} yrs`} delta="Then it's free energy" deltaTone="muted" />
       </div>
+      {/* what's new */}
       <div className="bg-surface border border-border rounded-card p-5">
-        <div className="text-[14px] font-semibold text-ink mb-2">Everything you need, in one place</div>
-        <div className="text-[13px] text-muted-b leading-relaxed">Check your live generation and savings under <b>Energy</b>, find your paperwork under <b>Documents</b>, and watch guides or troubleshoot a specific part under <b>Resources</b>. Stuck on anything? Ask Ovi on the right — it knows your system and your manuals.</div>
+        <div className="flex items-center gap-2 mb-3"><Bell size={15} className="text-accent" /><span className="text-[14px] font-semibold text-ink">What's new</span></div>
+        <div className="flex flex-col gap-3">
+          {updates.map((u) => (
+            <div key={u.title} className="flex gap-3">
+              <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: u.tone + '18', color: u.tone }}><u.icon size={15} /></span>
+              <div><div className="text-[13px] font-semibold text-ink-2">{u.title}</div><div className="text-[12.5px] text-muted-2 leading-snug">{u.body}</div></div>
+            </div>
+          ))}
+        </div>
       </div>
+      {/* warranty summary */}
+      <div className="bg-surface border border-border rounded-card p-5">
+        <div className="flex items-center gap-2 mb-3"><Check size={15} className="text-positive" /><span className="text-[14px] font-semibold text-ink">Your cover</span><button onClick={() => onGo('Documents')} className="ml-auto text-[12px] font-semibold text-accent">View warranties →</button></div>
+        <div className="grid grid-cols-3 gap-3">
+          {w.map((c) => (
+            <div key={c.part} className="rounded-lg border border-border p-3"><div className="text-[12px] text-muted-2">{c.part}</div><div className="text-[15px] font-bold text-ink mt-0.5">{c.years} yrs</div><div className="text-[11px] text-positive">Covered to {c.until}</div></div>
+          ))}
+        </div>
+      </div>
+      {/* quick links */}
+      <div className="grid grid-cols-2 gap-3">
+        <button onClick={() => onGo('Savings')} className="bg-surface border border-border rounded-card p-4 text-left hover:border-[#8FD3C2] transition-colors flex items-center gap-3"><span className="w-9 h-9 rounded-lg flex items-center justify-center text-white shrink-0" style={{ background: CUSTOMER_ACCENT }}><Dollar size={17} /></span><div><div className="text-[13.5px] font-semibold text-ink-2">See your savings</div><div className="text-[12px] text-muted-2">Trends &amp; impact</div></div></button>
+        <button onClick={() => onGo('Refer a friend')} className="bg-surface border border-border rounded-card p-4 text-left hover:border-[#8FD3C2] transition-colors flex items-center gap-3"><span className="w-9 h-9 rounded-lg bg-accent-wash text-accent flex items-center justify-center shrink-0"><Sparkle size={17} /></span><div><div className="text-[13.5px] font-semibold text-ink-2">Refer a friend</div><div className="text-[12px] text-muted-2">You both get £150</div></div></button>
+      </div>
+    </div>
+  )
+}
+
+/* ---- warranty + savings models ---- */
+function warranties(p: Portal) {
+  const base = p.installDate ? new Date(p.installDate) : new Date()
+  const until = (yrs: number) => { const d = new Date(base); d.setFullYear(d.getFullYear() + yrs); return d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }) }
+  return [{ part: 'Panels', years: 25, until: until(25) }, { part: 'Inverter', years: 12, until: until(12) }, { part: 'Battery', years: 10, until: until(10) }]
+}
+function portalSavings(p: Portal) {
+  const monthly = p.annualSavings / 12
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const seasonal = MONTHS.map((m, i) => ({ m, v: Math.round(monthly * (0.45 + 1.05 * Math.max(0, Math.cos(((i - 6) / 12) * 2 * Math.PI)))) }))
+  const monthsSince = p.installDate ? Math.max(1, Math.round((Date.now() - Date.parse(p.installDate)) / 2.63e9)) : 6
+  const genKwh = Math.round(p.systemKwp * 950)
+  const co2 = Math.round(genKwh * 0.233)
+  return { monthly, seasonal, lifetime: Math.round(monthly * monthsSince), monthsSince, genKwh, co2, trees: Math.round(co2 / 21), miles: Math.round(co2 / 0.17), selfSufficiency: 68 }
+}
+
+function SavingsTab({ portal }: { portal: Portal }) {
+  const s = useMemo(() => portalSavings(portal), [portal])
+  const max = Math.max(1, ...s.seasonal.map((x) => x.v))
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-3 gap-4">
+        <Kpi variant="deep" label="Saved so far" value={money(s.lifetime)} delta={`${s.monthsSince} months`} />
+        <Kpi variant="blue" label="This year" value={money(portal.annualSavings)} delta="Projected" />
+        <Kpi label="Self-sufficiency" value={`${s.selfSufficiency}%`} delta="Powered by your own solar" deltaTone="muted" />
+      </div>
+      <div className="bg-surface border border-border rounded-card p-5">
+        <div className="text-[14px] font-semibold text-ink mb-4">Monthly savings</div>
+        <div className="flex items-end gap-2 h-[170px]">
+          {s.seasonal.map((x) => (
+            <div key={x.m} className="flex-1 flex flex-col items-center gap-1.5 justify-end">
+              <div className="text-[10px] font-semibold text-ink-3">{money(x.v, { compact: true })}</div>
+              <div className="w-full rounded-t" style={{ height: `${(x.v / max) * 120}px`, background: CUSTOMER_ACCENT }} />
+              <div className="text-[10px] text-muted-2">{x.m}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="rounded-card p-5 text-white" style={{ background: 'linear-gradient(150deg,#0E7C66,#0a5a4a)' }}>
+        <div className="flex items-center gap-1.5 text-[12px] font-semibold" style={{ color: '#9BE8D4' }}><Sun size={14} /> YOUR IMPACT THIS YEAR</div>
+        <div className="grid grid-cols-3 gap-4 mt-3">
+          <div><div className="text-[24px] font-bold">{s.co2.toLocaleString()} kg</div><div className="text-[12px]" style={{ color: '#C7EFE4' }}>CO₂ avoided</div></div>
+          <div><div className="text-[24px] font-bold">{s.trees}</div><div className="text-[12px]" style={{ color: '#C7EFE4' }}>trees planted (equiv.)</div></div>
+          <div><div className="text-[24px] font-bold">{s.miles.toLocaleString()}</div><div className="text-[12px]" style={{ color: '#C7EFE4' }}>car miles offset</div></div>
+        </div>
+      </div>
+      <div className="text-[12px] text-muted-3">Figures are estimates from your system size and typical generation — your monitoring app has the exact numbers.</div>
+    </div>
+  )
+}
+
+function ReferTab({ portal }: { portal: Portal }) {
+  const { leads } = useState_()
+  const act = useActions()
+  const [name, setName] = useState('')
+  const [company, setCompany] = useState('')
+  const [note, setNote] = useState('')
+  const mine = leads.filter((l) => l.referredByPortal === portal.id).sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
+  const submit = () => { if (name.trim()) { act.referFriend(portal, name.trim(), company.trim(), note.trim()); setName(''); setCompany(''); setNote('') } }
+  return (
+    <div className="max-w-[640px] flex flex-col gap-4">
+      <div className="rounded-card p-6 text-white" style={{ background: 'linear-gradient(150deg,#0E7C66,#0a5a4a)' }}>
+        <div className="text-[22px] font-bold">Love your solar? Share it.</div>
+        <div className="text-[13.5px] mt-1.5" style={{ color: '#C7EFE4' }}>Refer a friend or neighbour — when they go solar with us, <b className="text-white">you both get £150</b>. There's no limit.</div>
+      </div>
+      <div className="bg-surface border border-border rounded-card p-5 flex flex-col gap-3">
+        <div className="text-[14px] font-semibold text-ink">Who should we talk to?</div>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Their name"><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Friend's name" /></Field>
+          <Field label="Area / town (optional)"><Input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="e.g. Didsbury" /></Field>
+        </div>
+        <Field label="Anything we should know? (optional)"><Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. They've got a big south-facing roof" /></Field>
+        <div className="flex justify-end"><Button variant="primary" icon={<Send size={15} />} onClick={submit}>Send referral</Button></div>
+      </div>
+      {mine.length > 0 && (
+        <div>
+          <div className="eyebrow text-muted-3 mb-2">Your referrals · {mine.length}</div>
+          <div className="flex flex-col gap-2">
+            {mine.map((l) => (
+              <div key={l.id} className="bg-surface border border-border rounded-card px-4 py-3 flex items-center gap-3">
+                <Avatar name={l.name} size={30} />
+                <div className="flex-1 min-w-0"><div className="text-[13px] font-semibold text-ink-2 truncate">{l.name}</div><div className="text-[12px] text-muted-2">{l.company} · {rel(l.createdAt ?? Date.now())}</div></div>
+                <Chip tone={l.converted ? 'positive' : 'accent'} dot>{l.converted ? '£150 earned' : 'In progress'}</Chip>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
