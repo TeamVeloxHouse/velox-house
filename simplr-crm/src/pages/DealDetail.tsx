@@ -9,7 +9,7 @@ import { NextBestAction, RecordSummary, ScorePill, ConversationIntel, Completene
 import { CustomFieldRows } from '../components/CustomFields'
 import { dealScore, nextBestAction, dealSummary, dealCoaching, dealCompleteness } from '../lib/intelligence'
 import { gbp } from '../lib/solar'
-import { stages, type StageName } from '../data/mock'
+import { type StageName } from '../data/mock'
 import { useSelectors, useActions, useState_ } from '../store/store'
 import type { Activity } from '../store/types'
 import { money, classNames, initials } from '../lib/format'
@@ -40,7 +40,8 @@ export function DealDetail() {
     )
   }
 
-  const currentStageIdx = stages.indexOf(deal.stage)
+  const pstages = sel.pipelineOf(deal).stages
+  const currentStageIdx = pstages.findIndex((s) => s.name === deal.stage)
   const timeline = sel.dealActivities(deal.id)
   const openTasks = sel.openTasks(deal.id)
   const contacts = sel.peopleForDeal(deal)
@@ -84,17 +85,17 @@ export function DealDetail() {
 
         {/* stage bar — click to advance */}
         <div className="flex gap-0 rounded-lg overflow-hidden border border-border">
-          {stages.map((s, i) => {
+          {pstages.map((ps, i) => {
+            const s = ps.name
             const past = i < currentStageIdx
             const current = i === currentStageIdx
-            const scale = ['#C7D3F2', '#8FB0FF', '#5B85F0', '#3A67E4', '#1D4ED8']
             return (
               <button
-                key={s}
+                key={ps.id}
                 onClick={() => act.moveStage(deal.id, s as StageName)}
                 title={`Move to ${s}`}
                 className={classNames('py-2.5 px-3.5 text-[12px] font-semibold flex flex-col gap-0.5 text-left transition-opacity hover:opacity-90', current ? 'flex-[1.2]' : 'flex-1')}
-                style={{ background: current ? '#0B1220' : past ? scale[i] : '#EEF0F4', color: current ? '#fff' : past ? '#fff' : '#8A94A4' }}
+                style={{ background: current ? '#0B1220' : past ? ps.color : '#EEF0F4', color: current ? '#fff' : past ? '#fff' : '#8A94A4' }}
               >
                 <span>{s}</span>
                 <span className="text-[11px] font-medium opacity-80">{past ? 'done' : current ? 'active' : 'upcoming'}</span>

@@ -2,7 +2,9 @@
    All figures are sample values; currency + relative dates are derived in the UI. */
 
 export type Health = 'Healthy' | 'At risk' | 'Stalled' | 'No next step'
-export type StageName = 'Qualified' | 'Contact Made' | 'Demo Scheduled' | 'Proposal Made' | 'Negotiations Started'
+// Stage names are now free-form — pipelines are configurable and per-industry.
+// The list below stays as the seeded default pipeline / fallback.
+export type StageName = string
 
 export const stages: StageName[] = ['Qualified', 'Contact Made', 'Demo Scheduled', 'Proposal Made', 'Negotiations Started']
 export const stageColors = ['#8FB0FF', '#5B85F0', '#3A67E4', '#1D4ED8', '#0E7C66']

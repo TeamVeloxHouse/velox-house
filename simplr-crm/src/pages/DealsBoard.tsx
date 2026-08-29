@@ -7,9 +7,9 @@ import { Modal, Field, Input, Select } from '../components/overlays'
 import { Plus, Bars, Filter, Search, Grid, Pie, Box } from '../components/icons'
 import { ScorePill, RiskBadge } from '../components/ai-widgets'
 import { dealScore, dealRisk } from '../lib/intelligence'
-import { stages, stageColors, type Health, type StageName } from '../data/mock'
-import { useState_, useActions } from '../store/store'
-import type { Deal } from '../store/types'
+import { type Health, type StageName } from '../data/mock'
+import { useState_, useActions, useSelectors } from '../store/store'
+import type { Deal, PipelineStage } from '../store/types'
 import { money, classNames } from '../lib/format'
 
 const healthTone: Record<Health, ChipTone> = { Healthy: 'positive', 'At risk': 'warning', Stalled: 'negative', 'No next step': 'warning' }
@@ -17,12 +17,16 @@ const healthDot: Record<Health, string> = { Healthy: 'bg-positive', 'At risk': '
 
 export function DealsBoard() {
   const nav = useNavigate()
-  const { deals, orgs, activities } = useState_()
-  const { moveStage, addDeal, addPerson } = useActions()
+  const { deals, orgs, activities, pipelines, activePipelineId } = useState_()
+  const { moveStage, addDeal, addPerson, setActivePipeline } = useActions()
+  const sel = useSelectors()
+  const pipeline = sel.activePipeline()
+  const pstages = pipeline.stages
+  const defaultPipeId = pipelines[0]?.id
   const [view, setView] = useState<'board' | 'list' | 'forecast' | 'archive'>('board')
   const [dragId, setDragId] = useState<string | null>(null)
   const [showNew, setShowNew] = useState(false)
-  const [newStage, setNewStage] = useState<StageName>('Qualified')
+  const [newStage, setNewStage] = useState<StageName>(pstages[0]?.name ?? '')
   const [q, setQ] = useState('')
   const [showFilter, setShowFilter] = useState(false)
   const [fOwner, setFOwner] = useState('All')
@@ -45,19 +49,20 @@ export function DealsBoard() {
     return true
   }
 
-  const active = deals.filter((d) => !d.lost && match(d))
+  const inPipe = (d: Deal) => (d.pipelineId ?? defaultPipeId) === pipeline.id
+  const active = deals.filter((d) => !d.lost && inPipe(d) && match(d))
   const byStage = useMemo(() => {
     const map: Record<string, Deal[]> = {}
-    stages.forEach((s) => (map[s] = []))
-    active.forEach((d) => map[d.stage]?.push(d))
+    pstages.forEach((s) => (map[s.name] = []))
+    active.forEach((d) => { (map[d.stage] ??= []).push(d) })
     return map
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deals, q, fOwner, fHealth, fMin, quick])
+  }, [deals, q, fOwner, fHealth, fMin, quick, pipeline.id])
 
   const open = active.filter((d) => !d.won)
   const total = open.reduce((s, d) => s + d.value, 0)
   const weighted = Math.round(open.reduce((s, d) => s + d.value * (d.probability / 100), 0))
-  const lost = deals.filter((d) => d.lost)
+  const lost = deals.filter((d) => d.lost && inPipe(d))
   const openNewIn = (stage: StageName) => { setNewStage(stage); setShowNew(true) }
 
   const viewTabs = [
@@ -74,12 +79,20 @@ export function DealsBoard() {
         actions={
           <>
             <Button icon={<Filter size={16} />} onClick={() => setShowFilter((v) => !v)}>Filter{filterCount > 0 ? ` · ${filterCount}` : ''}</Button>
-            <Button variant="primary" icon={<Plus size={16} />} onClick={() => openNewIn('Qualified')}>New deal</Button>
+            <Button variant="primary" icon={<Plus size={16} />} onClick={() => openNewIn(pstages[0]?.name ?? '')}>New deal</Button>
           </>
         }
       />
 
       <div className="h-[52px] shrink-0 bg-surface border-b border-border flex items-center gap-3 px-7">
+        {/* pipeline switcher */}
+        <div className="flex items-center gap-1.5">
+          <select value={activePipelineId} onChange={(e) => setActivePipeline(e.target.value)} className="h-9 pl-3 pr-7 rounded-control border border-border bg-surface text-[13px] font-semibold text-ink-2 outline-none focus:border-accent cursor-pointer">
+            {pipelines.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}
+          </select>
+          <button onClick={() => nav('/settings?tab=pipelines')} title="Manage pipelines" className="h-9 w-9 rounded-control border border-border text-muted-b hover:text-ink-3 hover:bg-control flex items-center justify-center"><Plus size={16} /></button>
+        </div>
+        <div className="w-px h-6 bg-divider" />
         <div className="inline-flex bg-control rounded-control p-[3px] gap-0.5">
           {viewTabs.map((t) => (
             <button
@@ -128,22 +141,24 @@ export function DealsBoard() {
           <div className="flex items-center gap-4">
             <div className="text-[13px] text-muted-b">Weighted <span className="font-semibold text-ink-2">{money(weighted)}</span> of {money(total)} open</div>
             <div className="flex-1 max-w-[440px] h-2 rounded-full overflow-hidden flex">
-              {stages.map((s, i) => {
-                const v = byStage[s].filter((d) => !d.won).reduce((a, b) => a + b.value, 0)
-                return <div key={s} style={{ flex: v || 0.2, background: stageColors[i] }} />
+              {pstages.map((s) => {
+                const v = (byStage[s.name] ?? []).filter((d) => !d.won).reduce((a, b) => a + b.value, 0)
+                return <div key={s.id} style={{ flex: v || 0.2, background: s.color }} />
               })}
             </div>
           </div>
 
           <div className="flex-1 min-h-0 overflow-x-auto -mx-1 px-1">
-            <div className="grid gap-3.5 h-full" style={{ gridTemplateColumns: 'repeat(5, minmax(264px, 1fr))' }}>
-              {stages.map((stage, i) => {
-                const col = byStage[stage]
+            <div className="grid gap-3.5 h-full" style={{ gridTemplateColumns: `repeat(${pstages.length}, minmax(248px, 1fr))` }}>
+              {pstages.map((ps, i) => {
+                const stage = ps.name
+                const col = byStage[stage] ?? []
                 const colValue = col.reduce((a, b) => a + b.value, 0)
                 const isDropTarget = dragId && deals.find((d) => d.id === dragId)?.stage !== stage
+                const focusStage = i === pstages.length - 1
                 return (
                   <div
-                    key={stage}
+                    key={ps.id}
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={() => { if (dragId) moveStage(dragId, stage as StageName); setDragId(null) }}
                     className={classNames('flex flex-col min-h-0 rounded-xl px-1.5 transition-colors', isDropTarget ? 'bg-accent-wash' : '')}
@@ -153,13 +168,13 @@ export function DealsBoard() {
                       <span className="text-[11px] font-medium text-muted-3 bg-control rounded-full px-1.5 py-0.5">{col.length}</span>
                     </div>
                     <div className="text-[12px] text-muted-2 font-medium mb-2">{money(colValue, { compact: true })}</div>
-                    <div className="h-[3px] rounded-full mb-2.5" style={{ background: stageColors[i] }} />
+                    <div className="h-[3px] rounded-full mb-2.5" style={{ background: ps.color }} />
                     <div className="flex flex-col gap-2.5 overflow-y-auto pr-1 -mr-1 pb-2 flex-1">
                       {col.length === 0 && (
                         <div className="text-[12px] text-muted-3 text-center py-6 rounded-lg border border-dashed border-input-border">No deals</div>
                       )}
                       {col.map((d) => {
-                        const focused = d.stage === 'Negotiations Started' && !d.won
+                        const focused = focusStage && !d.won
                         return (
                           <div
                             key={d.id}
@@ -244,15 +259,15 @@ export function DealsBoard() {
 
       {view === 'forecast' && (
         <main className="flex-1 overflow-y-auto p-7">
-          <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(5,1fr)' }}>
-            {stages.map((s, i) => {
-              const col = byStage[s].filter((d) => !d.won)
+          <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${pstages.length},1fr)` }}>
+            {pstages.map((ps) => {
+              const col = (byStage[ps.name] ?? []).filter((d) => !d.won)
               const v = col.reduce((a, b) => a + b.value, 0)
               const w = col.reduce((a, b) => a + b.value * (b.probability / 100), 0)
               return (
-                <div key={s} className="bg-surface border border-border rounded-card p-4">
-                  <div className="h-[3px] rounded-full mb-3" style={{ background: stageColors[i] }} />
-                  <div className="text-[13px] font-semibold text-ink-2">{s}</div>
+                <div key={ps.id} className="bg-surface border border-border rounded-card p-4">
+                  <div className="h-[3px] rounded-full mb-3" style={{ background: ps.color }} />
+                  <div className="text-[13px] font-semibold text-ink-2">{ps.name}</div>
                   <div className="text-[22px] font-bold text-ink mt-1">{money(v, { compact: true })}</div>
                   <div className="text-[12px] text-muted-2 mt-0.5">{col.length} deals</div>
                   <div className="text-[13px] font-semibold text-accent mt-2">{money(Math.round(w), { compact: true })} weighted</div>
@@ -297,7 +312,7 @@ export function DealsBoard() {
         </main>
       )}
 
-      <NewDealModal open={showNew} initialStage={newStage} onClose={() => setShowNew(false)} orgs={orgs} onCreate={(p) => {
+      <NewDealModal open={showNew} initialStage={newStage} pstages={pstages} onClose={() => setShowNew(false)} orgs={orgs} onCreate={(p) => {
         let personIds: string[] | undefined
         if (p.contact?.trim()) { const person = addPerson({ name: p.contact.trim(), role: p.contactRole, org: p.org }); personIds = [person.id] }
         const d = addDeal({ name: p.name, org: p.org, value: p.value, stage: p.stage, probability: p.probability, closeDate: p.closeDate || 'This quarter', subtitle: p.source ? `Source: ${p.source}` : '', personIds })
@@ -307,27 +322,26 @@ export function DealsBoard() {
   )
 }
 
-// Typical win probability by stage — seeds the confidence field & shows a conversion hint.
-const STAGE_DEFAULT_PROB: Record<StageName, number> = { 'Qualified': 20, 'Contact Made': 30, 'Demo Scheduled': 45, 'Proposal Made': 65, 'Negotiations Started': 80 }
 const CONFIDENCE_OPTIONS = [10, 20, 30, 50, 65, 80, 90]
 const DEAL_SOURCES = ['', 'Inbound', 'Referral', 'Outbound', 'Partner', 'Event', 'Existing customer']
 
 type NewDealPayload = { name: string; org: string; value: number; stage: StageName; probability: number; closeDate: string; source: string; contact: string; contactRole: string }
 
-function NewDealModal({ open, initialStage, onClose, orgs, onCreate }: { open: boolean; initialStage: StageName; onClose: () => void; orgs: { name: string }[]; onCreate: (p: NewDealPayload) => void }) {
+function NewDealModal({ open, initialStage, pstages, onClose, orgs, onCreate }: { open: boolean; initialStage: StageName; pstages: PipelineStage[]; onClose: () => void; orgs: { name: string }[]; onCreate: (p: NewDealPayload) => void }) {
+  const probOf = (s: StageName) => pstages.find((x) => x.name === s)?.probability ?? 30
   const [name, setName] = useState('')
   const [org, setOrg] = useState('')
   const [value, setValue] = useState('')
   const [stage, setStage] = useState<StageName>(initialStage)
-  const [prob, setProb] = useState(STAGE_DEFAULT_PROB[initialStage])
+  const [prob, setProb] = useState(probOf(initialStage))
   const [touchedProb, setTouchedProb] = useState(false)
   const [close, setClose] = useState('')
   const [source, setSource] = useState('')
   const [contact, setContact] = useState('')
   const [contactRole, setContactRole] = useState('')
-  useEffect(() => { if (open) { setStage(initialStage); setProb(STAGE_DEFAULT_PROB[initialStage]); setTouchedProb(false) } }, [open, initialStage])
+  useEffect(() => { if (open) { setStage(initialStage); setProb(probOf(initialStage)); setTouchedProb(false) } /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [open, initialStage])
   // when the stage changes and the user hasn't overridden confidence, follow the stage default
-  function pickStage(s: StageName) { setStage(s); if (!touchedProb) setProb(STAGE_DEFAULT_PROB[s]) }
+  function pickStage(s: StageName) { setStage(s); if (!touchedProb) setProb(probOf(s)) }
   const valid = name.trim() && org.trim()
   const weighted = Math.round((Number(value) || 0) * (prob / 100))
   const reset = () => { setName(''); setOrg(''); setValue(''); setClose(''); setSource(''); setContact(''); setContactRole('') }
@@ -365,7 +379,7 @@ function NewDealModal({ open, initialStage, onClose, orgs, onCreate }: { open: b
       <div className="grid grid-cols-2 gap-3">
         <Field label="Stage">
           <Select value={stage} onChange={(e) => pickStage(e.target.value as StageName)}>
-            {stages.map((s) => (<option key={s} value={s}>{s}</option>))}
+            {pstages.map((s) => (<option key={s.id} value={s.name}>{s.name}</option>))}
           </Select>
         </Field>
         <Field label="Confidence to win">
@@ -376,7 +390,7 @@ function NewDealModal({ open, initialStage, onClose, orgs, onCreate }: { open: b
       </div>
       <div className="rounded-control bg-surface-tint border border-border px-3 py-2.5 flex items-center gap-2 text-[12.5px] text-muted-b">
         <span className="w-1.5 h-1.5 rounded-full bg-accent" />
-        Deals at <span className="font-semibold text-ink-3">{stage}</span> typically close around <span className="font-semibold text-ink-3">{STAGE_DEFAULT_PROB[stage]}%</span>.
+        Deals at <span className="font-semibold text-ink-3">{stage}</span> typically close around <span className="font-semibold text-ink-3">{probOf(stage)}%</span>.
         {Number(value) > 0 && <span className="ml-auto text-ink-3 font-semibold">Weighted {money(weighted, { compact: true })}</span>}
       </div>
     </Modal>

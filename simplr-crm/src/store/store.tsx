@@ -1,5 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, type ReactNode } from 'react'
 import { buildSeed } from './seed'
+import * as pipelineHelpers from '../lib/pipelines'
+import type { PipelineStage } from './types'
 import type { State, Deal, Person, Lead, Org, Activity, EmailMsg, Toast, ID } from './types'
 import { AI_MEMBER_ID, YOU_MEMBER_ID } from './types'
 import type { StageName } from '../data/mock'
@@ -11,6 +13,9 @@ export const uid = (p = 'x') => `${p}${Date.now().toString(36)}${idc++}`
 /** Live snapshot so non-React code (the AI engine) can read current state. */
 export const live: { state: State | null } = { state: null }
 
+/** Re-spread stage colours across the ramp after add/remove/reorder. */
+const recolour = (stages: PipelineStage[]): PipelineStage[] => stages.map((s, i) => ({ ...s, color: pipelineHelpers.stageColor(i, stages.length) }))
+
 type Action =
   | { type: 'ADD_DEAL'; deal: Deal }
   | { type: 'UPDATE_DEAL'; id: ID; patch: Partial<Deal> }
@@ -18,6 +23,11 @@ type Action =
   | { type: 'MARK_WON'; id: ID }
   | { type: 'MARK_LOST'; id: ID; reason?: string }
   | { type: 'REMOVE_DEAL'; id: ID }
+  | { type: 'ADD_PIPELINE'; pipeline: import('./types').Pipeline }
+  | { type: 'UPDATE_PIPELINE'; id: ID; patch: Partial<import('./types').Pipeline> }
+  | { type: 'REMOVE_PIPELINE'; id: ID; reassignTo: ID }
+  | { type: 'SET_ACTIVE_PIPELINE'; id: ID }
+  | { type: 'SET_FEATURES_ALL'; features: import('./types').Features }
   | { type: 'ADD_PERSON'; person: Person }
   | { type: 'REMOVE_PERSON'; id: ID }
   | { type: 'REMOVE_ORG'; id: ID }
@@ -133,6 +143,31 @@ function reducer(state: State, action: Action): State {
         activities: state.activities.filter((a) => a.dealId !== action.id),
         emails: state.emails.filter((e) => e.dealId !== action.id),
       }
+    case 'ADD_PIPELINE':
+      return { ...state, pipelines: [...state.pipelines, action.pipeline] }
+    case 'UPDATE_PIPELINE':
+      return { ...state, pipelines: state.pipelines.map((p) => (p.id === action.id ? { ...p, ...action.patch } : p)) }
+    case 'REMOVE_PIPELINE': {
+      const gone = state.pipelines.find((p) => p.id === action.id)
+      const target = state.pipelines.find((p) => p.id === action.reassignTo)
+      const fallbackStage = target?.stages[0]?.name
+      return {
+        ...state,
+        pipelines: state.pipelines.filter((p) => p.id !== action.id),
+        // move that pipeline's deals to the reassignment pipeline (+ snap stage into range)
+        deals: state.deals.map((d) => {
+          const inGone = (d.pipelineId ?? state.pipelines[0]?.id) === action.id
+          if (!inGone || !gone) return d
+          const stageStillValid = target?.stages.some((s) => s.name === d.stage)
+          return { ...d, pipelineId: action.reassignTo, stage: stageStillValid ? d.stage : (fallbackStage ?? d.stage) }
+        }),
+        activePipelineId: state.activePipelineId === action.id ? action.reassignTo : state.activePipelineId,
+      }
+    }
+    case 'SET_ACTIVE_PIPELINE':
+      return { ...state, activePipelineId: action.id }
+    case 'SET_FEATURES_ALL':
+      return { ...state, features: action.features }
     case 'ADD_PERSON':
       return { ...state, people: [action.person, ...state.people] }
     case 'REMOVE_PERSON':
@@ -455,13 +490,21 @@ export function useActions() {
         personIds: partial.personIds ?? [],
         probability: partial.probability ?? 30,
         orgId: partial.orgId,
+        pipelineId: partial.pipelineId ?? live.state?.activePipelineId,
         ...partial,
       }
       dispatch({ type: 'ADD_DEAL', deal })
       toast(`Deal “${deal.name}” created`)
       return deal
     },
-    moveStage: (id: ID, stage: StageName) => dispatch({ type: 'MOVE_STAGE', id, stage }),
+    moveStage: (id: ID, stage: StageName) => {
+      dispatch({ type: 'MOVE_STAGE', id, stage })
+      // keep the deal's win-confidence in step with the stage it's now in
+      const deal = live.state?.deals.find((d) => d.id === id)
+      const pipe = live.state?.pipelines.find((p) => p.id === (deal?.pipelineId ?? live.state?.activePipelineId))
+      const st = pipe?.stages.find((s) => s.name === stage)
+      if (st) dispatch({ type: 'UPDATE_DEAL', id, patch: { probability: st.probability, quoted: st.probability >= 55 || deal?.quoted } })
+    },
     markWon: (id: ID, name: string) => {
       dispatch({ type: 'MARK_WON', id })
       dispatch({ type: 'ADD_ACTIVITY', activity: { id: uid('act'), type: 'change', subject: 'Deal marked Won 🎉', dealId: id, done: true, who: 'Jordan Miles', createdAt: Date.now() } })
@@ -473,6 +516,62 @@ export function useActions() {
     },
     updateDeal: (id: ID, patch: Partial<Deal>) => dispatch({ type: 'UPDATE_DEAL', id, patch }),
     removeDeal: (id: ID, name: string) => { dispatch({ type: 'REMOVE_DEAL', id }); toast(`Deal “${name}” deleted`, 'warning') },
+
+    // ── Configurable pipelines ──
+    setActivePipeline: (id: ID) => dispatch({ type: 'SET_ACTIVE_PIPELINE', id }),
+    addPipelineFromTemplate: (templateKey: string, name?: string) => {
+      const t = pipelineHelpers.templateByKey(templateKey)
+      if (!t) return undefined
+      const pipeline = pipelineHelpers.pipelineFromTemplate(t, uid('pipe'), name)
+      dispatch({ type: 'ADD_PIPELINE', pipeline })
+      dispatch({ type: 'SET_ACTIVE_PIPELINE', id: pipeline.id })
+      toast(`Pipeline “${pipeline.name}” created`)
+      return pipeline
+    },
+    renamePipeline: (id: ID, name: string) => dispatch({ type: 'UPDATE_PIPELINE', id, patch: { name } }),
+    removePipeline: (id: ID, name: string) => {
+      const others = (live.state?.pipelines ?? []).filter((p) => p.id !== id)
+      if (others.length === 0) { toast('You need at least one pipeline', 'warning'); return }
+      dispatch({ type: 'REMOVE_PIPELINE', id, reassignTo: others[0].id })
+      toast(`Pipeline “${name}” deleted — its deals moved to “${others[0].name}”`, 'warning')
+    },
+    // stage CRUD (compute the new stages array, then patch the pipeline)
+    addStage: (pipelineId: ID, name: string, probability = 50) => {
+      const p = live.state?.pipelines.find((x) => x.id === pipelineId)
+      if (!p) return
+      const stages = [...p.stages, { id: uid('st'), name, probability, color: pipelineHelpers.stageColor(p.stages.length, p.stages.length + 1) }]
+      dispatch({ type: 'UPDATE_PIPELINE', id: pipelineId, patch: { stages: recolour(stages) } })
+      toast(`Stage “${name}” added`)
+    },
+    updateStage: (pipelineId: ID, stageId: ID, patch: Partial<import('./types').PipelineStage>) => {
+      const p = live.state?.pipelines.find((x) => x.id === pipelineId)
+      if (!p) return
+      dispatch({ type: 'UPDATE_PIPELINE', id: pipelineId, patch: { stages: p.stages.map((s) => (s.id === stageId ? { ...s, ...patch } : s)) } })
+    },
+    removeStage: (pipelineId: ID, stageId: ID) => {
+      const p = live.state?.pipelines.find((x) => x.id === pipelineId)
+      if (!p || p.stages.length <= 2) { toast('A pipeline needs at least two stages', 'warning'); return }
+      dispatch({ type: 'UPDATE_PIPELINE', id: pipelineId, patch: { stages: recolour(p.stages.filter((s) => s.id !== stageId)) } })
+    },
+    moveStageOrder: (pipelineId: ID, stageId: ID, dir: -1 | 1) => {
+      const p = live.state?.pipelines.find((x) => x.id === pipelineId)
+      if (!p) return
+      const i = p.stages.findIndex((s) => s.id === stageId)
+      const j = i + dir
+      if (i < 0 || j < 0 || j >= p.stages.length) return
+      const stages = [...p.stages]
+      ;[stages[i], stages[j]] = [stages[j], stages[i]]
+      dispatch({ type: 'UPDATE_PIPELINE', id: pipelineId, patch: { stages: recolour(stages) } })
+    },
+    // Apply an industry template to a pipeline (replace its stages) + set its modules.
+    applyIndustryTemplate: (pipelineId: ID, templateKey: string) => {
+      const t = pipelineHelpers.templateByKey(templateKey)
+      const p = live.state?.pipelines.find((x) => x.id === pipelineId)
+      if (!t || !p) return
+      dispatch({ type: 'UPDATE_PIPELINE', id: pipelineId, patch: { stages: pipelineHelpers.makeStages(t.stages) } })
+      dispatch({ type: 'SET_FEATURES_ALL', features: { ...t.features } })
+      toast(`“${t.name}” applied — pipeline & workspace reshaped`)
+    },
 
     addPerson: (partial: Partial<Person> & { name: string }) => {
       const person: Person = {
@@ -977,6 +1076,8 @@ export function useSelectors() {
   const s = useState_()
   return {
     dealById: (id?: ID) => s.deals.find((d) => d.id === id),
+    activePipeline: () => s.pipelines.find((p) => p.id === s.activePipelineId) ?? s.pipelines[0],
+    pipelineOf: (deal?: { pipelineId?: ID }) => s.pipelines.find((p) => p.id === (deal?.pipelineId ?? s.activePipelineId)) ?? s.pipelines[0],
     personById: (id?: ID) => s.people.find((p) => p.id === id),
     orgById: (id?: ID) => s.orgs.find((o) => o.id === id),
     dealActivities: (dealId: ID) => s.activities.filter((a) => a.dealId === dealId).sort((a, b) => b.createdAt - a.createdAt),

@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { TopBar } from '../components/TopBar'
 import { Button, Kpi, Chip, Avatar, type ChipTone } from '../components/ui'
 import { Table, Row, Cell } from '../components/Table'
@@ -8,6 +9,7 @@ import { BrandLogo } from '../components/BrandLogo'
 import { useActions, useState_ } from '../store/store'
 import type { CustomEntity, CustomField, Playbook, PlaybookScope, TradeKey, FeatureKey, UserRole } from '../store/types'
 import { TRADE_PROFILES, tradeByKey } from '../lib/trades'
+import { INDUSTRY_TEMPLATES } from '../lib/pipelines'
 import { ROLES, roleByKey } from '../lib/roles'
 import { classNames } from '../lib/format'
 
@@ -33,7 +35,8 @@ const users: TUser[] = [
 
 export function Settings() {
   const act = useActions()
-  const [active, setActive] = useState('Users & permissions')
+  const [params] = useSearchParams()
+  const [active, setActive] = useState(params.get('tab') === 'pipelines' ? 'Pipelines & stages' : 'Users & permissions')
   const [invite, setInvite] = useState(false)
   const [rows, setRows] = useState(users)
   const template = '1.7fr 1.7fr 0.9fr 1fr 1.4fr 0.9fr'
@@ -77,6 +80,8 @@ export function Settings() {
         <main className="flex-1 overflow-y-auto p-7 flex flex-col gap-5">
           {active === 'Trade & modules' ? (
             <TradeModulesPanel />
+          ) : active === 'Pipelines & stages' ? (
+            <PipelinesPanel />
           ) : active === 'AI Context' ? (
             <PlaybooksPanel />
           ) : active === 'Custom fields' ? (
@@ -546,6 +551,106 @@ const moduleMeta: { key: FeatureKey; icon: (p: { size?: number; className?: stri
   { key: 'compliance', icon: FileIcon, label: 'Compliance & certificates', desc: 'Per-job checklist for MCS, DNO, FENSA, Gas Safe…' },
   { key: 'inventory', icon: Box, label: 'Stock & inventory', desc: 'Track stock and reserve materials against quotes' },
 ]
+
+function PipelinesPanel() {
+  const { pipelines, activePipelineId, deals } = useState_()
+  const act = useActions()
+  const [selId, setSelId] = useState(activePipelineId)
+  const [tplOpen, setTplOpen] = useState(false)
+  const [newStage, setNewStage] = useState('')
+  const pipe = pipelines.find((p) => p.id === selId) ?? pipelines[0]
+  const dealCount = (pid: string) => deals.filter((d) => (d.pipelineId ?? pipelines[0]?.id) === pid).length
+
+  return (
+    <>
+      <div>
+        <div className="text-[18px] font-bold text-ink">Pipelines &amp; stages</div>
+        <div className="text-[13px] text-muted-b mt-0.5">Shape the pipeline to how your business actually sells. Add pipelines for different sales motions, rename and reorder stages, and set each stage’s typical win rate — it drives deal confidence and the forecast.</div>
+      </div>
+
+      <div className="grid gap-4" style={{ gridTemplateColumns: '240px 1fr' }}>
+        {/* pipeline list */}
+        <div className="flex flex-col gap-2">
+          {pipelines.map((p) => (
+            <button key={p.id} onClick={() => setSelId(p.id)} className={classNames('text-left rounded-card border p-3 transition-colors', selId === p.id ? 'border-accent bg-accent-wash-4' : 'border-border hover:bg-control')}>
+              <div className="flex items-center gap-2">
+                <span className="text-[13px] font-semibold text-ink-2 flex-1 truncate">{p.name}</span>
+                {activePipelineId === p.id && <Chip tone="positive">Active</Chip>}
+              </div>
+              <div className="text-[11.5px] text-muted-2 mt-0.5">{p.stages.length} stages · {dealCount(p.id)} deals</div>
+            </button>
+          ))}
+          <button onClick={() => setTplOpen(true)} className="rounded-card border border-dashed border-input-border text-[13px] text-muted-2 py-2.5 hover:border-accent hover:text-accent transition-colors flex items-center justify-center gap-1.5"><Plus size={15} /> New pipeline</button>
+        </div>
+
+        {/* stage editor */}
+        <div className="bg-surface border border-border rounded-card p-5 flex flex-col gap-4">
+          <div className="flex items-center gap-2">
+            <input value={pipe.name} onChange={(e) => act.renamePipeline(pipe.id, e.target.value)} className="text-[15px] font-bold text-ink bg-transparent outline-none border-b border-transparent focus:border-accent flex-1" />
+            {activePipelineId !== pipe.id && <Button onClick={() => act.setActivePipeline(pipe.id)}>Make active</Button>}
+            {pipelines.length > 1 && <Button color="#B01B4F" onClick={() => { act.removePipeline(pipe.id, pipe.name); setSelId(pipelines.find((p) => p.id !== pipe.id)!.id) }}>Delete</Button>}
+          </div>
+
+          <div className="flex flex-col gap-2">
+            {pipe.stages.map((s, i) => (
+              <div key={s.id} className="flex items-center gap-2.5 rounded-control border border-border px-3 py-2">
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: s.color }} />
+                <input value={s.name} onChange={(e) => act.updateStage(pipe.id, s.id, { name: e.target.value })} className="flex-1 text-[13px] font-medium text-ink-2 bg-transparent outline-none min-w-0" />
+                <label className="flex items-center gap-1.5 text-[12px] text-muted-2">
+                  <input type="number" min={0} max={100} value={s.probability} onChange={(e) => act.updateStage(pipe.id, s.id, { probability: Math.max(0, Math.min(100, Number(e.target.value) || 0)) })} className="w-14 h-7 px-2 rounded-control border border-input-border bg-white text-[12.5px] text-ink-2 outline-none focus:border-accent text-right" />%
+                </label>
+                <div className="flex items-center gap-0.5">
+                  <button onClick={() => act.moveStageOrder(pipe.id, s.id, -1)} disabled={i === 0} title="Move up" className="w-7 h-7 rounded-md text-muted-2 hover:bg-control disabled:opacity-30">↑</button>
+                  <button onClick={() => act.moveStageOrder(pipe.id, s.id, 1)} disabled={i === pipe.stages.length - 1} title="Move down" className="w-7 h-7 rounded-md text-muted-2 hover:bg-control disabled:opacity-30">↓</button>
+                  <button onClick={() => act.removeStage(pipe.id, s.id)} title="Remove stage" className="w-7 h-7 rounded-md text-muted-2 hover:bg-control hover:text-negative">×</button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Input value={newStage} onChange={(e) => setNewStage(e.target.value)} placeholder="Add a stage…" onKeyDown={(e) => { if (e.key === 'Enter' && newStage.trim()) { act.addStage(pipe.id, newStage.trim()); setNewStage('') } }} />
+            <Button variant="primary" onClick={() => { if (newStage.trim()) { act.addStage(pipe.id, newStage.trim()); setNewStage('') } }}>Add stage</Button>
+          </div>
+
+          <div className="border-t border-divider pt-3">
+            <div className="text-[12px] font-semibold text-ink-3 mb-2">Start from an industry template</div>
+            <div className="text-[12px] text-muted-2 mb-2.5">Replaces this pipeline’s stages and tunes which workspaces are on for that kind of business.</div>
+            <div className="flex flex-wrap gap-1.5">
+              {INDUSTRY_TEMPLATES.map((t) => (
+                <button key={t.key} onClick={() => act.applyIndustryTemplate(pipe.id, t.key)} className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-ink-3 border border-border rounded-lg px-2.5 py-1.5 hover:border-accent hover:bg-accent-wash transition-colors" title={t.desc}>
+                  <span>{t.emoji}</span> {t.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <NewPipelineModal open={tplOpen} onClose={() => setTplOpen(false)} onPick={(key, name) => { const p = act.addPipelineFromTemplate(key, name); if (p) setSelId(p.id); setTplOpen(false) }} />
+    </>
+  )
+}
+
+function NewPipelineModal({ open, onClose, onPick }: { open: boolean; onClose: () => void; onPick: (key: string, name?: string) => void }) {
+  const [name, setName] = useState('')
+  const [key, setKey] = useState('general')
+  return (
+    <Modal open={open} onClose={onClose} title="New pipeline" subtitle="Pick a starting shape — you can edit every stage after" width={560}
+      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" onClick={() => onPick(key, name.trim() || undefined)}>Create pipeline</Button></>}>
+      <Field label="Pipeline name"><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. New business" autoFocus /></Field>
+      <div className="text-[12px] font-semibold text-ink-3">Starting template</div>
+      <div className="grid grid-cols-2 gap-2 max-h-[280px] overflow-y-auto">
+        {INDUSTRY_TEMPLATES.map((t) => (
+          <button key={t.key} onClick={() => setKey(t.key)} className={classNames('text-left rounded-card border p-3 transition-colors', key === t.key ? 'border-accent bg-accent-wash-4' : 'border-border hover:bg-control')}>
+            <div className="flex items-center gap-1.5 text-[13px] font-semibold text-ink-2"><span>{t.emoji}</span> {t.name}</div>
+            <div className="text-[11.5px] text-muted-2 mt-0.5">{t.stages.map((s) => s.name).join(' → ')}</div>
+          </button>
+        ))}
+      </div>
+    </Modal>
+  )
+}
 
 function TradeModulesPanel() {
   const { activeTrade, features } = useState_()

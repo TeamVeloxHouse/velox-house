@@ -235,6 +235,19 @@ export interface CustomField {
   options?: string[]
 }
 
+// ── Configurable pipelines (stages are account data, not hard-coded) ──
+export interface PipelineStage {
+  id: ID
+  name: string
+  probability: number // typical win % at this stage — seeds deal confidence & forecast
+  color: string // hex
+}
+export interface Pipeline {
+  id: ID
+  name: string
+  stages: PipelineStage[]
+}
+
 export interface Deal {
   id: ID
   name: string
@@ -242,6 +255,7 @@ export interface Deal {
   orgId?: ID
   subtitle: string
   value: number
+  pipelineId?: ID // which pipeline this deal lives in (undefined = the default)
   stage: StageName
   closeDate: string
   owner: string
@@ -708,6 +722,8 @@ export interface MarketingConnector {
 
 export interface State {
   deals: Deal[]
+  pipelines: Pipeline[]
+  activePipelineId: ID
   people: Person[]
   orgs: Org[]
   leads: Lead[]
