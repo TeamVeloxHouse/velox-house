@@ -252,6 +252,7 @@ export interface Deal {
   won?: boolean
   lost?: boolean
   lostReason?: string
+  quoted?: boolean // a proposal/quote has gone out — lifts the deal into the commit forecast
   custom?: Record<string, string>
   solar?: import('../lib/solar').SolarDesign
 }

@@ -18,7 +18,7 @@ const healthDot: Record<Health, string> = { Healthy: 'bg-positive', 'At risk': '
 export function DealsBoard() {
   const nav = useNavigate()
   const { deals, orgs, activities } = useState_()
-  const { moveStage, addDeal } = useActions()
+  const { moveStage, addDeal, addPerson } = useActions()
   const [view, setView] = useState<'board' | 'list' | 'forecast' | 'archive'>('board')
   const [dragId, setDragId] = useState<string | null>(null)
   const [showNew, setShowNew] = useState(false)
@@ -297,43 +297,87 @@ export function DealsBoard() {
         </main>
       )}
 
-      <NewDealModal open={showNew} initialStage={newStage} onClose={() => setShowNew(false)} orgs={orgs} onCreate={(p) => { const d = addDeal(p); setShowNew(false); nav(`/deals/${d.id}`) }} />
+      <NewDealModal open={showNew} initialStage={newStage} onClose={() => setShowNew(false)} orgs={orgs} onCreate={(p) => {
+        let personIds: string[] | undefined
+        if (p.contact?.trim()) { const person = addPerson({ name: p.contact.trim(), role: p.contactRole, org: p.org }); personIds = [person.id] }
+        const d = addDeal({ name: p.name, org: p.org, value: p.value, stage: p.stage, probability: p.probability, closeDate: p.closeDate || 'This quarter', subtitle: p.source ? `Source: ${p.source}` : '', personIds })
+        setShowNew(false); nav(`/deals/${d.id}`)
+      }} />
     </>
   )
 }
 
-function NewDealModal({ open, initialStage, onClose, orgs, onCreate }: { open: boolean; initialStage: StageName; onClose: () => void; orgs: { name: string }[]; onCreate: (p: { name: string; org: string; value: number; stage: StageName }) => void }) {
+// Typical win probability by stage — seeds the confidence field & shows a conversion hint.
+const STAGE_DEFAULT_PROB: Record<StageName, number> = { 'Qualified': 20, 'Contact Made': 30, 'Demo Scheduled': 45, 'Proposal Made': 65, 'Negotiations Started': 80 }
+const CONFIDENCE_OPTIONS = [10, 20, 30, 50, 65, 80, 90]
+const DEAL_SOURCES = ['', 'Inbound', 'Referral', 'Outbound', 'Partner', 'Event', 'Existing customer']
+
+type NewDealPayload = { name: string; org: string; value: number; stage: StageName; probability: number; closeDate: string; source: string; contact: string; contactRole: string }
+
+function NewDealModal({ open, initialStage, onClose, orgs, onCreate }: { open: boolean; initialStage: StageName; onClose: () => void; orgs: { name: string }[]; onCreate: (p: NewDealPayload) => void }) {
   const [name, setName] = useState('')
   const [org, setOrg] = useState('')
   const [value, setValue] = useState('')
   const [stage, setStage] = useState<StageName>(initialStage)
-  useEffect(() => { if (open) setStage(initialStage) }, [open, initialStage])
+  const [prob, setProb] = useState(STAGE_DEFAULT_PROB[initialStage])
+  const [touchedProb, setTouchedProb] = useState(false)
+  const [close, setClose] = useState('')
+  const [source, setSource] = useState('')
+  const [contact, setContact] = useState('')
+  const [contactRole, setContactRole] = useState('')
+  useEffect(() => { if (open) { setStage(initialStage); setProb(STAGE_DEFAULT_PROB[initialStage]); setTouchedProb(false) } }, [open, initialStage])
+  // when the stage changes and the user hasn't overridden confidence, follow the stage default
+  function pickStage(s: StageName) { setStage(s); if (!touchedProb) setProb(STAGE_DEFAULT_PROB[s]) }
   const valid = name.trim() && org.trim()
+  const weighted = Math.round((Number(value) || 0) * (prob / 100))
+  const reset = () => { setName(''); setOrg(''); setValue(''); setClose(''); setSource(''); setContact(''); setContactRole('') }
+
   return (
     <Modal
       open={open}
       onClose={onClose}
       title="New deal"
-      subtitle="Add an opportunity to your pipeline"
+      subtitle="Add an opportunity — the richer the detail, the sharper your forecast"
+      width={560}
       footer={
         <>
           <Button onClick={onClose}>Cancel</Button>
-          <Button variant="primary" onClick={() => valid && onCreate({ name, org, value: Number(value) || 0, stage })}>Create deal</Button>
+          <Button variant="primary" onClick={() => { if (valid) { onCreate({ name, org, value: Number(value) || 0, stage, probability: prob, closeDate: close, source, contact, contactRole }); reset() } }}>Create deal</Button>
         </>
       }
     >
       <Field label="Deal name"><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Substation upgrade — Phase 2" autoFocus /></Field>
-      <Field label="Organisation">
-        <Input list="org-list" value={org} onChange={(e) => setOrg(e.target.value)} placeholder="Company name" />
-        <datalist id="org-list">{orgs.map((o) => (<option key={o.name} value={o.name} />))}</datalist>
-      </Field>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Organisation">
+          <Input list="org-list" value={org} onChange={(e) => setOrg(e.target.value)} placeholder="Company name" />
+          <datalist id="org-list">{orgs.map((o) => (<option key={o.name} value={o.name} />))}</datalist>
+        </Field>
+        <Field label="Source"><Select value={source} onChange={(e) => setSource(e.target.value)}>{DEAL_SOURCES.map((s) => (<option key={s} value={s}>{s || '— optional —'}</option>))}</Select></Field>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Primary contact"><Input value={contact} onChange={(e) => setContact(e.target.value)} placeholder="Full name (optional)" /></Field>
+        <Field label="Contact role"><Input value={contactRole} onChange={(e) => setContactRole(e.target.value)} placeholder="e.g. Head of Estates" /></Field>
+      </div>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Value (£)"><Input type="number" value={value} onChange={(e) => setValue(e.target.value)} placeholder="0" /></Field>
+        <Field label="Expected close"><Input value={close} onChange={(e) => setClose(e.target.value)} placeholder="e.g. This quarter / Mar 2026" /></Field>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
         <Field label="Stage">
-          <Select value={stage} onChange={(e) => setStage(e.target.value as StageName)}>
+          <Select value={stage} onChange={(e) => pickStage(e.target.value as StageName)}>
             {stages.map((s) => (<option key={s} value={s}>{s}</option>))}
           </Select>
         </Field>
+        <Field label="Confidence to win">
+          <Select value={prob} onChange={(e) => { setProb(Number(e.target.value)); setTouchedProb(true) }}>
+            {CONFIDENCE_OPTIONS.map((p) => (<option key={p} value={p}>{p}%</option>))}
+          </Select>
+        </Field>
+      </div>
+      <div className="rounded-control bg-surface-tint border border-border px-3 py-2.5 flex items-center gap-2 text-[12.5px] text-muted-b">
+        <span className="w-1.5 h-1.5 rounded-full bg-accent" />
+        Deals at <span className="font-semibold text-ink-3">{stage}</span> typically close around <span className="font-semibold text-ink-3">{STAGE_DEFAULT_PROB[stage]}%</span>.
+        {Number(value) > 0 && <span className="ml-auto text-ink-3 font-semibold">Weighted {money(weighted, { compact: true })}</span>}
       </div>
     </Modal>
   )
