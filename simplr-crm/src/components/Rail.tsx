@@ -11,13 +11,50 @@ import type { FeatureKey } from '../store/types'
 type Item = { to: string; icon: (p: { size?: number; className?: string }) => JSX.Element; label: string; end?: boolean; badge?: number; feature?: FeatureKey }
 type Group = { label: string; items: Item[] }
 
-const crmGroups: Group[] = [
+// ── Lifecycle navigation ─────────────────────────────────────────────────────
+// One journey — Find → Engage → Close → Deliver — with Ovi (the AI operator) up top and a single
+// Business catch-all for the back office. Every route below already exists; this just regroups the
+// app as a lifecycle instead of ten flat "TellOvi X" workspaces.
+
+const oviGroups: Group[] = [
+  { label: 'Operator', items: [
+    { to: '/reach/ai', icon: Sparkle, label: 'Ovi operator', feature: 'reach' },
+    { to: '/ai', icon: Robot, label: 'Ask Ovi' },
+    { to: '/agents', icon: Robot, label: 'Automations' },
+  ] },
   { label: 'Workspace', items: [
     { to: '/', icon: Grid, label: 'Home', end: true },
     { to: '/tasks', icon: Check, label: 'My Tasks' },
     { to: '/team', icon: Users, label: 'Team' },
-    { to: '/agents', icon: Robot, label: 'Automations' },
   ] },
+]
+
+const findGroups: Group[] = [
+  { label: 'Prospect', items: [
+    { to: '/reach/solar', icon: Sun, label: 'Commercial Solar Finder', feature: 'reach' },
+    { to: '/reach/finders', icon: Radar, label: 'Finders', feature: 'reach' },
+    { to: '/reach/people-finder', icon: Person, label: 'People finder', feature: 'reach' },
+    { to: '/reach/prospects', icon: Search, label: 'B2B prospects', feature: 'reach' },
+  ] },
+]
+
+const engageGroups: Group[] = [
+  { label: 'Outreach', items: [
+    { to: '/reach/outreach', icon: Send, label: 'Outreach', feature: 'reach' },
+    { to: '/reach/campaigns', icon: Megaphone, label: 'Campaigns', feature: 'reach' },
+    { to: '/reach/email', icon: Envelope, label: 'Email', feature: 'reach' },
+    { to: '/reach/linkedin', icon: Person, label: 'LinkedIn', feature: 'reach' },
+    { to: '/reach/schedules', icon: Clock, label: 'Scheduled tasks', feature: 'reach' },
+  ] },
+  { label: 'Conversations', items: [
+    { to: '/inbox', icon: Envelope, label: 'Sales Inbox' },
+    { to: '/activities', icon: Bars, label: 'Activities', badge: 6 },
+    { to: '/meetings', icon: Video, label: 'Meetings' },
+    { to: '/calendar', icon: Calendar, label: 'Calendar' },
+  ] },
+]
+
+const closeGroups: Group[] = [
   { label: 'Pipeline', items: [
     { to: '/deals', icon: Bars, label: 'Deals' },
     { to: '/leads', icon: Bolt, label: 'Leads', badge: 8 },
@@ -27,164 +64,100 @@ const crmGroups: Group[] = [
     { to: '/people', icon: Person, label: 'People' },
     { to: '/organisations', icon: Building, label: 'Organisations' },
   ] },
-  { label: 'Engage', items: [
-    { to: '/activities', icon: Bars, label: 'Activities', badge: 6 },
-    { to: '/calendar', icon: Calendar, label: 'Calendar' },
-    { to: '/meetings', icon: Video, label: 'Meetings' },
-    { to: '/inbox', icon: Envelope, label: 'Sales Inbox' },
-    { to: '/linkedin', icon: Person, label: 'LinkedIn' },
+  { label: 'Analyse', items: [{ to: '/insights', icon: Pie, label: 'Insights' }] },
+]
+
+const deliverGroups: Group[] = [
+  { label: 'Design & sell', items: [
+    { to: '/studio/design', icon: Sun, label: 'Design Studio', feature: 'studio' },
+    { to: '/studio/proposals', icon: Layers, label: 'Proposals', feature: 'studio' },
+    { to: '/studio/pricing', icon: Dollar, label: 'Pricing & finance', feature: 'studio' },
+    { to: '/studio/ev', icon: Bolt, label: 'EV charging', feature: 'studio' },
+    { to: '/studio/brand', icon: File, label: 'Brand & Documents', feature: 'studio' },
   ] },
-  { label: 'Operations', items: [
-    { to: '/jobs', icon: Wrench, label: 'Jobs', feature: 'jobs' },
-  ] },
-  { label: 'Deliver', items: [
+  { label: 'Projects', items: [
     { to: '/projects', icon: Flow, label: 'Projects' },
     { to: '/products', icon: Box, label: 'Products' },
     { to: '/documents', icon: File, label: 'Documents' },
   ] },
-  { label: 'Analyse', items: [{ to: '/insights', icon: Pie, label: 'Insights' }] },
-]
-
-const reachGroups: Group[] = [
-  { label: 'Overview', items: [{ to: '/reach', icon: Grid, label: 'Overview', end: true }, { to: '/team', icon: Users, label: 'Team' }] },
-  { label: 'Find', items: [
-    { to: '/reach/finders', icon: Radar, label: 'Finders' },
-    { to: '/reach/people-finder', icon: Person, label: 'People finder' },
-    { to: '/reach/solar', icon: Sun, label: 'Solar finder' },
-    { to: '/reach/prospects', icon: Search, label: 'B2B prospects' },
+  { label: 'Install & handover', items: [
+    { to: '/studio/delivery', icon: Flow, label: 'Delivery' },
+    { to: '/delivery/installs', icon: Box, label: 'Installs' },
+    { to: '/delivery/field', icon: Wrench, label: 'Field jobs' },
+    { to: '/delivery/certificates', icon: File, label: 'Certificates' },
+    { to: '/jobs', icon: Wrench, label: 'Jobs', feature: 'jobs' },
   ] },
-  { label: 'Engage', items: [
-    { to: '/reach/outreach', icon: Send, label: 'Outreach' },
-    { to: '/reach/campaigns', icon: Megaphone, label: 'Campaigns' },
-    { to: '/reach/email', icon: Envelope, label: 'Email' },
-    { to: '/reach/linkedin', icon: Person, label: 'LinkedIn' },
-  ] },
-  { label: 'Automate', items: [
-    { to: '/reach/schedules', icon: Clock, label: 'Scheduled tasks' },
-  ] },
-  { label: 'Measure', items: [{ to: '/reach/analytics', icon: Pie, label: 'Analytics' }] },
-]
-
-const studioGroups: Group[] = [
-  { label: 'Overview', items: [{ to: '/studio', icon: Grid, label: 'Overview', end: true }, { to: '/team', icon: Users, label: 'Team' }] },
-  { label: 'Design', items: [
-    { to: '/studio/design', icon: Sun, label: 'Design Studio' },
-    { to: '/studio/brand', icon: File, label: 'Brand & Documents' },
-    { to: '/studio/templates', icon: File, label: 'Templates' },
-  ] },
-  { label: 'Sell', items: [
-    { to: '/studio/proposals', icon: Layers, label: 'Proposals' },
-    { to: '/studio/pricing', icon: Dollar, label: 'Pricing & finance' },
-  ] },
-  { label: 'Calculators', items: [
-    { to: '/studio/ev', icon: Bolt, label: 'EV charging' },
-  ] },
-  { label: 'Deliver', items: [{ to: '/studio/delivery', icon: Flow, label: 'Delivery' }] },
-  { label: 'Measure', items: [{ to: '/studio/analytics', icon: Pie, label: 'Analytics' }] },
-]
-
-// ── Customers — the post-sale suite: every customer, their portal & aftercare ──
-const customersGroups: Group[] = [
-  { label: 'Overview', items: [
+  { label: 'Customers', items: [
     { to: '/customers', icon: Users, label: 'All customers', end: true },
     { to: '/customers/support', icon: Wrench, label: 'Support requests' },
-  ] },
-  { label: 'Library', items: [
     { to: '/customers/resources', icon: File, label: 'Resources & manuals' },
   ] },
 ]
 
-// ── Department workspaces (the whole-workforce layer) — full apps, not CRM pages ──
-const financeGroups: Group[] = [
-  { label: 'Overview', items: [{ to: '/finance', icon: Grid, label: 'Overview', end: true }, { to: '/team', icon: Users, label: 'Team' }] },
-  { label: 'Money', items: [
+const businessGroups: Group[] = [
+  { label: 'Finance', items: [
     { to: '/finance/invoices', icon: File, label: 'Invoices' },
     { to: '/finance/expenses', icon: Dollar, label: 'Expenses' },
-  ] },
-  { label: 'Plan', items: [
     { to: '/finance/forecasting', icon: Pie, label: 'Forecasting' },
     { to: '/finance/reports', icon: Layers, label: 'Reports' },
   ] },
-]
-const opsGroups: Group[] = [
-  { label: 'Overview', items: [{ to: '/operations', icon: Grid, label: 'Overview', end: true }, { to: '/team', icon: Users, label: 'Team' }] },
-  { label: 'Field', items: [
+  { label: 'Operations', items: [
     { to: '/operations/schedule', icon: Calendar, label: 'Schedule' },
     { to: '/operations/stock', icon: Box, label: 'Stock' },
-  ] },
-  { label: 'Procure', items: [
     { to: '/operations/purchase-orders', icon: File, label: 'Purchase orders' },
     { to: '/operations/safety', icon: Check, label: 'Safety & RAMS' },
   ] },
-]
-const hrGroups: Group[] = [
-  { label: 'Overview', items: [{ to: '/hr', icon: Grid, label: 'Overview', end: true }, { to: '/team', icon: Users, label: 'Team' }] },
   { label: 'People', items: [
     { to: '/hr/people', icon: Person, label: 'Directory' },
     { to: '/hr/leave', icon: Calendar, label: 'Leave' },
-  ] },
-  { label: 'Compliance', items: [
     { to: '/hr/policies', icon: File, label: 'Policies' },
     { to: '/hr/compliance', icon: Check, label: 'Certifications' },
   ] },
-]
-const marketingGroups: Group[] = [
-  { label: 'Overview', items: [{ to: '/marketing', icon: Grid, label: 'Overview', end: true }, { to: '/team', icon: Users, label: 'Team' }] },
-  { label: 'Brand', items: [
+  { label: 'Marketing', items: [
     { to: '/marketing/brand', icon: Layers, label: 'Brand Hub' },
-    { to: '/marketing/assets', icon: Box, label: 'Assets' },
-  ] },
-  { label: 'Plan', items: [
     { to: '/marketing/content', icon: Calendar, label: 'Content' },
     { to: '/marketing/campaigns', icon: Megaphone, label: 'Campaigns' },
-  ] },
-  { label: 'Engage', items: [
     { to: '/marketing/social', icon: Send, label: 'Social' },
     { to: '/marketing/reviews', icon: Star, label: 'Reviews' },
-    { to: '/marketing/requests', icon: Envelope, label: 'Requests' },
-  ] },
-  { label: 'Connect', items: [{ to: '/marketing/connectors', icon: Flow, label: 'Connectors' }] },
-  { label: 'Measure', items: [{ to: '/marketing/reports', icon: Pie, label: 'Reports' }] },
-]
-const deliveryGroups: Group[] = [
-  { label: 'Overview', items: [{ to: '/delivery', icon: Grid, label: 'Overview', end: true }, { to: '/team', icon: Users, label: 'Team' }] },
-  { label: 'Field', items: [
-    { to: '/delivery/installs', icon: Box, label: 'Installs' },
-    { to: '/delivery/field', icon: Wrench, label: 'Field jobs' },
-  ] },
-  { label: 'Handover', items: [
-    { to: '/delivery/certificates', icon: File, label: 'Certificates' },
-    { to: '/delivery/service', icon: Flow, label: 'Service' },
+    { to: '/marketing/reports', icon: Pie, label: 'Reports' },
   ] },
 ]
 
-// One consistent highlight across every workspace — a blue→purple gradient, no per-workspace hues.
+// One consistent highlight everywhere — a blue→purple gradient, no per-stage hues.
 const GRAD = 'linear-gradient(135deg,#3B6BF5 0%,#7C3AED 100%)'
+const activeFill = 'bg-[#7C3AED]/25'
+
+const stageGroups: Record<string, Group[]> = {
+  ovi: oviGroups, find: findGroups, engage: engageGroups, close: closeGroups, deliver: deliverGroups, business: businessGroups,
+}
 const workspaces = [
-  { id: 'crm', name: 'TellOvi CRM', desc: 'Pipeline & customers', to: '/', icon: Bars, grad: GRAD, feature: undefined as FeatureKey | undefined },
-  { id: 'reach', name: 'TellOvi Reach', desc: 'Prospecting & outreach', to: '/reach', icon: Radar, grad: GRAD, feature: 'reach' as FeatureKey },
-  { id: 'studio', name: 'TellOvi Studio', desc: 'Design & proposals', to: '/studio', icon: Sun, grad: GRAD, feature: 'studio' as FeatureKey },
-  { id: 'finance', name: 'TellOvi Finance', desc: 'Money & forecasting', to: '/finance', icon: Dollar, grad: GRAD, feature: undefined as FeatureKey | undefined },
-  { id: 'operations', name: 'TellOvi Operations', desc: 'Scheduling & stock', to: '/operations', icon: Sliders, grad: GRAD, feature: undefined as FeatureKey | undefined },
-  { id: 'hr', name: 'TellOvi People', desc: 'HR & compliance', to: '/hr', icon: Person, grad: GRAD, feature: undefined as FeatureKey | undefined },
-  { id: 'marketing', name: 'TellOvi Marketing', desc: 'Brand & content ops', to: '/marketing', icon: Megaphone, grad: GRAD, feature: undefined as FeatureKey | undefined },
-  { id: 'delivery', name: 'TellOvi Delivery', desc: 'Installs & handover', to: '/delivery', icon: Box, grad: GRAD, feature: undefined as FeatureKey | undefined },
-  { id: 'customers', name: 'TellOvi Customers', desc: 'Portals & aftercare', to: '/customers', icon: Sun, grad: GRAD, feature: undefined as FeatureKey | undefined },
+  { id: 'ovi', name: 'Ovi', desc: 'Your AI operator', to: '/ai', icon: Sparkle, grad: GRAD, feature: undefined as FeatureKey | undefined },
+  { id: 'find', name: 'Find', desc: 'Prospecting & discovery', to: '/reach/solar', icon: Radar, grad: GRAD, feature: 'reach' as FeatureKey },
+  { id: 'engage', name: 'Engage', desc: 'Outreach & follow-up', to: '/reach/outreach', icon: Send, grad: GRAD, feature: undefined as FeatureKey | undefined },
+  { id: 'close', name: 'Close', desc: 'Pipeline & contacts', to: '/deals', icon: Target, grad: GRAD, feature: undefined as FeatureKey | undefined },
+  { id: 'deliver', name: 'Deliver', desc: 'Design, install & care', to: '/studio/design', icon: Sun, grad: GRAD, feature: undefined as FeatureKey | undefined },
+  { id: 'business', name: 'Business', desc: 'Finance, ops & people', to: '/finance/invoices', icon: Sliders, grad: GRAD, feature: undefined as FeatureKey | undefined },
 ]
 
-// Path prefix → workspace id (longest-specific first; CRM is the fallback).
-const wsPrefixes: [string, string][] = [
-  ['/reach', 'reach'], ['/studio', 'studio'], ['/finance', 'finance'],
-  ['/operations', 'operations'], ['/hr', 'hr'], ['/marketing', 'marketing'], ['/delivery', 'delivery'], ['/customers', 'customers'],
+// Coarse section-root fallbacks when no nav item is an exact prefix (bare roots, detail pages).
+const rootFallbacks: [string, string][] = [
+  ['/reach/outreach', 'engage'], ['/reach/campaigns', 'engage'], ['/reach/email', 'engage'], ['/reach/schedules', 'engage'],
+  ['/reach', 'find'], ['/studio', 'deliver'], ['/delivery', 'deliver'], ['/customers', 'deliver'],
+  ['/finance', 'business'], ['/operations', 'business'], ['/hr', 'business'], ['/marketing', 'business'],
 ]
-const groupsById: Record<string, Group[]> = {
-  crm: crmGroups, reach: reachGroups, studio: studioGroups,
-  finance: financeGroups, operations: opsGroups, hr: hrGroups, marketing: marketingGroups, delivery: deliveryGroups, customers: customersGroups,
-}
-// Same subtle active tint for every workspace — no per-workspace colour.
-const activeFillById: Record<string, string> = {
-  crm: 'bg-[#7C3AED]/25', reach: 'bg-[#7C3AED]/25', studio: 'bg-[#7C3AED]/25',
-  finance: 'bg-[#7C3AED]/25', operations: 'bg-[#7C3AED]/25', hr: 'bg-[#7C3AED]/25', marketing: 'bg-[#7C3AED]/25', delivery: 'bg-[#7C3AED]/25', customers: 'bg-[#7C3AED]/25',
+
+/** Which lifecycle stage owns a path — the stage with the longest matching nav item, else a root fallback. */
+function stageForPath(path: string): string {
+  let best = '', bestLen = -1
+  for (const id in stageGroups) {
+    for (const g of stageGroups[id]) for (const it of g.items) {
+      const to = it.to
+      const match = to === '/' ? path === '/' : path === to || path.startsWith(to + '/')
+      if (match && to.length > bestLen) { best = id; bestLen = to.length }
+    }
+  }
+  if (best) return best
+  return rootFallbacks.find(([p]) => path.startsWith(p))?.[1] ?? 'close'
 }
 
 function itemClasses(expanded: boolean, accent: string) {
@@ -207,16 +180,13 @@ export function Rail() {
   const nav = useNavigate()
   const { features, teamChannels } = useState_()
   const teamUnread = teamChannels.reduce((s, c) => s + c.unread, 0)
-  const wsId = wsPrefixes.find(([p]) => location.pathname.startsWith(p))?.[1] ?? 'crm'
+  const wsId = stageForPath(location.pathname)
   const ws = workspaces.find((w) => w.id === wsId) ?? workspaces[0]
-  const isReach = wsId === 'reach'
-  const isStudio = wsId === 'studio'
-  // Trade profile decides which workspaces + nav items are switched on.
+  // Trade profile decides which lifecycle stages + nav items are switched on.
   const availableWorkspaces = workspaces.filter((w) => !w.feature || features[w.feature])
-  const groups = (groupsById[wsId] ?? crmGroups)
+  const groups = (stageGroups[wsId] ?? closeGroups)
     .map((g) => ({ ...g, items: g.items.filter((it) => !it.feature || features[it.feature]).map((it) => (it.to === '/team' && teamUnread > 0 ? { ...it, badge: teamUnread } : it)) }))
     .filter((g) => g.items.length > 0)
-  const activeFill = activeFillById[wsId] ?? 'bg-white/10'
 
   const [expanded, setExpanded] = useState(() => (typeof localStorage !== 'undefined' ? localStorage.getItem('simplr.rail') !== '0' : true))
   const [collapsed, setCollapsed] = useState<Set<string>>(() => {
@@ -260,7 +230,7 @@ export function Rail() {
         </div>
         {switcher && (
           <div className={classNames('absolute z-[60] mt-2 bg-surface rounded-overlay shadow-modal border border-border overflow-hidden', expanded ? 'left-0 right-0' : 'left-[52px] top-0 w-56')}>
-            <div className="px-3 py-2 eyebrow text-muted-3 border-b border-divider">Switch workspace</div>
+            <div className="px-3 py-2 eyebrow text-muted-3 border-b border-divider">Jump to stage</div>
             {availableWorkspaces.map((w) => {
               const on = w.id === ws.id
               return (
@@ -275,25 +245,13 @@ export function Rail() {
         )}
       </div>
 
-      {/* featured: TellOvi AI (CRM only) */}
-      {wsId === 'crm' && (
-        <NavLink to="/ai" title={expanded ? undefined : 'TellOvi AI'} className={({ isActive }) => classNames('group relative flex items-center mb-3 transition-all duration-150', expanded ? 'h-10 rounded-[10px] px-2.5 gap-3' : 'w-11 h-11 rounded-[12px] justify-center', isActive ? 'bg-accent-gradient text-white shadow-primary' : 'text-white bg-white/[0.06] hover:bg-white/10 ring-1 ring-inset ring-white/10')}>
-          <Sparkle size={19} className="shrink-0" />
-          {expanded && <span className="text-[13.5px] font-semibold flex-1 truncate">TellOvi AI</span>}
-          {expanded && <span className="eyebrow text-[9px] bg-white/20 rounded px-1.5 py-0.5">AI</span>}
-          {!expanded && <Tooltip label="TellOvi AI" />}
-        </NavLink>
-      )}
-
-      {/* featured: Reach AI operator (Reach only) */}
-      {isReach && (
-        <NavLink to="/reach/ai" title={expanded ? undefined : 'Reach AI'} className={({ isActive }) => classNames('group relative flex items-center mb-3 transition-all duration-150', expanded ? 'h-10 rounded-[10px] px-2.5 gap-3' : 'w-11 h-11 rounded-[12px] justify-center', isActive ? 'bg-accent-gradient text-white shadow-primary' : 'text-white bg-white/[0.06] hover:bg-white/10 ring-1 ring-inset ring-white/10')}>
-          <Sparkle size={19} className="shrink-0" />
-          {expanded && <span className="text-[13.5px] font-semibold flex-1 truncate">Reach AI</span>}
-          {expanded && <span className="eyebrow text-[9px] bg-white/20 rounded px-1.5 py-0.5">Operator</span>}
-          {!expanded && <Tooltip label="Reach AI" />}
-        </NavLink>
-      )}
+      {/* featured: Ovi — the AI operator, always one click away */}
+      <NavLink to="/ai" title={expanded ? undefined : 'Ask Ovi'} className={({ isActive }) => classNames('group relative flex items-center mb-3 transition-all duration-150', expanded ? 'h-10 rounded-[10px] px-2.5 gap-3' : 'w-11 h-11 rounded-[12px] justify-center', isActive ? 'bg-accent-gradient text-white shadow-primary' : 'text-white bg-white/[0.06] hover:bg-white/10 ring-1 ring-inset ring-white/10')}>
+        <Sparkle size={19} className="shrink-0" />
+        {expanded && <span className="text-[13.5px] font-semibold flex-1 truncate">Ask Ovi</span>}
+        {expanded && <span className="eyebrow text-[9px] bg-white/20 rounded px-1.5 py-0.5">AI</span>}
+        {!expanded && <Tooltip label="Ask Ovi" />}
+      </NavLink>
 
       {/* grouped nav */}
       <div className="flex-1 overflow-y-auto overflow-x-visible -mx-1 px-1 flex flex-col gap-0.5">
