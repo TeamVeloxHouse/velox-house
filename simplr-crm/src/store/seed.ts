@@ -247,7 +247,14 @@ export function buildSeed(): State {
     const d = t.match(/(\d+)\s*day/); if (d) return days(Number(d[1]))
     return days(3)
   }
-  const leads = mLeads.map((l, i) => ({ ...l, createdAt: parseWhen(l.created) - i * 3_600_000 }))
+  const leadStatusFor = (score: number, i: number): import('./types').LeadStatus => {
+    if (i % 7 === 3) return 'unqualified'
+    if (score >= 82) return 'qualified'
+    if (score >= 72) return 'working'
+    if (score >= 62) return 'nurturing'
+    return 'new'
+  }
+  const leads = mLeads.map((l, i) => ({ ...l, createdAt: parseWhen(l.created) - i * 3_600_000, status: leadStatusFor(l.score, i) }))
 
   const sequences: Sequence[] = [
     { id: 'sq1', name: 'Renewables outbound', enrolled: 42, active: true, replyRate: 18, steps: [

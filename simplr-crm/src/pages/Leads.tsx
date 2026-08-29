@@ -3,12 +3,25 @@ import { TopBar } from '../components/TopBar'
 import { Button, Segmented, Kpi, Avatar } from '../components/ui'
 import { Table, Row, Cell } from '../components/Table'
 import { Modal, Field, Input, Textarea } from '../components/overlays'
-import { Plus, Download, Check, ArrowUpRight, Search } from '../components/icons'
+import { Plus, Download, Check, ArrowUpRight, Search, Phone, Envelope, Note, Sparkle } from '../components/icons'
 import { ScorePill } from '../components/ai-widgets'
-import { leadScore } from '../lib/intelligence'
-import { useState_, useActions } from '../store/store'
-import type { Lead } from '../store/types'
-import { classNames } from '../lib/format'
+import { leadScore, leadNextAction } from '../lib/intelligence'
+import { useState_, useActions, useSelectors } from '../store/store'
+import { LEAD_STATUSES, type Lead, type LeadStatus } from '../store/types'
+import { classNames, money } from '../lib/format'
+import { useNavigate } from 'react-router-dom'
+
+export const LEAD_STATUS_META: Record<LeadStatus, { label: string; tone: string; dot: string }> = {
+  new: { label: 'New', tone: 'text-accent-700 bg-accent-wash-2', dot: '#1D4ED8' },
+  working: { label: 'Working', tone: 'text-[#8A5A00] bg-[#FBF0DF]', dot: '#B45309' },
+  nurturing: { label: 'Nurturing', tone: 'text-[#6D28D9] bg-[#F1EBFE]', dot: '#7C3AED' },
+  qualified: { label: 'Qualified', tone: 'text-positive bg-[#E6F4EF]', dot: '#0E7C66' },
+  unqualified: { label: 'Unqualified', tone: 'text-muted-2 bg-control', dot: '#8A93A3' },
+}
+function StatusPill({ status }: { status: LeadStatus }) {
+  const m = LEAD_STATUS_META[status]
+  return <span className={classNames('inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11.5px] font-semibold', m.tone)}><span className="w-1.5 h-1.5 rounded-full" style={{ background: m.dot }} />{m.label}</span>
+}
 
 export function Leads() {
   const { leads } = useState_()
@@ -17,13 +30,14 @@ export function Leads() {
   const [sel, setSel] = useState<Set<string>>(new Set())
   const [showNew, setShowNew] = useState(false)
   const [showImport, setShowImport] = useState(false)
+  const [drawerId, setDrawerId] = useState<string | null>(null)
   // filters
   const [source, setSource] = useState('All sources')
   const [owner, setOwner] = useState('All owners')
   const [minScore, setMinScore] = useState(0)
   const [timeframe, setTimeframe] = useState('All time')
   const [query, setQuery] = useState('')
-  const template = '28px 2fr 1.5fr 1fr 1fr 1fr 0.8fr 0.6fr'
+  const template = '28px 1.9fr 1.4fr 1fr 1fr 0.9fr 0.7fr 0.5fr'
 
   const now = Date.now()
   const inTime = (ts?: number) => {
@@ -135,20 +149,20 @@ export function Leads() {
             template={template}
             columns={[
               { key: 'c', header: <Checkbox checked={allSel} onClick={() => setSel(allSel ? new Set() : new Set(visible.map((l) => l.id)))} /> },
-              { key: 'lead', header: 'Lead' }, { key: 'company', header: 'Company' }, { key: 'source', header: 'Source' }, { key: 'owner', header: 'Owner' }, { key: 'created', header: 'Created' }, { key: 'score', header: 'Score', align: 'right' }, { key: 'act', header: '' },
+              { key: 'lead', header: 'Lead' }, { key: 'company', header: 'Company' }, { key: 'source', header: 'Source' }, { key: 'status', header: 'Status' }, { key: 'created', header: 'Created' }, { key: 'score', header: 'Score', align: 'right' }, { key: 'act', header: '' },
             ]}
             footer={<><span>{visible.length} leads</span><span className="flex gap-3"><button>Prev</button><button className="text-ink-3 font-medium">Next</button></span></>}
           >
             {visible.map((l) => (
-              <Row key={l.id} template={template} highlight={sel.has(l.id)}>
+              <Row key={l.id} template={template} highlight={sel.has(l.id)} onClick={() => setDrawerId(l.id)}>
                 <Cell><Checkbox checked={sel.has(l.id)} onClick={() => toggle(l.id)} /></Cell>
                 <Cell><div className="flex items-center gap-2.5"><Avatar name={l.name} size={30} /><div className="min-w-0"><div className="font-semibold text-ink-2 truncate">{l.name}</div><div className="text-[12px] text-muted-2">{l.role}</div></div></div></Cell>
                 <Cell className="text-ink-2 font-medium">{l.company}</Cell>
                 <Cell muted>{l.source}</Cell>
-                <Cell muted>{l.owner}</Cell>
+                <Cell><StatusPill status={l.status} /></Cell>
                 <Cell muted>{l.created}</Cell>
                 <Cell align="right"><span className="inline-flex justify-end"><ScorePill score={leadScore(l)} /></span></Cell>
-                <Cell align="right">{view === 'Inbox' && <button onClick={() => act.convertLead(l)} title="Convert to deal" className="text-accent hover:bg-accent-wash rounded-md p-1"><ArrowUpRight size={16} /></button>}</Cell>
+                <Cell align="right">{view === 'Inbox' && !l.converted && <button onClick={(e) => { e.stopPropagation(); act.convertLead(l) }} title="Convert to deal" className="text-accent hover:bg-accent-wash rounded-md p-1"><ArrowUpRight size={16} /></button>}</Cell>
               </Row>
             ))}
           </Table>
@@ -156,7 +170,136 @@ export function Leads() {
       </div>
 
       <NewLeadModal open={showNew} onClose={() => setShowNew(false)} onCreate={(p) => { act.addLead(p); setShowNew(false) }} />
+      <LeadDrawer leadId={drawerId} onClose={() => setDrawerId(null)} />
     </>
+  )
+}
+
+const KIND_ICON = { call: Phone, email: Envelope, task: Note, convert: ArrowUpRight, archive: Check } as const
+
+function LeadDrawer({ leadId, onClose }: { leadId: string | null; onClose: () => void }) {
+  const { leads } = useState_()
+  const sel = useSelectors()
+  const act = useActions()
+  const nav = useNavigate()
+  const lead = leads.find((l) => l.id === leadId)
+  const [tab, setTab] = useState<'Note' | 'Call' | 'Email'>('Note')
+  const [draft, setDraft] = useState('')
+  useEffect(() => { setDraft(''); setTab('Note') }, [leadId])
+  if (!lead) return null
+
+  const timeline = sel.leadActivities(lead.id)
+  const nba = leadNextAction(lead, timeline.length)
+  const NbaIcon = KIND_ICON[nba.kind]
+
+  function log() {
+    if (!draft.trim()) return
+    const map = { Note: 'note', Call: 'call', Email: 'email' } as const
+    act.logActivity({ type: map[tab], subject: draft.slice(0, 80), body: draft, leadId: lead!.id, done: tab !== 'Email', source: 'manual' }, `${tab} logged on ${lead!.name}`)
+    setDraft('')
+  }
+  function runNba() {
+    if (nba.kind === 'convert') { const d = act.convertLead(lead!); onClose(); nav(`/deals/${d.id}`); return }
+    if (nba.kind === 'archive') { act.archiveLead(lead!.id, lead!.name); onClose(); return }
+    const map = { call: 'call', email: 'email', task: 'task' } as const
+    act.logActivity({ type: map[nba.kind as 'call' | 'email' | 'task'], subject: nba.title, body: nba.rationale, leadId: lead!.id, due: 'Today', priority: 'High', done: false, source: 'ai' }, `Ovi added: ${nba.title}`)
+  }
+
+  return (
+    <div className="fixed inset-0 z-[100] flex justify-end">
+      <div className="absolute inset-0 bg-[rgba(11,18,32,0.35)] backdrop-blur-[2px]" onClick={onClose} />
+      <div className="relative w-[440px] max-w-[calc(100vw-24px)] h-full bg-canvas shadow-modal border-l border-border flex flex-col animate-[slidein_.18s_ease-out]">
+        {/* header */}
+        <div className="shrink-0 bg-surface border-b border-border px-5 py-4 flex items-start gap-3">
+          <Avatar name={lead.name} size={44} />
+          <div className="min-w-0 flex-1">
+            <div className="text-[17px] font-bold text-ink truncate">{lead.name}</div>
+            <div className="text-[13px] text-muted-b truncate">{lead.role || '—'} · {lead.company}</div>
+          </div>
+          <ScorePill score={leadScore(lead)} />
+          <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-2 hover:bg-control text-[18px] leading-none">×</button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4">
+          {/* status stepper */}
+          <div>
+            <div className="eyebrow text-muted-3 mb-2">Lifecycle status</div>
+            <div className="flex flex-wrap gap-1.5">
+              {LEAD_STATUSES.map((s) => {
+                const on = lead.status === s
+                const m = LEAD_STATUS_META[s]
+                return (
+                  <button key={s} onClick={() => act.setLeadStatus(lead.id, s, lead.name)} className={classNames('px-2.5 py-1.5 rounded-lg text-[12px] font-semibold border transition-colors', on ? 'text-white border-transparent' : 'text-ink-3 border-border hover:bg-control')} style={on ? { background: m.dot } : undefined}>{m.label}</button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Ovi recommendation */}
+          <div className="rounded-card bg-deep-panel p-4">
+            <div className="flex items-center gap-1.5 text-[12px] font-semibold" style={{ color: '#8FB0FF' }}><Sparkle size={14} /> OVI RECOMMENDS</div>
+            <div className="text-[14px] font-bold text-white mt-1.5">{nba.title}</div>
+            <div className="text-[12.5px] leading-relaxed mt-1" style={{ color: '#C7D3F2' }}>{nba.rationale}</div>
+            <button onClick={runNba} className="mt-3 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-white bg-accent-gradient shadow-primary rounded-lg px-3 py-1.5"><NbaIcon size={14} /> {nba.kind === 'convert' ? 'Convert now' : nba.kind === 'archive' ? 'Archive lead' : 'Do it'}</button>
+          </div>
+
+          {/* details */}
+          <div className="bg-surface border border-border rounded-card p-4 grid grid-cols-2 gap-y-2.5 gap-x-3">
+            <Detail label="Status" node={<StatusPill status={lead.status} />} />
+            <Detail label="Source" value={lead.source} />
+            <Detail label="Owner" value={lead.owner} />
+            <Detail label="Created" value={lead.created} />
+            <Detail label="Email" value={lead.email || `${lead.name.split(' ')[0].toLowerCase()}@${lead.company.split(' ')[0].toLowerCase()}.com`} />
+            <Detail label="Phone" value={lead.phone || '—'} />
+            {lead.value != null && <Detail label="Est. value" value={money(lead.value)} />}
+          </div>
+
+          {/* activity composer */}
+          <div className="bg-surface border border-border rounded-card p-4">
+            <div className="flex gap-4 border-b border-divider -mx-4 px-4 pb-2 mb-3">
+              {(['Note', 'Call', 'Email'] as const).map((t) => (
+                <button key={t} onClick={() => setTab(t)} className={classNames('text-[13px] pb-1.5 -mb-[9px] border-b-2 transition-colors', tab === t ? 'border-accent text-ink font-semibold' : 'border-transparent text-muted-b hover:text-ink-3')}>{t}</button>
+              ))}
+            </div>
+            <textarea value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={`Log a ${tab.toLowerCase()} on this lead…`} className="w-full h-[60px] resize-none outline-none text-[13px] text-ink-2 placeholder:text-muted-3 bg-transparent" />
+            <div className="flex justify-end"><Button variant="primary" onClick={log}>Log {tab.toLowerCase()}</Button></div>
+          </div>
+
+          {/* timeline */}
+          <div>
+            <div className="eyebrow text-muted-3 mb-2">History · {timeline.length}</div>
+            {timeline.length === 0 && <div className="text-[13px] text-muted-2">No context yet — log a note, call or email above to start building the lead's history.</div>}
+            <div className="flex flex-col gap-3">
+              {timeline.map((t) => (
+                <div key={t.id} className="flex gap-3">
+                  <span className="w-6 h-6 rounded-full bg-accent-wash text-accent flex items-center justify-center shrink-0 mt-0.5">{t.source === 'ai' ? <Sparkle size={12} /> : <Note size={12} />}</span>
+                  <div className="min-w-0"><div className="text-[13px] font-semibold text-ink-2">{t.subject}</div>{t.body && <div className="text-[12.5px] text-muted leading-relaxed mt-0.5">{t.body}</div>}<div className="text-[11.5px] text-muted-3 mt-0.5">{t.who}</div></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* footer actions */}
+        <div className="shrink-0 border-t border-border bg-surface px-5 py-3.5 flex items-center gap-2">
+          {!lead.converted ? (
+            <Button variant="primary" icon={<ArrowUpRight size={16} />} onClick={() => { const d = act.convertLead(lead); onClose(); nav(`/deals/${d.id}`) }}>Convert to deal</Button>
+          ) : (
+            <span className="text-[13px] text-positive font-semibold flex items-center gap-1.5"><Check size={15} /> Converted to a deal</span>
+          )}
+          {!lead.archived && <Button color="#B01B4F" onClick={() => { act.archiveLead(lead.id, lead.name); onClose() }}>Archive</Button>}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Detail({ label, value, node }: { label: string; value?: string; node?: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-0.5 min-w-0">
+      <span className="text-[11px] text-muted-2">{label}</span>
+      {node ?? <span className="text-[13px] font-medium text-ink-2 truncate">{value}</span>}
+    </div>
   )
 }
 

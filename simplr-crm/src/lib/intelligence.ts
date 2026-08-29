@@ -61,6 +61,23 @@ export function leadScore(lead: Lead): Score {
   return { score: lead.score, band: band(lead.score), reasons }
 }
 
+// What Ovi recommends doing with a lead next, based on its status, score and age.
+export type LeadAction = { title: string; rationale: string; kind: 'call' | 'email' | 'task' | 'convert' | 'archive' }
+export function leadNextAction(lead: Lead, activityCount = 0): LeadAction {
+  const ageDays = lead.createdAt ? daysSince(lead.createdAt) : 0
+  if (lead.status === 'qualified')
+    return { title: 'Convert to a deal', rationale: 'Qualified and ready — turn it into an opportunity so it enters the pipeline and forecast.', kind: 'convert' }
+  if (lead.status === 'unqualified')
+    return { title: 'Archive or nurture later', rationale: 'Marked unqualified — archive it, or drop it into a long-term nurture sequence.', kind: 'archive' }
+  if (lead.score >= 75 && (lead.status === 'new' || activityCount === 0))
+    return { title: 'Call within the hour', rationale: 'High score and no contact yet — speed-to-lead is the single biggest driver of conversion.', kind: 'call' }
+  if (lead.status === 'new')
+    return { title: 'Send the intro & qualify', rationale: 'A fresh lead — open with a short intro and the one question that qualifies fit.', kind: 'email' }
+  if (lead.status === 'nurturing' && ageDays >= 5)
+    return { title: 'Re-engage — it’s gone quiet', rationale: `No movement in ${ageDays} days. A specific, value-led touch restarts the conversation.`, kind: 'email' }
+  return { title: 'Book a discovery call', rationale: 'Working the lead — a short discovery call is the fastest way to qualify and move it forward.', kind: 'task' }
+}
+
 export type Risk = { level: 'ok' | 'watch' | 'risk'; signals: string[] }
 export function dealRisk(deal: Deal, activities: Activity[]): Risk {
   const signals: string[] = []

@@ -16,6 +16,7 @@ export interface Activity {
   personId?: ID
   orgId?: ID
   jobId?: ID
+  leadId?: ID
   due?: string
   dueDate?: string // ISO yyyy-mm-dd — the machine-readable due date (drives Today/Yesterday buckets)
   done: boolean
@@ -281,6 +282,10 @@ export interface Org {
   enriched?: boolean
 }
 
+// Where a lead sits in its qualification lifecycle before it becomes a deal.
+export type LeadStatus = 'new' | 'working' | 'nurturing' | 'qualified' | 'unqualified'
+export const LEAD_STATUSES: LeadStatus[] = ['new', 'working', 'nurturing', 'qualified', 'unqualified']
+
 export interface Lead {
   id: ID
   name: string
@@ -291,6 +296,10 @@ export interface Lead {
   created: string
   createdAt?: number // epoch ms — for date filtering
   score: number
+  status: LeadStatus
+  email?: string
+  phone?: string
+  value?: number // estimated opportunity value, £
   archived?: boolean
   converted?: boolean
 }

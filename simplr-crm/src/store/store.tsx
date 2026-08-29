@@ -4,7 +4,7 @@ import type { State, Deal, Person, Lead, Org, Activity, EmailMsg, Toast, ID } fr
 import { AI_MEMBER_ID, YOU_MEMBER_ID } from './types'
 import type { StageName } from '../data/mock'
 
-const KEY = 'simplr.state.v15'
+const KEY = 'simplr.state.v16'
 let idc = 1000
 export const uid = (p = 'x') => `${p}${Date.now().toString(36)}${idc++}`
 
@@ -25,6 +25,7 @@ type Action =
   | { type: 'MERGE_ORG'; keepId: ID; dropId: ID }
   | { type: 'ADD_LEAD'; lead: Lead }
   | { type: 'ARCHIVE_LEAD'; id: ID }
+  | { type: 'SET_LEAD_STATUS'; id: ID; status: import('./types').LeadStatus }
   | { type: 'CONVERT_LEAD'; id: ID; deal: Deal; person: Person }
   | { type: 'ADD_ACTIVITY'; activity: Activity }
   | { type: 'UPDATE_ACTIVITY'; id: ID; patch: Partial<Activity> }
@@ -178,12 +179,16 @@ function reducer(state: State, action: Action): State {
       return { ...state, leads: [action.lead, ...state.leads] }
     case 'ARCHIVE_LEAD':
       return { ...state, leads: state.leads.map((l) => (l.id === action.id ? { ...l, archived: true } : l)) }
+    case 'SET_LEAD_STATUS':
+      return { ...state, leads: state.leads.map((l) => (l.id === action.id ? { ...l, status: action.status, archived: action.status === 'unqualified' ? true : l.archived } : l)) }
     case 'CONVERT_LEAD':
       return {
         ...state,
-        leads: state.leads.map((l) => (l.id === action.id ? { ...l, converted: true, archived: true } : l)),
+        leads: state.leads.map((l) => (l.id === action.id ? { ...l, converted: true, archived: true, status: 'qualified' } : l)),
         people: [action.person, ...state.people],
         deals: [action.deal, ...state.deals],
+        // carry the lead's captured context (notes/calls/emails) onto the new deal + contact
+        activities: state.activities.map((a) => (a.leadId === action.id ? { ...a, dealId: action.deal.id, personId: action.person.id } : a)),
       }
     case 'ADD_ACTIVITY':
       return { ...state, activities: [action.activity, ...state.activities] }
@@ -497,6 +502,7 @@ export function useActions() {
         created: 'Just now',
         createdAt: Date.now(),
         score: partial.score ?? 60,
+        status: partial.status ?? 'new',
         ...partial,
       }
       dispatch({ type: 'ADD_LEAD', lead })
@@ -507,9 +513,13 @@ export function useActions() {
       dispatch({ type: 'ARCHIVE_LEAD', id })
       toast(`Lead “${name}” archived`, 'warning')
     },
+    setLeadStatus: (id: ID, status: import('./types').LeadStatus, name?: string) => {
+      dispatch({ type: 'SET_LEAD_STATUS', id, status })
+      if (name) toast(status === 'unqualified' ? `“${name}” marked unqualified` : `“${name}” → ${status}`, status === 'unqualified' ? 'warning' : 'positive')
+    },
     convertLead: (lead: Lead) => {
-      const person: Person = { id: uid('p'), name: lead.name, role: lead.role, org: lead.company, phone: '', email: `${lead.name.split(' ')[0].toLowerCase()}@${lead.company.split(' ')[0].toLowerCase()}.com`, owner: lead.owner, labels: [] }
-      const deal: Deal = { id: uid('d'), name: `${lead.company} opportunity`, org: lead.company, subtitle: 'Converted from lead', value: 50000, stage: 'Qualified', closeDate: 'This quarter', owner: lead.owner, health: 'Healthy', chips: [{ label: 'Converted', tone: 'positive' }], personIds: [person.id], probability: 20 }
+      const person: Person = { id: uid('p'), name: lead.name, role: lead.role, org: lead.company, phone: lead.phone ?? '', email: lead.email ?? `${lead.name.split(' ')[0].toLowerCase()}@${lead.company.split(' ')[0].toLowerCase()}.com`, owner: lead.owner, labels: [] }
+      const deal: Deal = { id: uid('d'), name: `${lead.company} opportunity`, org: lead.company, subtitle: 'Converted from lead', value: lead.value ?? 50000, stage: 'Qualified', closeDate: 'This quarter', owner: lead.owner, health: 'Healthy', chips: [{ label: 'Converted', tone: 'positive' }], personIds: [person.id], probability: 20 }
       dispatch({ type: 'CONVERT_LEAD', id: lead.id, deal, person })
       dispatch({ type: 'ADD_ACTIVITY', activity: { id: uid('act'), type: 'note', subject: 'Converted from lead', dealId: deal.id, personId: person.id, done: true, who: lead.owner, createdAt: Date.now(), source: 'manual' } })
       toast(`“${lead.name}” converted to a deal + contact`)
@@ -803,7 +813,7 @@ export function useActions() {
       toast(`Connected with ${t.name}`)
     },
     bulkAddLeads: (rows: { name: string; company: string; role: string; score: number }[], source = 'TellOvi AI') => {
-      const leads: Lead[] = rows.map((r) => ({ id: uid('l'), name: r.name, role: r.role, company: r.company, source, owner: 'Jordan Miles', created: 'Just now', createdAt: Date.now(), score: r.score }))
+      const leads: Lead[] = rows.map((r) => ({ id: uid('l'), name: r.name, role: r.role, company: r.company, source, owner: 'Jordan Miles', created: 'Just now', createdAt: Date.now(), score: r.score, status: 'new' as const }))
       dispatch({ type: 'BULK_ADD_LEADS', leads })
       return leads
     },
@@ -971,6 +981,7 @@ export function useSelectors() {
     orgById: (id?: ID) => s.orgs.find((o) => o.id === id),
     dealActivities: (dealId: ID) => s.activities.filter((a) => a.dealId === dealId).sort((a, b) => b.createdAt - a.createdAt),
     personActivities: (personId: ID) => s.activities.filter((a) => a.personId === personId).sort((a, b) => b.createdAt - a.createdAt),
+    leadActivities: (leadId: ID) => s.activities.filter((a) => a.leadId === leadId).sort((a, b) => b.createdAt - a.createdAt),
     openTasks: (dealId?: ID) => s.activities.filter((a) => !a.done && a.type !== 'note' && a.type !== 'change' && (dealId ? a.dealId === dealId : true)),
     dealEmails: (dealId: ID) => s.emails.filter((e) => e.dealId === dealId),
     personEmails: (personId: ID) => s.emails.filter((e) => e.personId === personId),
