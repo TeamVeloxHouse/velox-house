@@ -3,6 +3,38 @@ import react from '@vitejs/plugin-react'
 import { googleSolarAnalysis } from './server/solarProvider.mjs'
 import { pdlSearch } from './server/sourcingProvider.mjs'
 import { staticSatellite } from './server/roofImage.mjs'
+import { callOvi } from './server/oviProvider.mjs'
+
+/** Dev-only backend for the real Ovi operator — keeps the Anthropic key server-side.
+ *  Set ANTHROPIC_API_KEY in .env to go live; without it, /api/ovi returns
+ *  { fallback: true } and the app uses the built-in deterministic Ovi engine. */
+function oviApi(env: Record<string, string>): Plugin {
+  const key = env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY || ''
+  const model = env.OVI_MODEL || process.env.OVI_MODEL || ''
+  return {
+    name: 'ovi-api',
+    configureServer(server) {
+      server.middlewares.use('/api/ovi', (req, res) => {
+        if (req.method !== 'POST') { res.statusCode = 405; return res.end() }
+        let body = ''
+        req.on('data', (c) => (body += c))
+        req.on('end', async () => {
+          res.setHeader('Content-Type', 'application/json')
+          try {
+            if (!key) return res.end(JSON.stringify({ fallback: true, reason: 'no-key' }))
+            const payload = JSON.parse(body || '{}')
+            if (!payload.messages) return res.end(JSON.stringify({ live: true })) // cheap liveness ping
+            const data = await callOvi(payload, key, model || undefined)
+            res.end(JSON.stringify(data))
+          } catch (e) {
+            res.statusCode = 200
+            res.end(JSON.stringify({ error: String((e as Error)?.message || e) }))
+          }
+        })
+      })
+    },
+  }
+}
 
 /** Dev-only backend for the Google Solar API — keeps the key server-side.
  *  Set GOOGLE_MAPS_API_KEY in .env (Solar API + Geocoding API enabled) to go live;
@@ -82,7 +114,7 @@ function roofImageApi(env: Record<string, string>): Plugin {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   return {
-    plugins: [react(), solarApi(env), sourcingApi(env), roofImageApi(env)],
+    plugins: [react(), solarApi(env), sourcingApi(env), roofImageApi(env), oviApi(env)],
     server: { port: 3010 },
   }
 })

@@ -30,6 +30,7 @@ export type AiBlock =
   | { type: 'tasks'; items: { label: string; meta: string }[] }
   | { type: 'actions'; items: { label: string }[] }
   | { type: 'workflow'; title: string; steps: WorkflowStep[] }
+  | { type: 'opsteps'; steps: { id: string; label: string; status: 'running' | 'done' | 'error' }[] }
 
 export type RunPlan = { count: number; vertical: string; outreach: boolean; steps: WorkflowStep[]; campaignName: string }
 export type AiResponse = { blocks: AiBlock[]; suggestions?: string[]; thinking?: string; run?: RunPlan }

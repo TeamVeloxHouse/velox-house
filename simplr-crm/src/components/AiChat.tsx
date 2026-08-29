@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { answer, generateProspects, type AiBlock, type AiResponse, type RunPlan, type RunOp } from '../lib/ai'
+import { runOviAgent, oviIsLive, type OviStep, type AnthMessage } from '../lib/oviAgent'
 import { Avatar, Chip, type ChipTone } from './ui'
 import { Sparkle, Send, Check, Envelope, Play } from './icons'
 import { money, classNames } from '../lib/format'
@@ -126,6 +127,19 @@ function Block({ b }: { b: AiBlock }) {
         ))}
       </div>
     )
+  if (b.type === 'opsteps')
+    return (
+      <div className="flex flex-col gap-1.5">
+        {b.steps.map((s) => (
+          <div key={s.id} className="flex items-center gap-2 text-[12.5px]">
+            {s.status === 'done' ? <span className="w-4 h-4 rounded-full bg-positive flex items-center justify-center shrink-0"><Check size={10} className="text-white" strokeWidth={3} /></span>
+              : s.status === 'error' ? <span className="w-4 h-4 rounded-full bg-negative text-white flex items-center justify-center shrink-0 text-[10px]">!</span>
+              : <span className="w-4 h-4 rounded-full border-2 border-accent border-t-transparent animate-spin inline-block shrink-0" />}
+            <span className={classNames('min-w-0 truncate', s.status === 'done' ? 'text-ink-2 font-medium' : s.status === 'error' ? 'text-negative' : 'text-ink-2 font-semibold')}>{s.label}{s.status === 'running' && ' …'}</span>
+          </div>
+        ))}
+      </div>
+    )
   return null
 }
 
@@ -248,7 +262,26 @@ function SuggestChip({ label }: { label: string }) {
 export function useChat(seed?: ChatTurn[], opts?: { listen?: boolean }) {
   const [turns, setTurns] = useState<ChatTurn[]>(seed ?? [])
   const act = useActions()
+  const nav = useNavigate()
   const busyRef = useRef(false)
+  const liveRef = useRef<boolean | null>(null)      // is a real model wired up? (cached)
+  const historyRef = useRef<AnthMessage[]>([])       // running Anthropic message history
+
+  // Insert/update a live tool-call step in the current AI turn.
+  function upsertStep(res: AiResponse, s: OviStep): AiResponse {
+    let found = false
+    const blocks = res.blocks.map((b) => {
+      if (b.type !== 'opsteps') return b
+      found = true
+      const steps = [...b.steps]
+      const idx = steps.findIndex((x) => x.id === s.id)
+      const entry = { id: s.id, label: s.summary, status: s.status }
+      if (idx === -1) steps.push(entry); else steps[idx] = entry
+      return { ...b, steps }
+    })
+    if (!found) blocks.unshift({ type: 'opsteps', steps: [{ id: s.id, label: s.summary, status: s.status }] })
+    return { ...res, blocks }
+  }
 
   // Mutate the most recent AI turn's response.
   function updateLastAi(mut: (res: AiResponse) => AiResponse) {
@@ -305,16 +338,41 @@ export function useChat(seed?: ChatTurn[], opts?: { listen?: boolean }) {
     }
   }
 
-  function ask(text: string) {
-    if (!text.trim() || busyRef.current) return
-    busyRef.current = true
+  // The built-in deterministic engine (used when no real model is wired up).
+  function finishDeterministic(text: string) {
     const res = answer(text)
-    setTurns((t) => [...t, { role: 'user', text }, { role: 'ai', res, pending: true }])
+    setTurns((t) => t.map((x, i) => (i === t.length - 1 ? { role: 'ai', res, pending: true } : x)))
     setTimeout(() => {
       setTurns((t) => t.map((x, i) => (i === t.length - 1 ? { ...x, pending: false } : x)))
       if (res.run) streamRun(res.run)
       else busyRef.current = false
-    }, res.run ? 600 : 750)
+    }, res.run ? 600 : 700)
+  }
+
+  async function ask(text: string) {
+    if (!text.trim() || busyRef.current) return
+    busyRef.current = true
+    setTurns((t) => [...t, { role: 'user', text }, { role: 'ai', res: { blocks: [] }, pending: true }])
+
+    // First time: is a real Claude model wired up behind /api/ovi?
+    if (liveRef.current === null) { try { liveRef.current = await oviIsLive() } catch { liveRef.current = false } }
+    if (!liveRef.current) { finishDeterministic(text); return }
+
+    // Real operator: stream Claude's tool calls against the live store.
+    setTurns((t) => t.map((x, i) => (i === t.length - 1 ? { role: 'ai', res: { blocks: [] }, pending: false } : x)))
+    try {
+      const result = await runOviAgent(text, historyRef.current, {
+        onText: (txt) => updateLastAi((r) => ({ ...r, blocks: [...r.blocks, { type: 'text', text: txt }] })),
+        onStep: (s) => updateLastAi((r) => upsertStep(r, s)),
+        ctx: { act, nav, confirm: (summary) => Promise.resolve(window.confirm(summary)) },
+      })
+      if (result.fallback) { liveRef.current = false; finishDeterministic(text); return }
+      historyRef.current = result.messages
+    } catch {
+      updateLastAi((r) => ({ ...r, blocks: [...r.blocks, { type: 'text', text: '⚠️ Something went wrong reaching Ovi.' }] }))
+    } finally {
+      busyRef.current = false
+    }
   }
 
   useEffect(() => {
