@@ -16,7 +16,7 @@ const crmGroups: Group[] = [
     { to: '/', icon: Grid, label: 'Home', end: true },
     { to: '/tasks', icon: Check, label: 'My Tasks' },
     { to: '/team', icon: Users, label: 'Team' },
-    { to: '/agents', icon: Robot, label: 'Agents' },
+    { to: '/agents', icon: Robot, label: 'Automations' },
   ] },
   { label: 'Pipeline', items: [
     { to: '/deals', icon: Bars, label: 'Deals' },
@@ -33,7 +33,6 @@ const crmGroups: Group[] = [
     { to: '/meetings', icon: Video, label: 'Meetings' },
     { to: '/inbox', icon: Envelope, label: 'Sales Inbox' },
     { to: '/linkedin', icon: Person, label: 'LinkedIn' },
-    { to: '/automation', icon: Layers, label: 'Automation' },
   ] },
   { label: 'Operations', items: [
     { to: '/jobs', icon: Wrench, label: 'Jobs', feature: 'jobs' },

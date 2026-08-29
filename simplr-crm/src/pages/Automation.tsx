@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import { TopBar } from '../components/TopBar'
 import { PageBody } from '../components/Page'
 import { Button, Chip } from '../components/ui'
@@ -18,12 +19,14 @@ const addable: { kind: AutoStepKind; title: string; subtitle: string }[] = [
 ]
 
 export function Automation() {
+  const { id } = useParams()
+  const nav = useNavigate()
   const { automations } = useState_()
   const act = useActions()
-  const automation = automations[0]
+  const automation = automations.find((a) => a.id === id) ?? automations[0]
   const [menuOpen, setMenuOpen] = useState(false)
 
-  if (!automation) return (<><TopBar title="Automation" /><PageBody><div className="text-muted-b">No automation.</div></PageBody></>)
+  if (!automation) return (<><TopBar title="Automation" /><PageBody><div className="text-muted-b">No rule found. <button onClick={() => nav('/agents')} className="text-accent font-semibold">Back to Automations</button>.</div></PageBody></>)
 
   const steps = automation.steps
   function addStep(kind: AutoStepKind, title: string, subtitle: string) {
@@ -38,11 +41,12 @@ export function Automation() {
   return (
     <>
       <TopBar
-        title="Automation"
-        crumbs={[automation.name]}
+        title="Automations"
+        crumbs={['Rules', automation.name]}
         center={<Chip tone={automation.active ? 'positive' : 'neutral'} dot>{automation.active ? 'On' : 'Off'}</Chip>}
         actions={
           <>
+            <Button onClick={() => nav('/agents')}>← All automations</Button>
             <Button onClick={() => act.updateAutomation(automation.id, { active: !automation.active })}>{automation.active ? 'Turn off' : 'Turn on'}</Button>
             <Button onClick={() => act.toast('Test run complete — 1 email, 1 task created')}>Test</Button>
             <Button variant="primary" icon={<Check size={16} />} onClick={() => act.saveAutomation(automation.id, {})}>Save</Button>

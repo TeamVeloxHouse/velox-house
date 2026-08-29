@@ -16,12 +16,14 @@ const statusLabel: Record<AgentRun['status'], string> = { pending: 'Needs approv
 
 export function Agents() {
   const nav = useNavigate()
-  const { agents, agentRuns } = useState_()
+  const { agents, agentRuns, automations } = useState_()
   const act = useActions()
   const [buildOpen, setBuildOpen] = useState(false)
+  const [newMenu, setNewMenu] = useState(false)
   const [time, setTime] = useState('Today')
   const [statusF, setStatusF] = useState('All')
   const [agentF, setAgentF] = useState('All agents')
+  const newRule = () => { const r = act.addAutomation('Untitled rule'); setNewMenu(false); nav(`/automation/${r.id}`) }
 
   const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0)
   const inTime = (ts: number) => (time === 'All' ? true : time === 'Today' ? ts >= startOfToday.getTime() : ts >= Date.now() - 7 * 86_400_000)
@@ -36,9 +38,25 @@ export function Agents() {
   return (
     <>
       <TopBar
-        title="Agents"
-        crumbs={['Autonomous workforce']}
-        actions={<><Button icon={<Sparkle size={16} />} onClick={() => setBuildOpen(true)}>New agent</Button></>}
+        title="Automations"
+        crumbs={['AI agents & rules']}
+        actions={
+          <div className="relative">
+            <Button variant="primary" icon={<Sparkle size={16} />} onClick={() => setNewMenu((o) => !o)}>New automation</Button>
+            {newMenu && (
+              <div className="absolute right-0 mt-1 w-[240px] bg-surface border border-border rounded-card shadow-modal overflow-hidden z-30">
+                <button onClick={() => { setNewMenu(false); setBuildOpen(true) }} className="w-full flex items-start gap-3 px-3.5 py-2.5 text-left hover:bg-control border-b border-divider">
+                  <span className="w-7 h-7 rounded-lg bg-accent-gradient text-white flex items-center justify-center shrink-0"><Robot size={14} /></span>
+                  <span><span className="block text-[13px] font-semibold text-ink-2">AI agent</span><span className="block text-[12px] text-muted-2">Ovi decides & drafts, you approve</span></span>
+                </button>
+                <button onClick={newRule} className="w-full flex items-start gap-3 px-3.5 py-2.5 text-left hover:bg-control">
+                  <span className="w-7 h-7 rounded-lg bg-accent-wash text-accent flex items-center justify-center shrink-0"><Bolt size={14} /></span>
+                  <span><span className="block text-[13px] font-semibold text-ink-2">Rule</span><span className="block text-[12px] text-muted-2">A fixed trigger → action workflow</span></span>
+                </button>
+              </div>
+            )}
+          </div>
+        }
       />
       <BuildAgentModal open={buildOpen} onClose={() => setBuildOpen(false)} />
       <PageBody>
@@ -108,7 +126,7 @@ export function Agents() {
 
           {/* roster */}
           <aside className="flex flex-col gap-3">
-            <div className="flex items-center gap-2"><Robot size={17} className="text-accent" /><div className="text-[14px] font-bold text-ink">Your agents</div></div>
+            <div className="flex items-center gap-2"><Robot size={17} className="text-accent" /><div className="text-[14px] font-bold text-ink">AI agents</div><span className="text-[11px] text-muted-3 ml-auto">{agents.filter((a) => a.on).length}/{agents.length} on</span></div>
             {agents.map((a) => (
               <div key={a.id} className="bg-surface border border-border rounded-card p-3.5">
                 <div className="flex items-center justify-between">
@@ -122,7 +140,23 @@ export function Agents() {
                 </div>
               </div>
             ))}
-            <button onClick={() => setBuildOpen(true)} className="rounded-card border border-dashed border-input-border p-3.5 text-[13px] text-accent font-semibold hover:bg-accent-wash-3 transition-colors flex items-center justify-center gap-1.5"><Sparkle size={15} /> New agent</button>
+            <button onClick={() => setBuildOpen(true)} className="rounded-card border border-dashed border-input-border p-3 text-[12.5px] text-accent font-semibold hover:bg-accent-wash-3 transition-colors flex items-center justify-center gap-1.5"><Sparkle size={14} /> New agent</button>
+
+            <div className="flex items-center gap-2 mt-3"><Bolt size={16} className="text-accent" /><div className="text-[14px] font-bold text-ink">Rules</div><span className="text-[11px] text-muted-3 ml-auto">{automations.filter((a) => a.active).length}/{automations.length} on</span></div>
+            {automations.map((r) => (
+              <div key={r.id} className="bg-surface border border-border rounded-card p-3.5">
+                <div className="flex items-center justify-between gap-2">
+                  <button onClick={() => nav(`/automation/${r.id}`)} className="text-[13px] font-semibold text-ink-2 text-left truncate hover:text-accent">{r.name}</button>
+                  <button onClick={() => act.updateAutomation(r.id, { active: !r.active })} className={classNames('w-9 h-5 rounded-full flex items-center px-0.5 transition-colors shrink-0', r.active ? 'bg-accent justify-end' : 'bg-input-border justify-start')}><span className="w-4 h-4 rounded-full bg-white" /></button>
+                </div>
+                <div className="text-[12px] text-muted-2 mt-1 leading-snug">{r.steps[0]?.title ?? 'No trigger'} · {r.steps.length} step{r.steps.length === 1 ? '' : 's'}</div>
+                <div className="mt-2 flex items-center gap-2">
+                  <Chip tone={r.active ? 'positive' : 'neutral'} dot>{r.active ? 'Live' : 'Off'}</Chip>
+                  <button onClick={() => nav(`/automation/${r.id}`)} className="text-[11.5px] text-accent font-semibold ml-auto">Edit →</button>
+                </div>
+              </div>
+            ))}
+            <button onClick={newRule} className="rounded-card border border-dashed border-input-border p-3 text-[12.5px] text-accent font-semibold hover:bg-accent-wash-3 transition-colors flex items-center justify-center gap-1.5"><Bolt size={14} /> New rule</button>
           </aside>
         </div>
       </PageBody>

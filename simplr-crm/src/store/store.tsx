@@ -67,7 +67,9 @@ type Action =
   | { type: 'SCHEDULE_POST'; post: import('./types').SocialPost }
   | { type: 'ADD_SEQUENCE'; seq: import('./types').Sequence }
   | { type: 'TOGGLE_SEQUENCE'; id: ID }
+  | { type: 'ADD_AUTOMATION'; automation: import('./types').Automation }
   | { type: 'UPDATE_AUTOMATION'; id: ID; patch: Partial<import('./types').Automation> }
+  | { type: 'REMOVE_AUTOMATION'; id: ID }
   | { type: 'LI_UPDATE'; id: ID; patch: Partial<import('./types').LinkedInThread>; activity?: Activity }
   | { type: 'ADVANCE_ENROLMENT'; id: ID; patch: Partial<import('./types').Enrolment>; activity?: Activity }
   | { type: 'BULK_ADD_LEADS'; leads: Lead[] }
@@ -307,8 +309,12 @@ function reducer(state: State, action: Action): State {
       return { ...state, sequences: [action.seq, ...state.sequences] }
     case 'TOGGLE_SEQUENCE':
       return { ...state, sequences: state.sequences.map((s) => (s.id === action.id ? { ...s, active: !s.active } : s)) }
+    case 'ADD_AUTOMATION':
+      return { ...state, automations: [...state.automations, action.automation] }
     case 'UPDATE_AUTOMATION':
       return { ...state, automations: state.automations.map((a) => (a.id === action.id ? { ...a, ...action.patch } : a)) }
+    case 'REMOVE_AUTOMATION':
+      return { ...state, automations: state.automations.filter((a) => a.id !== action.id) }
     case 'LI_UPDATE':
       return {
         ...state,
@@ -940,6 +946,13 @@ export function useActions() {
     },
     toggleSequence: (id: ID, active: boolean) => { dispatch({ type: 'TOGGLE_SEQUENCE', id }); toast(active ? 'Sequence paused' : 'Sequence activated', active ? 'warning' : 'positive') },
     updateAutomation: (id: ID, patch: Partial<import('./types').Automation>) => dispatch({ type: 'UPDATE_AUTOMATION', id, patch }),
+    addAutomation: (name: string) => {
+      const automation: import('./types').Automation = { id: uid('au'), name, active: false, steps: [{ id: uid('as'), kind: 'trigger', title: 'When a deal is created', subtitle: 'Any pipeline' }] }
+      dispatch({ type: 'ADD_AUTOMATION', automation })
+      toast(`Rule “${name}” created`)
+      return automation
+    },
+    removeAutomation: (id: ID, name: string) => { dispatch({ type: 'REMOVE_AUTOMATION', id }); toast(`Rule “${name}” deleted`, 'warning') },
     saveAutomation: (id: ID, patch: Partial<import('./types').Automation>) => { dispatch({ type: 'UPDATE_AUTOMATION', id, patch }); toast('Automation saved') },
     liReply: (t: import('./types').LinkedInThread, body: string) => {
       const activity: Activity = { id: uid('act'), type: 'note', subject: `LinkedIn message to ${t.name}`, body, personId: t.personId, done: true, who: 'Jordan Miles', createdAt: Date.now(), source: 'manual' }

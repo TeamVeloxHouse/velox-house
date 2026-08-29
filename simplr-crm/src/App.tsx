@@ -105,6 +105,7 @@ export const router = createBrowserRouter([
       { path: 'projects', element: <Projects /> },
       { path: 'campaigns', element: <Campaigns /> },
       { path: 'automation', element: <Automation /> },
+      { path: 'automation/:id', element: <Automation /> },
       { path: 'documents', element: <Documents /> },
       { path: 'settings', element: <Settings /> },
       // TellOvi Reach — prospecting & outreach workspace
