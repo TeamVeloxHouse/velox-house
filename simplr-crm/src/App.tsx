@@ -23,7 +23,7 @@ import { TellOviAI } from './pages/TellOviAI'
 import { Meetings } from './pages/Meetings'
 import { LiveMeeting } from './pages/LiveMeeting'
 import { Calendar } from './pages/Calendar'
-import { CustomerPortals, CustomerPortal } from './pages/CustomerPortal'
+import { CustomerPortals, CustomerPortal, SupportRequests, ResourceLibrary } from './pages/CustomerPortal'
 import { Agents } from './pages/Agents'
 import { Prospector } from './pages/Prospector'
 import { LinkedInInbox } from './pages/LinkedInInbox'
@@ -125,8 +125,11 @@ export const router = createBrowserRouter([
       { path: 'studio/ev', element: <EvCalculator /> },
       { path: 'studio/delivery', element: <Delivery /> },
       { path: 'studio/delivery/:id', element: <ProjectDetail /> },
-      { path: 'studio/portals', element: <CustomerPortals /> },
-      { path: 'studio/portals/:id', element: <CustomerPortal /> },
+      // TellOvi Customers — the post-sale suite (portals & aftercare)
+      { path: 'customers', element: <CustomerPortals /> },
+      { path: 'customers/support', element: <SupportRequests /> },
+      { path: 'customers/resources', element: <ResourceLibrary /> },
+      { path: 'customers/:id', element: <CustomerPortal /> },
       { path: 'studio/templates', element: <StudioTemplates /> },
       { path: 'studio/brand', element: <BrandDocuments /> },
       { path: 'reach/prospects', element: <Prospector /> },

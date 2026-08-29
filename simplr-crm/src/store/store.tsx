@@ -575,6 +575,19 @@ export function useActions() {
       dispatch({ type: 'ADD_PORTAL_EVENT', event: { id: uid('pe'), portalId, section, label, kind, at: Date.now(), dwellMs } })
       dispatch({ type: 'UPDATE_PORTAL', id: portalId, patch: { lastActiveAt: Date.now() } })
     },
+    /** A customer reports a problem from their portal → a traceable service job for the team. */
+    reportPortalIssue: (portal: import('./types').CustomerPortal, item: string, description: string, photoName?: string) => {
+      const n = (live.state?.jobs.length ?? 0) + 2050
+      const job: import('./types').Job = {
+        id: uid('job'), ref: `JOB-${n}`, kind: 'remedial', title: `Support: ${item}`, customer: portal.customer, address: portal.address,
+        dealId: portal.dealId, portalId: portal.id, crew: [], durationMins: 90, status: 'unscheduled', notes: description, createdAt: Date.now(),
+      }
+      dispatch({ type: 'ADD_JOB', job })
+      dispatch({ type: 'ADD_ACTIVITY', activity: { id: uid('act'), type: 'change', subject: `${job.ref} raised — ${item}`, body: `${portal.customer} via portal${photoName ? ` · photo: ${photoName}` : ''} — ${description}`, jobId: job.id, dealId: portal.dealId, done: false, priority: 'High', due: 'Today', who: portal.customer, createdAt: Date.now(), source: 'manual' } })
+      dispatch({ type: 'ADD_PORTAL_EVENT', event: { id: uid('pe'), portalId: portal.id, section: 'Support', label: `Reported: ${item}`, kind: 'click', at: Date.now() } })
+      toast(`${portal.customer}'s issue logged — ${job.ref} in the field backlog`, 'accent')
+      return job
+    },
     addResource: (r: Omit<import('./types').PortalResource, 'id'>) => {
       dispatch({ type: 'ADD_RESOURCE', resource: { ...r, id: uid('pr') } })
       toast(`“${r.title}” added to the resource library`)

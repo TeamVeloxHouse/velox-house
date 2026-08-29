@@ -79,11 +79,19 @@ const studioGroups: Group[] = [
   { label: 'Calculators', items: [
     { to: '/studio/ev', icon: Bolt, label: 'EV charging' },
   ] },
-  { label: 'Deliver', items: [
-    { to: '/studio/delivery', icon: Flow, label: 'Delivery' },
-    { to: '/studio/portals', icon: Sun, label: 'Customer portals' },
-  ] },
+  { label: 'Deliver', items: [{ to: '/studio/delivery', icon: Flow, label: 'Delivery' }] },
   { label: 'Measure', items: [{ to: '/studio/analytics', icon: Pie, label: 'Analytics' }] },
+]
+
+// ── Customers — the post-sale suite: every customer, their portal & aftercare ──
+const customersGroups: Group[] = [
+  { label: 'Overview', items: [
+    { to: '/customers', icon: Users, label: 'All customers', end: true },
+    { to: '/customers/support', icon: Wrench, label: 'Support requests' },
+  ] },
+  { label: 'Library', items: [
+    { to: '/customers/resources', icon: File, label: 'Resources & manuals' },
+  ] },
 ]
 
 // ── Department workspaces (the whole-workforce layer) — full apps, not CRM pages ──
@@ -159,20 +167,21 @@ const workspaces = [
   { id: 'hr', name: 'TellOvi People', desc: 'HR & compliance', to: '/hr', icon: Person, grad: 'linear-gradient(180deg,#6366F1 0%,#4338CA 100%)', feature: undefined as FeatureKey | undefined },
   { id: 'marketing', name: 'TellOvi Marketing', desc: 'Brand & content ops', to: '/marketing', icon: Megaphone, grad: 'linear-gradient(180deg,#F43F5E 0%,#BE123C 100%)', feature: undefined as FeatureKey | undefined },
   { id: 'delivery', name: 'TellOvi Delivery', desc: 'Installs & handover', to: '/delivery', icon: Box, grad: 'linear-gradient(180deg,#06B6D4 0%,#0E7490 100%)', feature: undefined as FeatureKey | undefined },
+  { id: 'customers', name: 'TellOvi Customers', desc: 'Portals & aftercare', to: '/customers', icon: Sun, grad: 'linear-gradient(180deg,#14B8A6 0%,#0E7C66 100%)', feature: undefined as FeatureKey | undefined },
 ]
 
 // Path prefix → workspace id (longest-specific first; CRM is the fallback).
 const wsPrefixes: [string, string][] = [
   ['/reach', 'reach'], ['/studio', 'studio'], ['/finance', 'finance'],
-  ['/operations', 'operations'], ['/hr', 'hr'], ['/marketing', 'marketing'], ['/delivery', 'delivery'],
+  ['/operations', 'operations'], ['/hr', 'hr'], ['/marketing', 'marketing'], ['/delivery', 'delivery'], ['/customers', 'customers'],
 ]
 const groupsById: Record<string, Group[]> = {
   crm: crmGroups, reach: reachGroups, studio: studioGroups,
-  finance: financeGroups, operations: opsGroups, hr: hrGroups, marketing: marketingGroups, delivery: deliveryGroups,
+  finance: financeGroups, operations: opsGroups, hr: hrGroups, marketing: marketingGroups, delivery: deliveryGroups, customers: customersGroups,
 }
 const activeFillById: Record<string, string> = {
   crm: 'bg-white/10', reach: 'bg-[#5B29CC]/25', studio: 'bg-[#E8721A]/30',
-  finance: 'bg-[#0E7C66]/35', operations: 'bg-white/10', hr: 'bg-[#4338CA]/40', marketing: 'bg-[#BE123C]/30', delivery: 'bg-[#0E7490]/40',
+  finance: 'bg-[#0E7C66]/35', operations: 'bg-white/10', hr: 'bg-[#4338CA]/40', marketing: 'bg-[#BE123C]/30', delivery: 'bg-[#0E7490]/40', customers: 'bg-[#0E7C66]/35',
 }
 
 function itemClasses(expanded: boolean, accent: string) {

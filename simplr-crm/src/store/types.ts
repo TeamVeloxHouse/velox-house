@@ -200,6 +200,7 @@ export interface Job {
   address: string
   dealId?: ID
   personId?: ID
+  portalId?: ID // raised from a customer's portal (a support request)
   crew: ID[] // engineer ids assigned
   date?: string // ISO yyyy-mm-dd — undefined = unscheduled
   start?: string // 'HH:MM'
