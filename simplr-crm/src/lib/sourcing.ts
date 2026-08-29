@@ -8,11 +8,14 @@
 
 export type SourcingCriteria = {
   title?: string
+  titles?: string[] // several target job titles (any-match); first is used as the primary `title`
   industry?: string
   location?: string
   companySize?: string
   keywords?: string[]
   limit?: number
+  company?: string // scope the search to one company (the roof we measured)
+  domain?: string // the join key from Places — guarantees people come from THIS company
 }
 
 export type PdlPerson = {
