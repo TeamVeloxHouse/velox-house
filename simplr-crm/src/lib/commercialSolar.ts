@@ -22,7 +22,9 @@ import { sourceLeads, type SourcedLead } from './sourcing'
 // ── Inputs ──────────────────────────────────────────────────────────────────
 export type CommercialCriteria = {
   industry?: string // free text: "warehouses", "manufacturing", "cold storage", "car dealership"…
-  area: string // town / region / postcode district — where to look
+  area?: string // town / region / postcode district — used when there's no pin
+  pin?: LatLng // drop-a-pin centre for a radius scan (takes precedence over `area`)
+  radiusM?: number // scan radius in metres (default 3000)
   targetKwp: number // the sweet-spot system size the customer is chasing (e.g. 250)
   minKwp?: number // hard floor for the roof gate (default = 40% of target)
   jobTitles?: string[] // decision-makers to find (e.g. ["Managing Director", "Facilities Manager"])
@@ -36,6 +38,7 @@ export type DiscoveredBuilding = {
   domain?: string
   center?: LatLng
   category?: string // Places type label, for the card
+  distanceM?: number // distance from the dropped pin (radius scans)
 }
 
 // ── EPC register record ──────────────────────────────────────────────────────
@@ -62,6 +65,7 @@ export type CommercialProspect = {
   reasons: string[] // why this prospect scores where it does
   imageUrl?: string // satellite tile with the measured roof
   roofMeasured: boolean // true = real Google Solar, false = modelled estimate
+  distanceM?: number // distance from the dropped pin (radius scans)
 }
 
 // Commercial pricing/behaviour — distinct from the residential defaults in solar.ts.
@@ -71,13 +75,16 @@ const COMMERCIAL_OPTS: DesignOpts = { occupancy: 'home_all_day', importRate: 0.2
 
 // ── Providers (backend-proxied, key server-side; graceful fallback) ──────────
 
-/** Places discovery → real buildings with a domain. Falls back to an empty list with no key. */
-async function discoverBuildings(area: string, industry: string | undefined, count: number): Promise<DiscoveredBuilding[]> {
+/** Places discovery → real buildings with a domain. Radius scan when a pin is given, else by area name. */
+async function discoverBuildings(c: CommercialCriteria, count: number): Promise<DiscoveredBuilding[]> {
   try {
+    const body = c.pin
+      ? { lat: c.pin.lat, lng: c.pin.lng, radius: c.radiusM ?? 3000, industry: c.industry, count }
+      : { area: c.area, industry: c.industry, count }
     const r = await fetch('/api/places', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ area, industry, count }),
+      body: JSON.stringify(body),
     })
     if (r.ok) {
       const j = await r.json()
@@ -167,8 +174,9 @@ export async function runCommercialSolarEngine(
   const report = (p: EngineProgress) => onProgress?.(p)
 
   // 1) Discover — pull more than we need, since the roof gate will drop some.
-  report({ stage: 'discover', message: `Searching ${c.industry || 'commercial sites'} in ${c.area}…` })
-  const buildings = await discoverBuildings(c.area, c.industry, Math.max(want * 3, 30))
+  const where = c.pin ? `within ${((c.radiusM ?? 3000) / 1000).toFixed(1)} km of the dropped pin` : `in ${c.area}`
+  report({ stage: 'discover', message: `Scanning ${c.industry || 'commercial sites'} ${where}…` })
+  const buildings = await discoverBuildings(c, Math.max(want * 3, 30))
   const live = buildings.length > 0
 
   const prospects: CommercialProspect[] = []
@@ -218,6 +226,7 @@ export async function runCommercialSolarEngine(
       reasons,
       imageUrl: (analysis.center || b.center) ? roofImageUrl(analysis.center || b.center!) : undefined,
       roofMeasured: design.source === 'google',
+      distanceM: b.distanceM,
     })
   }
 

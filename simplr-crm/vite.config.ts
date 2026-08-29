@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 import { googleSolarAnalysis, googleSolarAnalysisAt } from './server/solarProvider.mjs'
 import { pdlSearch } from './server/sourcingProvider.mjs'
 import { staticSatellite } from './server/roofImage.mjs'
-import { placesSearch } from './server/placesProvider.mjs'
+import { placesSearch, placesRadiusScan } from './server/placesProvider.mjs'
 import { pvgisHourly } from './server/pvgisProvider.mjs'
 import { callOvi } from './server/oviProvider.mjs'
 
@@ -131,8 +131,10 @@ function placesApi(env: Record<string, string>): Plugin {
           res.setHeader('Content-Type', 'application/json')
           try {
             if (!key) return res.end(JSON.stringify({ buildings: [], fallback: true, reason: 'no-key' }))
-            const { area, industry, count } = JSON.parse(body || '{}')
-            const buildings = await placesSearch({ area, industry, count }, key)
+            const { area, industry, count, lat, lng, radius } = JSON.parse(body || '{}')
+            const buildings = (typeof lat === 'number' && typeof lng === 'number')
+              ? await placesRadiusScan({ lat, lng, radius, industry, count }, key)
+              : await placesSearch({ area, industry, count }, key)
             res.end(JSON.stringify({ buildings, live: true }))
           } catch (e) {
             res.end(JSON.stringify({ buildings: [], fallback: true, reason: String((e as Error)?.message || e) }))

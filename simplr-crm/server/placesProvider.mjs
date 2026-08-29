@@ -28,7 +28,49 @@ function mapPlace(p) {
   }
 }
 
-/** Search commercial sites. Pages through results until `count` is reached (cap 3 pages / ~60). */
+function haversine(aLat, aLng, bLat, bLng) {
+  const R = 6371000, p = (d) => (d * Math.PI) / 180
+  const dLat = p(bLat - aLat), dLng = p(bLng - aLng)
+  const x = Math.sin(dLat / 2) ** 2 + Math.cos(p(aLat)) * Math.cos(p(bLat)) * Math.sin(dLng / 2) ** 2
+  return 2 * R * Math.asin(Math.sqrt(x))
+}
+
+// Broad net of commercial-site queries — running several and deduping scans an area densely
+// (Places has no single "all industrial buildings" query). Narrowed when the caller names an industry.
+const SCAN_QUERIES = ['warehouses', 'industrial units', 'factories', 'distribution centres', 'trade counters', 'business park units', 'commercial premises']
+
+/**
+ * Drop-a-pin radius scan: every business within `radius` metres of (lat,lng). Runs one or more text
+ * queries biased to the circle, dedupes, and haversine-filters to the exact radius so the result is
+ * genuinely "the businesses inside your circle" — the geographic targeting Tony wants.
+ */
+export async function placesRadiusScan({ lat, lng, radius = 2000, industry, count = 60 }, key) {
+  if (!key) throw new Error('no key')
+  const queries = industry ? [industry, `${industry} units`] : SCAN_QUERIES
+  const seen = new Map() // key: name|rounded-latlng → building
+  for (const q of queries) {
+    if (seen.size >= count * 2) break
+    const r = await fetch(ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': key, 'X-Goog-FieldMask': FIELDS },
+      body: JSON.stringify({ textQuery: q, maxResultCount: 20, regionCode: 'GB', locationBias: { circle: { center: { latitude: lat, longitude: lng }, radius: Math.min(radius, 50000) } } }),
+    })
+    const j = await r.json()
+    if (!r.ok) { if (j?.error?.status === 'PERMISSION_DENIED') throw new Error(`places ${j.error.status}`); continue }
+    for (const p of j.places || []) {
+      const loc = p.location
+      if (!loc) continue
+      const dist = haversine(lat, lng, loc.latitude, loc.longitude)
+      if (dist > radius) continue // strict radius
+      const b = mapPlace(p)
+      const id = `${b.name}|${loc.latitude.toFixed(4)},${loc.longitude.toFixed(4)}`
+      if (!seen.has(id)) seen.set(id, { ...b, distanceM: Math.round(dist) })
+    }
+  }
+  return [...seen.values()].sort((a, b) => a.distanceM - b.distanceM).slice(0, count)
+}
+
+/** Search commercial sites by area name. Pages through results until `count` is reached (cap 3 pages / ~60). */
 export async function placesSearch({ area, industry, count = 20 }, key) {
   if (!key) throw new Error('no key')
   const query = `${industry || 'commercial buildings'} in ${area}`.trim()
