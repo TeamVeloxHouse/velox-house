@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { TopBar } from '../components/TopBar'
 import { PageBody } from '../components/Page'
@@ -6,7 +6,7 @@ import { Button, Segmented, Kpi, Chip } from '../components/ui'
 import { Table, Row, Cell } from '../components/Table'
 import { Plus, Sparkle, Wrench, Clock, MapPin, Check } from '../components/icons'
 import { Modal, Field, Input, Select } from '../components/overlays'
-import { useState_, useActions } from '../store/store'
+import { useState_, useActions, useSelectors } from '../store/store'
 import { tradeByKey, jobKindMeta } from '../lib/trades'
 import type { Job, JobKind, JobStatus, Engineer } from '../store/types'
 import { classNames } from '../lib/format'
@@ -215,14 +215,21 @@ function JobList({ jobs, engineers, onSelect }: { jobs: Job[]; engineers: Engine
 
 function JobDetail({ job, engineers, onClose, onOpenDeal }: { job: Job; engineers: Engineer[]; onClose: () => void; onOpenDeal: (id: string) => void }) {
   const act = useActions()
+  const sel = useSelectors()
+  const nav = useNavigate()
+  const { deals, people } = useState_()
   const m = jobKindMeta[job.kind]
+  const deal = deals.find((d) => d.id === job.dealId)
+  const person = people.find((p) => p.id === job.personId)
+  const trail = sel.jobActivities(job.id)
+  const [note, setNote] = useState('')
   const setStatus = (s: JobStatus) => act.setJobStatus(job, s)
   const toggleCrew = (id: string) => {
     const crew = job.crew.includes(id) ? job.crew.filter((c) => c !== id) : [...job.crew, id]
     act.assignCrew(job.id, crew)
   }
   return (
-    <Modal open onClose={onClose} title={job.title} subtitle={`${job.ref} · ${m.label}`}
+    <Modal open onClose={onClose} title={job.title} subtitle={`${job.ref} · ${m.label}`} width={560}
       footer={<>
         <Button onClick={() => { act.removeJob(job.id, job.ref); onClose() }}>Delete</Button>
         <div className="flex-1" />
@@ -232,6 +239,14 @@ function JobDetail({ job, engineers, onClose, onOpenDeal }: { job: Job; engineer
           : <Button variant="primary" onClick={onClose}>Done</Button>}
       </>}>
       <div className="flex flex-col gap-3">
+        {/* traceability: where this job came from */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Chip tone={statusTone[job.status]} dot>{job.status}</Chip>
+          {deal ? (
+            <button onClick={() => onOpenDeal(deal.id)} className="inline-flex items-center gap-1.5 rounded-lg border border-border-blue bg-accent-wash-4 px-2.5 py-1 text-[12px] font-semibold text-accent-700 hover:bg-accent-wash-2"><Wrench size={12} /> {deal.name}</button>
+          ) : <span className="text-[11.5px] text-muted-3">Not linked to a deal</span>}
+          {person && <button onClick={() => { onClose(); nav(`/people/${person.id}`) }} className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1 text-[12px] font-medium text-ink-3 hover:bg-control">{person.name}</button>}
+        </div>
         <div className="flex items-center gap-2 text-[13px] text-ink-3"><MapPin size={15} className="text-muted-2" />{job.address || '—'}</div>
         <div className="grid grid-cols-3 gap-3 text-[12.5px]">
           <div><div className="text-[11px] text-muted-3 mb-0.5">Customer</div><div className="font-semibold text-ink-2">{job.customer}</div></div>
@@ -261,13 +276,34 @@ function JobDetail({ job, engineers, onClose, onOpenDeal }: { job: Job; engineer
             ))}
           </div>
         </div>
+
+        {/* traceable history — booking, status changes and notes */}
+        <div className="border-t border-divider pt-3">
+          <div className="text-[11px] text-muted-3 mb-2">History · {trail.length}</div>
+          <div className="flex items-center gap-2 mb-3">
+            <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Add a note (site access, on-my-way…)" onKeyDown={(e) => { if (e.key === 'Enter' && note.trim()) { act.logJobNote(job, note.trim()); setNote('') } }} />
+            <Button onClick={() => { if (note.trim()) { act.logJobNote(job, note.trim()); setNote('') } }}>Add</Button>
+          </div>
+          {trail.length === 0 ? (
+            <div className="text-[12px] text-muted-2">No history yet.</div>
+          ) : (
+            <div className="flex flex-col gap-2.5 max-h-[180px] overflow-y-auto">
+              {trail.map((t) => (
+                <div key={t.id} className="flex gap-2.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0 mt-1.5" />
+                  <div className="min-w-0"><div className="text-[12.5px] font-medium text-ink-2">{t.subject}</div>{t.body && <div className="text-[11.5px] text-muted leading-snug">{t.body}</div>}<div className="text-[10.5px] text-muted-3 mt-0.5">{t.who}</div></div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </Modal>
   )
 }
 
-function BookJobModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { engineers, activeTrade } = useState_()
+export function BookJobModal({ open, onClose, presetDealId }: { open: boolean; onClose: () => void; presetDealId?: string }) {
+  const { engineers, activeTrade, deals, people } = useState_()
   const act = useActions()
   const jobTypes = tradeByKey(activeTrade).jobTypes
   const [kind, setKind] = useState<JobKind>(jobTypes[0].key)
@@ -277,22 +313,39 @@ function BookJobModal({ open, onClose }: { open: boolean; onClose: () => void })
   const [date, setDate] = useState('')
   const [start, setStart] = useState('09:00')
   const [crew, setCrew] = useState<string[]>([])
+  const [dealId, setDealId] = useState('')
+  const openDeals = deals.filter((d) => !d.lost)
+
+  // Linking to a deal makes the job traceable — prefill the customer & site from it.
+  const linkDeal = (id: string) => {
+    setDealId(id)
+    const d = deals.find((x) => x.id === id)
+    if (!d) return
+    const contact = people.find((p) => d.personIds.includes(p.id))
+    setCustomer(contact?.name || d.org)
+  }
+  useEffect(() => { if (open && presetDealId) linkDeal(presetDealId); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [open, presetDealId])
 
   const pickKind = (k: JobKind) => {
     setKind(k)
     const t = jobTypes.find((x) => x.key === k)
     if (t) setTitle(t.label)
   }
-  const reset = () => { setCustomer(''); setAddress(''); setDate(''); setCrew([]) }
+  const reset = () => { setCustomer(''); setAddress(''); setDate(''); setCrew([]); setDealId('') }
   const save = () => {
     if (!title.trim() || !customer.trim()) return
     const dur = jobTypes.find((x) => x.key === kind)?.defaultMins ?? 60
-    act.addJob({ kind, title: title.trim(), customer: customer.trim(), address, date: date || undefined, start: date ? start : undefined, durationMins: dur, crew })
+    const d = deals.find((x) => x.id === dealId)
+    const personId = d ? people.find((p) => d.personIds.includes(p.id))?.id : undefined
+    act.addJob({ kind, title: title.trim(), customer: customer.trim(), address, date: date || undefined, start: date ? start : undefined, durationMins: dur, crew, dealId: dealId || undefined, personId })
     reset(); onClose()
   }
   return (
     <Modal open={open} onClose={onClose} title="Book a job" subtitle="Survey, appointment, install or service"
       footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" icon={<Wrench size={15} />} onClick={save}>Book job</Button></>}>
+      <Field label="Link to a deal (traceability)">
+        <Select value={dealId} onChange={(e) => linkDeal(e.target.value)}><option value="">Not linked</option>{openDeals.map((d) => (<option key={d.id} value={d.id}>{d.name} · {d.org}</option>))}</Select>
+      </Field>
       <Field label="Job type">
         <div className="grid grid-cols-3 gap-2">
           {jobTypes.map((t) => (

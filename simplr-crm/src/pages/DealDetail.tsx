@@ -7,6 +7,7 @@ import { Modal, Field, Input, Select } from '../components/overlays'
 import { Note, Envelope, Phone, Meeting, Task, File, Check, Sparkle } from '../components/icons'
 import { NextBestAction, RecordSummary, ScorePill, ConversationIntel, CompletenessMeter } from '../components/ai-widgets'
 import { CustomFieldRows } from '../components/CustomFields'
+import { BookJobModal } from './Jobs'
 import { dealScore, nextBestAction, dealSummary, dealCoaching, dealCompleteness } from '../lib/intelligence'
 import { gbp } from '../lib/solar'
 import { type StageName } from '../data/mock'
@@ -23,13 +24,14 @@ export function DealDetail() {
   const nav = useNavigate()
   const sel = useSelectors()
   const act = useActions()
-  const { activities: allActivities, people: allPeople, meetings: allMeetings, customFields } = useState_()
+  const { activities: allActivities, people: allPeople, meetings: allMeetings, customFields, features } = useState_()
   const deal = sel.dealById(id)
   const [tab, setTab] = useState<(typeof composerTabs)[number]>('Note')
   const [draft, setDraft] = useState('')
   const [lostOpen, setLostOpen] = useState(false)
   const [lostReason, setLostReason] = useState('Price')
   const [delOpen, setDelOpen] = useState(false)
+  const [bookJob, setBookJob] = useState(false)
 
   if (!deal) {
     return (
@@ -48,6 +50,8 @@ export function DealDetail() {
   const score = dealScore(deal, allActivities)
   const nba = nextBestAction(deal, allActivities)
   const dealMeetings = allMeetings.filter((m) => m.dealId === deal.id && m.status === 'recorded')
+  const dealJobs = sel.jobsForDeal(deal.id)
+  const jobTone: Record<string, 'accent' | 'positive' | 'warning' | 'negative' | 'neutral'> = { unscheduled: 'warning', scheduled: 'accent', 'in-progress': 'accent', complete: 'positive', cancelled: 'negative' }
 
   function save() {
     if (!draft.trim() && tab !== 'File') return
@@ -137,6 +141,18 @@ export function DealDetail() {
                 </button>
               ))}
             </Panel>
+            {features.jobs && (
+              <Panel title={`Jobs · ${dealJobs.length}`}>
+                {dealJobs.length === 0 && <div className="text-[12px] text-muted-2">No jobs booked for this deal yet.</div>}
+                {dealJobs.map((j) => (
+                  <button key={j.id} onClick={() => nav('/jobs')} className="flex items-center gap-2.5 text-left w-full">
+                    <span className="min-w-0 flex-1"><span className="text-[13px] font-semibold text-ink-2 block truncate">{j.title}</span><span className="text-[12px] text-muted-2">{j.ref} · {j.date ?? 'Unscheduled'}</span></span>
+                    <Chip tone={jobTone[j.status]}>{j.status}</Chip>
+                  </button>
+                ))}
+                <button onClick={() => setBookJob(true)} className="w-full mt-1 text-[12.5px] text-accent font-semibold border border-dashed border-input-border rounded-lg py-1.5 hover:border-accent transition-colors">+ Book a job</button>
+              </Panel>
+            )}
           </div>
 
           {/* center */}
@@ -213,6 +229,8 @@ export function DealDetail() {
           </div>
         </div>
       </PageBody>
+
+      <BookJobModal open={bookJob} onClose={() => setBookJob(false)} presetDealId={deal.id} />
 
       <Modal
         open={lostOpen}

@@ -960,6 +960,8 @@ export function useActions() {
         durationMins: partial.durationMins ?? 60, status: partial.date ? 'scheduled' : 'unscheduled', createdAt: Date.now(), ...partial,
       }
       dispatch({ type: 'ADD_JOB', job })
+      // open the job's audit trail (and surface it on the linked deal/contact card)
+      dispatch({ type: 'ADD_ACTIVITY', activity: { id: uid('act'), type: 'change', subject: `${job.ref} booked — ${job.title}`, body: [job.customer, job.address].filter(Boolean).join(' · '), jobId: job.id, dealId: job.dealId, personId: job.personId, done: true, who: 'Jordan Miles', createdAt: Date.now(), source: 'manual' } })
       toast(`${job.ref} booked — ${job.title}`)
       return job
     },
@@ -969,10 +971,14 @@ export function useActions() {
     assignCrew: (id: ID, crew: ID[]) => dispatch({ type: 'UPDATE_JOB', id, patch: { crew } }),
     setJobStatus: (job: import('./types').Job, status: import('./types').JobStatus) => {
       dispatch({ type: 'UPDATE_JOB', id: job.id, patch: { status } })
-      if (status === 'complete' && job.dealId) {
-        dispatch({ type: 'ADD_ACTIVITY', activity: { id: uid('act'), type: 'change', subject: `${job.title} completed`, body: `${job.ref} · ${job.customer}`, dealId: job.dealId, personId: job.personId, done: true, who: 'Field team', createdAt: Date.now(), source: 'manual' } })
-      }
+      // record every status change on the job's trail (+ the linked deal/contact)
+      const label = status === 'complete' ? `${job.title} completed` : status === 'cancelled' ? `${job.title} cancelled` : `${job.title} → ${status}`
+      dispatch({ type: 'ADD_ACTIVITY', activity: { id: uid('act'), type: 'change', subject: label, body: `${job.ref} · ${job.customer}`, jobId: job.id, dealId: job.dealId, personId: job.personId, done: true, who: 'Field team', createdAt: Date.now(), source: 'manual' } })
       toast(status === 'complete' ? `${job.ref} marked complete` : `${job.ref} → ${status}`)
+    },
+    logJobNote: (job: import('./types').Job, body: string) => {
+      dispatch({ type: 'ADD_ACTIVITY', activity: { id: uid('act'), type: 'note', subject: `Note — ${job.ref}`, body, jobId: job.id, dealId: job.dealId, personId: job.personId, done: true, who: 'Jordan Miles', createdAt: Date.now(), source: 'manual' } })
+      toast('Note added to the job')
     },
     removeJob: (id: ID, ref: string) => { dispatch({ type: 'REMOVE_JOB', id }); toast(`${ref} removed`, 'warning') },
 
@@ -1083,6 +1089,9 @@ export function useSelectors() {
     dealActivities: (dealId: ID) => s.activities.filter((a) => a.dealId === dealId).sort((a, b) => b.createdAt - a.createdAt),
     personActivities: (personId: ID) => s.activities.filter((a) => a.personId === personId).sort((a, b) => b.createdAt - a.createdAt),
     leadActivities: (leadId: ID) => s.activities.filter((a) => a.leadId === leadId).sort((a, b) => b.createdAt - a.createdAt),
+    jobActivities: (jobId: ID) => s.activities.filter((a) => a.jobId === jobId).sort((a, b) => b.createdAt - a.createdAt),
+    jobsForDeal: (dealId: ID) => s.jobs.filter((j) => j.dealId === dealId).sort((a, b) => (b.date ?? '').localeCompare(a.date ?? '')),
+    jobsForPerson: (personId: ID) => s.jobs.filter((j) => j.personId === personId),
     openTasks: (dealId?: ID) => s.activities.filter((a) => !a.done && a.type !== 'note' && a.type !== 'change' && (dealId ? a.dealId === dealId : true)),
     dealEmails: (dealId: ID) => s.emails.filter((e) => e.dealId === dealId),
     personEmails: (personId: ID) => s.emails.filter((e) => e.personId === personId),
