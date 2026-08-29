@@ -114,7 +114,7 @@ function Shell({ title, icon, min, onMin, onClose, onExpand, children, footer }:
 /* ---------- Ovi window (the actioning assistant, everywhere) ---------- */
 function OviWindow({ min, onMin, onClose }: { min: boolean; onMin: () => void; onClose: () => void }) {
   const nav = useNavigate()
-  const { turns, ask } = useChat()
+  const { turns, ask, reset } = useChat(undefined, { persist: true })
   const scroller = useRef<HTMLDivElement>(null)
   useEffect(() => { scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: 'smooth' }) }, [turns])
   return (
@@ -125,6 +125,9 @@ function OviWindow({ min, onMin, onClose }: { min: boolean; onMin: () => void; o
       footer={<div className="p-3 border-t border-border bg-surface"><AiComposer onSend={ask} compact /></div>}
     >
       <div ref={scroller} className="h-full overflow-y-auto p-3.5 flex flex-col gap-4">
+        {turns.length > 0 && (
+          <button onClick={reset} className="self-end text-[11.5px] text-muted-2 hover:text-accent font-medium -mb-2">＋ New chat</button>
+        )}
         {turns.length === 0 ? (
           <div className="flex flex-col gap-3">
             <div className="text-[13px] text-muted-b">I’m Ovi — I run across every app and can take real actions. Ask me anything, or start with:</div>

@@ -127,6 +127,21 @@ function Block({ b }: { b: AiBlock }) {
         ))}
       </div>
     )
+  if (b.type === 'approval')
+    return (
+      <div className={classNames('rounded-xl border p-3', b.status === 'pending' ? 'border-warning-border bg-[#FDF6EC]' : b.status === 'approved' ? 'border-positive-border bg-[#F4FAF8]' : 'border-border bg-control')}>
+        <div className="flex items-center gap-1.5 text-[12px] font-semibold text-ink-2 mb-1.5"><Sparkle size={13} className="text-warning" /> Approval needed</div>
+        <div className="text-[13px] text-ink-3">{b.summary}</div>
+        {b.status === 'pending' ? (
+          <div className="flex gap-2 mt-2.5">
+            <button onClick={() => window.dispatchEvent(new CustomEvent('ovi-approve', { detail: { id: b.id, ok: true } }))} className="h-8 px-3 rounded-lg bg-accent text-white text-[12.5px] font-semibold flex items-center gap-1.5"><Check size={13} /> Approve</button>
+            <button onClick={() => window.dispatchEvent(new CustomEvent('ovi-approve', { detail: { id: b.id, ok: false } }))} className="h-8 px-3 rounded-lg border border-border text-ink-3 text-[12.5px] font-medium hover:bg-control">Cancel</button>
+          </div>
+        ) : (
+          <div className={classNames('text-[12px] font-semibold mt-1.5', b.status === 'approved' ? 'text-positive' : 'text-muted-2')}>{b.status === 'approved' ? '✓ Approved' : 'Cancelled'}</div>
+        )}
+      </div>
+    )
   if (b.type === 'opsteps')
     return (
       <div className="flex flex-col gap-1.5">
@@ -259,13 +274,50 @@ function SuggestChip({ label }: { label: string }) {
 /** Shared chat state with live, step-by-step operator execution.
  *  `listen` (default true) subscribes to the global `simplr-ai-ask` event — keep it
  *  true for exactly one instance (the floating assistant) to avoid double execution. */
-export function useChat(seed?: ChatTurn[], opts?: { listen?: boolean }) {
-  const [turns, setTurns] = useState<ChatTurn[]>(seed ?? [])
+const OVI_CHAT_KEY = 'simplr.ovi.chat.v1'
+
+export function useChat(seed?: ChatTurn[], opts?: { listen?: boolean; persist?: boolean }) {
+  // Restore a persisted conversation (so you can pick up yesterday's chat).
+  const restored = (() => {
+    if (!opts?.persist || seed) return null
+    try { const raw = localStorage.getItem(OVI_CHAT_KEY); return raw ? (JSON.parse(raw) as { turns: ChatTurn[]; history: AnthMessage[] }) : null } catch { return null }
+  })()
+  const [turns, setTurns] = useState<ChatTurn[]>(restored?.turns ?? seed ?? [])
   const act = useActions()
   const nav = useNavigate()
   const busyRef = useRef(false)
   const liveRef = useRef<boolean | null>(null)      // is a real model wired up? (cached)
-  const historyRef = useRef<AnthMessage[]>([])       // running Anthropic message history
+  const historyRef = useRef<AnthMessage[]>(restored?.history ?? [])  // running Anthropic message history
+
+  // Persist the conversation whenever it settles (not mid-stream).
+  useEffect(() => {
+    if (!opts?.persist) return
+    if (turns.some((t) => t.pending)) return
+    try { localStorage.setItem(OVI_CHAT_KEY, JSON.stringify({ turns, history: historyRef.current })) } catch { /* ignore quota */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [turns])
+  const approvals = useRef<Map<string, (ok: boolean) => void>>(new Map())
+
+  // Inline approval: render an Approve/Cancel card and resolve when the user clicks.
+  function confirmInline(summary: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      const id = `ap${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
+      approvals.current.set(id, resolve)
+      updateLastAi((r) => ({ ...r, blocks: [...r.blocks, { type: 'approval', id, summary, status: 'pending' }] }))
+    })
+  }
+  useEffect(() => {
+    const h = (e: Event) => {
+      const { id, ok } = (e as CustomEvent).detail as { id: string; ok: boolean }
+      const resolve = approvals.current.get(id)
+      if (!resolve) return
+      approvals.current.delete(id)
+      resolve(ok)
+      setTurns((t) => t.map((turn) => (turn.res ? { ...turn, res: { ...turn.res, blocks: turn.res.blocks.map((b) => (b.type === 'approval' && b.id === id ? { ...b, status: ok ? 'approved' : 'declined' } : b)) } } : turn)))
+    }
+    window.addEventListener('ovi-approve', h)
+    return () => window.removeEventListener('ovi-approve', h)
+  }, [])
 
   // Insert/update a live tool-call step in the current AI turn.
   function upsertStep(res: AiResponse, s: OviStep): AiResponse {
@@ -364,7 +416,7 @@ export function useChat(seed?: ChatTurn[], opts?: { listen?: boolean }) {
       const result = await runOviAgent(text, historyRef.current, {
         onText: (txt) => updateLastAi((r) => ({ ...r, blocks: [...r.blocks, { type: 'text', text: txt }] })),
         onStep: (s) => updateLastAi((r) => upsertStep(r, s)),
-        ctx: { act, nav, confirm: (summary) => Promise.resolve(window.confirm(summary)) },
+        ctx: { act, nav, confirm: confirmInline },
       })
       if (result.fallback) { liveRef.current = false; finishDeterministic(text); return }
       historyRef.current = result.messages
@@ -382,7 +434,12 @@ export function useChat(seed?: ChatTurn[], opts?: { listen?: boolean }) {
     return () => window.removeEventListener('simplr-ai-ask', h)
   }, [])
 
-  return { turns, ask, reset: () => setTurns([]) }
+  function reset() {
+    setTurns([])
+    historyRef.current = []
+    if (opts?.persist) { try { localStorage.removeItem(OVI_CHAT_KEY) } catch { /* ignore */ } }
+  }
+  return { turns, ask, reset }
 }
 
 /** Input bar with send + file attach (Claude-like). */
