@@ -4,6 +4,7 @@ import { googleSolarAnalysis, googleSolarAnalysisAt } from './server/solarProvid
 import { pdlSearch } from './server/sourcingProvider.mjs'
 import { staticSatellite } from './server/roofImage.mjs'
 import { placesSearch } from './server/placesProvider.mjs'
+import { pvgisHourly } from './server/pvgisProvider.mjs'
 import { callOvi } from './server/oviProvider.mjs'
 
 /** Dev-only backend for the real Ovi operator — keeps the Anthropic key server-side.
@@ -142,6 +143,31 @@ function placesApi(env: Record<string, string>): Plugin {
   }
 }
 
+/** Dev-only PVGIS proxy — free, no key. Returns the 8,760-hour per-kWp generation profile for a
+ *  plane at (tilt, azimuth), used by the single-site page's accurate self-consumption simulation. */
+function pvgisApi(): Plugin {
+  return {
+    name: 'pvgis-api',
+    configureServer(server) {
+      server.middlewares.use('/api/pvgis', (req, res) => {
+        if (req.method !== 'POST') { res.statusCode = 405; return res.end() }
+        let body = ''
+        req.on('data', (c) => (body += c))
+        req.on('end', async () => {
+          res.setHeader('Content-Type', 'application/json')
+          try {
+            const { lat, lng, tilt, azimuth } = JSON.parse(body || '{}')
+            const data = await pvgisHourly(lat, lng, tilt ?? 35, azimuth ?? 0)
+            res.end(JSON.stringify(data))
+          } catch (e) {
+            res.end(JSON.stringify({ fallback: true, reason: String((e as Error)?.message || e) }))
+          }
+        })
+      })
+    },
+  }
+}
+
 /** EPC register — parked for now. Returns null until an EPC Open Data token is wired in.
  *  Swap the body for a real epcProvider call once EPC_API_EMAIL + EPC_API_KEY are set. */
 function epcApi(_env: Record<string, string>): Plugin {
@@ -159,7 +185,7 @@ function epcApi(_env: Record<string, string>): Plugin {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   return {
-    plugins: [react(), solarApi(env), sourcingApi(env), roofImageApi(env), placesApi(env), epcApi(env), oviApi(env)],
+    plugins: [react(), solarApi(env), sourcingApi(env), roofImageApi(env), placesApi(env), pvgisApi(), epcApi(env), oviApi(env)],
     server: { port: 3010 },
   }
 })

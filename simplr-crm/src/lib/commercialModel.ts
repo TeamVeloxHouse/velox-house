@@ -17,6 +17,7 @@
 
 import { UK, npv, irr, simplePayback, lcoe } from './energy'
 import type { RoofAnalysis } from './solar'
+import { buildHourlyLoad } from './loadProfiles'
 
 // ── Panel spec — configurable, and drives BOTH kWp and how many fit on the roof ──────────────
 export type PanelSpec = { watts: number; width: number; height: number } // metres
@@ -99,6 +100,7 @@ export type CommercialInputs = {
   degradation?: number // panel output loss /yr
   years?: number // appraisal period (default 25)
   objective?: 'payback' | 'npv' // what to optimise system size for
+  hourlyGenPerKwp?: number[] // 8,760 Wh/kWp from PVGIS — enables the accurate hourly simulation
 }
 
 export type SystemResult = {
@@ -129,7 +131,8 @@ export type CommercialCalc = {
   specificYield: number
   maxKwp: number
   industry: IndustryKey
-  assumptions: Required<Omit<CommercialInputs, 'annualDemandKwh' | 'floorAreaM2'>> & { floorAreaM2: number }
+  method: 'hourly' | 'coefficient' // 'hourly' = PVGIS 8760-hour simulation (single-site accurate)
+  assumptions: Required<Omit<CommercialInputs, 'annualDemandKwh' | 'floorAreaM2' | 'hourlyGenPerKwp'>> & { floorAreaM2: number }
 }
 
 // Roof footprint (m²) — for single-storey commercial sheds this ≈ floor area, a reasonable demand
@@ -145,17 +148,40 @@ function maxPanelsFor(roof: RoofAnalysis, panel: PanelSpec): number {
   return Math.max(byArea, roof.maxPanels || 0) && byArea > 0 ? byArea : roof.maxPanels || byArea
 }
 
+/**
+ * Hour-by-hour self-consumption: the accurate method. Scales the per-kWp generation shape to the
+ * system size and, for every one of 8,760 hours, the site can only self-consume min(generated, load)
+ * that hour — the rest exports. This is what makes savings defensible.
+ */
+function simulateHourly(kwp: number, shade: number, hourlyGenPerKwpWh: number[], hourlyLoadKwh: number[]) {
+  let gen = 0, self = 0
+  const n = Math.min(hourlyGenPerKwpWh.length, hourlyLoadKwh.length)
+  for (let h = 0; h < n; h++) {
+    const g = (hourlyGenPerKwpWh[h] / 1000) * kwp * shade // kWh generated this hour
+    gen += g
+    self += g < hourlyLoadKwh[h] ? g : hourlyLoadKwh[h]
+  }
+  return { annualGen: Math.round(gen), selfConsumed: Math.round(self) }
+}
+
 /** Model one system size end-to-end. */
 function evaluate(kwp: number, panels: number, ctx: {
   specificYield: number; shade: number; demandKwh: number; daytimeMatch: number
   importRate: number; exportRate: number; inflation: number; discount: number; degradation: number; years: number
+  hourlyGen?: number[]; hourlyLoad?: number[]
 }): SystemResult {
-  const annualGen = Math.round(kwp * ctx.specificYield * ctx.shade)
-
-  // Self-consumption: capped by the demand that coincides with daylight, and by a coincidence
-  // factor (even in daytime, load and sun aren't perfectly aligned).
-  const daytimeDemand = ctx.demandKwh * ctx.daytimeMatch
-  const selfConsumed = Math.round(Math.min(annualGen * 0.9, daytimeDemand))
+  let annualGen: number
+  let selfConsumed: number
+  if (ctx.hourlyGen && ctx.hourlyLoad) {
+    const sim = simulateHourly(kwp, ctx.shade, ctx.hourlyGen, ctx.hourlyLoad)
+    annualGen = sim.annualGen
+    selfConsumed = sim.selfConsumed
+  } else {
+    // Fast coefficient method (bulk scanning): cap self-consumption by the daytime-coincident demand.
+    annualGen = Math.round(kwp * ctx.specificYield * ctx.shade)
+    const daytimeDemand = ctx.demandKwh * ctx.daytimeMatch
+    selfConsumed = Math.round(Math.min(annualGen * 0.9, daytimeDemand))
+  }
   const exported = Math.max(0, annualGen - selfConsumed)
   const selfConsumptionPct = annualGen ? Math.round((selfConsumed / annualGen) * 100) : 0
   const demandOffsetPct = ctx.demandKwh ? Math.round((selfConsumed / ctx.demandKwh) * 100) : 0
@@ -225,9 +251,17 @@ export function computeCommercial(roof: RoofAnalysis, inputs: CommercialInputs =
 
   const maxPanels = maxPanelsFor(roof, panel)
   const maxKwp = (maxPanels * panel.watts) / 1000
-  const specificYield = roof.specificYield || 950
   const shade = roof.shadeFactor ?? 1
-  const ctx = { specificYield, shade, demandKwh, daytimeMatch: bench.daytimeMatch, importRate, exportRate, inflation, discount, degradation, years }
+
+  // If a PVGIS hourly profile is supplied, use the accurate hour-by-hour simulation and take the
+  // specific yield straight from that profile; otherwise fall back to the roof's yield + coefficient.
+  const hourlyGen = inputs.hourlyGenPerKwp
+  const hourlyLoad = hourlyGen ? buildHourlyLoad(demandKwh, industry) : undefined
+  const specificYield = hourlyGen
+    ? Math.round((hourlyGen.reduce((a, b) => a + b, 0) / 1000) * shade)
+    : roof.specificYield || 950
+  const method: 'hourly' | 'coefficient' = hourlyGen ? 'hourly' : 'coefficient'
+  const ctx = { specificYield, shade, demandKwh, daytimeMatch: bench.daytimeMatch, importRate, exportRate, inflation, discount, degradation, years, hourlyGen, hourlyLoad }
 
   // Sweep system sizes from small up to the roof max; keep the sweep for the chart.
   const STEPS = 28
@@ -258,6 +292,7 @@ export function computeCommercial(roof: RoofAnalysis, inputs: CommercialInputs =
     specificYield,
     maxKwp: Math.round(maxKwp * 10) / 10,
     industry,
+    method,
     assumptions: { industry, panel, importRate, exportRate, inflation, discount, degradation, years, objective, floorAreaM2 },
   }
 }
