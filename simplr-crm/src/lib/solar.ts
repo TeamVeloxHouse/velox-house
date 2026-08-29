@@ -279,10 +279,12 @@ export function designFor(address: string, panelOverride?: number, pricing?: Pri
   return designFrom(analyseRoof(address), address, panelOverride, pricing, opts)
 }
 
-/** Live: ask the backend for a Google Solar analysis; fall back to the offline model. */
-export async function analyseRoofLive(address: string): Promise<RoofAnalysis> {
+/** Live: ask the backend for a Google Solar analysis; fall back to the offline model.
+ *  Pass `coords` when you already have a precise building centre (e.g. from Places) — more accurate
+ *  for large sites than geocoding the address, and skips a Geocoding call. */
+export async function analyseRoofLive(address: string, coords?: LatLng): Promise<RoofAnalysis> {
   try {
-    const r = await fetch('/api/solar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ address }) })
+    const r = await fetch('/api/solar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ address, lat: coords?.lat, lng: coords?.lng }) })
     if (r.ok) {
       const j = await r.json()
       if (j && !j.fallback && Array.isArray(j.segments) && j.segments.length) return j as RoofAnalysis

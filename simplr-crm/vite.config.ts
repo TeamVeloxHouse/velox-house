@@ -1,8 +1,9 @@
 import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
-import { googleSolarAnalysis } from './server/solarProvider.mjs'
+import { googleSolarAnalysis, googleSolarAnalysisAt } from './server/solarProvider.mjs'
 import { pdlSearch } from './server/sourcingProvider.mjs'
 import { staticSatellite } from './server/roofImage.mjs'
+import { placesSearch } from './server/placesProvider.mjs'
 import { callOvi } from './server/oviProvider.mjs'
 
 /** Dev-only backend for the real Ovi operator — keeps the Anthropic key server-side.
@@ -51,9 +52,11 @@ function solarApi(env: Record<string, string>): Plugin {
         req.on('end', async () => {
           res.setHeader('Content-Type', 'application/json')
           try {
-            const { address } = JSON.parse(body || '{}')
+            const { address, lat, lng } = JSON.parse(body || '{}')
             if (!key) return res.end(JSON.stringify({ fallback: true, reason: 'no-key' }))
-            const analysis = await googleSolarAnalysis(address, key)
+            const analysis = (typeof lat === 'number' && typeof lng === 'number')
+              ? await googleSolarAnalysisAt(lat, lng, key)
+              : await googleSolarAnalysis(address, key)
             res.end(JSON.stringify(analysis))
           } catch (e) {
             res.end(JSON.stringify({ fallback: true, reason: String((e as Error)?.message || e) }))
@@ -111,10 +114,52 @@ function roofImageApi(env: Record<string, string>): Plugin {
   }
 }
 
+/** Dev-only backend for Google Places discovery — keeps the key server-side.
+ *  Set GOOGLE_MAPS_API_KEY (Places API enabled); without it /api/places returns { buildings: [] }
+ *  and the Commercial Solar Engine reports "no building source configured". */
+function placesApi(env: Record<string, string>): Plugin {
+  const key = env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || ''
+  return {
+    name: 'places-api',
+    configureServer(server) {
+      server.middlewares.use('/api/places', (req, res) => {
+        if (req.method !== 'POST') { res.statusCode = 405; return res.end() }
+        let body = ''
+        req.on('data', (c) => (body += c))
+        req.on('end', async () => {
+          res.setHeader('Content-Type', 'application/json')
+          try {
+            if (!key) return res.end(JSON.stringify({ buildings: [], fallback: true, reason: 'no-key' }))
+            const { area, industry, count } = JSON.parse(body || '{}')
+            const buildings = await placesSearch({ area, industry, count }, key)
+            res.end(JSON.stringify({ buildings, live: true }))
+          } catch (e) {
+            res.end(JSON.stringify({ buildings: [], fallback: true, reason: String((e as Error)?.message || e) }))
+          }
+        })
+      })
+    },
+  }
+}
+
+/** EPC register — parked for now. Returns null until an EPC Open Data token is wired in.
+ *  Swap the body for a real epcProvider call once EPC_API_EMAIL + EPC_API_KEY are set. */
+function epcApi(_env: Record<string, string>): Plugin {
+  return {
+    name: 'epc-api',
+    configureServer(server) {
+      server.middlewares.use('/api/epc', (req, res) => {
+        res.setHeader('Content-Type', 'application/json')
+        res.end(JSON.stringify({ rating: null, fallback: true, reason: 'epc-not-configured' }))
+      })
+    },
+  }
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   return {
-    plugins: [react(), solarApi(env), sourcingApi(env), roofImageApi(env), oviApi(env)],
+    plugins: [react(), solarApi(env), sourcingApi(env), roofImageApi(env), placesApi(env), epcApi(env), oviApi(env)],
     server: { port: 3010 },
   }
 })

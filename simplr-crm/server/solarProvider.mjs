@@ -46,11 +46,22 @@ async function buildingInsights(lat, lng, key) {
   return j.solarPotential
 }
 
+/** Measure a roof directly from coordinates — skips geocoding. Preferred when the caller already
+ *  has a precise building centre (e.g. from Places), which is more accurate for large sites than
+ *  geocoding a company name (that often lands on the office/gate, not the main roof). */
+export async function googleSolarAnalysisAt(lat, lng, key) {
+  if (!key) throw new Error('no key')
+  const sp = await buildingInsights(lat, lng, key)
+  return mapAnalysis(sp, lat, lng)
+}
+
 export async function googleSolarAnalysis(address, key) {
   if (!key) throw new Error('no key')
   const { lat, lng } = await geocode(address, key)
-  const sp = await buildingInsights(lat, lng, key)
+  return googleSolarAnalysisAt(lat, lng, key)
+}
 
+function mapAnalysis(sp, lat, lng) {
   const panelWatts = Math.round(sp.panelCapacityWatts || 400)
   const maxPanels = sp.maxArrayPanelsCount || 0
   if (!maxPanels) throw new Error('no panels')

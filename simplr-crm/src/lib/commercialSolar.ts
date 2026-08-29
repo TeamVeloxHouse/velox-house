@@ -180,7 +180,8 @@ export async function runCommercialSolarEngine(
     report({ stage: 'measure', message: `Measuring roof at ${b.name}…`, found: prospects.length, scanned, total: buildings.length })
 
     // 2) Measure the roof (real Google Solar → offline fallback), then 3) cost it.
-    const analysis = await analyseRoofLive(b.address)
+    // Prefer the precise Places centre over geocoding the name — better for big sheds.
+    const analysis = await analyseRoofLive(b.address, b.center)
     const design = designFrom(analysis, b.address, undefined, COMMERCIAL_PRICING, COMMERCIAL_OPTS)
 
     // Roof gate — skip anything too small BEFORE spending PDL credits on people.
