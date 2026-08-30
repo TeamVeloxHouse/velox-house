@@ -5,6 +5,7 @@ import { PageBody } from '../components/Page'
 import { Button, Chip, Segmented, Kpi } from '../components/ui'
 import { PillTabs } from '../components/chrome'
 import { Sun, Radar, Send, Sparkle, Person, Bolt, Flow, Search, Building, Layers, Check, Target, Envelope } from '../components/icons'
+import { MultiSelect, Stepper, AddressAutocomplete } from '../components/inputs'
 import { useActions, useState_ } from '../store/store'
 import { money, classNames } from '../lib/format'
 import { runCommercialSolarEngine, type CommercialProspect, type EngineProgress, type CommercialCriteria } from '../lib/commercialSolar'
@@ -16,11 +17,14 @@ import { RoofOverlay } from '../components/RoofOverlay'
 const TOOL = 'commercial-solar'
 
 type Mode = 'radius' | 'bulk' | 'single'
-type Params = { industry: string; targetKwp: number; location: string; radiusKm: number; count: number; jobTitles: string[] }
+type Params = { industries: string[]; targetKwp: number; locations: string[]; radiusKm: number; count: number; jobTitles: string[]; singleAddress: string; singlePin?: { lat: number; lng: number } }
 type ChatMsg = { role: 'ovi' | 'you'; text: string }
 
-const DEFAULT_PARAMS: Params = { industry: 'warehouses', targetKwp: 250, location: '', radiusKm: 5, count: 20, jobTitles: ['Managing Director', 'Facilities Manager'] }
+const DEFAULT_PARAMS: Params = { industries: ['warehouses'], targetKwp: 250, locations: [], radiusKm: 5, count: 20, jobTitles: ['Managing Director', 'Facilities Manager'], singleAddress: '' }
 const MODE_LABELS: Record<Mode, string> = { radius: 'Radius (pin)', bulk: 'Bulk (area)', single: 'Single site' }
+const INDUSTRY_SUGGESTIONS = ['warehouses', 'manufacturing', 'cold storage', 'distribution centres', 'industrial units', 'factories', 'logistics', 'offices', 'retail parks', 'supermarkets', 'car dealerships', 'hotels', 'data centres', 'food production', 'self storage']
+const TITLE_SUGGESTIONS = ['Managing Director', 'Facilities Manager', 'Operations Director', 'CEO', 'Owner', 'Finance Director', 'Energy Manager', 'Sustainability Manager', 'Estates Manager', 'Property Director', 'Head of Operations', 'Procurement Manager', 'General Manager']
+const placeSuggest = async (q: string) => { try { const r = await fetch('/api/autocomplete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ input: q }) }); const j = await r.json(); return (j.suggestions || []).map((s: { text: string }) => s.text) } catch { return [] } }
 const STARTERS = [
   'Find 30 warehouses within 5km of Wolverhampton, target 250 kWp',
   'Scan manufacturing sites in the West Midlands for Facilities Managers',
@@ -61,7 +65,7 @@ export function CommercialSolarTool() {
   const set = (patch: Partial<Params>) => setParams((p) => ({ ...p, ...patch }))
   function applyBrief(b: ParsedBrief): Params {
     const next: Params = { ...params }
-    if (b.industry) next.industry = b.industry; if (b.location) next.location = b.location
+    if (b.industry) next.industries = [b.industry]; if (b.location) next.locations = [b.location]
     if (b.radiusKm) next.radiusKm = b.radiusKm; if (b.targetKwp) next.targetKwp = b.targetKwp
     if (b.count) next.count = b.count; if (b.jobTitles?.length) next.jobTitles = b.jobTitles
     setParams(next); return next
@@ -70,43 +74,63 @@ export function CommercialSolarTool() {
     const t = text.trim(); if (!t) return
     setDraft(''); setChat((c) => [...c, { role: 'you', text: t }])
     const next = applyBrief(parseBrief(t))
-    const needsLoc = !next.location
-    const summary = `Got it — ${next.count} ${next.industry}${next.location ? (mode === 'radius' ? ` within ${next.radiusKm} km of ${next.location}` : ` in ${next.location}`) : ''}, targeting ~${next.targetKwp} kWp roofs${next.jobTitles.length ? `, decision-makers: ${next.jobTitles.join(', ')}` : ''}.`
+    const where = next.locations.join(', ')
+    const needsLoc = !where
+    const summary = `Got it — ${next.count} ${next.industries.join(' / ')}${where ? (mode === 'radius' ? ` within ${next.radiusKm} km of ${where}` : ` in ${where}`) : ''}, targeting ~${next.targetKwp} kWp roofs${next.jobTitles.length ? `, decision-makers: ${next.jobTitles.join(', ')}` : ''}.`
     setChat((c) => [...c, { role: 'ovi', text: summary + (needsLoc ? ' Where should I look? Give me a town, postcode, or area.' : ' Hit **Run scan** and I’ll get to work.') }])
     setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
   }
 
   async function runScan() {
     if (running) return
-    if (!params.location) { act.toast('Add a location to scan', 'warning'); return }
-    setRunning(true); setProgress(null)
-    let pin: { lat: number; lng: number } | undefined
-    if (mode !== 'bulk') {
-      setProgress({ stage: 'discover', message: `Locating ${params.location}…` })
-      const g = await geocodeLocation(params.location)
-      if (!g) { act.toast('Could not find that location', 'warning'); setRunning(false); return }
-      pin = { lat: g.lat, lng: g.lng }
+    const industry = params.industries.join(', ') || undefined
+    const targets: { area?: string; pin?: { lat: number; lng: number }; label: string }[] = []
+    if (mode === 'single') {
+      if (!params.singleAddress) { act.toast('Pick an address', 'warning'); return }
+      setRunning(true); setProgress({ stage: 'discover', message: `Locating ${params.singleAddress}…` })
+      const pin = params.singlePin || (await geocodeLocation(params.singleAddress).then((g) => g && { lat: g.lat, lng: g.lng }))
+      if (!pin) { act.toast('Could not find that address', 'warning'); setRunning(false); return }
+      targets.push({ pin, label: params.singleAddress })
+    } else if (mode === 'bulk') {
+      if (!params.locations.length) { act.toast('Add at least one area', 'warning'); return }
+      setRunning(true)
+      params.locations.forEach((a) => targets.push({ area: a, label: a }))
+    } else {
+      if (!params.locations.length) { act.toast('Add at least one location', 'warning'); return }
+      setRunning(true)
+      for (const loc of params.locations) {
+        setProgress({ stage: 'discover', message: `Locating ${loc}…` })
+        const g = await geocodeLocation(loc)
+        if (g) targets.push({ pin: { lat: g.lat, lng: g.lng }, label: loc })
+      }
+      if (!targets.length) { act.toast('Could not find those locations', 'warning'); setRunning(false); return }
     }
+
     const campaign = act.createSolarCampaign({
-      name: campaignName(mode, params), tool: TOOL, industry: params.industry,
-      area: mode === 'bulk' ? params.location : undefined, pin,
-      radiusM: mode === 'radius' ? params.radiusKm * 1000 : mode === 'single' ? 200 : undefined,
+      name: campaignName(mode, params), tool: TOOL, industry,
+      area: mode === 'bulk' ? params.locations.join(', ') : undefined, pin: targets[0]?.pin,
+      radiusM: mode === 'radius' ? params.radiusKm * 1000 : mode === 'single' ? 250 : undefined,
       targetKwp: params.targetKwp, jobTitles: params.jobTitles, count: mode === 'single' ? 1 : params.count, status: 'scanning',
     })
     setCampaignId(campaign.id)
-    const criteria: CommercialCriteria = {
-      industry: params.industry, area: mode === 'bulk' ? params.location : undefined, pin,
-      radiusM: mode === 'radius' ? params.radiusKm * 1000 : mode === 'single' ? 200 : undefined,
-      targetKwp: params.targetKwp, jobTitles: params.jobTitles, count: mode === 'single' ? 1 : params.count, skipPeople: true,
+
+    let first = true; let n = 0; let scannedTotal = 0
+    const per = mode === 'single' ? 1 : Math.max(1, Math.ceil(params.count / targets.length))
+    for (const tgt of targets) {
+      const criteria: CommercialCriteria = {
+        industry, area: tgt.area, pin: tgt.pin,
+        radiusM: mode === 'radius' ? params.radiusKm * 1000 : mode === 'single' ? 250 : undefined,
+        targetKwp: params.targetKwp, jobTitles: params.jobTitles, count: per, skipPeople: true,
+      }
+      const { scanned } = await runCommercialSolarEngine(criteria, (p) => setProgress({ ...p, message: targets.length > 1 ? `${tgt.label}: ${p.message}` : p.message }), (prospect: CommercialProspect) => {
+        act.addSolarProspects([prospectToSolar(prospect, campaign.id, TOOL)]); n++
+        if (first) { first = false; setTab('roofs') }
+      })
+      scannedTotal += scanned
     }
-    let first = true; let n = 0
-    const { scanned } = await runCommercialSolarEngine(criteria, (p) => setProgress(p), (prospect: CommercialProspect) => {
-      act.addSolarProspects([prospectToSolar(prospect, campaign.id, TOOL)]); n++
-      if (first) { first = false; setTab('roofs') } // jump to the roofs as they appear
-    })
-    act.updateSolarCampaign(campaign.id, { status: 'complete', scanned })
+    act.updateSolarCampaign(campaign.id, { status: 'complete', scanned: scannedTotal })
     setRunning(false)
-    setChat((c) => [...c, { role: 'ovi', text: `Done — I scanned ${scanned} buildings and qualified **${n}** with roofs worth pursuing. Open **Scanned roofs** to see them, or the **Pipeline** to work them.` }])
+    setChat((c) => [...c, { role: 'ovi', text: `Done — I scanned ${scannedTotal} buildings and qualified **${n}** with roofs worth pursuing. Open **Scanned roofs** to see them, or the **Pipeline** to work them.` }])
     act.toast(`${n} prospects saved`)
   }
 
@@ -139,9 +163,11 @@ export function CommercialSolarTool() {
 }
 
 function campaignName(mode: Mode, p: Params): string {
-  if (mode === 'bulk') return `${cap(p.industry)} in ${p.location || 'area'}`
-  if (mode === 'single') return `Single site · ${p.location}`
-  return `${cap(p.industry)} · ${p.radiusKm}km of ${p.location}`
+  const ind = cap(p.industries[0] || 'commercial') + (p.industries.length > 1 ? ` +${p.industries.length - 1}` : '')
+  const where = p.locations.join(', ')
+  if (mode === 'single') return `Single site · ${p.singleAddress.split(',')[0]}`
+  if (mode === 'bulk') return `${ind} in ${where || 'area'}`
+  return `${ind} · ${p.radiusKm}km of ${where}`
 }
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
@@ -211,18 +237,33 @@ function HowItWorks() {
   )
 }
 
-const inputCls = 'h-9 w-full px-3 rounded-control border border-input-border bg-white text-[13px] outline-none focus:border-accent'
 function ParamsPanel({ mode, params, set }: { mode: Mode; params: Params; set: (p: Partial<Params>) => void }) {
   return (
-    <div className="rounded-card bg-surface border border-border p-4 grid grid-cols-2 gap-x-5 gap-y-3.5">
-      <Field label={mode === 'single' ? 'Address or place' : mode === 'bulk' ? 'Area (town / postcode)' : 'Centre (town / postcode)'}>
-        <input value={params.location} onChange={(e) => set({ location: e.target.value })} placeholder={mode === 'bulk' ? 'e.g. West Midlands' : 'e.g. Wolverhampton'} className={inputCls} />
+    <div className="rounded-card bg-surface border border-border p-4 grid grid-cols-2 gap-x-5 gap-y-4">
+      {mode === 'single' ? (
+        <Field label="Site address" full>
+          <AddressAutocomplete value={params.singleAddress} placeholder="Start typing an address…"
+            onPick={async (p) => { set({ singleAddress: p.text, singlePin: undefined }); const g = await geocodeLocation(p.text); if (g) set({ singleAddress: p.text, singlePin: { lat: g.lat, lng: g.lng } }) }} />
+        </Field>
+      ) : (
+        <Field label={mode === 'bulk' ? 'Areas (add several)' : 'Centres — drop a pin per location'} full>
+          <MultiSelect values={params.locations} onChange={(v) => set({ locations: v })} asyncSuggest={placeSuggest} icon={Target}
+            placeholder={mode === 'bulk' ? 'e.g. West Midlands, Birmingham…' : 'e.g. Wolverhampton, Walsall…'} />
+        </Field>
+      )}
+      <Field label="Industries" full>
+        <MultiSelect values={params.industries} onChange={(v) => set({ industries: v })} suggestions={INDUSTRY_SUGGESTIONS} icon={Building} placeholder="warehouses, manufacturing…" />
       </Field>
-      <Field label="Industry"><input value={params.industry} onChange={(e) => set({ industry: e.target.value })} placeholder="warehouses, manufacturing…" className={inputCls} /></Field>
-      {mode === 'radius' && <Field label={`Radius — ${params.radiusKm} km`}><input type="range" min={0.5} max={25} step={0.5} value={params.radiusKm} onChange={(e) => set({ radiusKm: parseFloat(e.target.value) })} className="w-full accent-accent" /></Field>}
-      <Field label={`Target system size — ${params.targetKwp} kWp`}><input type="range" min={20} max={1000} step={10} value={params.targetKwp} onChange={(e) => set({ targetKwp: parseInt(e.target.value, 10) })} className="w-full accent-accent" /></Field>
-      {mode !== 'single' && <Field label={`How many — ${params.count}`}><input type="range" min={5} max={100} step={5} value={params.count} onChange={(e) => set({ count: parseInt(e.target.value, 10) })} className="w-full accent-accent" /></Field>}
-      <Field label="Decision-maker titles" full><input value={params.jobTitles.join(', ')} onChange={(e) => set({ jobTitles: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })} placeholder="Managing Director, Facilities Manager" className={inputCls} /></Field>
+      <Field label="Target roof size"><Stepper value={params.targetKwp} onChange={(v) => set({ targetKwp: v })} min={20} max={2000} step={25} suffix="kWp" /></Field>
+      {mode === 'radius' ? (
+        <Field label="Scan radius"><Stepper value={params.radiusKm} onChange={(v) => set({ radiusKm: v })} min={0.5} max={25} step={0.5} suffix="km" format={(n) => n.toString()} /></Field>
+      ) : mode === 'bulk' ? (
+        <Field label="How many prospects"><Stepper value={params.count} onChange={(v) => set({ count: v })} min={5} max={200} step={5} /></Field>
+      ) : <div />}
+      {mode !== 'single' && mode !== 'bulk' && <Field label="How many prospects"><Stepper value={params.count} onChange={(v) => set({ count: v })} min={5} max={200} step={5} /></Field>}
+      <Field label="Decision-maker titles" full>
+        <MultiSelect values={params.jobTitles} onChange={(v) => set({ jobTitles: v })} suggestions={TITLE_SUGGESTIONS} icon={Person} placeholder="Add job titles to target…" />
+      </Field>
     </div>
   )
 }

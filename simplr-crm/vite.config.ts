@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 import { googleSolarAnalysis, googleSolarAnalysisAt, geocode } from './server/solarProvider.mjs'
 import { pdlSearch } from './server/sourcingProvider.mjs'
 import { staticSatellite } from './server/roofImage.mjs'
-import { placesSearch, placesRadiusScan } from './server/placesProvider.mjs'
+import { placesSearch, placesRadiusScan, placesAutocomplete } from './server/placesProvider.mjs'
 import { pvgisHourly } from './server/pvgisProvider.mjs'
 import { callOvi } from './server/oviProvider.mjs'
 
@@ -145,6 +145,31 @@ function placesApi(env: Record<string, string>): Plugin {
   }
 }
 
+/** Dev-only Places autocomplete proxy — Google-Maps-style address/place typeahead. */
+function autocompleteApi(env: Record<string, string>): Plugin {
+  const key = env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || ''
+  return {
+    name: 'autocomplete-api',
+    configureServer(server) {
+      server.middlewares.use('/api/autocomplete', (req, res) => {
+        if (req.method !== 'POST') { res.statusCode = 405; return res.end() }
+        let body = ''
+        req.on('data', (c) => (body += c))
+        req.on('end', async () => {
+          res.setHeader('Content-Type', 'application/json')
+          try {
+            const { input } = JSON.parse(body || '{}')
+            if (!key) return res.end(JSON.stringify({ suggestions: [] }))
+            res.end(JSON.stringify({ suggestions: await placesAutocomplete(input, key) }))
+          } catch (e) {
+            res.end(JSON.stringify({ suggestions: [], reason: String((e as Error)?.message || e) }))
+          }
+        })
+      })
+    },
+  }
+}
+
 /** Dev-only geocoding proxy — turns a typed location into a pin (lat/lng) for radius/single-site. */
 function geocodeApi(env: Record<string, string>): Plugin {
   const key = env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || ''
@@ -212,7 +237,7 @@ function epcApi(_env: Record<string, string>): Plugin {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   return {
-    plugins: [react(), solarApi(env), sourcingApi(env), roofImageApi(env), placesApi(env), pvgisApi(), geocodeApi(env), epcApi(env), oviApi(env)],
+    plugins: [react(), solarApi(env), sourcingApi(env), roofImageApi(env), placesApi(env), autocompleteApi(env), pvgisApi(), geocodeApi(env), epcApi(env), oviApi(env)],
     server: { port: 3010 },
   }
 })

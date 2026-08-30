@@ -28,6 +28,22 @@ function mapPlace(p) {
   }
 }
 
+/** Address/place autocomplete — Google-Maps-style typeahead. Returns [{text, placeId}]. */
+export async function placesAutocomplete(input, key) {
+  if (!key || !input || input.length < 2) return []
+  const r = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': key },
+    body: JSON.stringify({ input, regionCode: 'GB', includedRegionCodes: ['GB'] }),
+  })
+  const j = await r.json()
+  if (!r.ok) throw new Error(`autocomplete ${j?.error?.status || r.status}`)
+  return (j.suggestions || [])
+    .map((s) => s.placePrediction)
+    .filter(Boolean)
+    .map((p) => ({ text: p.text?.text || '', placeId: p.placeId }))
+}
+
 function haversine(aLat, aLng, bLat, bLng) {
   const R = 6371000, p = (d) => (d * Math.PI) / 180
   const dLat = p(bLat - aLat), dLng = p(bLng - aLng)
