@@ -65,7 +65,7 @@ export function SolarSiteDetail() {
           {/* roof image */}
           <div className="rounded-card overflow-hidden border border-border relative bg-control aspect-[15/7]">
             {img && <img src={img} alt="" className="w-full h-full object-cover absolute inset-0" />}
-            <RoofOverlay center={p.center} segments={p.roofSegments} zoom={p.roofZoom} w={900} h={420} />
+            <RoofOverlay center={p.center} segments={p.roofSegments} footprint={p.roofFootprint} zoom={p.roofZoom} w={900} h={420} />
             <div className="absolute top-3 left-3 flex gap-2">
               <span className="text-[12px] font-bold text-white px-2.5 py-1 rounded-full shadow" style={{ background: scoreTone(p.score) }}>Score {p.score}</span>
               {accurate && <span className="text-[11px] font-bold text-white px-2.5 py-1 rounded-full" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}>◆ PVGIS accurate</span>}

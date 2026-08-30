@@ -15,34 +15,38 @@ function worldPx(lat: number, lng: number, z: number) {
 }
 
 export function RoofOverlay({
-  center, segments, zoom = 19, w = 560, h = 360, className,
+  center, segments, footprint, zoom = 19, w = 560, h = 360, className,
 }: {
   center?: LatLng
   segments?: { box: SegBox }[]
+  footprint?: LatLng[] // true building outline (OSM) — drawn in preference to the boxes
   zoom?: number
   w?: number
   h?: number
   className?: string
 }) {
-  if (!center || !segments?.length) return null
+  if (!center || (!segments?.length && !footprint?.length)) return null
   const c = worldPx(center.lat, center.lng, zoom)
   const toXY = (lat: number, lng: number) => {
     const p = worldPx(lat, lng, zoom)
     return [w / 2 + (p.x - c.x), h / 2 + (p.y - c.y)]
   }
+  const onTile = (pts: string) => pts.split(' ').some((p) => { const [x, y] = p.split(',').map(Number); return x > -40 && x < w + 40 && y > -40 && y < h + 40 })
 
-  const polys = segments
-    .map(({ box }) => {
-      const corners = [
-        toXY(box.sw.lat, box.sw.lng),
-        toXY(box.sw.lat, box.ne.lng),
-        toXY(box.ne.lat, box.ne.lng),
-        toXY(box.ne.lat, box.sw.lng),
-      ]
-      return corners.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ')
-    })
-    // keep only planes that actually fall on the tile
-    .filter((pts) => pts.split(' ').some((p) => { const [x, y] = p.split(',').map(Number); return x > -40 && x < w + 40 && y > -40 && y < h + 40 }))
+  // Prefer the real footprint polygon; fall back to Google's axis-aligned plane boxes.
+  const polys = footprint?.length
+    ? [footprint.map((p) => toXY(p.lat, p.lng)).map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ')].filter(onTile)
+    : (segments ?? [])
+        .map(({ box }) => {
+          const corners = [
+            toXY(box.sw.lat, box.sw.lng),
+            toXY(box.sw.lat, box.ne.lng),
+            toXY(box.ne.lat, box.ne.lng),
+            toXY(box.ne.lat, box.sw.lng),
+          ]
+          return corners.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ')
+        })
+        .filter(onTile)
 
   if (!polys.length) return null
   return (

@@ -8,7 +8,7 @@ import { Sun, Radar, Send, Sparkle, Person, Bolt, Flow, Search, Building, Layers
 import { MultiSelect, Stepper, AddressAutocomplete } from '../components/inputs'
 import { useActions, useState_ } from '../store/store'
 import { money, classNames } from '../lib/format'
-import { runCommercialSolarEngine, type CommercialProspect, type EngineProgress, type CommercialCriteria } from '../lib/commercialSolar'
+import { runCommercialSolarEngine, measureRoof, type CommercialProspect, type EngineProgress, type CommercialCriteria } from '../lib/commercialSolar'
 import { interpretBrief, geocodeLocation, prospectToSolar, revealContactsFor, type FinderPlan } from '../lib/commercialFinder'
 import type { SolarProspect, SolarProspectStatus } from '../store/types'
 import { SOLAR_STATUSES } from '../store/types'
@@ -339,7 +339,7 @@ export function BigRoofCard({ p, onOpen }: { p: SolarProspect; onOpen: () => voi
     <div className="rounded-card bg-surface border border-border overflow-hidden flex flex-col hover:shadow-modal transition-shadow cursor-pointer group" onClick={onOpen}>
       <div className="relative aspect-[14/9] bg-control overflow-hidden">
         {p.imageUrl && <img src={p.imageUrl} alt="" className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300" />}
-        <RoofOverlay center={p.center} segments={p.roofSegments} zoom={p.roofZoom} />
+        <RoofOverlay center={p.center} segments={p.roofSegments} footprint={p.roofFootprint} zoom={p.roofZoom} />
         <span className="absolute top-2.5 left-2.5 text-[12px] font-bold text-white px-2.5 py-1 rounded-full shadow" style={{ background: scoreTone(p.score) }}>{p.score}</span>
         <div className="absolute top-2.5 right-2.5 flex gap-1.5">
           {p.roofMeasured && <span className="text-[10px] font-bold text-white bg-black/55 px-2 py-1 rounded backdrop-blur-sm">◆ MEASURED</span>}
@@ -462,6 +462,35 @@ function PeoplePanel({ p, jobTitles }: { p: SolarProspect; jobTitles?: string[] 
   )
 }
 
+/** Measure one company's roof on demand and fold the economics into its prospect record. */
+export async function measureRoofInto(p: SolarProspect, update: (id: string, patch: Partial<SolarProspect>) => void) {
+  const patch = await measureRoof(p.address, p.center, p.category)
+  update(p.id, patch)
+  return patch
+}
+
+/** In-detail CTA that promotes a company (roofPending) to full solar economics. */
+function MeasureRoofPanel({ p }: { p: SolarProspect }) {
+  const act = useActions()
+  const [measuring, setMeasuring] = useState(false)
+  async function run() {
+    if (measuring) return; setMeasuring(true)
+    try { await measureRoofInto(p, act.updateSolarProspect); act.toast('Roof measured') }
+    catch { act.toast('Could not measure that roof', 'warning') }
+    finally { setMeasuring(false) }
+  }
+  return (
+    <div className="rounded-card border border-dashed border-border p-6 flex flex-col items-center text-center gap-2">
+      <span className="w-12 h-12 rounded-2xl flex items-center justify-center text-white" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Sun size={24} /></span>
+      <div className="text-[15px] font-bold text-ink">Roof not measured yet</div>
+      <div className="text-[12.5px] text-muted-b max-w-[460px]">This company came through people-first — no roof spend yet. Measure it from satellite to size the system, cost it, and score the solar opportunity.</div>
+      <button onClick={run} disabled={measuring} className="mt-1 h-9 px-4 rounded-control text-white text-[13px] font-semibold flex items-center gap-2 disabled:opacity-50" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}>
+        {measuring ? <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" /> : <Sun size={15} />}{measuring ? 'Measuring…' : 'Measure roof'}
+      </button>
+    </div>
+  )
+}
+
 /* ─────────── Detail modal (all the data + people) ─────────── */
 export function ProspectDetail({ p, onClose, jobTitles }: { p: SolarProspect; onClose: () => void; jobTitles?: string[] }) {
   const act = useActions()
@@ -481,7 +510,7 @@ export function ProspectDetail({ p, onClose, jobTitles }: { p: SolarProspect; on
       <div className="bg-surface rounded-overlay shadow-modal w-full max-w-[920px] max-h-[88vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="relative aspect-[5/2] bg-control shrink-0">
           {p.imageUrl && <img src={p.imageUrl.replace('560x360', '900x360')} alt="" className="w-full h-full object-cover" />}
-          <RoofOverlay center={p.center} segments={p.roofSegments} zoom={p.roofZoom} w={900} h={360} />
+          <RoofOverlay center={p.center} segments={p.roofSegments} footprint={p.roofFootprint} zoom={p.roofZoom} w={900} h={360} />
           <button onClick={onClose} className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70">✕</button>
           <span className="absolute top-3 left-3 text-[13px] font-bold text-white px-3 py-1 rounded-full shadow" style={{ background: scoreTone(p.score) }}>Score {p.score}</span>
           <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/80 to-transparent" />
@@ -494,15 +523,17 @@ export function ProspectDetail({ p, onClose, jobTitles }: { p: SolarProspect; on
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-5">
-          <div className="grid grid-cols-4 gap-3">
-            {metrics.map((m) => (
-              <div key={m.l} className="rounded-card bg-control p-3">
-                <div className="text-[11px] text-muted-2 font-medium">{m.l}</div>
-                <div className={classNames('text-[20px] font-bold mt-1 tracking-[-0.01em]', m.pos ? 'text-positive' : 'text-ink')}>{m.v}</div>
-                <div className="text-[11px] text-muted-2 mt-0.5">{m.s}</div>
-              </div>
-            ))}
-          </div>
+          {p.roofPending ? <MeasureRoofPanel p={p} /> : (
+            <div className="grid grid-cols-4 gap-3">
+              {metrics.map((m) => (
+                <div key={m.l} className="rounded-card bg-control p-3">
+                  <div className="text-[11px] text-muted-2 font-medium">{m.l}</div>
+                  <div className={classNames('text-[20px] font-bold mt-1 tracking-[-0.01em]', m.pos ? 'text-positive' : 'text-ink')}>{m.v}</div>
+                  <div className="text-[11px] text-muted-2 mt-0.5">{m.s}</div>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="rounded-card bg-control/40 p-3.5">
             <div className="eyebrow text-[10px] text-muted-3 mb-2">Why this scores {p.score}</div>
@@ -526,7 +557,7 @@ export function ProspectDetail({ p, onClose, jobTitles }: { p: SolarProspect; on
           </label>
           <div className="flex items-center gap-2">
             <Button variant="secondary" onClick={onClose}>Close</Button>
-            <Button variant="primary" icon={<Bolt size={15} />} onClick={() => { onClose(); nav(`/tools/commercial-solar/site/${p.id}`) }}>Full analysis</Button>
+            {!p.roofPending && <Button variant="primary" icon={<Bolt size={15} />} onClick={() => { onClose(); nav(`/tools/commercial-solar/site/${p.id}`) }}>Full analysis</Button>}
           </div>
         </div>
       </div>

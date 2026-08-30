@@ -16,7 +16,7 @@
  * runs end-to-end in dev and lights up as each key is added to the backend .env.
  */
 
-import { analyseRoofLive, type LatLng, type RoofAnalysis } from './solar'
+import { analyseRoofLive, fetchBuildingFootprint, frameFromPoints, type LatLng, type RoofAnalysis } from './solar'
 import { computeCommercial, classifyIndustry, type CommercialCalc } from './commercialModel'
 import { sourceLeads, type SourcedLead } from './sourcing'
 
@@ -69,7 +69,8 @@ export type CommercialProspect = {
   reasons: string[] // why this prospect scores where it does
   imageUrl?: string // satellite tile with the measured roof
   roofZoom?: number // zoom that fits the whole building (bigger roofs zoom out)
-  roofSegments?: { box: import('./solar').SegBox }[] // roof-plane boxes for the on-image outline
+  roofSegments?: { box: import('./solar').SegBox }[] // roof-plane boxes (Google) — fallback outline
+  roofFootprint?: LatLng[] // true building outline (OSM) — the accurate roof trace
   roofMeasured: boolean // true = real Google Solar, false = modelled estimate
   distanceM?: number // distance from the dropped pin (radius scans)
 }
@@ -234,15 +235,21 @@ export async function measureRoof(address: string, center: LatLng | undefined, i
   const calc = computeCommercial(analysis, { industry: classifyIndustry(industry), objective: 'payback' })
   const r = calc.recommended
   const frame = roofFrame(analysis)
-  const c = analysis.segments.some((s) => s.box) ? frame.center : (analysis.center || center)
+  const boxCenter = analysis.segments.some((s) => s.box) ? frame.center : (analysis.center || center)
+  // Pull the real building outline (OSM) and frame the tile on it — far more accurate than the boxes.
+  const footprint = boxCenter ? await fetchBuildingFootprint(boxCenter) : null
+  const fpFrame = footprint ? frameFromPoints(footprint) : null
+  const c = fpFrame?.center ?? boxCenter
+  const zoom = fpFrame?.zoom ?? frame.zoom
   return {
     roofPending: false, roofMeasured: analysis.source === 'google',
     systemKwp: Math.round(r.kwp * 10) / 10, roofMaxKwp: Math.round(calc.maxKwp), roofAreaM2: Math.round(analysis.usableArea),
     panels: r.panels, annualGenKwh: r.annualGenKwh, year1Saving: Math.round(r.year1Saving), lifetimeSaving: Math.round(r.lifetimeSaving),
     paybackYears: Math.round(r.paybackYears * 10) / 10, npv: Math.round(r.npv), co2PerYearTonnes: Math.round(r.co2PerYearTonnes * 10) / 10,
     selfConsumptionPct: r.selfConsumptionPct, demandOffsetPct: r.demandOffsetPct, calc,
-    center: c, imageUrl: c ? roofImageUrl(c, frame.zoom) : undefined, roofZoom: frame.zoom,
+    center: c, imageUrl: c ? roofImageUrl(c, zoom) : undefined, roofZoom: zoom,
     roofSegments: analysis.segments.filter((s) => s.box).map((s) => ({ box: s.box! })),
+    roofFootprint: footprint ?? undefined,
   }
 }
 
@@ -292,8 +299,11 @@ export async function runCommercialSolarEngine(
     // 6) Score + assemble the card.
     const { score, reasons } = scoreProspect(calc, analysis.source === 'google', epc, leads, c.targetKwp)
     const frame = roofFrame(analysis)
-    const center = analysis.segments.some((s) => s.box) ? frame.center : (analysis.center || b.center)
-    const zoom = frame.zoom
+    const boxCenter = analysis.segments.some((s) => s.box) ? frame.center : (analysis.center || b.center)
+    const footprint = boxCenter ? await fetchBuildingFootprint(boxCenter) : null
+    const fpFrame = footprint ? frameFromPoints(footprint) : null
+    const center = fpFrame?.center ?? boxCenter
+    const zoom = fpFrame?.zoom ?? frame.zoom
     const prospect: CommercialProspect = {
       id: `csp-${scanned}-${(b.domain || b.name).replace(/[^a-z0-9]/gi, '').slice(0, 10)}`,
       company: b.name,
@@ -311,6 +321,7 @@ export async function runCommercialSolarEngine(
       imageUrl: center ? roofImageUrl(center, zoom) : undefined,
       roofZoom: zoom,
       roofSegments: analysis.segments.filter((s) => s.box).map((s) => ({ box: s.box! })),
+      roofFootprint: footprint ?? undefined,
       roofMeasured: analysis.source === 'google',
       distanceM: b.distanceM,
     }

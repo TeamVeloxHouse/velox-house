@@ -9,6 +9,7 @@ import { ProspectDatabase, ProspectDetail } from './CommercialSolar'
 
 type ToolDef = { id: string; name: string; desc: string; icon: any; to?: string; live: boolean }
 const TOOLS: ToolDef[] = [
+  { id: 'company-search', name: 'Company & People Search', desc: 'Find companies by industry and place — or one by name — then reveal the decision-makers. Measure a roof any time.', icon: Building, to: '/tools/company-search', live: true },
   { id: 'commercial-solar', name: 'Commercial Solar Finder', desc: 'Scan an area, measure every roof, score the hottest solar prospects and find the people.', icon: Sun, to: '/tools/commercial-solar', live: true },
   { id: 'domestic-solar', name: 'Domestic Solar Calculator', desc: 'Homeowner roof + savings calculator with finance and self-consumption modelling.', icon: Sun, live: false },
   { id: 'ev-charging', name: 'EV Charging Calculator', desc: 'Fleet & workplace charging sizing, load and payback.', icon: Bolt, to: '/studio/ev', live: true },

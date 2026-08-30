@@ -809,7 +809,8 @@ export interface SolarProspect {
   center?: { lat: number; lng: number }
   category?: string
   distanceM?: number // from the dropped pin
-  roofSegments?: { box: import('../lib/solar').SegBox }[] // roof-plane boxes for the on-image outline
+  roofSegments?: { box: import('../lib/solar').SegBox }[] // roof-plane boxes (Google Solar) — fallback outline
+  roofFootprint?: { lat: number; lng: number }[] // true building outline (OSM) — the accurate roof trace
   // Roof + calculation snapshot (denormalised so lists render without recompute).
   systemKwp: number // the recommended (best-payback) system size
   roofMaxKwp?: number // the roof's full capacity

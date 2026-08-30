@@ -143,6 +143,7 @@ export function prospectToSolar(p: CommercialProspect, campaignId: string, tool 
     campaignId,
     tool,
     roofSegments: p.roofSegments,
+    roofFootprint: p.roofFootprint,
     company: p.company,
     address: p.address,
     domain: p.domain,

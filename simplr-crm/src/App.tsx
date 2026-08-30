@@ -29,6 +29,7 @@ import { Prospector } from './pages/Prospector'
 import { LinkedInInbox } from './pages/LinkedInInbox'
 import { ReachOverview, Finders, SolarFinder, Outreach, ReachAnalytics, ReachCampaigns, ReachSchedules, ReachAI } from './pages/reach'
 import { CommercialSolarTool } from './pages/CommercialSolar'
+import { CompanySearchTool } from './pages/CompanySearch'
 import { ToolsHub, ProspectsDatabasePage } from './pages/Tools'
 import { SolarSiteDetail } from './pages/SolarSite'
 import { DesignStudio } from './pages/DesignStudio'
@@ -119,6 +120,7 @@ export const router = createBrowserRouter([
       { path: 'reach/ai', element: <ReachAI /> },
       { path: 'reach/finders', element: <Finders /> },
       { path: 'tools', element: <ToolsHub /> },
+      { path: 'tools/company-search', element: <CompanySearchTool /> },
       { path: 'tools/commercial-solar', element: <CommercialSolarTool /> },
       { path: 'tools/commercial-solar/site/:id', element: <SolarSiteDetail /> },
       { path: 'tools/database', element: <ProspectsDatabasePage /> },

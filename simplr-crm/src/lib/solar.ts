@@ -295,6 +295,64 @@ export async function analyseRoofLive(address: string, coords?: LatLng): Promise
   return analyseRoof(address)
 }
 
+/* ── Building footprint (true roof outline) ────────────────────────────────────
+ * Google Solar's roofSegmentStats only give axis-aligned lat/lng *bounding boxes* per plane — great
+ * for area/kWp, useless for tracing a roof (they render as overlapping squares on any building that
+ * isn't aligned to compass N/S/E/W). For an accurate outline we pull the real building polygon from
+ * OpenStreetMap via Overpass (free, no key, CORS-enabled) and draw that. Falls back to the boxes. */
+const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter']
+
+function ringContains(poly: LatLng[], pt: LatLng): boolean {
+  let inside = false
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const yi = poly[i].lat, xi = poly[i].lng, yj = poly[j].lat, xj = poly[j].lng
+    if ((yi > pt.lat) !== (yj > pt.lat) && pt.lng < ((xj - xi) * (pt.lat - yi)) / (yj - yi) + xi) inside = !inside
+  }
+  return inside
+}
+function ringAreaish(poly: LatLng[]): number {
+  let a = 0
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) a += (poly[j].lng + poly[i].lng) * (poly[j].lat - poly[i].lat)
+  return Math.abs(a / 2)
+}
+
+/** Real building outline at a point, from OSM. Returns the polygon (lat/lng ring) or null. */
+export async function fetchBuildingFootprint(center: LatLng): Promise<LatLng[] | null> {
+  const q = `[out:json][timeout:12];way(around:40,${center.lat},${center.lng})["building"];out geom;`
+  for (const url of OVERPASS) {
+    try {
+      const ctrl = new AbortController()
+      const t = setTimeout(() => ctrl.abort(), 9000)
+      const r = await fetch(url, { method: 'POST', body: `data=${encodeURIComponent(q)}`, signal: ctrl.signal })
+      clearTimeout(t)
+      if (!r.ok) continue
+      const j = await r.json()
+      const ways: LatLng[][] = (j.elements || [])
+        .filter((e: { type: string; geometry?: unknown[] }) => e.type === 'way' && Array.isArray(e.geometry) && e.geometry.length >= 4)
+        .map((e: { geometry: { lat: number; lon: number }[] }) => e.geometry.map((g) => ({ lat: g.lat, lng: g.lon })))
+      if (!ways.length) return null
+      // Prefer the building the point sits inside; otherwise the largest nearby footprint (the main shed).
+      const containing = ways.filter((w) => ringContains(w, center))
+      const pick = (containing.length ? containing : ways).sort((a, b) => ringAreaish(b) - ringAreaish(a))[0]
+      return pick.length > 60 ? pick.filter((_, i) => i % 2 === 0) : pick
+    } catch { /* try next endpoint */ }
+  }
+  return null
+}
+
+/** Frame a satellite tile on a lat/lng ring — centre + a zoom that fits it with margin. */
+export function frameFromPoints(points: LatLng[], w = 560, h = 360): { center: LatLng; zoom: number } | null {
+  if (!points.length) return null
+  let latMin = 90, latMax = -90, lngMin = 180, lngMax = -180
+  for (const p of points) { latMin = Math.min(latMin, p.lat); latMax = Math.max(latMax, p.lat); lngMin = Math.min(lngMin, p.lng); lngMax = Math.max(lngMax, p.lng) }
+  const center = { lat: (latMin + latMax) / 2, lng: (lngMin + lngMax) / 2 }
+  const widthM = (lngMax - lngMin) * 111320 * Math.cos((center.lat * Math.PI) / 180)
+  const heightM = (latMax - latMin) * 110540
+  const mpp = Math.max((Math.max(widthM, 12) * 1.35) / w, (Math.max(heightM, 12) * 1.35) / h)
+  const z = Math.log2((156543.03 * Math.cos((center.lat * Math.PI) / 180)) / mpp)
+  return { center, zoom: Math.max(16, Math.min(20, Math.round(z))) }
+}
+
 export const gbp = (n: number) => `£${Math.round(n).toLocaleString('en-GB')}`
 
 /** Monthly payment for a finance product on a given system cost (standard amortisation). */

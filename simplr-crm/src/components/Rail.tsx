@@ -32,6 +32,7 @@ const oviGroups: Group[] = [
 const findGroups: Group[] = [
   { label: 'Prospect', items: [
     { to: '/tools', icon: Grid, label: 'Tools', feature: 'reach', end: true },
+    { to: '/tools/company-search', icon: Building, label: 'Company & People', feature: 'reach' },
     { to: '/tools/commercial-solar', icon: Sun, label: 'Commercial Solar', feature: 'reach' },
     { to: '/tools/database', icon: Layers, label: 'All prospects', feature: 'reach' },
     { to: '/reach/finders', icon: Radar, label: 'Finders', feature: 'reach' },
