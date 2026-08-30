@@ -16,7 +16,8 @@
  * runs end-to-end in dev and lights up as each key is added to the backend .env.
  */
 
-import { analyseRoofLive, designFrom, type SolarDesign, type Pricing, type DesignOpts, type LatLng } from './solar'
+import { analyseRoofLive, type LatLng, type RoofAnalysis } from './solar'
+import { computeCommercial, classifyIndustry, type CommercialCalc } from './commercialModel'
 import { sourceLeads, type SourcedLead } from './sourcing'
 
 // ── Inputs ──────────────────────────────────────────────────────────────────
@@ -59,20 +60,19 @@ export type CommercialProspect = {
   domain?: string
   center?: LatLng
   category?: string
-  design: SolarDesign // the roof measurement + PV costing
+  calc: CommercialCalc // optimised system + full economics + size-vs-return sweep
+  roofMaxKwp: number // the roof's full capacity (what qualifies a big shed)
+  roofAreaM2?: number // measured usable roof area
   epc: EpcRecord | null
   people: SourcedLead[] // decision-makers with (where found) work emails
   score: number // 0–100 overall fit
   reasons: string[] // why this prospect scores where it does
   imageUrl?: string // satellite tile with the measured roof
+  roofZoom?: number // zoom that fits the whole building (bigger roofs zoom out)
+  roofSegments?: { box: import('./solar').SegBox }[] // roof-plane boxes for the on-image outline
   roofMeasured: boolean // true = real Google Solar, false = modelled estimate
   distanceM?: number // distance from the dropped pin (radius scans)
 }
-
-// Commercial pricing/behaviour — distinct from the residential defaults in solar.ts.
-// Larger arrays are cheaper per kWp; businesses use most of their generation on-site by day.
-const COMMERCIAL_PRICING: Pricing = { costPerKwp: 900, baseCost: 6000, perPanel: 0, marginPct: 0.15, vatPct: 0 }
-const COMMERCIAL_OPTS: DesignOpts = { occupancy: 'home_all_day', importRate: 0.26, exportRate: 0.08 }
 
 // ── Providers (backend-proxied, key server-side; graceful fallback) ──────────
 
@@ -120,22 +120,45 @@ export function roofImageUrl(center: LatLng, zoom = 19, size = '560x360'): strin
   return `/api/roof-image?lat=${center.lat}&lng=${center.lng}&z=${zoom}&size=${size}`
 }
 
+/** Pick a zoom that shows the WHOLE building — big sheds zoom out so nothing is cropped. */
+export function zoomForRoof(a: RoofAnalysis): number {
+  const boxes = a.segments.map((s) => s.box).filter(Boolean) as { sw: LatLng; ne: LatLng }[]
+  if (!boxes.length || !a.center) return 19
+  let latMin = 90, latMax = -90, lngMin = 180, lngMax = -180
+  for (const b of boxes) {
+    latMin = Math.min(latMin, b.sw.lat, b.ne.lat); latMax = Math.max(latMax, b.sw.lat, b.ne.lat)
+    lngMin = Math.min(lngMin, b.sw.lng, b.ne.lng); lngMax = Math.max(lngMax, b.sw.lng, b.ne.lng)
+  }
+  const lat = a.center.lat
+  const widthM = (lngMax - lngMin) * 111320 * Math.cos((lat * Math.PI) / 180)
+  const heightM = (latMax - latMin) * 110540
+  const roofM = Math.max(widthM, heightM, 12)
+  // Fit ~1.7× the roof into the 560px-wide tile. mpp = 156543.03*cos/2^z.
+  const targetMpp = (roofM * 1.7) / 560
+  const z = Math.log2((156543.03 * Math.cos((lat * Math.PI) / 180)) / targetMpp)
+  return Math.max(16, Math.min(20, Math.round(z)))
+}
+
 // ── Scoring ──────────────────────────────────────────────────────────────────
 // A good prospect has a roof near the target size, an EPC worth upgrading, and a reachable
 // decision-maker. Worse EPC = bigger retrofit story = higher opportunity score.
 const EPC_OPPORTUNITY: Record<string, number> = { A: 2, B: 4, C: 8, D: 14, E: 18, F: 20, G: 22 }
 
-function scoreProspect(design: SolarDesign, epc: EpcRecord | null, people: SourcedLead[], target: number): { score: number; reasons: string[] } {
+function scoreProspect(calc: CommercialCalc, measured: boolean, epc: EpcRecord | null, people: SourcedLead[], target: number): { score: number; reasons: string[] } {
   const reasons: string[] = []
   let score = 40
+  const roofKwp = calc.maxKwp
+  const rec = calc.recommended
 
-  // Roof-size fit — closest to the target system size scores best.
-  const ratio = target > 0 ? design.systemKwp / target : 1
-  const fit = Math.max(0, 1 - Math.abs(1 - ratio)) // 1.0 at target, →0 as it diverges
+  // Roof-size fit — a roof at/above the target scores best (bigger is fine, tiny is penalised).
+  const ratio = target > 0 ? roofKwp / target : 1
+  const fit = ratio >= 1 ? 1 : Math.max(0, ratio)
   score += Math.round(fit * 30)
-  reasons.push(`${Math.round(design.systemKwp)} kWp roof (${Math.round(ratio * 100)}% of your ${target} kWp target)`)
+  reasons.push(`${Math.round(roofKwp)} kWp roof capacity (${Math.round(ratio * 100)}% of your ${target} kWp target)`)
+  reasons.push(`Best-payback system ${Math.round(rec.kwp)} kWp — ${rec.paybackYears}y payback, ${rec.selfConsumptionPct}% self-used`)
 
-  if (design.source === 'google') { score += 6; reasons.push('Roof measured from satellite (Google Solar)') }
+  if (measured) { score += 6; reasons.push('Roof measured from satellite (Google Solar)') }
+  if (rec.paybackYears > 0 && rec.paybackYears <= 6) { score += 6; reasons.push(`Strong economics — ${rec.paybackYears}y payback`) }
 
   if (epc) {
     const opp = EPC_OPPORTUNITY[epc.rating?.toUpperCase()?.[0]] ?? 8
@@ -189,17 +212,16 @@ export async function runCommercialSolarEngine(
     scanned++
     report({ stage: 'measure', message: `Measuring roof at ${b.name}…`, found: prospects.length, scanned, total: buildings.length })
 
-    // 2) Measure the roof (real Google Solar → offline fallback), then 3) cost it.
+    // 2) Measure the roof (real Google Solar → offline fallback), then 3) cost it accurately.
     // Prefer the precise Places centre over geocoding the name — better for big sheds.
     const analysis = await analyseRoofLive(b.address, b.center)
-    const design = designFrom(analysis, b.address, undefined, COMMERCIAL_PRICING, COMMERCIAL_OPTS)
-
-    // Roof gate — skip anything too small BEFORE spending PDL credits on people.
-    if (design.systemKwp < minKwp) continue
-
-    // 4) EPC (free) — rating + floor area.
+    // 4) EPC (free) — rating + floor area (floor area sharpens the demand estimate).
     report({ stage: 'epc', message: `Checking EPC for ${b.name}…`, found: prospects.length, scanned, total: buildings.length })
     const epc = await lookupEpc(b.address, postcodeOf(b.address))
+    const calc = computeCommercial(analysis, { industry: classifyIndustry(c.industry), floorAreaM2: epc?.floorArea, objective: 'payback' })
+
+    // Roof gate — skip anything whose ROOF CAPACITY is too small (before spending PDL credits).
+    if (calc.maxKwp < minKwp) continue
 
     // 5) People (PDL credits) — survivors only, scoped to THIS company by domain.
     // Skipped during a scan when contacts are revealed on demand (the reveal = spend model).
@@ -210,21 +232,27 @@ export async function runCommercialSolarEngine(
     }
 
     // 6) Score + assemble the card.
-    const { score, reasons } = scoreProspect(design, epc, leads, c.targetKwp)
+    const { score, reasons } = scoreProspect(calc, analysis.source === 'google', epc, leads, c.targetKwp)
+    const center = analysis.center || b.center
+    const zoom = zoomForRoof(analysis)
     const prospect: CommercialProspect = {
       id: `csp-${scanned}-${(b.domain || b.name).replace(/[^a-z0-9]/gi, '').slice(0, 10)}`,
       company: b.name,
       address: b.address,
       domain: b.domain,
-      center: analysis.center || b.center,
+      center,
       category: b.category,
-      design,
+      calc,
+      roofMaxKwp: Math.round(calc.maxKwp),
+      roofAreaM2: Math.round(analysis.usableArea),
       epc,
       people: leads,
       score,
       reasons,
-      imageUrl: (analysis.center || b.center) ? roofImageUrl(analysis.center || b.center!) : undefined,
-      roofMeasured: design.source === 'google',
+      imageUrl: center ? roofImageUrl(center, zoom) : undefined,
+      roofZoom: zoom,
+      roofSegments: analysis.segments.filter((s) => s.box).map((s) => ({ box: s.box! })),
+      roofMeasured: analysis.source === 'google',
       distanceM: b.distanceM,
     }
     prospects.push(prospect)

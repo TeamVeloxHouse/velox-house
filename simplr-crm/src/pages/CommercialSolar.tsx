@@ -286,22 +286,22 @@ export function BigRoofCard({ p, onOpen }: { p: SolarProspect; onOpen: () => voi
     <div className="rounded-card bg-surface border border-border overflow-hidden flex flex-col hover:shadow-modal transition-shadow cursor-pointer group" onClick={onOpen}>
       <div className="relative aspect-[16/9] bg-control overflow-hidden">
         {p.imageUrl && <img src={p.imageUrl} alt="" className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300" />}
-        <RoofOverlay center={p.center} segments={p.roofSegments} />
+        <RoofOverlay center={p.center} segments={p.roofSegments} zoom={p.roofZoom} />
         <span className="absolute top-2.5 left-2.5 text-[12px] font-bold text-white px-2.5 py-1 rounded-full shadow" style={{ background: scoreTone(p.score) }}>{p.score}</span>
         <div className="absolute top-2.5 right-2.5 flex gap-1.5">
           {p.roofMeasured && <span className="text-[10px] font-bold text-white bg-black/55 px-2 py-1 rounded backdrop-blur-sm">◆ MEASURED</span>}
           {p.epcRating && <span className="text-[10px] font-bold text-white px-2 py-1 rounded" style={{ background: epcColor(p.epcRating) }}>EPC {p.epcRating}</span>}
         </div>
         {p.distanceM != null && <span className="absolute bottom-2.5 right-2.5 text-[10.5px] font-semibold text-white bg-black/55 px-2 py-0.5 rounded backdrop-blur-sm">{(p.distanceM / 1000).toFixed(1)} km</span>}
-        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/70 to-transparent" />
-        <div className="absolute bottom-2 left-3 right-16">
-          <div className="text-white font-bold text-[15px] leading-tight truncate drop-shadow">{p.company}</div>
-          <div className="text-white/80 text-[11.5px] truncate">{p.category || p.address}</div>
-        </div>
+        {p.roofAreaM2 != null && <span className="absolute bottom-2.5 left-2.5 text-[10.5px] font-semibold text-white px-2 py-0.5 rounded backdrop-blur-sm flex items-center gap-1" style={{ background: 'rgba(34,211,238,0.85)' }}>◆ {p.roofAreaM2.toLocaleString()} m²</span>}
       </div>
       <div className="p-3.5 flex flex-col gap-2.5">
+        <div>
+          <div className="font-bold text-[15px] leading-tight truncate text-ink">{p.company}</div>
+          <div className="text-[11.5px] text-muted-2 truncate">{p.category || p.address} · roof fits {p.roofMaxKwp ?? Math.round(p.systemKwp)} kWp</div>
+        </div>
         <div className="grid grid-cols-4 gap-2 text-center">
-          <Stat v={`${Math.round(p.systemKwp)}`} u="kWp" />
+          <Stat v={`${Math.round(p.systemKwp)}`} u="kWp system" />
           <Stat v={String(p.panels)} u="panels" />
           <Stat v={money(p.year1Saving, { compact: true })} u="yr 1" />
           <Stat v={`${p.paybackYears}y`} u="payback" />
@@ -334,21 +334,21 @@ export function ProspectDetail({ p, onClose, jobTitles }: { p: SolarProspect; on
     if (!contacts.length) act.toast('No contacts found for this company', 'warning')
   }
   const metrics = [
-    { l: 'System size', v: `${p.systemKwp} kWp`, s: `${p.panels} panels` },
+    { l: 'Recommended system', v: `${p.systemKwp} kWp`, s: `${p.panels} panels` },
+    { l: 'Roof capacity', v: `${p.roofMaxKwp ?? '—'} kWp`, s: p.roofAreaM2 ? `${p.roofAreaM2.toLocaleString()} m² measured` : 'full roof' },
     { l: 'Annual generation', v: `${(p.annualGenKwh / 1000).toFixed(0)} MWh`, s: 'per year' },
+    { l: 'Self-consumption', v: p.selfConsumptionPct != null ? `${p.selfConsumptionPct}%` : '—', s: p.demandOffsetPct != null ? `covers ${p.demandOffsetPct}% of demand` : 'on-site use' },
     { l: 'Year-1 saving', v: money(p.year1Saving), s: 'energy + export', pos: true },
     { l: '25-year saving', v: money(p.lifetimeSaving, { compact: true }), s: 'lifetime', pos: true },
-    { l: 'Payback', v: `${p.paybackYears} yrs`, s: 'simple' },
+    { l: 'Payback', v: `${p.paybackYears} yrs`, s: 'best-payback size' },
     { l: 'Net present value', v: money(p.npv, { compact: true }), s: 'lifetime NPV' },
-    { l: 'Carbon saved', v: `${p.co2PerYearTonnes} t`, s: 'CO₂ per year' },
-    { l: 'Fit score', v: String(p.score), s: 'opportunity' },
   ]
   return (
     <div className="fixed inset-0 z-[70] bg-black/50 flex items-center justify-center p-6" onClick={onClose}>
       <div className="bg-surface rounded-overlay shadow-modal w-full max-w-[920px] max-h-[88vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="relative h-[240px] bg-control shrink-0">
           {p.imageUrl && <img src={p.imageUrl.replace('560x360', '900x360')} alt="" className="w-full h-full object-cover" />}
-          <RoofOverlay center={p.center} segments={p.roofSegments} w={900} h={360} />
+          <RoofOverlay center={p.center} segments={p.roofSegments} zoom={p.roofZoom} w={900} h={360} />
           <button onClick={onClose} className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70">✕</button>
           <span className="absolute top-3 left-3 text-[13px] font-bold text-white px-3 py-1 rounded-full shadow" style={{ background: scoreTone(p.score) }}>Score {p.score}</span>
           <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/80 to-transparent" />
@@ -462,7 +462,7 @@ function PipelineCard({ p, onMove, onOpen }: { p: SolarProspect; onMove: (s: Sol
   return (
     <div className="rounded-xl bg-surface border border-border p-2.5 flex flex-col gap-2 cursor-pointer hover:border-accent" onClick={onOpen}>
       <div className="flex items-start gap-2">
-        {p.imageUrl && <div className="relative w-12 h-12 rounded-lg overflow-hidden shrink-0"><img src={p.imageUrl} alt="" className="w-full h-full object-cover" /><RoofOverlay center={p.center} segments={p.roofSegments} w={48} h={48} /></div>}
+        {p.imageUrl && <div className="relative w-12 h-12 rounded-lg overflow-hidden shrink-0"><img src={p.imageUrl} alt="" className="w-full h-full object-cover" /></div>}
         <div className="min-w-0 flex-1"><div className="font-bold text-[12.5px] text-ink truncate">{p.company}</div><div className="text-[11px] text-muted-2 truncate">{Math.round(p.systemKwp)} kWp · {money(p.year1Saving, { compact: true })}/yr</div></div>
         <span className="text-[10.5px] font-bold text-white px-1.5 py-0.5 rounded-full shrink-0" style={{ background: scoreTone(p.score) }}>{p.score}</span>
       </div>
@@ -515,7 +515,7 @@ export function ProspectDatabase({ prospects, onOpen, showTool }: { prospects: S
         {rows.map((p) => (
           <div key={p.id} className="grid px-4 py-2.5 border-b border-divider last:border-0 items-center text-[13px] hover:bg-control/40 cursor-pointer" style={{ gridTemplateColumns: cols }} onClick={() => onOpen(p.id)}>
             <div className="flex items-center gap-2.5 min-w-0">
-              {p.imageUrl && <div className="relative w-9 h-9 rounded-lg overflow-hidden shrink-0"><img src={p.imageUrl} alt="" className="w-full h-full object-cover" /><RoofOverlay center={p.center} segments={p.roofSegments} w={36} h={36} /></div>}
+              {p.imageUrl && <div className="relative w-9 h-9 rounded-lg overflow-hidden shrink-0"><img src={p.imageUrl} alt="" className="w-full h-full object-cover" /></div>}
               <div className="min-w-0"><div className="font-semibold text-ink-2 truncate">{p.company}</div><div className="text-[11px] text-muted-2 truncate">{p.category || p.address}</div></div>
             </div>
             {showTool && <span className="text-[12px] text-muted-b truncate">{toolLabel(p.tool)}</span>}

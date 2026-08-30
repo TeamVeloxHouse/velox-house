@@ -810,7 +810,9 @@ export interface SolarProspect {
   distanceM?: number // from the dropped pin
   roofSegments?: { box: import('../lib/solar').SegBox }[] // roof-plane boxes for the on-image outline
   // Roof + calculation snapshot (denormalised so lists render without recompute).
-  systemKwp: number
+  systemKwp: number // the recommended (best-payback) system size
+  roofMaxKwp?: number // the roof's full capacity
+  roofAreaM2?: number // measured usable roof area
   panels: number
   annualGenKwh: number
   year1Saving: number
@@ -818,8 +820,11 @@ export interface SolarProspect {
   paybackYears: number
   npv: number
   co2PerYearTonnes: number
+  selfConsumptionPct?: number
+  demandOffsetPct?: number
   roofMeasured: boolean // true = real Google Solar
   imageUrl?: string
+  roofZoom?: number // zoom used for the tile (so the overlay matches)
   epcRating?: string | null
   score: number
   reasons: string[]

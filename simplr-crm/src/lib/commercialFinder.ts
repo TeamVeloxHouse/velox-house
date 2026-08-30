@@ -81,7 +81,7 @@ export function industryLabel(key: IndustryKey): string {
 
 /** Engine prospect → persisted store record (denormalised snapshot for lists/kanban). */
 export function prospectToSolar(p: CommercialProspect, campaignId: string, tool = 'commercial-solar'): SolarProspect {
-  const d = p.design
+  const r = p.calc.recommended
   const contacts: SolarContact[] = p.people.map((pl) => ({
     id: rid('sc'), name: pl.name, title: pl.title, email: pl.email, linkedin: pl.linkedin, seniority: undefined, revealed: !!(pl.email || pl.name),
   }))
@@ -89,23 +89,29 @@ export function prospectToSolar(p: CommercialProspect, campaignId: string, tool 
     id: p.id,
     campaignId,
     tool,
-    roofSegments: d.segments.filter((s) => s.box).map((s) => ({ box: s.box! })),
+    roofSegments: p.roofSegments,
     company: p.company,
     address: p.address,
     domain: p.domain,
     center: p.center,
     category: p.category,
     distanceM: p.distanceM,
-    systemKwp: Math.round(d.systemKwp * 10) / 10,
-    panels: d.panels,
-    annualGenKwh: d.annualProduction,
-    year1Saving: Math.round(d.annualSavings),
-    lifetimeSaving: Math.round(d.lifetimeSavings),
-    paybackYears: Math.round(d.payback * 10) / 10,
-    npv: Math.round(d.lifetimeSavings - d.systemCost),
-    co2PerYearTonnes: Math.round(d.co2PerYear * 10) / 10,
+    systemKwp: Math.round(r.kwp * 10) / 10,
+    roofMaxKwp: p.roofMaxKwp,
+    roofAreaM2: p.roofAreaM2,
+    panels: r.panels,
+    annualGenKwh: r.annualGenKwh,
+    year1Saving: Math.round(r.year1Saving),
+    lifetimeSaving: Math.round(r.lifetimeSaving),
+    paybackYears: Math.round(r.paybackYears * 10) / 10,
+    npv: Math.round(r.npv),
+    co2PerYearTonnes: Math.round(r.co2PerYearTonnes * 10) / 10,
+    selfConsumptionPct: r.selfConsumptionPct,
+    demandOffsetPct: r.demandOffsetPct,
     roofMeasured: p.roofMeasured,
     imageUrl: p.imageUrl,
+    roofZoom: p.roofZoom,
+    calc: p.calc,
     epcRating: p.epc?.rating ?? null,
     score: p.score,
     reasons: p.reasons,
