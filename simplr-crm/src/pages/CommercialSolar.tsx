@@ -376,6 +376,7 @@ function epcColor(r: string) { const c: Record<string, string> = { A: '#0E9F6E',
 /* ─────────── Detail modal (all the data + people) ─────────── */
 export function ProspectDetail({ p, onClose, jobTitles }: { p: SolarProspect; onClose: () => void; jobTitles?: string[] }) {
   const act = useActions()
+  const nav = useNavigate()
   const [revealing, setRevealing] = useState(false)
   async function reveal() {
     if (revealing) return; setRevealing(true)
@@ -466,7 +467,10 @@ export function ProspectDetail({ p, onClose, jobTitles }: { p: SolarProspect; on
               {SOLAR_STATUSES.map((s) => <option key={s} value={s}>{STATUS_META[s].label}</option>)}
             </select>
           </label>
-          <Button variant="secondary" onClick={onClose}>Close</Button>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" onClick={onClose}>Close</Button>
+            <Button variant="primary" icon={<Bolt size={15} />} onClick={() => { onClose(); nav(`/tools/commercial-solar/site/${p.id}`) }}>Full analysis</Button>
+          </div>
         </div>
       </div>
     </div>

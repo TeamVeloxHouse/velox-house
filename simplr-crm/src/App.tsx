@@ -30,6 +30,7 @@ import { LinkedInInbox } from './pages/LinkedInInbox'
 import { ReachOverview, Finders, SolarFinder, Outreach, ReachAnalytics, ReachCampaigns, ReachSchedules, ReachAI } from './pages/reach'
 import { CommercialSolarTool } from './pages/CommercialSolar'
 import { ToolsHub, ProspectsDatabasePage } from './pages/Tools'
+import { SolarSiteDetail } from './pages/SolarSite'
 import { DesignStudio } from './pages/DesignStudio'
 import { Proposal } from './pages/Proposal'
 import { StudioOverview, ProposalsList, StudioAnalytics, StudioTemplates } from './pages/studio'
@@ -119,6 +120,7 @@ export const router = createBrowserRouter([
       { path: 'reach/finders', element: <Finders /> },
       { path: 'tools', element: <ToolsHub /> },
       { path: 'tools/commercial-solar', element: <CommercialSolarTool /> },
+      { path: 'tools/commercial-solar/site/:id', element: <SolarSiteDetail /> },
       { path: 'tools/database', element: <ProspectsDatabasePage /> },
       { path: 'reach/solar', element: <CommercialSolarTool /> },
       { path: 'reach/people-finder', element: <PeopleFinder /> },
