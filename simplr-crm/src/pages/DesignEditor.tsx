@@ -59,7 +59,7 @@ export function DesignEditor() {
       m.pm.disableDraw(); setDrawing(false)
     })
     map.current = m
-    if (import.meta.env.DEV) (window as any).__lmap = m
+    if ((import.meta as any).env?.DEV) (window as any).__lmap = m
     setTimeout(() => m.invalidateSize(), 120)
     return () => { m.remove(); map.current = null }
     // eslint-disable-next-line react-hooks/exhaustive-deps
