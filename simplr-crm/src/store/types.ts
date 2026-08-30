@@ -801,12 +801,14 @@ export interface SolarContact {
 export interface SolarProspect {
   id: ID
   campaignId: ID
+  tool: string // which Tool produced this (e.g. 'commercial-solar') — drives the cross-tool database
   company: string
   address: string
   domain?: string
   center?: { lat: number; lng: number }
   category?: string
   distanceM?: number // from the dropped pin
+  roofSegments?: { box: import('../lib/solar').SegBox }[] // roof-plane boxes for the on-image outline
   // Roof + calculation snapshot (denormalised so lists render without recompute).
   systemKwp: number
   panels: number
@@ -833,6 +835,7 @@ export interface SolarProspect {
 export interface SolarCampaign {
   id: ID
   name: string // editable
+  tool?: string // which Tool produced it
   createdAt: number
   // Search parameters (so a campaign can be re-run / understood later).
   industry?: string

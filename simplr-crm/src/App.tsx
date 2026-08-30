@@ -28,7 +28,8 @@ import { Agents } from './pages/Agents'
 import { Prospector } from './pages/Prospector'
 import { LinkedInInbox } from './pages/LinkedInInbox'
 import { ReachOverview, Finders, SolarFinder, Outreach, ReachAnalytics, ReachCampaigns, ReachSchedules, ReachAI } from './pages/reach'
-import { CommercialSolarFinder, SolarPipeline } from './pages/CommercialSolar'
+import { CommercialSolarTool } from './pages/CommercialSolar'
+import { ToolsHub, ProspectsDatabasePage } from './pages/Tools'
 import { DesignStudio } from './pages/DesignStudio'
 import { Proposal } from './pages/Proposal'
 import { StudioOverview, ProposalsList, StudioAnalytics, StudioTemplates } from './pages/studio'
@@ -116,8 +117,10 @@ export const router = createBrowserRouter([
       { path: 'reach', element: <ReachOverview /> },
       { path: 'reach/ai', element: <ReachAI /> },
       { path: 'reach/finders', element: <Finders /> },
-      { path: 'reach/solar', element: <CommercialSolarFinder /> },
-      { path: 'reach/solar/pipeline', element: <SolarPipeline /> },
+      { path: 'tools', element: <ToolsHub /> },
+      { path: 'tools/commercial-solar', element: <CommercialSolarTool /> },
+      { path: 'tools/database', element: <ProspectsDatabasePage /> },
+      { path: 'reach/solar', element: <CommercialSolarTool /> },
       { path: 'reach/people-finder', element: <PeopleFinder /> },
       // TellOvi Studio — design, proposals & analytics
       { path: 'studio', element: <StudioOverview /> },

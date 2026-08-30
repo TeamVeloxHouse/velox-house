@@ -31,8 +31,9 @@ const oviGroups: Group[] = [
 
 const findGroups: Group[] = [
   { label: 'Prospect', items: [
-    { to: '/reach/solar', icon: Sun, label: 'Commercial Solar Finder', feature: 'reach', end: true },
-    { to: '/reach/solar/pipeline', icon: Flow, label: 'Solar pipeline', feature: 'reach' },
+    { to: '/tools', icon: Grid, label: 'Tools', feature: 'reach', end: true },
+    { to: '/tools/commercial-solar', icon: Sun, label: 'Commercial Solar', feature: 'reach' },
+    { to: '/tools/database', icon: Layers, label: 'All prospects', feature: 'reach' },
     { to: '/reach/finders', icon: Radar, label: 'Finders', feature: 'reach' },
     { to: '/reach/people-finder', icon: Person, label: 'People finder', feature: 'reach' },
     { to: '/reach/prospects', icon: Search, label: 'B2B prospects', feature: 'reach' },
@@ -133,7 +134,7 @@ const stageGroups: Record<string, Group[]> = {
 }
 const workspaces = [
   { id: 'ovi', name: 'Ovi', desc: 'Your AI operator', to: '/ai', icon: Sparkle, grad: GRAD, feature: undefined as FeatureKey | undefined },
-  { id: 'find', name: 'Find', desc: 'Prospecting & discovery', to: '/reach/solar', icon: Radar, grad: GRAD, feature: 'reach' as FeatureKey },
+  { id: 'find', name: 'Find', desc: 'Prospecting & discovery', to: '/tools', icon: Radar, grad: GRAD, feature: 'reach' as FeatureKey },
   { id: 'engage', name: 'Engage', desc: 'Outreach & follow-up', to: '/reach/outreach', icon: Send, grad: GRAD, feature: undefined as FeatureKey | undefined },
   { id: 'close', name: 'Close', desc: 'Pipeline & contacts', to: '/deals', icon: Target, grad: GRAD, feature: undefined as FeatureKey | undefined },
   { id: 'deliver', name: 'Deliver', desc: 'Design, install & care', to: '/studio/design', icon: Sun, grad: GRAD, feature: undefined as FeatureKey | undefined },
@@ -143,7 +144,7 @@ const workspaces = [
 // Coarse section-root fallbacks when no nav item is an exact prefix (bare roots, detail pages).
 const rootFallbacks: [string, string][] = [
   ['/reach/outreach', 'engage'], ['/reach/campaigns', 'engage'], ['/reach/email', 'engage'], ['/reach/schedules', 'engage'],
-  ['/reach', 'find'], ['/studio', 'deliver'], ['/delivery', 'deliver'], ['/customers', 'deliver'],
+  ['/tools', 'find'], ['/reach', 'find'], ['/studio', 'deliver'], ['/delivery', 'deliver'], ['/customers', 'deliver'],
   ['/finance', 'business'], ['/operations', 'business'], ['/hr', 'business'], ['/marketing', 'business'],
 ]
 

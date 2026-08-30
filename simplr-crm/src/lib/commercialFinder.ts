@@ -80,7 +80,7 @@ export function industryLabel(key: IndustryKey): string {
 }
 
 /** Engine prospect → persisted store record (denormalised snapshot for lists/kanban). */
-export function prospectToSolar(p: CommercialProspect, campaignId: string): SolarProspect {
+export function prospectToSolar(p: CommercialProspect, campaignId: string, tool = 'commercial-solar'): SolarProspect {
   const d = p.design
   const contacts: SolarContact[] = p.people.map((pl) => ({
     id: rid('sc'), name: pl.name, title: pl.title, email: pl.email, linkedin: pl.linkedin, seniority: undefined, revealed: !!(pl.email || pl.name),
@@ -88,6 +88,8 @@ export function prospectToSolar(p: CommercialProspect, campaignId: string): Sola
   return {
     id: p.id,
     campaignId,
+    tool,
+    roofSegments: d.segments.filter((s) => s.box).map((s) => ({ box: s.box! })),
     company: p.company,
     address: p.address,
     domain: p.domain,
