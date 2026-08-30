@@ -857,6 +857,46 @@ export interface SolarCampaign {
   status: 'draft' | 'scanning' | 'complete'
 }
 
+/* ── Design Studio ──────────────────────────────────────────────────────────
+ * A Design is the spatial PV design that lives on a deal (Find→Engage→Design→Close→Deliver).
+ * Roof planes and obstacles are georeferenced (lat/lng) so panel placement + stringing stay true
+ * to the real roof; later phases fill in panels, strings, inverters and the yield/BOM snapshot. */
+export interface DesignPlane {
+  id: ID
+  name: string
+  polygon: { lat: number; lng: number }[] // the plane outline, editable
+  pitchDeg: number // roof slope, 0 = flat
+  azimuthDeg: number // degrees from north (0 = N, 90 = E, 180 = S, 270 = W)
+  areaM2: number
+  source: 'google' | 'manual'
+}
+export type DesignObstacleKind = 'chimney' | 'skylight' | 'hvac' | 'keepout'
+export interface DesignObstacle {
+  id: ID
+  kind: DesignObstacleKind
+  polygon: { lat: number; lng: number }[]
+}
+export type DesignStatus = 'draft' | 'confirmed'
+export interface Design {
+  id: ID
+  name: string
+  dealId?: ID // the deal this design wins (design attaches to the deal, not the install)
+  prospectId?: ID // the solar prospect it was started from, if any
+  address: string
+  center?: { lat: number; lng: number }
+  status: DesignStatus
+  planes: DesignPlane[]
+  obstacles: DesignObstacle[]
+  moduleWatts: number // chosen module wattage (default 440 W)
+  setbackM: number // fire-code perimeter kept clear of panels
+  // Snapshot — filled in as the panel/electrical/yield phases land.
+  systemKwp?: number
+  panels?: number
+  annualKwh?: number
+  createdAt: number
+  updatedAt: number
+}
+
 export interface State {
   deals: Deal[]
   pipelines: Pipeline[]
@@ -926,6 +966,8 @@ export interface State {
   // Commercial Solar Finder
   solarCampaigns: SolarCampaign[]
   solarProspects: SolarProspect[]
+  // Design Studio
+  designs: Design[]
   toasts: Toast[]
   railExpanded: boolean
 }

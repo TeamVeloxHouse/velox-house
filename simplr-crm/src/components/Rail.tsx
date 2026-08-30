@@ -57,6 +57,16 @@ const engageGroups: Group[] = [
   ] },
 ]
 
+const designGroups: Group[] = [
+  { label: 'Design', items: [
+    { to: '/design', icon: Sun, label: 'Design Studio', feature: 'studio', end: true },
+    { to: '/studio/proposals', icon: Layers, label: 'Proposals', feature: 'studio' },
+    { to: '/studio/pricing', icon: Dollar, label: 'Pricing & finance', feature: 'studio' },
+    { to: '/studio/ev', icon: Bolt, label: 'EV charging', feature: 'studio' },
+    { to: '/studio/brand', icon: File, label: 'Brand & Documents', feature: 'studio' },
+  ] },
+]
+
 const closeGroups: Group[] = [
   { label: 'Pipeline', items: [
     { to: '/deals', icon: Bars, label: 'Deals' },
@@ -71,13 +81,6 @@ const closeGroups: Group[] = [
 ]
 
 const deliverGroups: Group[] = [
-  { label: 'Design & sell', items: [
-    { to: '/studio/design', icon: Sun, label: 'Design Studio', feature: 'studio' },
-    { to: '/studio/proposals', icon: Layers, label: 'Proposals', feature: 'studio' },
-    { to: '/studio/pricing', icon: Dollar, label: 'Pricing & finance', feature: 'studio' },
-    { to: '/studio/ev', icon: Bolt, label: 'EV charging', feature: 'studio' },
-    { to: '/studio/brand', icon: File, label: 'Brand & Documents', feature: 'studio' },
-  ] },
   { label: 'Projects', items: [
     { to: '/projects', icon: Flow, label: 'Projects' },
     { to: '/products', icon: Box, label: 'Products' },
@@ -131,21 +134,22 @@ const GRAD = 'linear-gradient(135deg,#3B6BF5 0%,#7C3AED 100%)'
 const activeFill = 'bg-[#7C3AED]/25'
 
 const stageGroups: Record<string, Group[]> = {
-  ovi: oviGroups, find: findGroups, engage: engageGroups, close: closeGroups, deliver: deliverGroups, business: businessGroups,
+  ovi: oviGroups, find: findGroups, engage: engageGroups, design: designGroups, close: closeGroups, deliver: deliverGroups, business: businessGroups,
 }
 const workspaces = [
   { id: 'ovi', name: 'Ovi', desc: 'Your AI operator', to: '/ai', icon: Sparkle, grad: GRAD, feature: undefined as FeatureKey | undefined },
   { id: 'find', name: 'Find', desc: 'Prospecting & discovery', to: '/tools', icon: Radar, grad: GRAD, feature: 'reach' as FeatureKey },
   { id: 'engage', name: 'Engage', desc: 'Outreach & follow-up', to: '/reach/outreach', icon: Send, grad: GRAD, feature: undefined as FeatureKey | undefined },
+  { id: 'design', name: 'Design', desc: 'Solar design & proposals', to: '/design', icon: Sun, grad: GRAD, feature: undefined as FeatureKey | undefined },
   { id: 'close', name: 'Close', desc: 'Pipeline & contacts', to: '/deals', icon: Target, grad: GRAD, feature: undefined as FeatureKey | undefined },
-  { id: 'deliver', name: 'Deliver', desc: 'Design, install & care', to: '/studio/design', icon: Sun, grad: GRAD, feature: undefined as FeatureKey | undefined },
+  { id: 'deliver', name: 'Deliver', desc: 'Install & customer care', to: '/studio/delivery', icon: Wrench, grad: GRAD, feature: undefined as FeatureKey | undefined },
   { id: 'business', name: 'Business', desc: 'Finance, ops & people', to: '/finance/invoices', icon: Sliders, grad: GRAD, feature: undefined as FeatureKey | undefined },
 ]
 
 // Coarse section-root fallbacks when no nav item is an exact prefix (bare roots, detail pages).
 const rootFallbacks: [string, string][] = [
   ['/reach/outreach', 'engage'], ['/reach/campaigns', 'engage'], ['/reach/email', 'engage'], ['/reach/schedules', 'engage'],
-  ['/tools', 'find'], ['/reach', 'find'], ['/studio', 'deliver'], ['/delivery', 'deliver'], ['/customers', 'deliver'],
+  ['/tools', 'find'], ['/reach', 'find'], ['/design', 'design'], ['/studio', 'design'], ['/delivery', 'deliver'], ['/customers', 'deliver'],
   ['/finance', 'business'], ['/operations', 'business'], ['/hr', 'business'], ['/marketing', 'business'],
 ]
 

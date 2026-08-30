@@ -69,6 +69,9 @@ type Action =
   | { type: 'UPDATE_SOLAR_PROSPECT'; id: ID; patch: Partial<import('./types').SolarProspect> }
   | { type: 'REVEAL_SOLAR_CONTACTS'; id: ID; contacts: import('./types').SolarContact[] }
   | { type: 'REMOVE_SOLAR_PROSPECT'; id: ID }
+  | { type: 'ADD_DESIGN'; design: import('./types').Design }
+  | { type: 'UPDATE_DESIGN'; id: ID; patch: Partial<import('./types').Design> }
+  | { type: 'REMOVE_DESIGN'; id: ID }
   | { type: 'ADD_FIELD'; field: import('./types').CustomField }
   | { type: 'REMOVE_FIELD'; id: ID }
   | { type: 'SET_CUSTOM'; entity: 'deal' | 'person' | 'org'; id: ID; fieldId: ID; value: string }
@@ -323,6 +326,12 @@ function reducer(state: State, action: Action): State {
       return { ...state, solarProspects: state.solarProspects.map((p) => (p.id === action.id ? { ...p, contacts: action.contacts, contactsRevealed: true, updatedAt: Date.now() } : p)) }
     case 'REMOVE_SOLAR_PROSPECT':
       return { ...state, solarProspects: state.solarProspects.filter((p) => p.id !== action.id) }
+    case 'ADD_DESIGN':
+      return { ...state, designs: [action.design, ...state.designs] }
+    case 'UPDATE_DESIGN':
+      return { ...state, designs: state.designs.map((d) => (d.id === action.id ? { ...d, ...action.patch, updatedAt: Date.now() } : d)) }
+    case 'REMOVE_DESIGN':
+      return { ...state, designs: state.designs.filter((d) => d.id !== action.id) }
     case 'ADD_FIELD':
       return { ...state, customFields: [...state.customFields, action.field] }
     case 'REMOVE_FIELD':
@@ -881,6 +890,18 @@ export function useActions() {
       toast(`${contacts.length} contact${contacts.length === 1 ? '' : 's'} revealed`)
     },
     removeSolarProspect: (id: ID) => dispatch({ type: 'REMOVE_SOLAR_PROSPECT', id }),
+
+    // ── Design Studio ─────────────────────────────────────────────────────────
+    createDesign: (partial: Partial<import('./types').Design> & { name: string; address: string }) => {
+      const design: import('./types').Design = {
+        id: uid('dz'), status: 'draft', planes: [], obstacles: [], moduleWatts: 440, setbackM: 0.3,
+        createdAt: Date.now(), updatedAt: Date.now(), ...partial,
+      }
+      dispatch({ type: 'ADD_DESIGN', design }); toast('Design created'); return design
+    },
+    updateDesign: (id: ID, patch: Partial<import('./types').Design>) => dispatch({ type: 'UPDATE_DESIGN', id, patch }),
+    removeDesign: (id: ID) => { dispatch({ type: 'REMOVE_DESIGN', id }); toast('Design deleted', 'warning') },
+
     updateStudioConfig: (patch: Partial<import('./types').StudioConfig>) => dispatch({ type: 'UPDATE_STUDIO_CONFIG', patch }),
     startProject: (project: import('./types').StudioProject) => {
       dispatch({ type: 'ADD_PROJECT', project })

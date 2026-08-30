@@ -30,6 +30,8 @@ import { LinkedInInbox } from './pages/LinkedInInbox'
 import { ReachOverview, Finders, SolarFinder, Outreach, ReachAnalytics, ReachCampaigns, ReachSchedules, ReachAI } from './pages/reach'
 import { CommercialSolarTool } from './pages/CommercialSolar'
 import { CompanySearchTool } from './pages/CompanySearch'
+import { DesignHome } from './pages/DesignHome'
+import { DesignEditor } from './pages/DesignEditor'
 import { ToolsHub, ProspectsDatabasePage } from './pages/Tools'
 import { SolarSiteDetail } from './pages/SolarSite'
 import { DesignStudio } from './pages/DesignStudio'
@@ -126,6 +128,9 @@ export const router = createBrowserRouter([
       { path: 'tools/database', element: <ProspectsDatabasePage /> },
       { path: 'reach/solar', element: <CommercialSolarTool /> },
       { path: 'reach/people-finder', element: <PeopleFinder /> },
+      // Design Studio — its own lifecycle stage (Find→Engage→Design→Close→Deliver)
+      { path: 'design', element: <DesignHome /> },
+      { path: 'design/:id', element: <DesignEditor /> },
       // TellOvi Studio — design, proposals & analytics
       { path: 'studio', element: <StudioOverview /> },
       { path: 'studio/design', element: <DesignStudio /> },
