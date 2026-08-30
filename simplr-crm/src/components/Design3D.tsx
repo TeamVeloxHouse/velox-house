@@ -31,7 +31,7 @@ export function Design3D({ design }: { design: Design }) {
     const scene = new THREE.Scene()
     scene.background = new THREE.Color(0x0b1220)
     const camera = new THREE.PerspectiveCamera(50, W / H, 0.5, 6000)
-    const renderer = new THREE.WebGLRenderer({ antialias: true })
+    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true })
     renderer.setSize(W, H); renderer.setPixelRatio(Math.min(devicePixelRatio, 2))
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap
     el.appendChild(renderer.domElement)
@@ -106,12 +106,14 @@ export function Design3D({ design }: { design: Design }) {
       scene.add(inst)
     }
 
-    // Camera framing
+    // Camera framing — fit the whole roof from a 3/4 aerial angle whatever its size/spread.
     const bx = allPts.map(X), bz = allPts.map((p) => -N(p))
     const cx = (Math.min(...bx) + Math.max(...bx)) / 2, cz = (Math.min(...bz) + Math.max(...bz)) / 2
-    const span = Math.max(Math.max(...bx) - Math.min(...bx), Math.max(...bz) - Math.min(...bz), 30)
+    const span = Math.max(Math.max(...bx) - Math.min(...bx), Math.max(...bz) - Math.min(...bz), 24)
+    const dist = span * 1.4 + 28
     controls.target.set(cx, HGT, cz)
-    camera.position.set(cx + span * 0.7, span * 0.9 + 30, cz + span * 0.9)
+    camera.position.set(cx + dist * 0.62, HGT + dist * 0.85, cz + dist * 0.62)
+    camera.lookAt(cx, HGT, cz)
 
     function placeSun(h: number) {
       // Northern-hemisphere arc: rises east (+x) at 06:00, south (+z) at midday, sets west (−x) at 18:00.
@@ -140,9 +142,13 @@ export function Design3D({ design }: { design: Design }) {
   }, [design.id, design.planes])
 
   const hasGeom = design.planes.some((p) => p.polygon.length >= 3)
+  const hasPanels = design.planes.some((p) => p.panels?.length)
   return (
     <div className="absolute inset-0">
       <div ref={host} className="absolute inset-0" />
+      {hasGeom && !hasPanels && (
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 bg-white/95 backdrop-blur border border-border rounded-full shadow-modal px-4 py-2 text-[12.5px] font-semibold text-ink-2">Roof is in 3D — switch to 2D and hit <b>AI auto-layout</b> to see the panels</div>
+      )}
       {!hasGeom && (
         <div className="absolute inset-0 flex items-center justify-center text-center">
           <div className="bg-surface/95 border border-border rounded-card px-6 py-5 shadow-modal max-w-[340px]">
