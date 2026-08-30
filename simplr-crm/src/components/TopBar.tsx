@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { ChevronRight, Search } from './icons'
 import { NotificationsBell } from './NotificationsBell'
 
@@ -13,8 +14,19 @@ export function TopBar({
   center?: ReactNode
   actions?: ReactNode
 }) {
+  const nav = useNavigate()
+  const loc = useLocation()
+  const canBack = loc.key !== 'default' // false only on a cold-loaded first page
   return (
     <header className="h-[68px] shrink-0 bg-surface border-b border-border flex items-center gap-3.5 px-7">
+      <button
+        onClick={() => (canBack ? nav(-1) : nav('/'))}
+        title="Back"
+        aria-label="Back"
+        className="w-9 h-9 -ml-1 shrink-0 rounded-control border border-border bg-surface flex items-center justify-center text-muted-b hover:text-ink-3 hover:bg-control transition-colors"
+      >
+        <ChevronRight size={17} className="rotate-180" />
+      </button>
       <div className="flex items-center gap-2 min-w-0">
         <h1 className="text-[18px] font-bold text-ink truncate">{title}</h1>
         {crumbs && crumbs.length > 0 && (

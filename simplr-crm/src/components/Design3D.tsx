@@ -9,7 +9,7 @@ type LL = { lat: number; lng: number }
 /** A live 3D model of the design — buildings extruded from the roof footprints, the packed panels on
  *  top, on a satellite-textured ground, with a moveable sun casting shadows. Built entirely from the
  *  design geometry we already have (no extra API); the DSM/photoreal layers slot in later. */
-export function Design3D({ design }: { design: Design }) {
+export function Design3D({ design, onCapture }: { design: Design; onCapture?: () => void }) {
   const host = useRef<HTMLDivElement>(null)
   const sunHour = useRef(13)
   const [hour, setHour] = useState(13)
@@ -151,9 +151,10 @@ export function Design3D({ design }: { design: Design }) {
       )}
       {!hasGeom && (
         <div className="absolute inset-0 flex items-center justify-center text-center">
-          <div className="bg-surface/95 border border-border rounded-card px-6 py-5 shadow-modal max-w-[340px]">
-            <div className="text-[15px] font-bold text-ink">Nothing to show in 3D yet</div>
-            <div className="text-[12.5px] text-muted-b mt-1">Detect or draw a roof plane in 2D, then switch back here to see it in 3D.</div>
+          <div className="bg-surface/95 border border-border rounded-card px-6 py-5 shadow-modal max-w-[340px] pointer-events-auto">
+            <div className="text-[15px] font-bold text-ink">No roof captured yet</div>
+            <div className="text-[12.5px] text-muted-b mt-1">3D builds from the roof — capture one first. On big buildings Google often misses, so drawing it by hand is the sure way.</div>
+            {onCapture && <button onClick={onCapture} className="mt-3 h-9 px-4 rounded-control text-white text-[13px] font-semibold inline-flex items-center gap-2" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}>Capture the roof →</button>}
           </div>
         </div>
       )}

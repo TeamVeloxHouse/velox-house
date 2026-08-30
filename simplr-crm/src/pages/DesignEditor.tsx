@@ -199,7 +199,7 @@ export function DesignEditor() {
         {/* Canvas */}
         <div className="relative flex-1 min-h-0 rounded-card overflow-hidden border border-border">
           <div ref={mapEl} className="absolute inset-0" style={{ background: '#0b1220' }} />
-          {view === '3d' && <Design3D design={design} />}
+          {view === '3d' && <Design3D design={design} onCapture={() => { setView('2d'); setTimeout(() => { if (!drawing) toggleDraw() }, 80) }} />}
           {/* Draw toolbar (2D only) */}
           {view === '2d' && (
             <div className="absolute top-3 left-3 z-[500] flex items-center gap-1.5 bg-white/95 backdrop-blur border border-border rounded-control shadow-modal p-1">
