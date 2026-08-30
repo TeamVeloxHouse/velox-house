@@ -75,6 +75,59 @@ export function parseBrief(text: string): ParsedBrief {
 export function normaliseIndustry(text?: string): IndustryKey {
   return classifyIndustry(text)
 }
+
+// ── Intelligent brief interpretation (real LLM, with the regex parser as fallback) ──
+export type FinderPlan = {
+  mode?: 'radius' | 'bulk' | 'single'
+  action?: 'run' | 'clarify'
+  specificCompany?: string | null
+  industries?: string[]
+  locations?: string[]
+  targetKwp?: number
+  count?: number
+  jobTitles?: string[]
+  radiusKm?: number
+  missing?: string[]
+}
+
+const SYSTEM = `You are Ovi, an AI prospecting operator for a UK commercial-solar sales team. The user tells you who they want to find. Turn their request into a plan — DO NOT invent details they didn't give.
+
+Modes:
+- "radius": scan every business within a radius of a place (needs a location + radius km).
+- "bulk": sweep a whole area/region by industry (needs a location/area).
+- "single": ONE specific building or named company (set specificCompany, e.g. "Valeo Foods").
+
+Reply with (1) ONE short, natural sentence reflecting what THEY actually asked — never restate defaults they didn't mention — then (2) a fenced json block:
+\`\`\`json
+{"mode":"radius|bulk|single","action":"run|clarify","specificCompany":null|"name","industries":[],"locations":[],"targetKwp":250,"count":20,"jobTitles":[],"radiusKm":5,"missing":[]}
+\`\`\`
+Rules: only fill fields you can infer from the message or current params; leave the rest as current. If they named a specific company, mode="single", set specificCompany, action="run". Set action="run" only when you have enough to start (single: a company/address; radius: a location; bulk: an area); otherwise action="clarify" and list what's "missing".`
+
+/** Interpret a free-text brief with the LLM → a natural reply + a structured plan. Falls back to regex. */
+export async function interpretBrief(text: string, current: Record<string, unknown>): Promise<{ reply: string; plan: FinderPlan; llm: boolean }> {
+  try {
+    const r = await fetch('/api/ovi', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ system: `${SYSTEM}\n\nCurrent params: ${JSON.stringify(current)}`, messages: [{ role: 'user', content: text }] }),
+    })
+    const j = await r.json()
+    const blocks = j?.content
+    if (Array.isArray(blocks)) {
+      const out = blocks.filter((b: { type: string }) => b.type === 'text').map((b: { text: string }) => b.text).join('\n')
+      const m = out.match(/```json\s*([\s\S]*?)```/)
+      const plan: FinderPlan = m ? JSON.parse(m[1]) : {}
+      const reply = out.replace(/```json[\s\S]*?```/g, '').trim()
+      return { reply: reply || 'On it.', plan, llm: true }
+    }
+  } catch { /* no key / offline — fall back */ }
+  const b = parseBrief(text)
+  const plan: FinderPlan = {
+    industries: b.industry ? [b.industry] : undefined, locations: b.location ? [b.location] : undefined,
+    targetKwp: b.targetKwp, count: b.count, jobTitles: b.jobTitles, radiusKm: b.radiusKm,
+    action: b.location ? 'run' : 'clarify',
+  }
+  return { reply: '', plan, llm: false }
+}
 export function industryLabel(key: IndustryKey): string {
   return INDUSTRY_ENERGY[key].label
 }

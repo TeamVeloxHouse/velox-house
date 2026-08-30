@@ -9,7 +9,7 @@ import { MultiSelect, Stepper, AddressAutocomplete } from '../components/inputs'
 import { useActions, useState_ } from '../store/store'
 import { money, classNames } from '../lib/format'
 import { runCommercialSolarEngine, type CommercialProspect, type EngineProgress, type CommercialCriteria } from '../lib/commercialSolar'
-import { parseBrief, geocodeLocation, prospectToSolar, revealContactsFor, type ParsedBrief } from '../lib/commercialFinder'
+import { interpretBrief, geocodeLocation, prospectToSolar, revealContactsFor, type FinderPlan } from '../lib/commercialFinder'
 import type { SolarProspect, SolarProspectStatus } from '../store/types'
 import { SOLAR_STATUSES } from '../store/types'
 import { RoofOverlay } from '../components/RoofOverlay'
@@ -63,42 +63,54 @@ export function CommercialSolarTool() {
   const detail = detailId ? solarProspects.find((p) => p.id === detailId) ?? null : null
 
   const set = (patch: Partial<Params>) => setParams((p) => ({ ...p, ...patch }))
-  function applyBrief(b: ParsedBrief): Params {
-    const next: Params = { ...params }
-    if (b.industry) next.industries = [b.industry]; if (b.location) next.locations = [b.location]
-    if (b.radiusKm) next.radiusKm = b.radiusKm; if (b.targetKwp) next.targetKwp = b.targetKwp
-    if (b.count) next.count = b.count; if (b.jobTitles?.length) next.jobTitles = b.jobTitles
-    setParams(next); return next
+  function applyPlan(plan: FinderPlan): { P: Params; M: Mode } {
+    const M: Mode = plan.mode ?? mode
+    const P: Params = { ...params }
+    if (plan.industries?.length) P.industries = plan.industries
+    if (plan.locations?.length) P.locations = plan.locations
+    if (plan.radiusKm) P.radiusKm = plan.radiusKm
+    if (plan.targetKwp) P.targetKwp = plan.targetKwp
+    if (plan.count) P.count = plan.count
+    if (plan.jobTitles?.length) P.jobTitles = plan.jobTitles
+    if (plan.specificCompany) { P.singleAddress = plan.specificCompany; P.singlePin = undefined }
+    setParams(P); setMode(M)
+    return { P, M }
   }
-  function sendChat(text: string) {
-    const t = text.trim(); if (!t) return
-    setDraft(''); setChat((c) => [...c, { role: 'you', text: t }])
-    const next = applyBrief(parseBrief(t))
-    const where = next.locations.join(', ')
-    const needsLoc = !where
-    const summary = `Got it — ${next.count} ${next.industries.join(' / ')}${where ? (mode === 'radius' ? ` within ${next.radiusKm} km of ${where}` : ` in ${where}`) : ''}, targeting ~${next.targetKwp} kWp roofs${next.jobTitles.length ? `, decision-makers: ${next.jobTitles.join(', ')}` : ''}.`
-    setChat((c) => [...c, { role: 'ovi', text: summary + (needsLoc ? ' Where should I look? Give me a town, postcode, or area.' : ' Hit **Run scan** and I’ll get to work.') }])
+  async function sendChat(text: string) {
+    const t = text.trim(); if (!t || running) return
+    setDraft(''); setChat((c) => [...c, { role: 'you', text: t }, { role: 'ovi', text: '…' }])
+    setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 30)
+    const { reply, plan, llm } = await interpretBrief(t, { ...params, mode })
+    const { P, M } = applyPlan(plan)
+    let ovi = reply
+    if (!llm) {
+      const where = P.locations.join(', ') || P.singleAddress
+      ovi = `Got it — ${P.count} ${P.industries.join(' / ')}${where ? (M === 'single' ? ` · ${P.singleAddress}` : M === 'radius' ? ` within ${P.radiusKm} km of ${where}` : ` in ${where}`) : ''}.` + (where ? ' Hit **Run scan** and I’ll get to work.' : ' Where should I look — a town, postcode or area?')
+    }
+    setChat((c) => [...c.slice(0, -1), { role: 'ovi', text: ovi || 'On it.' }])
     setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+    if (plan.action === 'run') launch(P, M)
   }
 
-  async function runScan() {
+  const runScan = () => launch(params, mode)
+  async function launch(P: Params, M: Mode) {
     if (running) return
-    const industry = params.industries.join(', ') || undefined
+    const industry = P.industries.join(', ') || undefined
     const targets: { area?: string; pin?: { lat: number; lng: number }; label: string }[] = []
-    if (mode === 'single') {
-      if (!params.singleAddress) { act.toast('Pick an address', 'warning'); return }
-      setRunning(true); setProgress({ stage: 'discover', message: `Locating ${params.singleAddress}…` })
-      const pin = params.singlePin || (await geocodeLocation(params.singleAddress).then((g) => g && { lat: g.lat, lng: g.lng }))
+    if (M === 'single') {
+      if (!P.singleAddress) { act.toast('Pick an address', 'warning'); return }
+      setRunning(true); setProgress({ stage: 'discover', message: `Locating ${P.singleAddress}…` })
+      const pin = P.singlePin || (await geocodeLocation(P.singleAddress).then((g) => g && { lat: g.lat, lng: g.lng }))
       if (!pin) { act.toast('Could not find that address', 'warning'); setRunning(false); return }
-      targets.push({ pin, label: params.singleAddress })
-    } else if (mode === 'bulk') {
-      if (!params.locations.length) { act.toast('Add at least one area', 'warning'); return }
+      targets.push({ pin, label: P.singleAddress })
+    } else if (M === 'bulk') {
+      if (!P.locations.length) { act.toast('Add at least one area', 'warning'); return }
       setRunning(true)
-      params.locations.forEach((a) => targets.push({ area: a, label: a }))
+      P.locations.forEach((a) => targets.push({ area: a, label: a }))
     } else {
-      if (!params.locations.length) { act.toast('Add at least one location', 'warning'); return }
+      if (!P.locations.length) { act.toast('Add at least one location', 'warning'); return }
       setRunning(true)
-      for (const loc of params.locations) {
+      for (const loc of P.locations) {
         setProgress({ stage: 'discover', message: `Locating ${loc}…` })
         const g = await geocodeLocation(loc)
         if (g) targets.push({ pin: { lat: g.lat, lng: g.lng }, label: loc })
@@ -107,20 +119,20 @@ export function CommercialSolarTool() {
     }
 
     const campaign = act.createSolarCampaign({
-      name: campaignName(mode, params), tool: TOOL, industry,
-      area: mode === 'bulk' ? params.locations.join(', ') : undefined, pin: targets[0]?.pin,
-      radiusM: mode === 'radius' ? params.radiusKm * 1000 : mode === 'single' ? 250 : undefined,
-      targetKwp: params.targetKwp, jobTitles: params.jobTitles, count: mode === 'single' ? 1 : params.count, status: 'scanning',
+      name: campaignName(M, P), tool: TOOL, industry,
+      area: M === 'bulk' ? P.locations.join(', ') : undefined, pin: targets[0]?.pin,
+      radiusM: M === 'radius' ? P.radiusKm * 1000 : M === 'single' ? 250 : undefined,
+      targetKwp: P.targetKwp, jobTitles: P.jobTitles, count: M === 'single' ? 1 : P.count, status: 'scanning',
     })
     setCampaignId(campaign.id)
 
     let first = true; let n = 0; let scannedTotal = 0
-    const per = mode === 'single' ? 1 : Math.max(1, Math.ceil(params.count / targets.length))
+    const per = M === 'single' ? 1 : Math.max(1, Math.ceil(P.count / targets.length))
     for (const tgt of targets) {
       const criteria: CommercialCriteria = {
         industry, area: tgt.area, pin: tgt.pin,
-        radiusM: mode === 'radius' ? params.radiusKm * 1000 : mode === 'single' ? 250 : undefined,
-        targetKwp: params.targetKwp, jobTitles: params.jobTitles, count: per, skipPeople: true,
+        radiusM: M === 'radius' ? P.radiusKm * 1000 : M === 'single' ? 250 : undefined,
+        targetKwp: P.targetKwp, jobTitles: P.jobTitles, count: per, skipPeople: true,
       }
       const { scanned } = await runCommercialSolarEngine(criteria, (p) => setProgress({ ...p, message: targets.length > 1 ? `${tgt.label}: ${p.message}` : p.message }), (prospect: CommercialProspect) => {
         act.addSolarProspects([prospectToSolar(prospect, campaign.id, TOOL)]); n++
