@@ -325,7 +325,7 @@ export function BigRoofCard({ p, onOpen }: { p: SolarProspect; onOpen: () => voi
   const act = useActions()
   return (
     <div className="rounded-card bg-surface border border-border overflow-hidden flex flex-col hover:shadow-modal transition-shadow cursor-pointer group" onClick={onOpen}>
-      <div className="relative aspect-[16/9] bg-control overflow-hidden">
+      <div className="relative aspect-[14/9] bg-control overflow-hidden">
         {p.imageUrl && <img src={p.imageUrl} alt="" className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300" />}
         <RoofOverlay center={p.center} segments={p.roofSegments} zoom={p.roofZoom} />
         <span className="absolute top-2.5 left-2.5 text-[12px] font-bold text-white px-2.5 py-1 rounded-full shadow" style={{ background: scoreTone(p.score) }}>{p.score}</span>
@@ -467,7 +467,7 @@ export function ProspectDetail({ p, onClose, jobTitles }: { p: SolarProspect; on
   return (
     <div className="fixed inset-0 z-[70] bg-black/50 flex items-center justify-center p-6" onClick={onClose}>
       <div className="bg-surface rounded-overlay shadow-modal w-full max-w-[920px] max-h-[88vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
-        <div className="relative h-[240px] bg-control shrink-0">
+        <div className="relative aspect-[5/2] bg-control shrink-0">
           {p.imageUrl && <img src={p.imageUrl.replace('560x360', '900x360')} alt="" className="w-full h-full object-cover" />}
           <RoofOverlay center={p.center} segments={p.roofSegments} zoom={p.roofZoom} w={900} h={360} />
           <button onClick={onClose} className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70">✕</button>

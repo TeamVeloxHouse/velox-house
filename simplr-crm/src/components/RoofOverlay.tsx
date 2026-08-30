@@ -46,14 +46,18 @@ export function RoofOverlay({
 
   if (!polys.length) return null
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="xMidYMid slice" className={className} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
+    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="xMidYMid meet" className={className} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
       <defs>
-        <filter id="roofGlow" x="-20%" y="-20%" width="140%" height="140%">
-          <feDropShadow dx="0" dy="0" stdDeviation="2.2" floodColor="#22D3EE" floodOpacity="0.9" />
+        <filter id="roofGlow" x="-30%" y="-30%" width="160%" height="160%">
+          <feDropShadow dx="0" dy="0" stdDeviation="3" floodColor="#00E5FF" floodOpacity="1" />
         </filter>
       </defs>
+      {/* dark under-stroke for contrast on bright roofs, then the bright cyan outline + fill */}
       {polys.map((pts, i) => (
-        <polygon key={i} points={pts} fill="rgba(34,211,238,0.20)" stroke="#22D3EE" strokeWidth={2} strokeLinejoin="round" filter="url(#roofGlow)" />
+        <polygon key={`u${i}`} points={pts} fill="none" stroke="#0A1B2B" strokeWidth={5} strokeLinejoin="round" vectorEffect="non-scaling-stroke" opacity={0.5} />
+      ))}
+      {polys.map((pts, i) => (
+        <polygon key={i} points={pts} fill="#22E0FF" fillOpacity={0.22} stroke="#00E5FF" strokeWidth={3} strokeLinejoin="round" vectorEffect="non-scaling-stroke" filter="url(#roofGlow)" />
       ))}
     </svg>
   )

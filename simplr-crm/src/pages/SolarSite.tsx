@@ -63,7 +63,7 @@ export function SolarSiteDetail() {
       <PageBody>
         <div className="grid grid-cols-[1.15fr_1fr] gap-5">
           {/* roof image */}
-          <div className="rounded-card overflow-hidden border border-border relative bg-control" style={{ minHeight: 300 }}>
+          <div className="rounded-card overflow-hidden border border-border relative bg-control aspect-[15/7]">
             {img && <img src={img} alt="" className="w-full h-full object-cover absolute inset-0" />}
             <RoofOverlay center={p.center} segments={p.roofSegments} zoom={p.roofZoom} w={900} h={420} />
             <div className="absolute top-3 left-3 flex gap-2">
