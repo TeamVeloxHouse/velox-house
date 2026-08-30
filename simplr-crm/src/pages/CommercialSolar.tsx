@@ -9,7 +9,7 @@ import { MultiSelect, Stepper, AddressAutocomplete } from '../components/inputs'
 import { useActions, useState_ } from '../store/store'
 import { money, classNames } from '../lib/format'
 import { runCommercialSolarEngine, measureRoof, type CommercialProspect, type EngineProgress, type CommercialCriteria } from '../lib/commercialSolar'
-import { interpretBrief, geocodeLocation, prospectToSolar, revealContactsFor, type FinderPlan } from '../lib/commercialFinder'
+import { interpretBrief, geocodeLocation, prospectToSolar, revealContactsFor, SECTOR_SUGGESTIONS, type FinderPlan } from '../lib/commercialFinder'
 import type { SolarProspect, SolarProspectStatus } from '../store/types'
 import { SOLAR_STATUSES } from '../store/types'
 import { RoofOverlay } from '../components/RoofOverlay'
@@ -22,7 +22,6 @@ type ChatMsg = { role: 'ovi' | 'you'; text: string }
 
 const DEFAULT_PARAMS: Params = { industries: ['warehouses'], targetKwp: 250, locations: [], radiusKm: 5, count: 20, jobTitles: ['Managing Director', 'Facilities Manager'], singleAddress: '' }
 const MODE_LABELS: Record<Mode, string> = { radius: 'Radius (pin)', bulk: 'Bulk (area)', single: 'Single site' }
-const INDUSTRY_SUGGESTIONS = ['warehouses', 'manufacturing', 'cold storage', 'distribution centres', 'industrial units', 'factories', 'logistics', 'offices', 'retail parks', 'supermarkets', 'car dealerships', 'hotels', 'data centres', 'food production', 'self storage']
 const TITLE_SUGGESTIONS = ['Managing Director', 'Facilities Manager', 'Operations Director', 'CEO', 'Owner', 'Finance Director', 'Energy Manager', 'Sustainability Manager', 'Estates Manager', 'Property Director', 'Head of Operations', 'Procurement Manager', 'General Manager']
 const placeSuggest = async (q: string) => { try { const r = await fetch('/api/autocomplete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ input: q }) }); const j = await r.json(); return (j.suggestions || []).map((s: { text: string }) => s.text) } catch { return [] } }
 const STARTERS = [
@@ -263,8 +262,8 @@ function ParamsPanel({ mode, params, set }: { mode: Mode; params: Params; set: (
             placeholder={mode === 'bulk' ? 'e.g. West Midlands, Birmingham…' : 'e.g. Wolverhampton, Walsall…'} />
         </Field>
       )}
-      <Field label="Industries" full>
-        <MultiSelect values={params.industries} onChange={(v) => set({ industries: v })} suggestions={INDUSTRY_SUGGESTIONS} icon={Building} placeholder="warehouses, manufacturing…" />
+      <Field label="Sectors" full>
+        <MultiSelect values={params.industries} onChange={(v) => set({ industries: v })} suggestions={SECTOR_SUGGESTIONS} icon={Building} placeholder="manufacturing, food production, logistics…" />
       </Field>
       <Field label="Target roof size"><Stepper value={params.targetKwp} onChange={(v) => set({ targetKwp: v })} min={20} max={2000} step={25} suffix="kWp" /></Field>
       {mode === 'radius' ? (

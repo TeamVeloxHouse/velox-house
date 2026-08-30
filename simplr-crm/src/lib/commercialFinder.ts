@@ -76,6 +76,18 @@ export function normaliseIndustry(text?: string): IndustryKey {
   return classifyIndustry(text)
 }
 
+/** Sectors worth targeting for commercial rooftop solar — big, power-hungry roofs. Real sectors
+ *  and site activities (not building shapes); any free text also works, this is just the typeahead. */
+export const SECTOR_SUGGESTIONS = [
+  'Manufacturing', 'Food & drink production', 'Cold storage', 'Logistics & distribution', 'Warehousing',
+  'Wholesale & trade', 'Engineering', 'Automotive', 'Aerospace', 'Pharmaceuticals', 'Chemicals',
+  'Plastics & polymers', 'Packaging', 'Printing', 'Textiles & clothing', 'Building materials',
+  'Metal fabrication', 'Electronics', 'Furniture', 'Paper & board', 'Recycling & waste',
+  'Agriculture & farming', 'Horticulture & nurseries', 'Breweries & distilleries', 'Self storage',
+  'Data centres', 'Supermarkets', 'Retail parks', 'Car dealerships', 'Garden centres',
+  'Leisure centres', 'Hotels', 'Hospitals & healthcare', 'Schools & colleges', 'Quarrying & minerals',
+]
+
 // ── Intelligent brief interpretation (real LLM, with the regex parser as fallback) ──
 export type FinderPlan = {
   mode?: 'radius' | 'bulk' | 'single'

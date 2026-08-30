@@ -4,12 +4,13 @@ import { TopBar } from '../components/TopBar'
 import { PageBody } from '../components/Page'
 import { Button, Segmented, Kpi } from '../components/ui'
 import { PillTabs } from '../components/chrome'
-import { Radar, Send, Sparkle, Person, Search, Building, Flow, Layers, Sun, Target, Check, Envelope } from '../components/icons'
+import { Radar, Send, Sparkle, Person, Search, Building, Flow, Layers, Sun, Target, Check, Envelope, MapPin } from '../components/icons'
+import { MapExplorer } from '../components/MapExplorer'
 import { MultiSelect, Stepper, AddressAutocomplete } from '../components/inputs'
 import { useActions, useState_ } from '../store/store'
 import { money, classNames } from '../lib/format'
 import { runCompanySearch, type CompanyResult, type CommercialCriteria, type EngineProgress } from '../lib/commercialSolar'
-import { interpretBrief, geocodeLocation, companyToProspect, revealContactsFor, type FinderPlan } from '../lib/commercialFinder'
+import { interpretBrief, geocodeLocation, companyToProspect, revealContactsFor, SECTOR_SUGGESTIONS, type FinderPlan } from '../lib/commercialFinder'
 import type { SolarProspect, SolarProspectStatus } from '../store/types'
 import { SOLAR_STATUSES } from '../store/types'
 import { RoofOverlay } from '../components/RoofOverlay'
@@ -23,7 +24,6 @@ type ChatMsg = { role: 'ovi' | 'you'; text: string }
 
 const DEFAULT_PARAMS: Params = { industries: [], locations: [], radiusKm: 5, count: 24, jobTitles: ['Managing Director', 'Operations Director'], singleAddress: '' }
 const MODE_LABELS: Record<Mode, string> = { radius: 'Radius (pin)', bulk: 'Bulk (area)', single: 'Single company' }
-const INDUSTRY_SUGGESTIONS = ['manufacturing', 'warehouses', 'distribution', 'cold storage', 'logistics', 'food production', 'engineering', 'wholesale', 'construction', 'automotive', 'plastics', 'packaging', 'recycling', 'print']
 const TITLE_SUGGESTIONS = ['Managing Director', 'Operations Director', 'CEO', 'Owner', 'Finance Director', 'Facilities Manager', 'Energy Manager', 'Sustainability Manager', 'Procurement Manager', 'General Manager', 'Head of Operations', 'Estates Manager']
 const placeSuggest = async (q: string) => { try { const r = await fetch('/api/autocomplete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ input: q }) }); const j = await r.json(); return (j.suggestions || []).map((s: { text: string }) => s.text) } catch { return [] } }
 const STARTERS = [
@@ -138,6 +138,7 @@ export function CompanySearchTool() {
 
   const tabs = [
     { id: 'chat', label: 'Chat', icon: Sparkle },
+    { id: 'map', label: 'Map view', icon: MapPin },
     { id: 'companies', label: `Companies${currentProspects.length ? ` (${currentProspects.length})` : ''}`, icon: Building },
     { id: 'pipeline', label: 'Pipeline', icon: Flow },
     { id: 'database', label: 'Database', icon: Layers },
@@ -150,6 +151,7 @@ export function CompanySearchTool() {
         actions={<Button variant="secondary" icon={<Radar size={15} />} onClick={() => nav('/tools')}>All tools</Button>} />
       <PageBody>
         {tab === 'chat' && <ChatTab {...{ mode, setMode, params, set, chat, draft, setDraft, sendChat, running, progress, runSearch, chatEndRef }} />}
+        {tab === 'map' && <MapExplorer onOpenProspect={setDetailId} />}
         {tab === 'companies' && (
           <CompaniesTab prospects={currentProspects} running={running} progress={progress}
             campaigns={toolCampaigns} campaignId={campaignId} setCampaignId={setCampaignId} onOpen={setDetailId} jobTitles={params.jobTitles} />
@@ -251,8 +253,8 @@ function ParamsPanel({ mode, params, set }: { mode: Mode; params: Params; set: (
             placeholder={mode === 'bulk' ? 'e.g. West Midlands, Birmingham…' : 'e.g. Manchester, Leeds…'} />
         </Field>
       )}
-      <Field label="Industries" full>
-        <MultiSelect values={params.industries} onChange={(v) => set({ industries: v })} suggestions={INDUSTRY_SUGGESTIONS} icon={Building} placeholder="manufacturing, warehouses…" />
+      <Field label="Sectors" full>
+        <MultiSelect values={params.industries} onChange={(v) => set({ industries: v })} suggestions={SECTOR_SUGGESTIONS} icon={Building} placeholder="manufacturing, food production, logistics…" />
       </Field>
       {mode === 'radius' ? (
         <Field label="Search radius"><Stepper value={params.radiusKm} onChange={(v) => set({ radiusKm: v })} min={0.5} max={25} step={0.5} suffix="km" format={(n) => n.toString()} /></Field>

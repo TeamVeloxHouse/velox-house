@@ -318,7 +318,9 @@ function ringAreaish(poly: LatLng[]): number {
 
 /** Real building outline at a point, from OSM. Returns the polygon (lat/lng ring) or null. */
 export async function fetchBuildingFootprint(center: LatLng): Promise<LatLng[] | null> {
-  const q = `[out:json][timeout:12];way(around:40,${center.lat},${center.lng})["building"];out geom;`
+  // 150 m radius: a big shed's centroid can be ~75 m from its walls, so a tight radius misses it.
+  // We then pick the polygon that CONTAINS the point, so a wide net never grabs a neighbour by mistake.
+  const q = `[out:json][timeout:12];way(around:150,${center.lat},${center.lng})["building"];out geom;`
   for (const url of OVERPASS) {
     try {
       const ctrl = new AbortController()
@@ -331,9 +333,12 @@ export async function fetchBuildingFootprint(center: LatLng): Promise<LatLng[] |
         .filter((e: { type: string; geometry?: unknown[] }) => e.type === 'way' && Array.isArray(e.geometry) && e.geometry.length >= 4)
         .map((e: { geometry: { lat: number; lon: number }[] }) => e.geometry.map((g) => ({ lat: g.lat, lng: g.lon })))
       if (!ways.length) return null
-      // Prefer the building the point sits inside; otherwise the largest nearby footprint (the main shed).
-      const containing = ways.filter((w) => ringContains(w, center))
-      const pick = (containing.length ? containing : ways).sort((a, b) => ringAreaish(b) - ringAreaish(a))[0]
+      // Prefer the building the point sits INSIDE (biggest such, in case of nested rings); if the pin
+      // landed just off the roof, fall back to the nearest footprint by centroid — not the largest,
+      // which in a dense estate could be an unrelated neighbour.
+      const containing = ways.filter((w) => ringContains(w, center)).sort((a, b) => ringAreaish(b) - ringAreaish(a))
+      const centroidDist = (w: LatLng[]) => { const c = w.reduce((a, p) => ({ lat: a.lat + p.lat / w.length, lng: a.lng + p.lng / w.length }), { lat: 0, lng: 0 }); return (c.lat - center.lat) ** 2 + (c.lng - center.lng) ** 2 }
+      const pick = containing[0] ?? [...ways].sort((a, b) => centroidDist(a) - centroidDist(b))[0]
       return pick.length > 60 ? pick.filter((_, i) => i % 2 === 0) : pick
     } catch { /* try next endpoint */ }
   }
