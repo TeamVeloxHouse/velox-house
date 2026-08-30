@@ -861,6 +861,11 @@ export interface SolarCampaign {
  * A Design is the spatial PV design that lives on a deal (Find→Engage→Design→Close→Deliver).
  * Roof planes and obstacles are georeferenced (lat/lng) so panel placement + stringing stay true
  * to the real roof; later phases fill in panels, strings, inverters and the yield/BOM snapshot. */
+export type PanelOrientation = 'portrait' | 'landscape'
+export interface DesignPanel {
+  id: ID
+  corners: { lat: number; lng: number }[] // the panel rectangle on the roof (4 geo corners)
+}
 export interface DesignPlane {
   id: ID
   name: string
@@ -869,6 +874,9 @@ export interface DesignPlane {
   azimuthDeg: number // degrees from north (0 = N, 90 = E, 180 = S, 270 = W)
   areaM2: number
   source: 'google' | 'manual'
+  moduleId?: string // which module fills this plane (defaults to the design's module)
+  orientation?: PanelOrientation
+  panels?: DesignPanel[] // the laid-out array (Phase 2)
 }
 export type DesignObstacleKind = 'chimney' | 'skylight' | 'hvac' | 'keepout'
 export interface DesignObstacle {
