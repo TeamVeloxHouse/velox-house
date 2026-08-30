@@ -191,6 +191,61 @@ function postcodeOf(address: string): string | undefined {
   return m ? m[1].toUpperCase() : undefined
 }
 
+// ── Company & People Search — discovery only (no roof/PDL during the scan) ───
+export type CompanyResult = {
+  id: string; name: string; address: string; domain?: string; center?: LatLng; category?: string
+  distanceM?: number; score: number; reasons: string[]
+}
+
+function scoreCompany(b: DiscoveredBuilding, industry?: string): { score: number; reasons: string[] } {
+  const reasons: string[] = []
+  let score = 45
+  if (b.domain) { score += 18; reasons.push('Website found — reachable + enrichable') }
+  if (industry && b.category && b.category.toLowerCase().includes(industry.toLowerCase().split(' ')[0])) { score += 12; reasons.push(`Category matches ${industry}`) }
+  else if (b.category) { score += 4; reasons.push(b.category) }
+  if (b.distanceM != null) reasons.push(`${(b.distanceM / 1000).toFixed(1)} km from your pin`)
+  return { score: Math.max(35, Math.min(96, score)), reasons }
+}
+
+/** Find companies (by area/industry or pin/radius) — fast, no roof or PDL spend. */
+export async function runCompanySearch(
+  c: CommercialCriteria,
+  onProgress?: (p: EngineProgress) => void,
+  onCompany?: (co: CompanyResult) => void,
+): Promise<{ companies: CompanyResult[]; scanned: number; live: boolean }> {
+  const want = c.count ?? 30
+  const where = c.pin ? `within ${((c.radiusM ?? 3000) / 1000).toFixed(1)} km of the pin` : `in ${c.area}`
+  onProgress?.({ stage: 'discover', message: `Searching ${c.industry || 'companies'} ${where}…` })
+  const buildings = await discoverBuildings(c, want)
+  const companies: CompanyResult[] = []
+  buildings.forEach((b, i) => {
+    const { score, reasons } = scoreCompany(b, c.industry)
+    const co: CompanyResult = { id: `co-${i}-${(b.domain || b.name).replace(/[^a-z0-9]/gi, '').slice(0, 10)}`, name: b.name, address: b.address, domain: b.domain, center: b.center, category: b.category, distanceM: b.distanceM, score, reasons }
+    companies.push(co); onCompany?.(co)
+  })
+  companies.sort((a, b) => b.score - a.score)
+  onProgress?.({ stage: 'done', message: `${companies.length} companies found`, found: companies.length, scanned: buildings.length, total: buildings.length })
+  return { companies, scanned: buildings.length, live: buildings.length > 0 }
+}
+
+/** Measure one company's roof on demand → a patch of full solar economics for its prospect record. */
+export async function measureRoof(address: string, center: LatLng | undefined, industry?: string): Promise<Partial<import('../store/types').SolarProspect>> {
+  const analysis = await analyseRoofLive(address, center)
+  const calc = computeCommercial(analysis, { industry: classifyIndustry(industry), objective: 'payback' })
+  const r = calc.recommended
+  const frame = roofFrame(analysis)
+  const c = analysis.segments.some((s) => s.box) ? frame.center : (analysis.center || center)
+  return {
+    roofPending: false, roofMeasured: analysis.source === 'google',
+    systemKwp: Math.round(r.kwp * 10) / 10, roofMaxKwp: Math.round(calc.maxKwp), roofAreaM2: Math.round(analysis.usableArea),
+    panels: r.panels, annualGenKwh: r.annualGenKwh, year1Saving: Math.round(r.year1Saving), lifetimeSaving: Math.round(r.lifetimeSaving),
+    paybackYears: Math.round(r.paybackYears * 10) / 10, npv: Math.round(r.npv), co2PerYearTonnes: Math.round(r.co2PerYearTonnes * 10) / 10,
+    selfConsumptionPct: r.selfConsumptionPct, demandOffsetPct: r.demandOffsetPct, calc,
+    center: c, imageUrl: c ? roofImageUrl(c, frame.zoom) : undefined, roofZoom: frame.zoom,
+    roofSegments: analysis.segments.filter((s) => s.box).map((s) => ({ box: s.box! })),
+  }
+}
+
 // ── The engine ────────────────────────────────────────────────────────────────
 export async function runCommercialSolarEngine(
   c: CommercialCriteria,

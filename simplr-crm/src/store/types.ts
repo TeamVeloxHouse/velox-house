@@ -824,6 +824,7 @@ export interface SolarProspect {
   selfConsumptionPct?: number
   demandOffsetPct?: number
   roofMeasured: boolean // true = real Google Solar
+  roofPending?: boolean // company found but roof not yet measured (Company & People Search)
   imageUrl?: string
   roofZoom?: number // zoom used for the tile (so the overlay matches)
   epcRating?: string | null

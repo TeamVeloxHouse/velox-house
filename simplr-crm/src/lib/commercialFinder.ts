@@ -6,7 +6,7 @@
  */
 
 import type { LatLng } from './solar'
-import type { CommercialProspect } from './commercialSolar'
+import type { CommercialProspect, CompanyResult } from './commercialSolar'
 import type { SolarProspect, SolarContact } from '../store/types'
 import { sourceLeads } from './sourcing'
 import { classifyIndustry, INDUSTRY_ENERGY, type IndustryKey } from './commercialModel'
@@ -120,6 +120,16 @@ export function prospectToSolar(p: CommercialProspect, campaignId: string, tool 
     contactsRevealed: contacts.length > 0,
     createdAt: Date.now(),
     updatedAt: Date.now(),
+  }
+}
+
+/** Company (no roof yet) → a prospect record marked roofPending, so it lives in the same database. */
+export function companyToProspect(co: CompanyResult, campaignId: string, tool = 'company-search'): SolarProspect {
+  return {
+    id: co.id, campaignId, tool, company: co.name, address: co.address, domain: co.domain, center: co.center, category: co.category, distanceM: co.distanceM,
+    roofPending: true, systemKwp: 0, roofMaxKwp: 0, panels: 0, annualGenKwh: 0, year1Saving: 0, lifetimeSaving: 0, paybackYears: 0, npv: 0, co2PerYearTonnes: 0,
+    roofMeasured: false, epcRating: null, score: co.score, reasons: co.reasons, status: 'prospected',
+    contacts: [], contactsRevealed: false, createdAt: Date.now(), updatedAt: Date.now(),
   }
 }
 
