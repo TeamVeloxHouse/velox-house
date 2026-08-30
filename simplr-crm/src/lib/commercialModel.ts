@@ -263,9 +263,11 @@ export function computeCommercial(roof: RoofAnalysis, inputs: CommercialInputs =
   const method: 'hourly' | 'coefficient' = hourlyGen ? 'hourly' : 'coefficient'
   const ctx = { specificYield, shade, demandKwh, daytimeMatch: bench.daytimeMatch, importRate, exportRate, inflation, discount, degradation, years, hourlyGen, hourlyLoad }
 
-  // Sweep system sizes from small up to the roof max; keep the sweep for the chart.
-  const STEPS = 28
-  const minPanels = Math.max(1, Math.round(maxPanels * 0.04))
+  // Sweep system sizes from genuinely small (so low-demand sites find a matching size) up to the
+  // roof max; keep the sweep for the chart. Pick the best size for the objective — NEVER fall back
+  // to fill-the-roof, which for a low-demand business is the worst payback of all.
+  const STEPS = 30
+  const minPanels = Math.max(2, Math.round(maxPanels * 0.015))
   const sweep: { kwp: number; payback: number; npv: number; year1: number }[] = []
   let best: SystemResult | null = null
   for (let i = 0; i <= STEPS; i++) {
@@ -275,14 +277,13 @@ export function computeCommercial(roof: RoofAnalysis, inputs: CommercialInputs =
     const r = evaluate(kwp, panels, ctx)
     sweep.push({ kwp: r.kwp, payback: r.paybackYears, npv: r.npv, year1: r.year1Saving })
     const better = objective === 'payback'
-      ? r.paybackYears < (best?.paybackYears ?? Infinity)
+      ? isFinite(r.paybackYears) && r.paybackYears < (best?.paybackYears ?? Infinity)
       : r.npv > (best?.npv ?? -Infinity)
-    // Only consider systems that actually pay back within the appraisal period.
-    if (better && isFinite(r.paybackYears) && r.paybackYears <= years) best = r
+    if (better) best = r
   }
 
-  const recommended = best || evaluate(maxKwp, maxPanels, ctx)
   const roofMax = evaluate(maxKwp, maxPanels, ctx)
+  const recommended = best || roofMax
 
   return {
     recommended,

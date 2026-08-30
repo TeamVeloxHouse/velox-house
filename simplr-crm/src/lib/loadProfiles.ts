@@ -86,6 +86,17 @@ export function buildHourlyLoad(annualKwh: number, industry: IndustryKey): numbe
   return weights
 }
 
+/** Split an 8,760-hour array into 12 monthly sums (Jan…Dec). */
+export function monthlyBuckets(hourly: number[]): number[] {
+  const out = new Array(12).fill(0)
+  let idx = 0
+  for (let mo = 0; mo < 12; mo++) {
+    for (let h = 0; h < DAYS_IN_MONTH[mo] * 24 && idx < hourly.length; h++) out[mo] += hourly[idx++]
+  }
+  return out
+}
+export const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
 /** Day-shape (0–23) for charts: average weekday load for a month, normalised so peak = 1. */
 export function representativeDay(industry: IndustryKey, month = 6): number[] {
   const m = LOAD_MODELS[industry] || LOAD_MODELS.other
