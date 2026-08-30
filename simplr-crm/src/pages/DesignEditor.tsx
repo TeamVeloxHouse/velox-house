@@ -11,6 +11,7 @@ import { useActions, useState_ } from '../store/store'
 import { geocodeLocation } from '../lib/commercialFinder'
 import { detectPlanes, slopedAreaM2, totalRoofArea, compass, polygonAreaM2 } from '../lib/design'
 import { MODULES, moduleById, autoPackPlane, packPlane, kwpOf } from '../lib/panels'
+import { Design3D } from '../components/Design3D'
 import type { DesignPlane, PanelOrientation } from '../store/types'
 
 type LatLng = { lat: number; lng: number }
@@ -37,6 +38,7 @@ export function DesignEditor() {
   const [drawing, setDrawing] = useState(false)
   const [editing, setEditing] = useState(false)
   const [moduleId, setModuleId] = useState('m440')
+  const [view, setView] = useState<'2d' | '3d'>('2d')
   const module = moduleById(moduleId)
 
   // ── Map init (once) ──
@@ -194,10 +196,19 @@ export function DesignEditor() {
         {/* Canvas */}
         <div className="relative flex-1 min-h-0 rounded-card overflow-hidden border border-border">
           <div ref={mapEl} className="absolute inset-0" style={{ background: '#0b1220' }} />
-          {/* Draw toolbar */}
-          <div className="absolute top-3 left-3 z-[500] flex items-center gap-1.5 bg-white/95 backdrop-blur border border-border rounded-control shadow-modal p-1">
-            <ToolBtn on={drawing} onClick={toggleDraw} icon={<Plus size={15} />} label="Draw plane" />
-            <ToolBtn on={editing} onClick={toggleEdit} icon={<Wrench size={14} />} label="Edit" />
+          {view === '3d' && <Design3D design={design} />}
+          {/* Draw toolbar (2D only) */}
+          {view === '2d' && (
+            <div className="absolute top-3 left-3 z-[500] flex items-center gap-1.5 bg-white/95 backdrop-blur border border-border rounded-control shadow-modal p-1">
+              <ToolBtn on={drawing} onClick={toggleDraw} icon={<Plus size={15} />} label="Draw plane" />
+              <ToolBtn on={editing} onClick={toggleEdit} icon={<Wrench size={14} />} label="Edit" />
+            </div>
+          )}
+          {/* 2D / 3D toggle */}
+          <div className="absolute top-3 right-3 z-[550] flex items-center bg-white/95 backdrop-blur border border-border rounded-control shadow-modal p-1">
+            {(['2d', '3d'] as const).map((v) => (
+              <button key={v} onClick={() => setView(v)} className={`h-8 px-3 rounded-[8px] text-[12.5px] font-bold ${view === v ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={view === v ? { background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' } : undefined}>{v.toUpperCase()}</button>
+            ))}
           </div>
           {busy && (
             <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[500] h-9 px-4 rounded-full bg-black/75 text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal"><span className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />{status}</div>
