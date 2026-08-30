@@ -120,23 +120,26 @@ export function roofImageUrl(center: LatLng, zoom = 19, size = '560x360'): strin
   return `/api/roof-image?lat=${center.lat}&lng=${center.lng}&z=${zoom}&size=${size}`
 }
 
-/** Pick a zoom that shows the WHOLE building — big sheds zoom out so nothing is cropped. */
-export function zoomForRoof(a: RoofAnalysis): number {
+/**
+ * Frame the tile on the ROOF: centre on the union of the roof planes (not Google's building centroid,
+ * which can sit off the shed) and pick a zoom that fits the roof in BOTH the 560×360 tile dimensions
+ * (with margin) so the whole building — and its outline — is visible and centred.
+ */
+export function roofFrame(a: RoofAnalysis, w = 560, h = 360): { center: LatLng; zoom: number } {
   const boxes = a.segments.map((s) => s.box).filter(Boolean) as { sw: LatLng; ne: LatLng }[]
-  if (!boxes.length || !a.center) return 19
+  if (!boxes.length) return { center: a.center || { lat: 0, lng: 0 }, zoom: 19 }
   let latMin = 90, latMax = -90, lngMin = 180, lngMax = -180
   for (const b of boxes) {
     latMin = Math.min(latMin, b.sw.lat, b.ne.lat); latMax = Math.max(latMax, b.sw.lat, b.ne.lat)
     lngMin = Math.min(lngMin, b.sw.lng, b.ne.lng); lngMax = Math.max(lngMax, b.sw.lng, b.ne.lng)
   }
-  const lat = a.center.lat
-  const widthM = (lngMax - lngMin) * 111320 * Math.cos((lat * Math.PI) / 180)
+  const center = { lat: (latMin + latMax) / 2, lng: (lngMin + lngMax) / 2 }
+  const widthM = (lngMax - lngMin) * 111320 * Math.cos((center.lat * Math.PI) / 180)
   const heightM = (latMax - latMin) * 110540
-  const roofM = Math.max(widthM, heightM, 12)
-  // Fit ~1.7× the roof into the 560px-wide tile. mpp = 156543.03*cos/2^z.
-  const targetMpp = (roofM * 1.7) / 560
-  const z = Math.log2((156543.03 * Math.cos((lat * Math.PI) / 180)) / targetMpp)
-  return Math.max(16, Math.min(20, Math.round(z)))
+  // Metres-per-pixel needed to fit each dimension with 1.5× margin; take the more zoomed-out.
+  const mpp = Math.max((Math.max(widthM, 12) * 1.5) / w, (Math.max(heightM, 12) * 1.5) / h)
+  const z = Math.log2((156543.03 * Math.cos((center.lat * Math.PI) / 180)) / mpp)
+  return { center, zoom: Math.max(16, Math.min(20, Math.round(z))) }
 }
 
 // ── Scoring ──────────────────────────────────────────────────────────────────
@@ -233,8 +236,9 @@ export async function runCommercialSolarEngine(
 
     // 6) Score + assemble the card.
     const { score, reasons } = scoreProspect(calc, analysis.source === 'google', epc, leads, c.targetKwp)
-    const center = analysis.center || b.center
-    const zoom = zoomForRoof(analysis)
+    const frame = roofFrame(analysis)
+    const center = analysis.segments.some((s) => s.box) ? frame.center : (analysis.center || b.center)
+    const zoom = frame.zoom
     const prospect: CommercialProspect = {
       id: `csp-${scanned}-${(b.domain || b.name).replace(/[^a-z0-9]/gi, '').slice(0, 10)}`,
       company: b.name,
