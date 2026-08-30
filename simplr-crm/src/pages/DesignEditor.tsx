@@ -59,6 +59,7 @@ export function DesignEditor() {
       m.pm.disableDraw(); setDrawing(false)
     })
     map.current = m
+    if (import.meta.env.DEV) (window as any).__lmap = m
     setTimeout(() => m.invalidateSize(), 120)
     return () => { m.remove(); map.current = null }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -71,6 +72,8 @@ export function DesignEditor() {
       let c = design.center
       if (!c && design.address) { const g = await geocodeLocation(design.address); if (g) { c = { lat: g.lat, lng: g.lng }; act.updateDesign(design.id, { center: c }) } }
       if (c) map.current!.setView([c.lat, c.lng], 19)
+      // First open with an empty roof → try Google Solar automatically so a roof appears without a click.
+      if (c && design.planes.length === 0) runDetect(c)
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [design?.id])
