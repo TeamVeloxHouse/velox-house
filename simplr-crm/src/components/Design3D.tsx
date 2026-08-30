@@ -13,6 +13,7 @@ export function Design3D({ design, onCapture }: { design: Design; onCapture?: ()
   const host = useRef<HTMLDivElement>(null)
   const sunHour = useRef(13)
   const [hour, setHour] = useState(13)
+  const [glError, setGlError] = useState(false)
   const sunRef = useRef<THREE.DirectionalLight | null>(null)
 
   useEffect(() => {
@@ -31,7 +32,12 @@ export function Design3D({ design, onCapture }: { design: Design; onCapture?: ()
     const scene = new THREE.Scene()
     scene.background = new THREE.Color(0x0b1220)
     const camera = new THREE.PerspectiveCamera(50, W / H, 0.5, 6000)
-    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true })
+    let renderer: THREE.WebGLRenderer
+    try {
+      const probe = document.createElement('canvas').getContext('webgl2') || document.createElement('canvas').getContext('webgl')
+      if (!probe) throw new Error('no-webgl')
+      renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true })
+    } catch { setGlError(true); return }
     renderer.setSize(W, H); renderer.setPixelRatio(Math.min(devicePixelRatio, 2))
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap
     el.appendChild(renderer.domElement)
@@ -146,6 +152,14 @@ export function Design3D({ design, onCapture }: { design: Design; onCapture?: ()
   return (
     <div className="absolute inset-0">
       <div ref={host} className="absolute inset-0" />
+      {glError && (
+        <div className="absolute inset-0 flex items-center justify-center text-center bg-[#0b1220]">
+          <div className="bg-surface/95 border border-border rounded-card px-6 py-5 shadow-modal max-w-[360px]">
+            <div className="text-[15px] font-bold text-ink">3D couldn’t start (WebGL)</div>
+            <div className="text-[12.5px] text-muted-b mt-1">Your browser blocked 3D graphics. In Chrome: Settings → System → turn on <b>“Use graphics acceleration when available”</b>, then reload. (chrome://gpu shows the status.)</div>
+          </div>
+        </div>
+      )}
       {hasGeom && !hasPanels && (
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 bg-white/95 backdrop-blur border border-border rounded-full shadow-modal px-4 py-2 text-[12.5px] font-semibold text-ink-2">Roof is in 3D — switch to 2D and hit <b>AI auto-layout</b> to see the panels</div>
       )}
