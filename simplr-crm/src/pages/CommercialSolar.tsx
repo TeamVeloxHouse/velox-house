@@ -373,17 +373,87 @@ function Stat({ v, u }: { v: string; u: string }) {
 }
 function epcColor(r: string) { const c: Record<string, string> = { A: '#0E9F6E', B: '#57A639', C: '#8DB600', D: '#F2C200', E: '#F59E0B', F: '#EA6A2A', G: '#D0342C' }; return c[r?.[0]?.toUpperCase()] || '#64748B' }
 
-/* ─────────── Detail modal (all the data + people) ─────────── */
-export function ProspectDetail({ p, onClose, jobTitles }: { p: SolarProspect; onClose: () => void; jobTitles?: string[] }) {
+/* ─────────── Apollo-style people panel ─────────── */
+function seniorityOf(t: string) { t = (t || '').toLowerCase(); if (/found|owner|ceo|chief|managing|partner|president|proprietor|c[te]o/.test(t)) return 'Owner / Exec'; if (/director|\bvp\b|vice pres|head of/.test(t)) return 'Director'; if (/manager|lead|supervisor|controller/.test(t)) return 'Manager'; return 'Other' }
+function deptOf(t: string) { t = (t || '').toLowerCase(); if (/facilit|estate|property|premises/.test(t)) return 'Facilities'; if (/operation|\bops\b|production|plant/.test(t)) return 'Operations'; if (/financ|account|\bcfo\b|commercial/.test(t)) return 'Finance'; if (/energy|sustain|environment|carbon|esg/.test(t)) return 'Energy'; if (/procure|purchas|buyer|supply/.test(t)) return 'Procurement'; if (/\bit\b|technolog|digital/.test(t)) return 'IT'; if (/\bhr\b|people|talent/.test(t)) return 'HR'; return 'General' }
+const initials = (n: string) => n.split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase()
+
+function PeoplePanel({ p, jobTitles }: { p: SolarProspect; jobTitles?: string[] }) {
   const act = useActions()
-  const nav = useNavigate()
   const [revealing, setRevealing] = useState(false)
+  const [q, setQ] = useState('')
+  const [sen, setSen] = useState('all')
+  const [dept, setDept] = useState('all')
+  const [sel, setSel] = useState<Set<string>>(new Set())
+
   async function reveal() {
     if (revealing) return; setRevealing(true)
     const contacts = await revealContactsFor(p, jobTitles)
     act.revealSolarContacts(p.id, contacts); setRevealing(false)
     if (!contacts.length) act.toast('No contacts found for this company', 'warning')
   }
+  const people = p.contacts.map((c) => ({ ...c, sen: seniorityOf(c.title), dept: deptOf(c.title) }))
+  const seniorities = ['all', ...Array.from(new Set(people.map((e) => e.sen)))]
+  const depts = ['all', ...Array.from(new Set(people.map((e) => e.dept)))]
+  const filtered = people.filter((e) => (!q || `${e.name} ${e.title}`.toLowerCase().includes(q.toLowerCase())) && (sen === 'all' || e.sen === sen) && (dept === 'all' || e.dept === dept))
+  const toggle = (id: string) => setSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+  function addToList() {
+    const chosen = people.filter((e) => sel.has(e.id))
+    chosen.forEach((c) => act.addLead({ name: c.name, company: p.company, role: c.title, source: 'Commercial Solar Finder', score: p.score }))
+    act.toast(`${chosen.length} ${chosen.length === 1 ? 'person' : 'people'} added to Leads`); setSel(new Set())
+  }
+
+  if (!p.contactsRevealed) {
+    return (
+      <div className="rounded-card border border-dashed border-border p-6 flex flex-col items-center text-center gap-2">
+        <Person size={26} className="text-muted-2" />
+        <div className="text-[14px] font-bold text-ink">Find the decision-makers at {p.company}</div>
+        <div className="text-[12.5px] text-muted-b max-w-[440px]">One People Data Labs lookup pulls everyone we can find — names, titles, seniority and emails — then it's cached free. Browse, filter and add the right people to your list.</div>
+        <button onClick={reveal} disabled={revealing} className="mt-1 h-9 px-4 rounded-control text-white text-[13px] font-semibold flex items-center gap-2 disabled:opacity-50" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}>
+          {revealing ? <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" /> : <Person size={15} />}{revealing ? 'Searching…' : 'Reveal people (1 credit)'}
+        </button>
+      </div>
+    )
+  }
+  if (people.length === 0) return <div className="text-[12.5px] text-muted-b rounded-card border border-dashed border-border p-4">No contacts found for this company.</div>
+
+  return (
+    <div className="rounded-card border border-border overflow-hidden">
+      <div className="px-3.5 py-2.5 border-b border-divider flex items-center gap-2 flex-wrap bg-control/40">
+        <div className="text-[13px] font-bold text-ink">People <span className="text-muted-2 font-normal">({people.length})</span></div>
+        <div className="relative flex-1 min-w-[160px]"><Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-2" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name or title…" className="h-8 w-full pl-8 pr-2 rounded-control border border-input-border bg-white text-[12.5px] outline-none focus:border-accent" /></div>
+        <select value={sen} onChange={(e) => setSen(e.target.value)} className="h-8 px-2 rounded-control border border-input-border bg-white text-[12px] outline-none focus:border-accent">{seniorities.map((s) => <option key={s} value={s}>{s === 'all' ? 'All seniority' : s}</option>)}</select>
+        <select value={dept} onChange={(e) => setDept(e.target.value)} className="h-8 px-2 rounded-control border border-input-border bg-white text-[12px] outline-none focus:border-accent">{depts.map((d) => <option key={d} value={d}>{d === 'all' ? 'All departments' : d}</option>)}</select>
+        <button onClick={addToList} disabled={!sel.size} className="h-8 px-3 rounded-control text-white text-[12.5px] font-semibold disabled:opacity-40 flex items-center gap-1.5" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Check size={13} />Add {sel.size || ''} to list</button>
+      </div>
+      <div className="max-h-[280px] overflow-y-auto">
+        {filtered.map((c) => (
+          <label key={c.id} className="flex items-center gap-3 px-3.5 py-2.5 border-b border-divider last:border-0 hover:bg-control/40 cursor-pointer">
+            <input type="checkbox" checked={sel.has(c.id)} onChange={() => toggle(c.id)} className="accent-accent w-4 h-4 shrink-0" />
+            <span className="w-8 h-8 rounded-full bg-accent-wash text-accent flex items-center justify-center text-[11px] font-bold shrink-0">{initials(c.name)}</span>
+            <div className="min-w-0 flex-1">
+              <div className="font-semibold text-[13px] text-ink-2 truncate">{c.name}</div>
+              <div className="text-[11.5px] text-muted-2 truncate">{c.title}</div>
+            </div>
+            <span className="text-[10.5px] font-semibold px-2 py-0.5 rounded-full bg-control text-muted-b shrink-0 hidden sm:inline">{c.dept}</span>
+            <div className="flex items-center gap-2.5 shrink-0">
+              {c.email ? <a onClick={(e) => e.stopPropagation()} href={`mailto:${c.email}`} className="text-accent hover:text-accent-2" title={c.email}><Envelope size={15} /></a>
+                : c.hasEmail ? <span className="text-[#F59E0B]" title="Email on file — upgrade PDL plan to reveal the address"><Envelope size={15} /></span>
+                : <span className="text-muted-3" title="No email found"><Envelope size={15} /></span>}
+              {c.linkedin && <a onClick={(e) => e.stopPropagation()} href={c.linkedin} target="_blank" rel="noreferrer" className="text-[11px] font-bold text-accent">in</a>}
+            </div>
+          </label>
+        ))}
+        {filtered.length === 0 && <div className="p-6 text-center text-[12.5px] text-muted-b">No people match these filters.</div>}
+      </div>
+    </div>
+  )
+}
+
+/* ─────────── Detail modal (all the data + people) ─────────── */
+export function ProspectDetail({ p, onClose, jobTitles }: { p: SolarProspect; onClose: () => void; jobTitles?: string[] }) {
+  const act = useActions()
+  const nav = useNavigate()
   const metrics = [
     { l: 'Recommended system', v: `${p.systemKwp} kWp`, s: `${p.panels} panels` },
     { l: 'Roof capacity', v: `${p.roofMaxKwp ?? '—'} kWp`, s: p.roofAreaM2 ? `${p.roofAreaM2.toLocaleString()} m² measured` : 'full roof' },
@@ -422,44 +492,19 @@ export function ProspectDetail({ p, onClose, jobTitles }: { p: SolarProspect; on
             ))}
           </div>
 
-          <div className="grid grid-cols-[1.3fr_1fr] gap-5">
-            <div>
-              <div className="eyebrow text-[10px] text-muted-3 mb-2">Why this scores {p.score}</div>
-              <div className="flex flex-col gap-1.5">
-                {p.reasons.map((r, i) => <div key={i} className="flex items-start gap-2 text-[13px] text-ink-2"><Check size={14} className="text-positive mt-0.5 shrink-0" />{r}</div>)}
-              </div>
-              <div className="flex items-center gap-2 mt-3 flex-wrap">
-                {p.roofMeasured && <Chip tone="accent" dot>Satellite-measured roof</Chip>}
-                {p.epcRating && <Chip tone="warning">EPC {p.epcRating}</Chip>}
-                {p.domain && <a href={`https://${p.domain}`} target="_blank" rel="noreferrer" className="text-[12.5px] text-accent hover:underline flex items-center gap-1">{p.domain} ↗</a>}
-              </div>
+          <div className="rounded-card bg-control/40 p-3.5">
+            <div className="eyebrow text-[10px] text-muted-3 mb-2">Why this scores {p.score}</div>
+            <div className="flex flex-wrap gap-x-5 gap-y-1.5">
+              {p.reasons.map((r, i) => <div key={i} className="flex items-start gap-1.5 text-[12.5px] text-ink-2"><Check size={13} className="text-positive mt-0.5 shrink-0" />{r}</div>)}
             </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <div className="eyebrow text-[10px] text-muted-3">Decision-makers</div>
-                {!p.contactsRevealed && <button onClick={reveal} disabled={revealing} className="text-[12px] font-semibold text-accent hover:underline disabled:opacity-50 flex items-center gap-1.5">{revealing ? <span className="w-3 h-3 rounded-full border-2 border-accent border-t-transparent animate-spin" /> : <Person size={12} />}{revealing ? 'Revealing…' : 'Reveal (1 credit)'}</button>}
-              </div>
-              {p.contactsRevealed && p.contacts.length > 0 ? (
-                <div className="flex flex-col gap-2">
-                  {p.contacts.map((c) => (
-                    <div key={c.id} className="rounded-xl border border-border p-2.5">
-                      <div className="font-semibold text-[13px] text-ink-2">{c.name}</div>
-                      <div className="text-[11.5px] text-muted-2">{c.title}</div>
-                      <div className="flex items-center gap-3 mt-1.5">
-                        {c.email && <a href={`mailto:${c.email}`} className="text-[11.5px] text-accent hover:underline flex items-center gap-1"><Envelope size={11} />{c.email}</a>}
-                        {c.linkedin && <a href={c.linkedin} target="_blank" rel="noreferrer" className="text-[11.5px] text-accent hover:underline">LinkedIn ↗</a>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : p.contactsRevealed ? (
-                <div className="text-[12.5px] text-muted-b rounded-xl border border-dashed border-border p-3">No contacts found for this company.</div>
-              ) : (
-                <div className="text-[12.5px] text-muted-b rounded-xl border border-dashed border-border p-3">Reveal to fetch the decision-makers at {p.company} — one PDL lookup, then cached.</div>
-              )}
+            <div className="flex items-center gap-2 mt-3 flex-wrap">
+              {p.roofMeasured && <Chip tone="accent" dot>Satellite-measured roof</Chip>}
+              {p.epcRating && <Chip tone="warning">EPC {p.epcRating}</Chip>}
+              {p.domain && <a href={`https://${p.domain}`} target="_blank" rel="noreferrer" className="text-[12.5px] text-accent hover:underline flex items-center gap-1">{p.domain} ↗</a>}
             </div>
           </div>
+
+          <PeoplePanel p={p} jobTitles={jobTitles} />
         </div>
         <div className="border-t border-divider p-3.5 flex items-center justify-between gap-3 shrink-0">
           <label className="flex items-center gap-2 text-[12.5px] text-muted-b">Status

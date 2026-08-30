@@ -30,6 +30,7 @@ export type PdlPerson = {
   location?: string
   linkedinUrl?: string
   workEmail?: string
+  hasEmail?: boolean // PDL knows an email exists but doesn't return the value on this plan
 }
 
 export type SourcedLead = {
@@ -41,7 +42,9 @@ export type SourcedLead = {
   location: string
   industry?: string
   companySize?: string
+  seniority?: string
   email?: string
+  hasEmail?: boolean
   linkedin?: string
   score: number // 0–100 fit
   signals: string[]
@@ -80,7 +83,9 @@ function scoreAndResearch(p: PdlPerson, c: SourcingCriteria, idx: number): Sourc
     location: p.location || 'United Kingdom',
     industry: p.industry || undefined,
     companySize: p.companySize || undefined,
+    seniority: p.seniority || undefined,
     email: p.workEmail || undefined,
+    hasEmail: !!p.workEmail || p.hasEmail,
     linkedin: p.linkedinUrl || undefined,
     score,
     signals,

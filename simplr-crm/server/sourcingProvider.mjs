@@ -28,9 +28,15 @@ function mapIndustry(raw) {
 /** Build a People Data Labs Elasticsearch query from simple criteria. */
 function buildQuery(c) {
   const must = []
-  // Location — default to the UK; accept a town/region/postcode as a free-text locality match.
   must.push({ term: { location_country: (c.country || 'united kingdom').toLowerCase() } })
-  if (c.location && c.location.trim()) must.push({ match: { location_name: c.location.trim().toLowerCase() } })
+  // Company scoping — the whole point of a per-company "reveal". Match the domain (exact) or name.
+  // When scoping to a company, DON'T also constrain by a specific locality (the office address is
+  // too narrow) — the company itself is the filter.
+  const domain = (c.domain || '').replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].trim().toLowerCase()
+  const scoped = !!(domain || (c.company && c.company.trim()))
+  if (domain) must.push({ term: { job_company_website: domain } })
+  else if (c.company && c.company.trim()) must.push({ match: { job_company_name: c.company.trim().toLowerCase() } })
+  if (!scoped && c.location && c.location.trim()) must.push({ match: { location_name: c.location.trim().toLowerCase() } })
   if (c.title && c.title.trim()) must.push({ match: { job_title: c.title.trim().toLowerCase() } })
   if (c.industry && c.industry.trim()) {
     const mapped = mapIndustry(c.industry)
@@ -41,19 +47,23 @@ function buildQuery(c) {
   return { query: { bool: { must } }, size: Math.min(15, Math.max(1, c.limit || 12)) }
 }
 
+const str = (v) => (typeof v === 'string' ? v : '') // PDL returns `true` (exists) instead of the value on some plans
 function normalise(p) {
+  const email = str(p.work_email) || (Array.isArray(p.emails) ? str(p.emails[0]?.address) : '')
+  const loc = str(p.location_name) || [str(p.location_locality), str(p.location_region)].filter(Boolean).join(', ')
   return {
     fullName: p.full_name || [p.first_name, p.last_name].filter(Boolean).join(' ') || 'Unknown',
     jobTitle: p.job_title || '',
     titleRole: p.job_title_role || '',
     seniority: Array.isArray(p.job_title_levels) ? p.job_title_levels[0] : (p.job_title_levels || ''),
     company: p.job_company_name || '',
-    companyDomain: p.job_company_website || '',
+    companyDomain: str(p.job_company_website),
     industry: p.job_company_industry || '',
     companySize: p.job_company_size || '',
-    location: p.location_name || [p.location_locality, p.location_region].filter(Boolean).join(', ') || '',
-    linkedinUrl: p.linkedin_url ? (p.linkedin_url.startsWith('http') ? p.linkedin_url : `https://${p.linkedin_url}`) : '',
-    workEmail: p.work_email || (Array.isArray(p.emails) && p.emails[0]?.address) || '',
+    location: loc,
+    linkedinUrl: p.linkedin_url ? (String(p.linkedin_url).startsWith('http') ? p.linkedin_url : `https://${p.linkedin_url}`) : '',
+    workEmail: email,
+    hasEmail: email ? true : p.work_email === true || (Array.isArray(p.emails) && p.emails.length > 0), // email exists but not returned on this plan
   }
 }
 

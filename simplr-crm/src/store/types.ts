@@ -793,6 +793,7 @@ export interface SolarContact {
   name: string
   title: string
   email?: string
+  hasEmail?: boolean // PDL knows an email exists but doesn't return it on this plan
   linkedin?: string
   seniority?: string
   revealed: boolean // false until a PDL credit is spent to reveal (then cached forever)

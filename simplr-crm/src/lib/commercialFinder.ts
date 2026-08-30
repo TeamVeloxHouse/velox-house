@@ -123,15 +123,13 @@ export function prospectToSolar(p: CommercialProspect, campaignId: string, tool 
   }
 }
 
-/** Spend one PDL lookup to reveal a single company's decision-makers. */
-export async function revealContactsFor(prospect: SolarProspect, jobTitles?: string[]): Promise<SolarContact[]> {
+/** Spend one PDL lookup to reveal a single company's people — everyone we can find, scoped by the
+ *  company domain/name. Titles are filtered in the panel, not in the query, so it's a full browse. */
+export async function revealContactsFor(prospect: SolarProspect, _jobTitles?: string[]): Promise<SolarContact[]> {
   const { leads } = await sourceLeads({
     company: prospect.company,
     domain: prospect.domain,
-    location: prospect.address,
-    titles: jobTitles,
-    title: jobTitles?.[0],
-    limit: 6,
+    limit: 15,
   })
-  return leads.map((pl) => ({ id: rid('sc'), name: pl.name, title: pl.title, email: pl.email, linkedin: pl.linkedin, revealed: true }))
+  return leads.map((pl) => ({ id: rid('sc'), name: pl.name, title: pl.title, email: pl.email, hasEmail: pl.hasEmail, seniority: pl.seniority, linkedin: pl.linkedin, revealed: true }))
 }
