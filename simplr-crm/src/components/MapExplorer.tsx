@@ -21,6 +21,8 @@ export function MapExplorer({ onOpenProspect }: { onOpenProspect?: (id: string) 
   const mapEl = useRef<HTMLDivElement>(null)
   const map = useRef<L.Map | null>(null)
   const layer = useRef<L.LayerGroup | null>(null)
+  const bizLayer = useRef<L.LayerGroup | null>(null)
+  const measureMarker = useRef<L.Marker | null>(null)
   const campaignId = useRef<string | null>(null)
 
   const [picks, setPicks] = useState<Pick[]>([])
@@ -43,6 +45,7 @@ export function MapExplorer({ onOpenProspect }: { onOpenProspect?: (id: string) 
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', {
       maxZoom: 21, maxNativeZoom: 19, opacity: 0.9,
     }).addTo(m)
+    bizLayer.current = L.layerGroup().addTo(m)
     layer.current = L.layerGroup().addTo(m)
     m.on('click', (e: L.LeafletMouseEvent) => onPick.current({ lat: e.latlng.lat, lng: e.latlng.lng }))
     map.current = m
@@ -50,44 +53,83 @@ export function MapExplorer({ onOpenProspect }: { onOpenProspect?: (id: string) 
     return () => { m.remove(); map.current = null }
   }, [])
 
-  async function resolveCompany(ll: LatLng): Promise<{ name?: string; address?: string; domain?: string; center?: LatLng; category?: string }> {
+  async function resolveCompany(ll: LatLng): Promise<{ name?: string; address?: string; domain?: string; center?: LatLng; category?: string; distanceM?: number }> {
     try {
-      const r = await fetch('/api/places', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lat: ll.lat, lng: ll.lng, radius: 130, count: 5, industry: 'business' }) })
+      const r = await fetch('/api/places', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lat: ll.lat, lng: ll.lng, radius: 90, count: 5, industry: 'business' }) })
       const j = await r.json()
       const b = (j.buildings || [])[0]
-      return b ? { name: b.name, address: b.address, domain: b.domain, center: b.center, category: b.category } : {}
+      return b ? { name: b.name, address: b.address, domain: b.domain, center: b.center, category: b.category, distanceM: b.distanceM } : {}
     } catch { return {} }
   }
 
+  function showMeasuring(at: LatLng) {
+    if (!map.current) return
+    clearMeasuring()
+    const icon = L.divIcon({ className: '', html: '<div class="roof-measuring"><span></span></div>', iconSize: [18, 18], iconAnchor: [9, 9] })
+    measureMarker.current = L.marker([at.lat, at.lng], { icon, interactive: false, zIndexOffset: 1000 }).addTo(map.current)
+  }
+  function clearMeasuring() { if (measureMarker.current) { measureMarker.current.remove(); measureMarker.current = null } }
+
   async function handlePick(ll: LatLng) {
     if (busy) return
-    setBusy(true); setStatus('Identifying building…')
+    setBusy(true); setStatus('Identifying building…'); showMeasuring(ll)
+    if (map.current && map.current.getZoom() < 17) map.current.flyTo([ll.lat, ll.lng], 18, { duration: 0.7 })
+    // Measure EXACTLY where they clicked — Google Solar finds the building under the cursor. Places is
+    // used only to put a name on it (the nearest business), never to relocate the measurement.
     const co = await resolveCompany(ll)
-    const center = co.center || ll
-    setStatus(`Measuring roof${co.name ? ` at ${co.name}` : ''}…`)
+    // Only trust the name if that business actually sits on what you clicked (~70 m).
+    const named = (co.name && (co.distanceM == null || co.distanceM <= 70) ? co : {}) as typeof co
+    setStatus(`Measuring roof${named.name ? ` at ${named.name}` : ''}…`)
     try {
-      const patch = await measureRoof(co.address || '', center, co.category)
+      const patch = await measureRoof(named.address || '', ll, named.category)
       const id = `map-${Date.now().toString(36)}`
-      const pick: Pick = { ...patch, id, company: co.name || 'Selected building', address: co.address || `${center.lat.toFixed(5)}, ${center.lng.toFixed(5)}`, domain: co.domain, center: patch.center || center }
+      const pick: Pick = { ...patch, id, company: named.name || 'Selected building', address: named.address || `${ll.lat.toFixed(5)}, ${ll.lng.toFixed(5)}`, domain: named.domain, center: patch.center || ll }
       setPicks((ps) => [pick, ...ps]); setSelId(id)
       drawPick(pick, true)
     } catch {
       act.toast('Could not measure that spot — try clicking on the roof', 'warning')
-    } finally { setBusy(false); setStatus('') }
+    } finally { clearMeasuring(); setBusy(false); setStatus('') }
   }
   onPick.current = handlePick
 
   function drawPick(p: Pick, fly = false) {
     if (!layer.current || !map.current) return
     const c = p.center
-    if (p.roofFootprint?.length) {
-      L.polygon(p.roofFootprint.map((v) => [v.lat, v.lng]) as [number, number][], { color: '#00E5FF', weight: 3, fillColor: '#22E0FF', fillOpacity: 0.25 }).addTo(layer.current)
-    }
+    // The highlighted usable roof: the real OSM footprint when we have it, else Google's plane boxes.
+    const rings: [number, number][][] = p.roofFootprint?.length
+      ? [p.roofFootprint.map((v) => [v.lat, v.lng] as [number, number])]
+      : (p.roofSegments ?? []).map(({ box }) => [[box.sw.lat, box.sw.lng], [box.sw.lat, box.ne.lng], [box.ne.lat, box.ne.lng], [box.ne.lat, box.sw.lng]] as [number, number][])
+    rings.forEach((ring) => {
+      L.polygon(ring, { color: '#0A1B2B', weight: 6, opacity: 0.5, fill: false }).addTo(layer.current!) // dark under-stroke
+      L.polygon(ring, { color: '#00E5FF', weight: 3, fillColor: '#22E0FF', fillOpacity: 0.28 }).addTo(layer.current!)
+    })
     if (c) {
-      const marker = L.circleMarker([c.lat, c.lng], { radius: 8, color: '#0A1B2B', weight: 2, fillColor: '#00E5FF', fillOpacity: 1 }).addTo(layer.current)
+      const marker = L.circleMarker([c.lat, c.lng], { radius: 7, color: '#0A1B2B', weight: 2, fillColor: '#00E5FF', fillOpacity: 1 }).addTo(layer.current)
+      marker.bindTooltip(`${p.company} · ${Math.round(p.systemKwp ?? 0)} kWp`, { permanent: true, direction: 'top', offset: [0, -6], className: 'roof-label' })
       marker.on('click', (e) => { L.DomEvent.stopPropagation(e); setSelId(p.id) })
       if (fly) map.current.flyTo([c.lat, c.lng], Math.max(map.current.getZoom(), 18), { duration: 0.8 })
     }
+  }
+
+  /** Drop name labels for the businesses around the current view — so you can see what to click. */
+  async function labelNearby() {
+    if (!map.current || !bizLayer.current) return
+    const ctr = map.current.getCenter()
+    setStatus('Labelling businesses…')
+    try {
+      const r = await fetch('/api/places', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lat: ctr.lat, lng: ctr.lng, radius: 500, count: 24, industry: 'business' }) })
+      const j = await r.json()
+      bizLayer.current.clearLayers()
+      let n = 0
+      for (const b of (j.buildings || [])) {
+        if (!b.center) continue
+        const m = L.marker([b.center.lat, b.center.lng], { icon: L.divIcon({ className: '', html: '<div style="width:8px;height:8px;border-radius:9999px;background:#fff;border:2px solid #3B6BF5;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>', iconSize: [8, 8], iconAnchor: [4, 4] }) }).addTo(bizLayer.current)
+        m.bindTooltip(b.name, { permanent: true, direction: 'top', offset: [0, -4], className: 'roof-label biz-label' })
+        m.on('click', (e) => { L.DomEvent.stopPropagation(e); onPick.current({ lat: b.center.lat, lng: b.center.lng }) })
+        n++
+      }
+      if (!n) act.toast('No businesses found here — zoom to an industrial area', 'warning')
+    } catch { act.toast('Could not label businesses', 'warning') } finally { setStatus('') }
   }
 
   async function flyToQuery() {
@@ -149,6 +191,7 @@ export function MapExplorer({ onOpenProspect }: { onOpenProspect?: (id: string) 
             placeholder="Fly to a place — town, postcode, address…" className="h-10 w-[300px] pl-8 pr-3 rounded-control border border-border bg-white/95 backdrop-blur shadow-modal text-[13px] outline-none focus:border-accent" />
         </div>
         <button onClick={flyToQuery} className="h-10 px-3.5 rounded-control text-white text-[13px] font-semibold shadow-modal" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}>Go</button>
+        <button onClick={labelNearby} title="Label the businesses around this view" className="h-10 px-3.5 rounded-control bg-white/95 backdrop-blur border border-border shadow-modal text-[13px] font-semibold text-ink-2 hover:bg-white flex items-center gap-1.5"><Building size={14} className="text-accent" />Label</button>
       </div>
 
       {/* Hint / status */}
