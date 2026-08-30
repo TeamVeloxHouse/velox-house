@@ -337,9 +337,12 @@ export function BigRoofCard({ p, onOpen }: { p: SolarProspect; onOpen: () => voi
         {p.roofAreaM2 != null && <span className="absolute bottom-2.5 left-2.5 text-[10.5px] font-semibold text-white px-2 py-0.5 rounded backdrop-blur-sm flex items-center gap-1" style={{ background: 'rgba(34,211,238,0.85)' }}>◆ {p.roofAreaM2.toLocaleString()} m²</span>}
       </div>
       <div className="p-3.5 flex flex-col gap-2.5">
-        <div>
-          <div className="font-bold text-[15px] leading-tight truncate text-ink">{p.company}</div>
-          <div className="text-[11.5px] text-muted-2 truncate">{p.category || p.address} · roof fits {p.roofMaxKwp ?? Math.round(p.systemKwp)} kWp</div>
+        <div className="flex items-center gap-2.5">
+          <CompanyLogo domain={p.domain} name={p.company} />
+          <div className="min-w-0">
+            <div className="font-bold text-[15px] leading-tight truncate text-ink">{p.company}</div>
+            <div className="text-[11.5px] text-muted-2 truncate">{p.category || p.address} · roof fits {p.roofMaxKwp ?? Math.round(p.systemKwp)} kWp</div>
+          </div>
         </div>
         <div className="grid grid-cols-4 gap-2 text-center">
           <Stat v={`${Math.round(p.systemKwp)}`} u="kWp system" />
@@ -358,6 +361,12 @@ export function BigRoofCard({ p, onOpen }: { p: SolarProspect; onOpen: () => voi
       </div>
     </div>
   )
+}
+/** Company logo via Clearbit (free, by domain) with a lettermark fallback. */
+export function CompanyLogo({ domain, name, size = 40 }: { domain?: string; name: string; size?: number }) {
+  const [failed, setFailed] = useState(false)
+  if (domain && !failed) return <img src={`https://logo.clearbit.com/${domain}`} onError={() => setFailed(true)} alt="" className="rounded-lg object-contain bg-white border border-border shrink-0" style={{ width: size, height: size }} />
+  return <span className="rounded-lg flex items-center justify-center text-white font-bold shrink-0" style={{ width: size, height: size, fontSize: size * 0.4, background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}>{name.charAt(0).toUpperCase()}</span>
 }
 function Stat({ v, u }: { v: string; u: string }) {
   return <div className="rounded-lg bg-control py-1.5"><div className="text-[15px] font-bold text-ink leading-none">{v}</div><div className="text-[9.5px] text-muted-2 mt-1 uppercase tracking-wide">{u}</div></div>
@@ -393,9 +402,12 @@ export function ProspectDetail({ p, onClose, jobTitles }: { p: SolarProspect; on
           <button onClick={onClose} className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70">✕</button>
           <span className="absolute top-3 left-3 text-[13px] font-bold text-white px-3 py-1 rounded-full shadow" style={{ background: scoreTone(p.score) }}>Score {p.score}</span>
           <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/80 to-transparent" />
-          <div className="absolute bottom-3 left-5 right-5">
-            <div className="text-white font-bold text-[22px] leading-tight drop-shadow">{p.company}</div>
-            <div className="text-white/85 text-[13px] flex items-center gap-2">{p.address}{p.distanceM != null && <span>· {(p.distanceM / 1000).toFixed(1)} km away</span>}</div>
+          <div className="absolute bottom-3 left-5 right-5 flex items-center gap-3">
+            <CompanyLogo domain={p.domain} name={p.company} size={48} />
+            <div className="min-w-0">
+              <div className="text-white font-bold text-[22px] leading-tight drop-shadow truncate">{p.company}</div>
+              <div className="text-white/85 text-[13px] flex items-center gap-2 truncate">{p.address}{p.distanceM != null && <span>· {(p.distanceM / 1000).toFixed(1)} km away</span>}</div>
+            </div>
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-5">
