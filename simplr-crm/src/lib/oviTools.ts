@@ -44,6 +44,7 @@ const findProject = (ref: string) => {
     ps.find((p) => p.address.toLowerCase().split(/[ ,]+/).some((w) => w.length > 3 && r.includes(w)))
 }
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
+const findChannel = (ref: string) => S().teamChannels.find((c) => c.id === ref) || S().teamChannels.find((c) => c.name.toLowerCase().includes((ref || '').toLowerCase()))
 
 export const OVI_TOOLS: OviTool[] = [
   // ── read / query ──
@@ -368,6 +369,61 @@ export const OVI_TOOLS: OviTool[] = [
       ctx.nav(`/studio/delivery/${p.id}#dno`)
       const dno = ctx.act.startDnoRun(p.id) // classifies now; the DNO tab streams + finishes the pack
       return { ok: true, summary: `${dno?.classification ?? 'DNO'} ready`, content: `Preparing the DNO application for ${p.address} — classified ${dno?.classification ?? ''} (aggregate RC ${dno?.aggregateRcA ?? '?'} A, ${dno?.dnoRegion ?? ''}). It's streaming on the DNO tab and will finish with the SLD and pack ready to sign.` }
+    },
+  },
+
+  // ── delivery / projects (Deliver) ──
+  {
+    name: 'list_projects', description: 'List delivery projects (installs) with milestone progress. Use to find a project before acting on it.',
+    input_schema: { type: 'object', properties: {} },
+    execute: () => {
+      const ps = S().projects
+      return { ok: true, summary: `${ps.length} projects`, content: ps.slice(0, 25).map((p) => `${p.id} · ${p.address} · ${p.customer} · ${p.milestones[p.milestoneIndex]?.label ?? '—'} (${p.milestoneIndex + 1}/${p.milestones.length})`).join('\n') || 'No delivery projects.' }
+    },
+  },
+  {
+    name: 'advance_delivery', description: 'Advance a delivery project to its next milestone (e.g. survey → install → commissioning → PTO). Identify by address, customer or id.',
+    input_schema: { type: 'object', properties: { project: { type: 'string' } }, required: ['project'] },
+    execute: (i, ctx) => {
+      const p = findProject(i.project); if (!p) return { ok: false, summary: 'Project not found', content: `No delivery project matching "${i.project}".` }
+      if (p.milestoneIndex >= p.milestones.length - 1) return { ok: false, summary: 'At final milestone', content: `${p.address} is already at ${p.milestones[p.milestoneIndex]?.label ?? 'the end'}.` }
+      const next = p.milestones[Math.min(p.milestones.length - 1, p.milestoneIndex + 1)]?.label
+      ctx.act.advanceMilestone(p); ctx.nav(`/studio/delivery/${p.id}`)
+      return { ok: true, summary: `${p.address} → ${next}`, content: `Advanced ${p.address} to ${next}.` }
+    },
+  },
+  {
+    name: 'report_customer_issue', description: 'Log a problem a customer reported as a traceable service job for the field team. Identify the customer by portal id or name.',
+    input_schema: { type: 'object', properties: { customer: { type: 'string', description: 'portal id or customer name' }, item: { type: 'string', description: 'what the issue is about, e.g. Inverter fault' }, description: { type: 'string' } }, required: ['customer', 'item'] },
+    execute: (i, ctx) => {
+      const p = findPortal(i.customer); if (!p) return { ok: false, summary: 'Customer not found', content: `No customer portal matching "${i.customer}".` }
+      ctx.act.reportPortalIssue(p, i.item, i.description || i.item); ctx.nav('/customers/support')
+      return { ok: true, summary: `Issue logged for ${p.customer}`, content: `Raised a service job for ${p.customer} — ${i.item}. It's in the field backlog and on the deal timeline.` }
+    },
+  },
+
+  // ── invoicing (Business / Finance) ──
+  {
+    name: 'create_invoice', description: 'Raise an invoice on a delivery project. Creates the invoice record (does not take payment). Identify the project by address, customer or id.',
+    input_schema: { type: 'object', properties: { project: { type: 'string' }, amount: { type: 'number' }, kind: { type: 'string', enum: ['deposit', 'interim', 'final', 'other'] }, status: { type: 'string', enum: ['draft', 'sent'] } }, required: ['project', 'amount'] },
+    execute: (i, ctx) => {
+      const p = findProject(i.project); if (!p) return { ok: false, summary: 'Project not found', content: `No delivery project matching "${i.project}".` }
+      const n = (p.invoices?.length ?? 0) + 1
+      const number = `INV-${(p.id.replace(/[^0-9]/g, '').slice(-4) || '0000')}-${n}`
+      ctx.act.addInvoice(p.id, { id: `inv_${Date.now()}`, number, kind: (i.kind || 'deposit') as import('../store/types').InvoiceKind, amount: Number(i.amount) || 0, status: (i.status || 'draft') as import('../store/types').InvoiceStatus, issuedDate: today() })
+      ctx.nav(`/studio/delivery/${p.id}`)
+      return { ok: true, summary: `Invoice ${number}`, content: `Raised a ${i.kind || 'deposit'} invoice ${number} for ${money(Number(i.amount) || 0)} on ${p.address} (${i.status || 'draft'}).` }
+    },
+  },
+
+  // ── team space (OviTeams — act in the conversation) ──
+  {
+    name: 'post_team_message', description: 'Post a message into a team chat channel as Ovi — to report a result, flag something, or answer the team. Identify the channel by name.',
+    input_schema: { type: 'object', properties: { channel: { type: 'string', description: 'channel name e.g. leadership, sales' }, text: { type: 'string' } }, required: ['channel', 'text'] },
+    execute: (i, ctx) => {
+      const c = findChannel(i.channel); if (!c) return { ok: false, summary: 'Channel not found', content: `No channel matching "${i.channel}". Channels: ${S().teamChannels.map((x) => x.name).join(', ')}.` }
+      ctx.act.postAiMessage(c.id, i.text); ctx.nav('/team')
+      return { ok: true, summary: `Posted to #${c.name}`, content: `Posted to #${c.name}: "${i.text}".` }
     },
   },
 
