@@ -958,6 +958,56 @@ export interface Design {
   updatedAt: number
 }
 
+/* ── Site Survey ──────────────────────────────────────────────────────────
+ * The on-site survey a field surveyor fills on their phone (Solar + Battery + EV + Heat pump).
+ * It lands in the CRM on submit, completes the survey Job, and pre-fills DNO site details + design.
+ * Answers are stored flat (keyed by field id, e.g. 'elec.mainFuse') against the data-driven spec in
+ * lib/survey.ts, so adding a question is a spec edit — no schema change. Roof is repeatable per face. */
+export type SurveyStatus = 'draft' | 'submitted' | 'reviewed'
+export type SurveyProductKey = 'solar' | 'battery' | 'ev' | 'ashp' | 'hotwater'
+export interface SurveyPhoto {
+  id: ID
+  section: string // section key the shot belongs to
+  key: string // stable slot key (e.g. 'consumer-unit')
+  label: string
+  required?: boolean
+  captured: boolean // simulated capture — no real upload yet
+  name?: string // filename once "taken"
+}
+export interface RoofFace {
+  id: ID
+  name: string // e.g. 'Rear (main)'
+  orientationDeg?: number // degrees from north (0 = N, 180 = S)
+  pitchDeg?: number
+  covering?: string // Slate / Concrete tile / Clay tile / Metal / Felt / EPDM
+  coveringAge?: string
+  condition?: string // Good / Fair / Poor
+  widthM?: number
+  heightM?: number
+  obstructions?: string // chimney, rooflight, vent, dormer…
+  notes?: string
+}
+export interface SiteSurvey {
+  id: ID
+  ref: string // SUR-xxxx
+  jobId?: ID // the survey Job this fulfils
+  dealId?: ID
+  projectId?: ID
+  personId?: ID
+  address: string
+  customer: string
+  surveyor: string
+  products: SurveyProductKey[] // which product modules are in scope
+  status: SurveyStatus
+  answers: Record<string, string> // keyed by spec field id
+  roof: RoofFace[]
+  photos: SurveyPhoto[]
+  surveyorNote?: string
+  createdAt: number
+  updatedAt: number
+  submittedAt?: number
+}
+
 export interface State {
   deals: Deal[]
   pipelines: Pipeline[]
@@ -1029,6 +1079,8 @@ export interface State {
   solarProspects: SolarProspect[]
   // Design Studio
   designs: Design[]
+  // Field site surveys
+  surveys: SiteSurvey[]
   toasts: Toast[]
   railExpanded: boolean
 }

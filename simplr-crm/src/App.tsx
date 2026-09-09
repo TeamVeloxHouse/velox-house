@@ -40,6 +40,7 @@ import { StudioOverview, ProposalsList, StudioAnalytics, StudioTemplates } from 
 import { StudioPricing } from './pages/StudioPricing'
 import { Delivery, ProjectDetail } from './pages/Delivery'
 import { DnoQueue } from './pages/DnoQueue'
+import { SurveysList, SurveyReport, SurveyCapture } from './pages/SiteSurvey'
 import { EvCalculator } from './pages/EvCalculator'
 import { PeopleFinder } from './pages/PeopleFinder'
 import { BrandDocuments } from './pages/BrandDocuments'
@@ -57,6 +58,8 @@ import { MarketingOverview, BrandHub, MarketingAssets, ContentPlanner, Marketing
 export const router = createBrowserRouter([
   // Customer-facing login/welcome — full screen, outside the CRM shell
   { path: '/customers/:id/welcome', element: <PortalWelcome /> },
+  // Mobile site-survey capture — full screen, thumb-first, outside the CRM shell
+  { path: '/survey/:id', element: <SurveyCapture /> },
   {
     path: '/',
     element: <Layout />,
@@ -143,6 +146,8 @@ export const router = createBrowserRouter([
       { path: 'studio/delivery', element: <Delivery /> },
       { path: 'studio/delivery/:id', element: <ProjectDetail /> },
       { path: 'studio/dno', element: <DnoQueue /> },
+      { path: 'studio/surveys', element: <SurveysList /> },
+      { path: 'studio/surveys/:id', element: <SurveyReport /> },
       // TellOvi Customers — the post-sale suite (portals & aftercare)
       { path: 'customers', element: <CustomerPortals /> },
       { path: 'customers/support', element: <SupportRequests /> },

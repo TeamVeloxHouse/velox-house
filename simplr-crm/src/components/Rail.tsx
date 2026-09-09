@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   Grid, Bars, Bolt, Person, Building, Calendar, Envelope, Pie, Gear, ChevronRight, ChevronDown,
-  Box, Flow, Megaphone, Sparkle, Video, Robot, Target, Layers, File, Sun, Radar, Search, Send, Check, Clock, Dollar, Wrench, Users, Sliders, Star,
+  Box, Flow, Megaphone, Sparkle, Video, Robot, Target, Layers, File, Sun, Radar, Search, Send, Check, Clock, Dollar, Wrench, Users, Sliders, Star, MapPin,
 } from './icons'
 import { classNames } from '../lib/format'
 import { useState_ } from '../store/store'
@@ -88,6 +88,7 @@ const deliverGroups: Group[] = [
   ] },
   { label: 'Install & handover', items: [
     { to: '/studio/delivery', icon: Flow, label: 'Delivery' },
+    { to: '/studio/surveys', icon: MapPin, label: 'Site surveys' },
     { to: '/studio/dno', icon: Bolt, label: 'DNO applications' },
     { to: '/delivery/installs', icon: Box, label: 'Installs' },
     { to: '/delivery/field', icon: Wrench, label: 'Field jobs' },

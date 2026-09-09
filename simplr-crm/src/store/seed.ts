@@ -1,5 +1,5 @@
 import { deals as mDeals, people as mPeople, orgs as mOrgs, leads as mLeads, products as mProducts } from '../data/mock'
-import type { State, Deal, Person, Activity, EmailMsg, Meeting, Agent, AgentRun, Connection, CustomField, Webhook, ApiKey, Integration, SocialPost, Sequence, Automation, LinkedInThread, Enrolment, ReachCampaign, ScheduledTask, StudioConfig, StudioProject, Engineer, Job } from './types'
+import type { State, Deal, Person, Activity, EmailMsg, Meeting, Agent, AgentRun, Connection, CustomField, Webhook, ApiKey, Integration, SocialPost, Sequence, Automation, LinkedInThread, Enrolment, ReachCampaign, ScheduledTask, StudioConfig, StudioProject, Engineer, Job, SiteSurvey } from './types'
 import { MILESTONES } from '../lib/delivery'
 import { buildApplication } from '../lib/dno'
 import { tradeByKey } from '../lib/trades'
@@ -736,5 +736,42 @@ export function buildSeed(): State {
     { id: 'w4', title: 'Won value by owner', metric: 'won', groupBy: 'owner', chart: 'table' },
   ]
 
-  return { deals, pipelines, activePipelineId, dashboardWidgets, portals, portalEvents, portalResources, people, orgs, leads, activities, emails, inboxAutoReply: 'off' as const, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, linkedinThreads, enrolments, reachCampaigns, scheduledTasks, studioConfig, projects, playbooks, brandKit, docTemplates, brandDocs, products: mProducts, documents, emailCampaigns, customFields, activeTrade, features, onboarded: true, engineers, jobs, currentRole: 'owner', teamMembers, teamChannels, teamMessages, announcements, employees, leaveRequests, policies, certifications, expenses, stock, reviews, brandAssets, messaging, mediaAssets, contentItems, mktRequests, mktConnectors, solarCampaigns: [], solarProspects: [], designs: [], toasts: [], railExpanded: true }
+  // ── A submitted demo site survey (Owen Pryce — solar + battery), links job8 ↔ project pj4 ──
+  const surveyPhoto = (section: string, key: string, label: string, required: boolean, captured: boolean) =>
+    ({ id: `sph-${key}`, section, key, label, required, captured, name: captured ? `${key}.jpg` : undefined })
+  const surveys: SiteSurvey[] = [
+    {
+      id: 'sur1', ref: 'SUR-2048', jobId: 'job8', projectId: 'pj4', personId: 'p4',
+      address: '31 Victoria St, Rochdale', customer: 'Owen Pryce', surveyor: 'Priya Shah',
+      products: ['solar', 'battery'], status: 'submitted',
+      answers: {
+        'prop.type': 'Semi-detached', 'prop.age': '1945–1964', 'prop.tenure': 'Owner-occupied', 'prop.present': 'true', 'prop.listed': 'false',
+        'shade.level': 'Light', 'shade.sources': 'Neighbour’s conifer to the SW', 'shade.loss': '6',
+        'loft.rafter': '47 × 100 mm', 'loft.spacing': '400', 'loft.membrane': 'true', 'loft.condition': 'Good', 'loft.access': 'Easy',
+        'elec.mainFuse': '80 A', 'elec.phase': 'Single phase', 'elec.meter': 'Smart (SMETS2)', 'elec.earthing': 'TN-C-S (PME)',
+        'elec.spareWays': '3', 'elec.existingGen': 'false', 'elec.inverterLoc': 'Loft, beside water tank', 'elec.isolatorLoc': 'External, beside meter box', 'elec.cableRun': '8',
+        'bat.location': 'Garage, rear wall', 'bat.env': 'Garage', 'bat.wall': 'Brick', 'bat.distance': '4', 'bat.backup': 'true',
+        'acc.scaffoldSides': '2', 'acc.scaffoldHeight': '6', 'acc.fragile': 'false', 'acc.asbestos': 'false', 'acc.parking': 'Good',
+      },
+      roof: [
+        { id: 'rf-a', name: 'Rear (main)', orientationDeg: 175, pitchDeg: 35, covering: 'Concrete tile', coveringAge: '~55 yrs', condition: 'Good', widthM: 7.2, heightM: 4.1, obstructions: 'Soil vent pipe, bottom-right' },
+        { id: 'rf-b', name: 'Front', orientationDeg: 355, pitchDeg: 35, covering: 'Concrete tile', condition: 'Good', widthM: 7.2, heightM: 4.1, obstructions: 'Chimney to the left' },
+      ],
+      photos: [
+        surveyPhoto('property', 'front-elevation', 'Front of property', true, true),
+        surveyPhoto('shading', 'horizon', 'Horizon from array location', true, true),
+        surveyPhoto('loft', 'rafters', 'Rafters / structure', true, true),
+        surveyPhoto('loft', 'defect', 'Any defect', false, false),
+        surveyPhoto('electrical', 'consumer-unit', 'Consumer unit (open)', true, true),
+        surveyPhoto('electrical', 'meter', 'Meter & main fuse', true, true),
+        surveyPhoto('electrical', 'earthing', 'Earthing point', false, true),
+        surveyPhoto('battery', 'battery-loc', 'Proposed battery location', true, true),
+        surveyPhoto('access', 'access', 'Access / street view', false, false),
+      ],
+      surveyorNote: 'Straightforward job. Customer keen to add EV charger later — left space in the CU plan.',
+      createdAt: days(3), updatedAt: days(3), submittedAt: days(3),
+    },
+  ]
+
+  return { deals, pipelines, activePipelineId, dashboardWidgets, portals, portalEvents, portalResources, people, orgs, leads, activities, emails, inboxAutoReply: 'off' as const, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, linkedinThreads, enrolments, reachCampaigns, scheduledTasks, studioConfig, projects, playbooks, brandKit, docTemplates, brandDocs, products: mProducts, documents, emailCampaigns, customFields, activeTrade, features, onboarded: true, engineers, jobs, currentRole: 'owner', teamMembers, teamChannels, teamMessages, announcements, employees, leaveRequests, policies, certifications, expenses, stock, reviews, brandAssets, messaging, mediaAssets, contentItems, mktRequests, mktConnectors, solarCampaigns: [], solarProspects: [], designs: [], surveys, toasts: [], railExpanded: true }
 }

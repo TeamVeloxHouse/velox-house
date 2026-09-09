@@ -3,7 +3,8 @@ import { buildSeed } from './seed'
 import * as pipelineHelpers from '../lib/pipelines'
 import { buildApplication, buildDocPack, nextStatus, newEventId, stamp, resolveDno, classify, statusEventLabel, dnoRefPrefix, autopilotSteps } from '../lib/dno'
 import type { PipelineStage, DnoApplication, DnoStatus, DnoDocKind, StudioProject } from './types'
-import type { State, Deal, Person, Lead, Org, Activity, EmailMsg, Toast, ID, SolarCampaign, SolarProspect, SolarContact, SolarProspectStatus } from './types'
+import type { State, Deal, Person, Lead, Org, Activity, EmailMsg, Toast, ID, SolarCampaign, SolarProspect, SolarContact, SolarProspectStatus, SiteSurvey, SurveyProductKey } from './types'
+import { surveyRef, photoSlotsFor, surveyToDnoSite, surveyFlags, completeness } from '../lib/survey'
 import { AI_MEMBER_ID, YOU_MEMBER_ID } from './types'
 import type { StageName } from '../data/mock'
 
@@ -73,6 +74,8 @@ type Action =
   | { type: 'ADD_DESIGN'; design: import('./types').Design }
   | { type: 'UPDATE_DESIGN'; id: ID; patch: Partial<import('./types').Design> }
   | { type: 'REMOVE_DESIGN'; id: ID }
+  | { type: 'ADD_SURVEY'; survey: import('./types').SiteSurvey }
+  | { type: 'UPDATE_SURVEY'; id: ID; patch: Partial<import('./types').SiteSurvey> }
   | { type: 'ADD_FIELD'; field: import('./types').CustomField }
   | { type: 'REMOVE_FIELD'; id: ID }
   | { type: 'SET_CUSTOM'; entity: 'deal' | 'person' | 'org'; id: ID; fieldId: ID; value: string }
@@ -333,6 +336,10 @@ function reducer(state: State, action: Action): State {
       return { ...state, designs: state.designs.map((d) => (d.id === action.id ? { ...d, ...action.patch, updatedAt: Date.now() } : d)) }
     case 'REMOVE_DESIGN':
       return { ...state, designs: state.designs.filter((d) => d.id !== action.id) }
+    case 'ADD_SURVEY':
+      return { ...state, surveys: [action.survey, ...state.surveys] }
+    case 'UPDATE_SURVEY':
+      return { ...state, surveys: state.surveys.map((s) => (s.id === action.id ? { ...s, ...action.patch, updatedAt: Date.now() } : s)) }
     case 'ADD_FIELD':
       return { ...state, customFields: [...state.customFields, action.field] }
     case 'REMOVE_FIELD':
@@ -559,6 +566,50 @@ export function useActions() {
     dispatch,
     toast,
     dismissToast: (id: ID) => dispatch({ type: 'DISMISS_TOAST', id }),
+
+    // ── Site surveys (mobile field capture → CRM) ──
+    /** Start (or reopen) a survey. If a survey Job already has one, return it; else create a draft. */
+    startSurvey: (opts: { jobId?: ID; dealId?: ID; projectId?: ID; personId?: ID; address: string; customer: string; surveyor?: string; products?: SurveyProductKey[] }) => {
+      const existing = opts.jobId ? live.state?.surveys.find((s) => s.jobId === opts.jobId) : undefined
+      if (existing) return existing
+      const products = opts.products ?? ['solar', 'battery']
+      const survey: SiteSurvey = {
+        id: uid('sur'), ref: surveyRef(), jobId: opts.jobId, dealId: opts.dealId, projectId: opts.projectId, personId: opts.personId,
+        address: opts.address, customer: opts.customer, surveyor: opts.surveyor ?? 'Jordan Miles',
+        products, status: 'draft', answers: {}, roof: [],
+        photos: photoSlotsFor(products).map((p) => ({ id: uid('ph'), section: p.section, key: p.key, label: p.label, required: p.required, captured: false })),
+        createdAt: Date.now(), updatedAt: Date.now(),
+      }
+      dispatch({ type: 'ADD_SURVEY', survey })
+      return survey
+    },
+    saveSurvey: (id: ID, patch: Partial<SiteSurvey>) => dispatch({ type: 'UPDATE_SURVEY', id, patch }),
+    /** Submit a survey: lock it, complete the survey Job, log it on the deal, pre-fill DNO site details. */
+    submitSurvey: (id: ID) => {
+      const s = live.state?.surveys.find((x) => x.id === id)
+      if (!s) return
+      dispatch({ type: 'UPDATE_SURVEY', id, patch: { status: 'submitted', submittedAt: Date.now() } })
+      // Complete the survey job it fulfils
+      if (s.jobId) dispatch({ type: 'UPDATE_JOB', id: s.jobId, patch: { status: 'complete' } })
+      // Timeline note on the deal (with the top risk flags)
+      const flags = surveyFlags(s)
+      const { pct } = completeness(s)
+      dispatch({ type: 'ADD_ACTIVITY', activity: {
+        id: uid('act'), type: 'file', subject: `Site survey submitted — ${s.ref} (${pct}% complete)`,
+        body: flags.length ? `Flags:\n• ${flags.join('\n• ')}` : 'No risk flags raised.',
+        dealId: s.dealId, personId: s.personId, jobId: s.jobId, done: true, who: s.surveyor, createdAt: Date.now(), source: 'manual',
+      } })
+      // Pre-fill DNO site details on the linked project (creates a draft application if absent)
+      if (s.projectId) patchDno(s.projectId, (dno) => ({ ...dno, ...surveyToDnoSite(s) }))
+      toast(`${s.ref} submitted — job closed, DNO site details pre-filled`, 'positive')
+    },
+    reviewSurvey: (id: ID) => dispatch({ type: 'UPDATE_SURVEY', id, patch: { status: 'reviewed' } }),
+    /** Toggle a photo slot as captured/not (simulated on-site capture). */
+    toggleSurveyPhoto: (id: ID, photoId: ID) => {
+      const s = live.state?.surveys.find((x) => x.id === id)
+      if (!s) return
+      dispatch({ type: 'UPDATE_SURVEY', id, patch: { photos: s.photos.map((p) => (p.id === photoId ? { ...p, captured: !p.captured, name: !p.captured ? `${p.key}-${Date.now().toString(36)}.jpg` : undefined } : p)) } })
+    },
 
     addDeal: (partial: Partial<Deal> & { name: string; org: string; value: number; stage: StageName }) => {
       const deal: Deal = {
