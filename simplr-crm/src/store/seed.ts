@@ -1,6 +1,7 @@
 import { deals as mDeals, people as mPeople, orgs as mOrgs, leads as mLeads, products as mProducts } from '../data/mock'
 import type { State, Deal, Person, Activity, EmailMsg, Meeting, Agent, AgentRun, Connection, CustomField, Webhook, ApiKey, Integration, SocialPost, Sequence, Automation, LinkedInThread, Enrolment, ReachCampaign, ScheduledTask, StudioConfig, StudioProject, Engineer, Job } from './types'
 import { MILESTONES } from '../lib/delivery'
+import { buildApplication } from '../lib/dno'
 import { tradeByKey } from '../lib/trades'
 import { pipelineFromTemplate, templateByKey } from '../lib/pipelines'
 import { money } from '../lib/format'
@@ -364,6 +365,53 @@ export function buildSeed(): State {
     { id: 'in4', number: 'INV-PJ3-01', kind: 'deposit', amount: 6540, status: 'paid', issuedDate: '10 Jul', dueDate: '17 Jul', paidDate: '12 Jul' },
     { id: 'in5', number: 'INV-PJ3-02', kind: 'final', amount: 15260, status: 'overdue', issuedDate: '14 Aug', dueDate: '21 Aug' },
   ]
+
+  // DNO Autopilot — seed applications at different lifecycle stages so the queue is alive.
+  projects[1].dno = buildApplication(projects[1], { mpan: '2000012345672', phase: 1 })
+  projects[1].dno = {
+    ...projects[1].dno,
+    status: 'submitted',
+    submittedAt: '26 Aug 2026',
+    proposedInstallDate: '9 Sep 2026',
+    signatures: { installer: { by: 'Jordan Miles', signedAt: '24 Aug 2026' }, client: { by: 'Elena Voss', signedAt: '25 Aug 2026' } },
+    documents: [
+      { id: 'd1', name: 'G99A_Application_1.pdf', kind: 'pre-install', pages: 3, generatedAt: '24 Aug 2026' },
+      { id: 'd2', name: 'G99A_SingleLineDiagram.pdf', kind: 'pre-install', pages: 1, generatedAt: '24 Aug 2026' },
+      { id: 'd3', name: 'G99A_EquipmentSchedule.pdf', kind: 'pre-install', pages: 2, generatedAt: '24 Aug 2026' },
+    ],
+    messages: [],
+    events: [
+      { id: 'e1', label: 'Application created', at: '22 Aug 2026' },
+      { id: 'e2', label: 'Validated — ready to submit', at: '24 Aug 2026' },
+      { id: 'e3', label: 'Submitted to DNO', at: '26 Aug 2026' },
+    ],
+  }
+  projects[2].dno = buildApplication(projects[2], { mpan: '1500012345672', phase: 3 })
+  projects[2].dno = {
+    ...projects[2].dno,
+    status: 'installed',
+    submittedAt: '12 Jul 2026',
+    decisionAt: '2 Aug 2026',
+    reference: 'NPG-4821973',
+    proposedInstallDate: '14 Aug 2026',
+    actualInstallDate: '14 Aug 2026',
+    signatures: { installer: { by: 'Jordan Miles', signedAt: '10 Jul 2026' }, client: { by: 'Tom Reyes', signedAt: '11 Jul 2026' } },
+    documents: [
+      { id: 'd4', name: 'G99B_Application_1.pdf', kind: 'pre-install', pages: 3, generatedAt: '10 Jul 2026' },
+      { id: 'd5', name: 'G99B_SingleLineDiagram.pdf', kind: 'pre-install', pages: 1, generatedAt: '10 Jul 2026' },
+      { id: 'd6', name: 'G99B_EquipmentSchedule.pdf', kind: 'pre-install', pages: 2, generatedAt: '10 Jul 2026' },
+    ],
+    messages: [
+      { id: 'm1', from: 'dno', body: 'Application received. A connection offer has been issued — reference NPG-4821973. Commission within 3 months.', at: '2 Aug 2026' },
+    ],
+    events: [
+      { id: 'e4', label: 'Application created', at: '8 Jul 2026' },
+      { id: 'e5', label: 'Validated — ready to submit', at: '10 Jul 2026' },
+      { id: 'e6', label: 'Submitted to DNO', at: '12 Jul 2026' },
+      { id: 'e7', label: 'Approved by DNO', at: '2 Aug 2026' },
+      { id: 'e8', label: 'Installed', at: '14 Aug 2026' },
+    ],
+  }
 
   const emailCampaigns: import('./types').EmailCampaign[] = [
     { id: 'ec1', name: 'Q3 Renewables outreach', type: 'Sequence', sent: 480, opens: 62, clicks: 18, deals: 9, status: 'Sending', createdAt: days(4) },

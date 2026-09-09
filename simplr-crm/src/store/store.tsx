@@ -1,12 +1,13 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, type ReactNode } from 'react'
 import { buildSeed } from './seed'
 import * as pipelineHelpers from '../lib/pipelines'
-import type { PipelineStage } from './types'
+import { buildApplication, buildDocPack, nextStatus, newEventId, stamp, resolveDno, classify, statusEventLabel, dnoRefPrefix, autopilotSteps } from '../lib/dno'
+import type { PipelineStage, DnoApplication, DnoStatus, DnoDocKind, StudioProject } from './types'
 import type { State, Deal, Person, Lead, Org, Activity, EmailMsg, Toast, ID, SolarCampaign, SolarProspect, SolarContact, SolarProspectStatus } from './types'
 import { AI_MEMBER_ID, YOU_MEMBER_ID } from './types'
 import type { StageName } from '../data/mock'
 
-const KEY = 'simplr.state.v18'
+const KEY = 'simplr.state.v19'
 let idc = 1000
 export const uid = (p = 'x') => `${p}${Date.now().toString(36)}${idc++}`
 
@@ -546,6 +547,14 @@ export function useActions() {
   const { dispatch } = useStore()
   const toast = (text: string, tone: Toast['tone'] = 'positive') => dispatch({ type: 'TOAST', toast: { id: uid('t'), text, tone } })
 
+  // Patch a project's DNO application (creating a draft from the project if absent).
+  const patchDno = (projectId: ID, mut: (dno: DnoApplication, p: StudioProject) => DnoApplication) => {
+    const p = live.state?.projects.find((x) => x.id === projectId)
+    if (!p) return
+    const current = p.dno ?? buildApplication(p)
+    dispatch({ type: 'UPDATE_PROJECT', id: projectId, patch: { dno: mut(current, p) } })
+  }
+
   return {
     dispatch,
     toast,
@@ -960,6 +969,95 @@ export function useActions() {
       const p = live.state?.projects.find((x) => x.id === projectId)
       if (!p) return
       dispatch({ type: 'UPDATE_PROJECT', id: projectId, patch: { invoices: (p.invoices ?? []).filter((i) => i.id !== invoiceId) } })
+    },
+    // ── DNO Autopilot (per-project distribution-network-operator application) ──
+    startDno: (projectId: ID, over?: Partial<DnoApplication>) => {
+      const p = live.state?.projects.find((x) => x.id === projectId)
+      if (!p) return
+      const dno = buildApplication(p, over)
+      dispatch({ type: 'UPDATE_PROJECT', id: projectId, patch: { dno } })
+      toast(`DNO Autopilot — classified ${dno.classification}`, 'positive')
+      return dno
+    },
+    updateDnoInputs: (projectId: ID, patch: Partial<DnoApplication>) => {
+      patchDno(projectId, (dno) => {
+        const merged = { ...dno, ...patch }
+        const totalOutputKw = merged.devices.filter((d) => d.kind === 'inverter').reduce((s, d) => s + d.capacityKw, 0) || 4
+        const dnoRegion = resolveDno(merged.mpan)
+        const cls = classify({ totalOutputKw, phase: merged.phase, exportLimitKw: merged.exportLimitKw, dnoRegion, mpan: merged.mpan })
+        return { ...merged, ...cls, dnoRegion }
+      })
+    },
+    signDno: (projectId: ID, who: 'installer' | 'client', by: string, dataUrl?: string) => {
+      patchDno(projectId, (dno) => ({
+        ...dno,
+        signatures: { ...dno.signatures, [who]: { by, dataUrl, signedAt: stamp() } },
+        events: [...dno.events, { id: newEventId(), label: `${who === 'installer' ? 'Installer' : 'Client'} signature captured`, at: stamp() }],
+      }))
+      toast(`${who === 'installer' ? 'Installer' : 'Client'} signature saved`, 'positive')
+    },
+    generateDnoDocs: (projectId: ID, kind: DnoDocKind) => {
+      patchDno(projectId, (dno) => {
+        const docs = buildDocPack({ form: dno.form }, kind)
+        return {
+          ...dno,
+          documents: [...dno.documents.filter((d) => d.kind !== kind), ...docs],
+          status: kind === 'pre-install' && dno.status === 'draft' ? 'validated' : dno.status,
+          events: [...dno.events, { id: newEventId(), label: `${kind === 'pre-install' ? 'Pre-install' : 'Post-install'} pack generated`, at: stamp(), note: `${docs.length} documents` }],
+        }
+      })
+      toast(`${kind === 'pre-install' ? 'Pre-install' : 'Post-install'} pack generated`, 'positive')
+    },
+    advanceDno: (projectId: ID) => {
+      let nextLabel = ''
+      patchDno(projectId, (dno) => {
+        const ns = nextStatus(dno.status)
+        if (!ns) return dno
+        nextLabel = statusEventLabel(ns)
+        const patch: Partial<DnoApplication> = { status: ns }
+        if (ns === 'submitted') patch.submittedAt = stamp()
+        if (ns === 'approved') { patch.decisionAt = stamp(); patch.reference = dno.reference ?? `${dnoRefPrefix(dno.dnoRegion)}-${4000 + Math.floor(Math.random() * 5999)}` }
+        return { ...dno, ...patch, events: [...dno.events, { id: newEventId(), label: nextLabel, at: stamp() }] }
+      })
+      if (nextLabel) toast(`DNO → ${nextLabel}`)
+    },
+    setDnoStatus: (projectId: ID, status: DnoStatus, reference?: string) => {
+      patchDno(projectId, (dno) => ({
+        ...dno,
+        status,
+        reference: reference ?? dno.reference,
+        decisionAt: status === 'approved' || status === 'rejected' ? stamp() : dno.decisionAt,
+        events: [...dno.events, { id: newEventId(), label: statusEventLabel(status), at: stamp() }],
+      }))
+      toast(status === 'approved' ? 'DNO application approved 🎉' : status === 'rejected' ? 'DNO application rejected' : `DNO → ${status}`, status === 'rejected' ? 'warning' : 'positive')
+    },
+    addDnoMessage: (projectId: ID, from: 'installer' | 'dno', body: string) => {
+      patchDno(projectId, (dno) => ({ ...dno, messages: [...dno.messages, { id: newEventId(), from, body, at: stamp() }] }))
+    },
+    startDnoRun: (projectId: ID, over?: Partial<DnoApplication>) => {
+      const p = live.state?.projects.find((x) => x.id === projectId)
+      if (!p) return
+      const base = p.dno ?? buildApplication(p, over)
+      const steps = autopilotSteps(base)
+      const dno: DnoApplication = { ...base, run: { active: true, index: 0, total: steps.length, step: steps[0], steps } }
+      dispatch({ type: 'UPDATE_PROJECT', id: projectId, patch: { dno } })
+      return dno
+    },
+    setDnoRunStep: (projectId: ID, index: number, step: string) => {
+      patchDno(projectId, (dno) => ({ ...dno, run: dno.run ? { ...dno.run, index, step } : dno.run }))
+    },
+    finishDnoRun: (projectId: ID) => {
+      patchDno(projectId, (dno) => {
+        const docs = buildDocPack({ form: dno.form }, 'pre-install')
+        return {
+          ...dno,
+          run: undefined,
+          documents: [...dno.documents.filter((d) => d.kind !== 'pre-install'), ...docs],
+          status: dno.status === 'draft' ? 'validated' : dno.status,
+          events: [...dno.events, { id: newEventId(), label: 'Autopilot prepared application', at: stamp(), note: `${dno.classification} · ${docs.length} documents` }],
+        }
+      })
+      toast('DNO Autopilot ready — review & sign', 'positive')
     },
     // ── AI Context / playbooks (the agent "brain") ──
     addPlaybook: (pb: Omit<import('./types').Playbook, 'id' | 'updatedAt'>) => {

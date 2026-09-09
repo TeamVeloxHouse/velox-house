@@ -5,10 +5,11 @@ import { PageBody } from '../components/Page'
 import { Button, Kpi, Chip, Progress } from '../components/ui'
 import { Modal, Field, Input, Select } from '../components/overlays'
 import { ViewSwitch, PillTabs } from '../components/chrome'
-import { Bars, Grid, Plus, Check, Sun, Box, Flow, Building, Dollar, Clock, Layers } from '../components/icons'
+import { Bars, Grid, Plus, Check, Sun, Box, Flow, Building, Dollar, Clock, Layers, Bolt } from '../components/icons'
 import { Table, Row, Cell } from '../components/Table'
 import { useState_, useActions, useSelectors } from '../store/store'
 import { buildProject, MILESTONES, buildOrder, buildInvoice, orderTotal, projectFinance } from '../lib/delivery'
+import { DnoTab, DnoStatusPill } from './DnoSection'
 import type { StudioProject, ProjectOrder, ProjectInvoice, OrderItem, InvoiceKind, InvoiceStatus, OrderStatus } from '../store/types'
 import { gbp } from '../lib/solar'
 import { classNames } from '../lib/format'
@@ -82,6 +83,7 @@ export function Delivery() {
                         <div className="mt-2"><Progress value={Math.round((p.milestoneIndex / (MILESTONES.length - 1)) * 100)} height={4} color={milestoneColor[i]} track="#EDF0F4" /></div>
                         {p.installDate && p.milestoneIndex < 6 && <div className="text-[11px] text-accent font-semibold mt-2">Install {p.installDate}</div>}
                         {p.products.length > 1 && <div className="flex gap-1 mt-2">{p.products.slice(0, 3).map((pr) => <span key={pr.name} className="text-[10px] font-medium text-ink-3 bg-control rounded px-1.5 py-0.5">{pr.name}</span>)}</div>}
+                        {p.dno && <div className="mt-2"><DnoStatusPill dno={p.dno} /></div>}
                       </button>
                     ))}
                   </div>
@@ -135,7 +137,7 @@ export function ProjectDetail() {
   const nav = useNavigate()
   const { projects } = useState_()
   const act = useActions()
-  const [tab, setTab] = useState('overview')
+  const [tab, setTab] = useState(() => (typeof window !== 'undefined' && window.location.hash === '#dno' ? 'dno' : 'overview'))
   const p = projects.find((x) => x.id === id)
 
   if (!p) return (<><TopBar title="Delivery" /><PageBody><div className="text-muted-b">Project not found. <button onClick={() => nav('/studio/delivery')} className="text-accent font-semibold">Back to delivery</button>.</div></PageBody></>)
@@ -159,7 +161,7 @@ export function ProjectDetail() {
         {/* milestone stepper */}
         <div className="bg-surface border border-border rounded-card p-5">
           <div className="flex items-center justify-between mb-4">
-            <div><div className="text-[16px] font-bold text-ink">{p.address}</div><div className="text-[13px] text-muted-b">{p.customer} · {p.owner} · {gbp(p.value)}{p.systemKwp ? ` · ${p.systemKwp} kWp` : ''}</div></div>
+            <div><div className="flex items-center gap-2.5"><span className="text-[16px] font-bold text-ink">{p.address}</span>{p.dno && <DnoStatusPill dno={p.dno} />}</div><div className="text-[13px] text-muted-b">{p.customer} · {p.owner} · {gbp(p.value)}{p.systemKwp ? ` · ${p.systemKwp} kWp` : ''}</div></div>
             <div className="text-right"><div className="text-[22px] font-bold text-ink">{pct}%</div><div className="text-[12px] text-muted-2">to PTO</div></div>
           </div>
           <div className="flex items-center">
@@ -192,6 +194,7 @@ export function ProjectDetail() {
           tabs={[
             { id: 'overview', label: 'Overview', icon: Layers },
             { id: 'timeline', label: 'Timeline', icon: Clock },
+            { id: 'dno', label: `DNO${p.dno ? ` · ${p.dno.form}` : ''}`, icon: Bolt },
             { id: 'orders', label: `Orders${orders.length ? ` · ${orders.length}` : ''}`, icon: Box },
             { id: 'invoices', label: `Invoices${invoices.length ? ` · ${invoices.length}` : ''}`, icon: Dollar },
           ]}
@@ -199,6 +202,7 @@ export function ProjectDetail() {
 
         {tab === 'overview' && <OverviewTab p={p} atPto={atPto} />}
         {tab === 'timeline' && <TimelineTab p={p} />}
+        {tab === 'dno' && <DnoTab p={p} />}
         {tab === 'orders' && <OrdersTab p={p} />}
         {tab === 'invoices' && <InvoicesTab p={p} />}
       </PageBody>

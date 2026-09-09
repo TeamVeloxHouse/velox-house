@@ -6,7 +6,8 @@ import { Avatar, Chip, type ChipTone } from './ui'
 import { Sparkle, Send, Check, Envelope, Play } from './icons'
 import { money, classNames } from '../lib/format'
 import type { Health } from '../data/mock'
-import { useState_, useActions } from '../store/store'
+import { useState_, useActions, live } from '../store/store'
+import type { DnoHint } from '../lib/ai'
 
 type MiniDeal = { id: string; name: string; org: string; stage: string; value: number; health: Health }
 
@@ -390,15 +391,32 @@ export function useChat(seed?: ChatTurn[], opts?: { listen?: boolean; persist?: 
     }
   }
 
+  // Drive the DNO Autopilot from Ovi: open the project's DNO tab and stream the run.
+  function runDnoFromOvi(hint: DnoHint) {
+    const proj = live.state?.projects.find((p) => p.id === hint.projectId)
+    if (!proj) { busyRef.current = false; return }
+    nav(`/studio/delivery/${proj.id}#dno`)
+    const done = act.startDnoRun(proj.id) // classifies now; the DNO tab streams + finishes the pack
+    updateLastAi((r) => ({
+      ...r,
+      blocks: [
+        ...r.blocks,
+        { type: 'text', text: `Preparing the DNO application for **${hint.address}** — classified **${done?.classification ?? 'connection'}**${done ? ` (aggregate RC ${done.aggregateRcA} A → ${done.dnoRegion})` : ''}. It's streaming on the DNO tab now and will finish with the SLD and pack ready to sign.` },
+      ],
+    }))
+    busyRef.current = false
+  }
+
   // The built-in deterministic engine (used when no real model is wired up).
   function finishDeterministic(text: string) {
     const res = answer(text)
     setTurns((t) => t.map((x, i) => (i === t.length - 1 ? { role: 'ai', res, pending: true } : x)))
     setTimeout(() => {
       setTurns((t) => t.map((x, i) => (i === t.length - 1 ? { ...x, pending: false } : x)))
-      if (res.run) streamRun(res.run)
+      if (res.dno) runDnoFromOvi(res.dno)
+      else if (res.run) streamRun(res.run)
       else busyRef.current = false
-    }, res.run ? 600 : 700)
+    }, res.run || res.dno ? 600 : 700)
   }
 
   async function ask(text: string) {

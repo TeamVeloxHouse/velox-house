@@ -88,6 +88,7 @@ const deliverGroups: Group[] = [
   ] },
   { label: 'Install & handover', items: [
     { to: '/studio/delivery', icon: Flow, label: 'Delivery' },
+    { to: '/studio/dno', icon: Bolt, label: 'DNO applications' },
     { to: '/delivery/installs', icon: Box, label: 'Installs' },
     { to: '/delivery/field', icon: Wrench, label: 'Field jobs' },
     { to: '/delivery/certificates', icon: File, label: 'Certificates' },

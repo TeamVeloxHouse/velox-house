@@ -17,6 +17,17 @@ const getDeals = () => S().deals.filter((d) => !d.lost)
 const getLeads = () => S().leads.filter((l) => !l.archived)
 const getPeople = () => S().people
 const getOrgs = () => S().orgs
+const getProjects = () => S().projects
+// Resolve a delivery project by id, address or customer name mentioned in the prompt.
+function findProject(q: string) {
+  const projects = getProjects()
+  const s = q.toLowerCase()
+  return (
+    projects.find((p) => s.includes(p.address.toLowerCase())) ||
+    projects.find((p) => p.address.toLowerCase().split(/[ ,]+/).some((w) => w.length > 3 && s.includes(w))) ||
+    projects.find((p) => p.customer.toLowerCase().split(' ').some((w) => w.length > 2 && s.includes(w)))
+  )
+}
 
 export type WfStatus = 'pending' | 'running' | 'done'
 export type WorkflowStep = { label: string; detail?: string; status: WfStatus; op?: RunOp }
@@ -34,7 +45,8 @@ export type AiBlock =
   | { type: 'approval'; id: string; summary: string; status: 'pending' | 'approved' | 'declined' }
 
 export type RunPlan = { count: number; vertical: string; outreach: boolean; steps: WorkflowStep[]; campaignName: string }
-export type AiResponse = { blocks: AiBlock[]; suggestions?: string[]; thinking?: string; run?: RunPlan }
+export type DnoHint = { projectId: string; address: string; customer: string }
+export type AiResponse = { blocks: AiBlock[]; suggestions?: string[]; thinking?: string; run?: RunPlan; dno?: DnoHint }
 
 /* ---- Prospect generation (mock; swap for a real data provider) ---- */
 const verticalCompanies: Record<string, string[]> = {
@@ -121,6 +133,27 @@ export function answer(prompt: string): AiResponse {
         { type: 'actions', items: [{ label: 'View scheduled tasks' }, { label: 'Change cadence' }] },
       ],
       run: { count: 0, vertical: 'b2b', outreach: false, steps: [{ label: 'Creating scheduled task', status: 'pending', op: 'schedule' }], campaignName: prompt.slice(0, 60) },
+    }
+  }
+
+  // 0b. DNO Autopilot — "push 31 Victoria St to the DNO" / "queue the G99 for the Leeds job"
+  // (skip pure view requests like "show the DNO applications queue")
+  if (/(dno|g98|g99|g100|grid (connection|application)|network operator)/.test(q) && /(push|queue|submit|prepare|apply|file|start|run|do|sort|handle|send|kick off|get.*ready)/.test(q) && !/(show|view|open|see|list|go to).*(queue|applications|dashboard)/.test(q)) {
+    const proj = findProject(q)
+    if (!proj) {
+      const inflight = getProjects().filter((p) => p.milestoneIndex < 7).slice(0, 4)
+      return {
+        blocks: [
+          { type: 'text', text: `Which project's DNO application should I prepare? I couldn't match one from that. Here are a few in delivery:` },
+          { type: 'actions', items: inflight.map((p) => ({ label: `Queue DNO for ${p.address}` })) },
+        ],
+      }
+    }
+    const verb = proj.dno ? 're-run' : 'prepare'
+    return {
+      thinking: `Reading ${proj.address} — survey, design, MPAN…`,
+      blocks: [{ type: 'text', text: `On it — I'll ${verb} the DNO application for **${proj.address}**: classify the connection, build the SLD and pack, and get it ready to sign. Opening it so you can watch:` }],
+      dno: { projectId: proj.id, address: proj.address, customer: proj.customer },
     }
   }
 

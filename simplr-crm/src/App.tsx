@@ -39,6 +39,7 @@ import { Proposal } from './pages/Proposal'
 import { StudioOverview, ProposalsList, StudioAnalytics, StudioTemplates } from './pages/studio'
 import { StudioPricing } from './pages/StudioPricing'
 import { Delivery, ProjectDetail } from './pages/Delivery'
+import { DnoQueue } from './pages/DnoQueue'
 import { EvCalculator } from './pages/EvCalculator'
 import { PeopleFinder } from './pages/PeopleFinder'
 import { BrandDocuments } from './pages/BrandDocuments'
@@ -141,6 +142,7 @@ export const router = createBrowserRouter([
       { path: 'studio/ev', element: <EvCalculator /> },
       { path: 'studio/delivery', element: <Delivery /> },
       { path: 'studio/delivery/:id', element: <ProjectDetail /> },
+      { path: 'studio/dno', element: <DnoQueue /> },
       // TellOvi Customers — the post-sale suite (portals & aftercare)
       { path: 'customers', element: <CustomerPortals /> },
       { path: 'customers/support', element: <SupportRequests /> },

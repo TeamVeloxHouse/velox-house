@@ -9,6 +9,7 @@ import type { StageName } from '../data/mock'
 import { generateProspects } from './ai'
 import { INDUSTRY_TEMPLATES } from './pipelines'
 import { effectiveDueDate, isTask } from './tasks'
+import { STATUS_LABEL } from './dno'
 
 type Act = ReturnType<typeof useActions>
 export type ToolCtx = { act: Act; nav: (to: string) => void; confirm: (summary: string) => Promise<boolean> }
@@ -36,6 +37,12 @@ const memberIdByName = (name?: string) => (name ? S().teamMembers.find((m) => m.
 const stageNames = () => (S().pipelines.find((p) => p.id === S().activePipelineId) ?? S().pipelines[0])?.stages.map((s) => s.name) ?? []
 const findPortal = (ref: string) => S().portals.find((p) => p.id === ref) || S().portals.find((p) => p.customer.toLowerCase().includes((ref || '').toLowerCase()))
 const findJob = (ref: string) => S().jobs.find((j) => j.id === ref || j.ref === ref) || S().jobs.find((j) => `${j.title} ${j.customer}`.toLowerCase().includes((ref || '').toLowerCase()))
+const findProject = (ref: string) => {
+  const r = (ref || '').toLowerCase()
+  const ps = S().projects
+  return ps.find((p) => p.id === ref) || ps.find((p) => `${p.address} ${p.customer}`.toLowerCase().includes(r)) ||
+    ps.find((p) => p.address.toLowerCase().split(/[ ,]+/).some((w) => w.length > 3 && r.includes(w)))
+}
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
 
 export const OVI_TOOLS: OviTool[] = [
@@ -339,6 +346,28 @@ export const OVI_TOOLS: OviTool[] = [
       const rows = generateProspects(n, i.vertical).map((p: any) => ({ name: p.name, company: p.company }))
       const c = ctx.act.createReachCampaign(i.name, i.vertical, rows); ctx.nav('/reach/campaigns')
       return { ok: true, summary: `Campaign: ${c.name}`, content: `Launched "${c.name}" to ${n} ${i.vertical} prospects — email + LinkedIn.` }
+    },
+  },
+
+  // ── DNO Autopilot (Studio delivery) ──
+  {
+    name: 'list_dno_applications', description: 'List DNO (grid connection) applications across delivery projects, with form, status and reference.',
+    input_schema: { type: 'object', properties: {} },
+    execute: () => {
+      const apps = S().projects.filter((p) => p.dno)
+      if (!apps.length) return { ok: true, summary: 'No DNO applications', content: 'No delivery project has a DNO application yet.' }
+      return { ok: true, summary: `${apps.length} DNO applications`, content: apps.map((p) => `${p.address} · ${p.dno!.form} · ${STATUS_LABEL[p.dno!.status]}${p.dno!.reference ? ` · ${p.dno!.reference}` : ''}`).join('\n') }
+    },
+  },
+  {
+    name: 'queue_dno_application', description: 'Prepare / queue the DNO (grid connection) application for a delivery project — reads the survey & design, classifies the connection (G98/G99), builds the SLD and pack, ready to sign. Identify the project by address or customer.',
+    input_schema: { type: 'object', properties: { project: { type: 'string', description: 'project address, customer name, or id' } }, required: ['project'] },
+    execute: (i, ctx) => {
+      const p = findProject(i.project)
+      if (!p) return { ok: false, summary: 'Project not found', content: `No delivery project matching "${i.project}".` }
+      ctx.nav(`/studio/delivery/${p.id}#dno`)
+      const dno = ctx.act.startDnoRun(p.id) // classifies now; the DNO tab streams + finishes the pack
+      return { ok: true, summary: `${dno?.classification ?? 'DNO'} ready`, content: `Preparing the DNO application for ${p.address} — classified ${dno?.classification ?? ''} (aggregate RC ${dno?.aggregateRcA ?? '?'} A, ${dno?.dnoRegion ?? ''}). It's streaming on the DNO tab and will finish with the SLD and pack ready to sign.` }
     },
   },
 

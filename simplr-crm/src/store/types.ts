@@ -61,6 +61,58 @@ export interface ProjectInvoice {
   paidDate?: string
 }
 
+// ── DNO Autopilot (distribution-network-operator application, per project) ──
+export type DnoForm = 'G98' | 'G99-A' | 'G99-B' | 'G100'
+export type DnoStatus = 'draft' | 'validated' | 'submitted' | 'reviewing' | 'info' | 'approved' | 'installed' | 'pto' | 'rejected'
+export interface PvString { id: ID; panels: number; watts: number; inverterId: string }
+export interface DnoDevice {
+  id: ID
+  kind: 'inverter' | 'battery' | 'ev' | 'ashp'
+  make: string
+  model: string
+  capacityKw: number
+  powerFactor?: number // inverters only
+  typeTestRef?: string // ENA type-test / EREC register reference
+  onRegister: boolean
+}
+export type ExportScheme = 'none' | 'fixed' | 'dynamic'
+// Transient AI-run progress the whole app can watch (drives the animated status pill).
+export interface DnoRun { active: boolean; index: number; total: number; step: string; steps: string[] }
+export interface DnoSig { by: string; dataUrl?: string; signedAt: string }
+export type DnoDocKind = 'pre-install' | 'post-install' | 'sld' | 'supplementary'
+export interface DnoDoc { id: ID; name: string; kind: DnoDocKind; pages: number; generatedAt: string }
+export interface DnoMessage { id: ID; from: 'installer' | 'dno'; body: string; at: string }
+export interface DnoEvent { id: ID; label: string; at: string; note?: string }
+export interface DnoApplication {
+  form: DnoForm
+  classification: string // e.g. "G99 Type A"
+  aggregateRcA: number // aggregate rated current per phase (A)
+  meetsSgi: boolean // Small Generating Installation criteria
+  rationale: string // printed plain-English reason
+  dnoRegion: string // resolved from MPAN distributor id
+  mpan?: string
+  phase: 1 | 3
+  strings: PvString[]
+  devices: DnoDevice[]
+  exportScheme?: ExportScheme
+  exportLimitKw?: number // present ⇒ G100 overlay
+  // Site details (CLRD parity — pre-filled from survey, editable)
+  installLocation?: string
+  isolatorLocation?: string
+  preExisting?: boolean
+  run?: DnoRun // transient AI-run progress
+  status: DnoStatus
+  reference?: string // DNO job reference once approved (e.g. SSEN-4821973)
+  signatures: { installer?: DnoSig; client?: DnoSig }
+  documents: DnoDoc[]
+  messages: DnoMessage[]
+  events: DnoEvent[]
+  proposedInstallDate?: string
+  actualInstallDate?: string
+  submittedAt?: string
+  decisionAt?: string
+}
+
 export interface StudioProject {
   id: ID
   dealId?: ID
@@ -78,6 +130,7 @@ export interface StudioProject {
   installDate?: string
   ptoDate?: string
   createdAt: number
+  dno?: DnoApplication
 }
 
 export interface FinanceProduct {
