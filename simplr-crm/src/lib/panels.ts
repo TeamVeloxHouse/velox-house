@@ -76,7 +76,7 @@ function insetXY(poly: XY[], d: number): XY[] {
 }
 
 export type BBox = { minLat: number; maxLat: number; minLng: number; maxLng: number }
-export type PackOpts = { orientation: PanelOrientation; gap?: number; setback?: number; rowGap?: number; bbox?: BBox }
+export type PackOpts = { orientation: PanelOrientation; gap?: number; setback?: number; rowGap?: number; bbox?: BBox; angleDeg?: number }
 
 /** A single valid module position on a plane's roof-aligned grid — indexed by (row, col) so a drag
  *  can select a perfectly aligned rectangular block of cells, never a scattered lat/lng box. */
@@ -90,7 +90,7 @@ export function planeGrid(polygon: LatLng[], module: Module, opts: PackOpts): Gr
   const origin = polygon.reduce((a, p) => ({ lat: a.lat + p.lat / polygon.length, lng: a.lng + p.lng / polygon.length }), { lat: 0, lng: 0 })
   const proj = projector(origin)
   const polyXY = polygon.map(proj.toXY)
-  const theta = dominantAngle(polyXY)
+  const theta = dominantAngle(polyXY) + (opts.angleDeg ?? 0) * (Math.PI / 180) // roof edge + manual rotation
   const R = polyXY.map((p) => rot(p, theta)) // grid-aligned frame
 
   const pw = opts.orientation === 'portrait' ? module.w : module.h // panel footprint in the grid
@@ -169,11 +169,12 @@ export function planeQuality(p: DesignPlane): number {
 export function packWithSettings(plane: DesignPlane, module: Module, designSetback: number): { panels: DesignPanel[]; orientation: PanelOrientation } {
   const setback = plane.setbackM ?? designSetback
   const rowGap = plane.rowGapM
+  const angleDeg = plane.arrayAngleDeg
   if (plane.orientation) {
-    return { panels: packPlane(plane.polygon, module, { orientation: plane.orientation, setback, rowGap }), orientation: plane.orientation }
+    return { panels: packPlane(plane.polygon, module, { orientation: plane.orientation, setback, rowGap, angleDeg }), orientation: plane.orientation }
   }
-  const portrait = packPlane(plane.polygon, module, { orientation: 'portrait', setback, rowGap })
-  const landscape = packPlane(plane.polygon, module, { orientation: 'landscape', setback, rowGap })
+  const portrait = packPlane(plane.polygon, module, { orientation: 'portrait', setback, rowGap, angleDeg })
+  const landscape = packPlane(plane.polygon, module, { orientation: 'landscape', setback, rowGap, angleDeg })
   return landscape.length > portrait.length ? { panels: landscape, orientation: 'landscape' } : { panels: portrait, orientation: 'portrait' }
 }
 

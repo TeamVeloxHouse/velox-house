@@ -932,6 +932,7 @@ export interface DesignPlane {
   source: 'google' | 'manual'
   moduleId?: string // which module fills this plane (defaults to the design's module)
   orientation?: PanelOrientation
+  arrayAngleDeg?: number // rotate the packing grid off the roof's dominant edge (Pylon-style array rotation)
   panels?: DesignPanel[] // the laid-out array (Phase 2)
   // ── Array / racking depth (OpenSolar-style "Panel Group" settings) ──
   racking?: RackingType // default 'flush'
