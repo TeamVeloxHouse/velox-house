@@ -161,11 +161,11 @@ export function Design3D({ design, onCapture, adding, moduleId, onCommitPanels }
     const camera = new THREE.PerspectiveCamera(48, W / H, 0.5, 8000)
     const controls = new OrbitControls(camera, renderer.domElement)
     controls.enableDamping = true; controls.dampingFactor = 0.08; controls.maxPolarAngle = Math.PI / 2.02
-    controls.autoRotateSpeed = 0.8
+    controls.autoRotateSpeed = 0.8; controls.minDistance = 4; controls.maxDistance = 600; controls.zoomSpeed = 1.15
     controlsRef.current = controls
     if (addingRef.current) controls.mouseButtons = { LEFT: undefined as unknown as THREE.MOUSE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE }
     const pickTargets: THREE.Object3D[] = [] // roof meshes the placement raycaster hits
-    const planeGeo = new Map<string, { heightAt: (x: number, z: number) => number }>() // real roof height per plane (DSM-fitted in photoreal)
+    const planeGeo = new Map<string, { heightAt: (x: number, z: number) => number; panelY: (corners: { x: number; z: number }[]) => number[] }>() // roof height + panel-corner heights per plane
 
     // ── Sky dome — vertical gradient, sits behind everything ──
     const sky = new THREE.Mesh(
@@ -284,13 +284,25 @@ export function Design3D({ design, onCapture, adding, moduleId, onCommitPanels }
       // The roof surface height for this facet. When we have the DSM, FIT the real plane (true
       // tilt/gradient) so the reconstructed facet + panels are pinpoint; else use the Google tilt.
       let roofY: (x: number, z: number) => number
+      let fit: { a: number; b: number; c: number } | null = null
       if (dsm && design.center) {
-        const fit = fitRoofPlane(dsm, fp, dcx, dcz)
-        if (fit) roofY = (x, z) => fit.a * x + fit.b * z + fit.c
+        fit = fitRoofPlane(dsm, fp, dcx, dcz)
+        if (fit) roofY = (x, z) => fit!.a * x + fit!.b * z + fit!.c
         else { const off = sampleHeight(dsm, c.x - dcx, dcz - c.z) - pf.elev(c.x, c.z); roofY = (x, z) => pf.elev(x, z) + off }
       } else roofY = (x, z) => pf.elev(x, z)
-      const heightAt = (x: number, z: number) => roofY(x, z) + 0.18 // panels sit just above the roof
-      planeGeo.set(p.id, { heightAt })
+      const heightAt = (x: number, z: number) => roofY(x, z) + 0.18 // for single points (ghosts)
+      // Panel corners: keep the panel FLAT (the facet's fitted tilt) but anchor its centre to the ACTUAL
+      // DSM surface beneath it, so panels rest ON the real roof (never buried) without warping.
+      const CLEAR = 0.2
+      const panelY = (corners: { x: number; z: number }[]): number[] => {
+        if (usePhotoreal && dsm && fit) {
+          const cx = corners.reduce((s, k) => s + k.x, 0) / corners.length, cz = corners.reduce((s, k) => s + k.z, 0) / corners.length
+          const base = sampleHeight(dsm, cx - dcx, dcz - cz) + CLEAR
+          return corners.map((k) => fit!.a * (k.x - cx) + fit!.b * (k.z - cz) + base)
+        }
+        return corners.map((k) => heightAt(k.x, k.z))
+      }
+      planeGeo.set(p.id, { heightAt, panelY })
       roofCenters.push({ x: c.x, y: roofY(c.x, c.z), z: c.z })
 
       // Sharp reconstructed model (default view; skipped when showing the raw DSM blob): a FLAT roof
@@ -341,9 +353,11 @@ export function Design3D({ design, onCapture, adding, moduleId, onCommitPanels }
         outline.renderOrder = 3; scene.add(outline)
       }
 
-      // Panels — corners placed on the (fitted) roof plane, so they read the real tilt/gradient.
+      // Panels — flat (facet tilt) but resting on the real DSM surface beneath each panel.
       p.panels?.forEach((pn) => {
-        const g3 = pn.corners.map((v) => new THREE.Vector3(X(v), heightAt(X(v), Z(v)), Z(v)))
+        const sc = pn.corners.map((v) => ({ x: X(v), z: Z(v) }))
+        const ys = panelY(sc)
+        const g3 = sc.map((k, i) => new THREE.Vector3(k.x, ys[i], k.z))
         if (g3.length < 4) return
         const center = new THREE.Vector3().addVectors(g3[0], g3[2]).add(g3[1]).add(g3[3]).multiplyScalar(0.25)
         const ex = new THREE.Vector3().subVectors(g3[1], g3[0]) // width edge
@@ -446,7 +460,7 @@ export function Design3D({ design, onCapture, adding, moduleId, onCommitPanels }
     }
     const planeAtLL = (ll: LL) => designRef.current.planes.find((p) => p.polygon.length >= 3 && pointInRing(p.polygon, ll))
     const gridFor = (p: DesignPlane) => planeGrid(p.polygon, moduleById(p.moduleId ?? moduleIdRef.current), { orientation: p.orientation ?? 'portrait', setback: p.setbackM ?? designRef.current.setbackM, rowGap: p.rowGapM })
-    const cellQuad = (pid: string, cell: GridCell) => { const g = planeGeo.get(pid); return cell.corners.map((v) => new THREE.Vector3(X(v), (g ? g.heightAt(X(v), Z(v)) : 0) + 0.12, Z(v))) }
+    const cellQuad = (pid: string, cell: GridCell) => { const g = planeGeo.get(pid); const sc = cell.corners.map((v) => ({ x: X(v), z: Z(v) })); const ys = g ? g.panelY(sc) : sc.map(() => 0); return cell.corners.map((v, i) => new THREE.Vector3(X(v), ys[i] + 0.08, Z(v))) }
     const drawGhost = (pid: string, cells: GridCell[], removing: boolean) => {
       ghostGroup.clear()
       cells.forEach((cell) => {
