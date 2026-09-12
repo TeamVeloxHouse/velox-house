@@ -31,6 +31,40 @@ const cellBlock = (cells: GridCell[], a: GridCell, b: GridCell): GridCell[] => {
 const sameCell = (a: LL, b: LL) => Math.abs(a.lat - b.lat) * 110540 < 0.35 && Math.abs(a.lng - b.lng) * 90000 < 0.35
 const panelCtr = (pn: { corners: LL[] }) => ({ lat: (pn.corners[0].lat + pn.corners[2].lat) / 2, lng: (pn.corners[0].lng + pn.corners[2].lng) / 2 })
 
+type XZ = { x: number; z: number }
+function pointInPolyXZ(pt: XZ, poly: XZ[]): boolean {
+  let inside = false
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    if ((poly[i].z > pt.z) !== (poly[j].z > pt.z) && pt.x < ((poly[j].x - poly[i].x) * (pt.z - poly[i].z)) / (poly[j].z - poly[i].z) + poly[i].x) inside = !inside
+  }
+  return inside
+}
+/** Solve a 3×3 system by Cramer's rule; null if singular. */
+function solve3(M: number[][], B: number[]): number[] | null {
+  const det = (m: number[][]) => m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0])
+  const d = det(M); if (Math.abs(d) < 1e-9) return null
+  const col = (k: number) => M.map((row, i) => row.map((v, j) => (j === k ? B[i] : v)))
+  return [det(col(0)) / d, det(col(1)) / d, det(col(2)) / d]
+}
+/** Least-squares fit of the real roof plane (y = a·x + b·z + c) from the DSM heights inside a
+ *  footprint — the "intelligence" that reads each roof's true tilt/gradient so panels sit pinpoint. */
+function fitRoofPlane(dsm: DsmData, fp: XZ[], dcx: number, dcz: number): { a: number; b: number; c: number } | null {
+  const xs = fp.map((p) => p.x), zs = fp.map((p) => p.z)
+  const minX = Math.min(...xs), maxX = Math.max(...xs), minZ = Math.min(...zs), maxZ = Math.max(...zs)
+  const step = Math.max(0.4, Math.min(maxX - minX, maxZ - minZ) / 14)
+  let n = 0, Sxx = 0, Sxz = 0, Sx = 0, Szz = 0, Sz = 0, Sxy = 0, Szy = 0, Sy = 0
+  for (let x = minX; x <= maxX; x += step) for (let z = minZ; z <= maxZ; z += step) {
+    if (!pointInPolyXZ({ x, z }, fp)) continue
+    const h = sampleHeight(dsm, x - dcx, dcz - z)
+    if (!isFinite(h)) continue
+    n++; Sxx += x * x; Sxz += x * z; Sx += x; Szz += z * z; Sz += z; Sxy += x * h; Szy += z * h; Sy += h
+  }
+  if (n < 6) return null
+  const sol = solve3([[Sxx, Sxz, Sx], [Sxz, Szz, Sz], [Sx, Sz, n]], [Sxy, Szy, Sy])
+  if (!sol || !sol.every((v) => isFinite(v))) return null
+  return { a: sol[0], b: sol[1], c: sol[2] }
+}
+
 /** A live, photoreal-ish 3D model of the design — each roof plane tilted to its true pitch/azimuth,
  *  walls dropped to the ground, obstacles cut out, and the packed panels sitting flush on the slope
  *  (not flat). Satellite-textured ground, gradient sky, a moveable sun casting soft shadows. Built
@@ -105,6 +139,7 @@ export function Design3D({ design, onCapture, adding, moduleId, onCommitPanels }
     const usePhotoreal = photoreal && !!dsm
     const cLat = design.center?.lat ?? origin.lat, cLng = design.center?.lng ?? origin.lng
     const enOf = (p: LL) => ({ east: (p.lng - cLng) * mPerLng, north: (p.lat - cLat) * mPerLat })
+    const dcx = design.center ? X(design.center) : 0, dcz = design.center ? Z(design.center) : 0
     const roofTopY = usePhotoreal ? (dsm!.maxH - dsm!.minH) * 0.55 : eaveH
 
     const W = el.clientWidth || 800, H = el.clientHeight || 500
@@ -129,7 +164,7 @@ export function Design3D({ design, onCapture, adding, moduleId, onCommitPanels }
     controlsRef.current = controls
     if (addingRef.current) controls.mouseButtons = { LEFT: undefined as unknown as THREE.MOUSE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE }
     const pickTargets: THREE.Object3D[] = [] // roof meshes the placement raycaster hits
-    const planeGeo = new Map<string, { pf: { elev: (x: number, z: number) => number }; baseOffset: number }>()
+    const planeGeo = new Map<string, { heightAt: (x: number, z: number) => number }>() // real roof height per plane (DSM-fitted in photoreal)
 
     // ── Sky dome — vertical gradient, sits behind everything ──
     const sky = new THREE.Mesh(
@@ -273,21 +308,21 @@ export function Design3D({ design, onCapture, adding, moduleId, onCommitPanels }
         scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(ring), edgeMat))
       }
       const c = avg(fp)
-      // Photoreal: keep the clean tilted panel geometry, but lift the whole array so it rests on the
-      // real roof height (sampled once at the plane centroid) — far cleaner than warping to noisy DSM.
-      let baseOffset = 0
+      // Height function for this plane. Photoreal: FIT the real roof plane to the DSM heights under the
+      // footprint (reads the true tilt/gradient) so panels sit pinpoint on the surface; if the fit is
+      // poor, fall back to the Google tilt lifted to the DSM height at the centroid. Clean: Google tilt.
+      let heightAt: (x: number, z: number) => number
       if (usePhotoreal) {
-        const clat = p.polygon.reduce((a, v) => a + v.lat / p.polygon.length, 0)
-        const clng = p.polygon.reduce((a, v) => a + v.lng / p.polygon.length, 0)
-        const { east, north } = enOf({ lat: clat, lng: clng })
-        baseOffset = sampleHeight(dsm!, east, north) - pf.elev(c.x, c.z)
-      }
-      planeGeo.set(p.id, { pf, baseOffset })
-      roofCenters.push({ x: c.x, y: pf.elev(c.x, c.z) + baseOffset, z: c.z })
+        const fit = fitRoofPlane(dsm!, fp, dcx, dcz)
+        if (fit) heightAt = (x, z) => fit.a * x + fit.b * z + fit.c + 0.2
+        else { const off = sampleHeight(dsm!, c.x - dcx, dcz - c.z) - pf.elev(c.x, c.z); heightAt = (x, z) => pf.elev(x, z) + off + 0.2 }
+      } else heightAt = (x, z) => pf.elev(x, z)
+      planeGeo.set(p.id, { heightAt })
+      roofCenters.push({ x: c.x, y: heightAt(c.x, c.z), z: c.z })
 
-      // Panels — clean flat tilt (plane pitch/azimuth), lifted onto the roof.
+      // Panels — corners placed on the (fitted) roof plane, so they read the real tilt/gradient.
       p.panels?.forEach((pn) => {
-        const g3 = pn.corners.map((v) => new THREE.Vector3(X(v), pf.elev(X(v), Z(v)) + baseOffset + (usePhotoreal ? 0.25 : 0), Z(v)))
+        const g3 = pn.corners.map((v) => new THREE.Vector3(X(v), heightAt(X(v), Z(v)), Z(v)))
         if (g3.length < 4) return
         const center = new THREE.Vector3().addVectors(g3[0], g3[2]).add(g3[1]).add(g3[3]).multiplyScalar(0.25)
         const ex = new THREE.Vector3().subVectors(g3[1], g3[0]) // width edge
@@ -390,7 +425,7 @@ export function Design3D({ design, onCapture, adding, moduleId, onCommitPanels }
     }
     const planeAtLL = (ll: LL) => designRef.current.planes.find((p) => p.polygon.length >= 3 && pointInRing(p.polygon, ll))
     const gridFor = (p: DesignPlane) => planeGrid(p.polygon, moduleById(p.moduleId ?? moduleIdRef.current), { orientation: p.orientation ?? 'portrait', setback: p.setbackM ?? designRef.current.setbackM, rowGap: p.rowGapM })
-    const cellQuad = (pid: string, cell: GridCell) => { const g = planeGeo.get(pid); return cell.corners.map((v) => new THREE.Vector3(X(v), (g ? g.pf.elev(X(v), Z(v)) + g.baseOffset : 0) + 0.4, Z(v))) }
+    const cellQuad = (pid: string, cell: GridCell) => { const g = planeGeo.get(pid); return cell.corners.map((v) => new THREE.Vector3(X(v), (g ? g.heightAt(X(v), Z(v)) : 0) + 0.12, Z(v))) }
     const drawGhost = (pid: string, cells: GridCell[], removing: boolean) => {
       ghostGroup.clear()
       cells.forEach((cell) => {
