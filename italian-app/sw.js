@@ -1,10 +1,10 @@
 /* Service worker — offline caching so the app works with no connection. */
-const CACHE = "impara-v3";
+const CACHE = "impara-v4";
 const ASSETS = [
   "./", "./index.html",
   "./css/styles.css",
-  "./js/course.js", "./js/course-extra.js", "./js/course-extra2.js",
-  "./js/engine.js", "./js/app.js",
+  "./js/course.js", "./js/course-extra.js", "./js/course-extra2.js", "./js/course-extra3.js",
+  "./js/course-extra4.js", "./js/engine.js", "./js/app.js",
   "./manifest.webmanifest", "./icon.svg",
 ];
 
