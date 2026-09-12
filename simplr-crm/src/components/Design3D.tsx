@@ -12,6 +12,28 @@ type LL = { lat: number; lng: number }
 const EAVE_DEFAULT = 5 // metres to the eave — a two-storey wall under the pitched roof (fallback)
 
 const uid = (p: string) => `${p}${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`
+
+// A realistic monocrystalline PV module texture (dark cells + busbars + silver frame), cached.
+let _modTex: THREE.CanvasTexture | null = null
+function moduleTexture(): THREE.CanvasTexture {
+  if (_modTex) return _modTex
+  const c = document.createElement('canvas'); c.width = 132; c.height = 210
+  const ctx = c.getContext('2d')!
+  ctx.fillStyle = '#0a0f22'; ctx.fillRect(0, 0, 132, 210)
+  const cols = 6, rows = 10, pad = 9, gap = 3
+  const cw = (132 - 2 * pad - (cols - 1) * gap) / cols, ch = (210 - 2 * pad - (rows - 1) * gap) / rows
+  for (let r = 0; r < rows; r++) for (let cc = 0; cc < cols; cc++) {
+    const x = pad + cc * (cw + gap), y = pad + r * (ch + gap)
+    const g = ctx.createLinearGradient(x, y, x + cw, y + ch)
+    g.addColorStop(0, '#1a2c5e'); g.addColorStop(0.5, '#0e1b3e'); g.addColorStop(1, '#20366e')
+    ctx.fillStyle = g; ctx.fillRect(x, y, cw, ch)
+    ctx.strokeStyle = 'rgba(180,205,245,0.14)'; ctx.lineWidth = 1
+    ctx.beginPath(); ctx.moveTo(x + cw / 3, y); ctx.lineTo(x + cw / 3, y + ch); ctx.moveTo(x + (2 * cw) / 3, y); ctx.lineTo(x + (2 * cw) / 3, y + ch); ctx.stroke()
+  }
+  ctx.strokeStyle = '#aeb7c9'; ctx.lineWidth = 6; ctx.strokeRect(3, 3, 126, 204)
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8
+  _modTex = t; return t
+}
 function pointInRing(ring: LL[], pt: LL): boolean {
   let inside = false
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
@@ -208,8 +230,8 @@ export function Design3D({ design, onCapture, adding, moduleId, onCommitPanels }
     const wallMat = new THREE.MeshStandardMaterial({ color: 0xe7ebf1, roughness: 0.9, metalness: 0 })
     const roofMat = new THREE.MeshStandardMaterial({ color: 0x8b929c, roughness: 0.82, metalness: 0.02, side: THREE.DoubleSide })
     const edgeMat = new THREE.LineBasicMaterial({ color: 0x2a3444, transparent: true, opacity: 0.55 })
-    const panelMat = new THREE.MeshStandardMaterial({ color: 0x14264f, roughness: 0.32, metalness: 0.55, envMapIntensity: 0.6 })
-    const panelEdgeMat = new THREE.LineBasicMaterial({ color: 0x8fb4ff, transparent: true, opacity: 0.7 })
+    const panelMat = new THREE.MeshStandardMaterial({ map: moduleTexture(), color: 0xffffff, roughness: 0.34, metalness: 0.5, envMapIntensity: 0.7 })
+    const panelEdgeMat = new THREE.LineBasicMaterial({ color: 0x9fc0ff, transparent: true, opacity: 0.55 })
 
     // helper — average of scene points
     const avg = (pts: { x: number; z: number }[]) => pts.reduce((a, p) => ({ x: a.x + p.x / pts.length, z: a.z + p.z / pts.length }), { x: 0, z: 0 })
@@ -290,18 +312,23 @@ export function Design3D({ design, onCapture, adding, moduleId, onCommitPanels }
         if (fit) roofY = (x, z) => fit!.a * x + fit!.b * z + fit!.c
         else { const off = sampleHeight(dsm, c.x - dcx, dcz - c.z) - pf.elev(c.x, c.z); roofY = (x, z) => pf.elev(x, z) + off }
       } else roofY = (x, z) => pf.elev(x, z)
-      const heightAt = (x: number, z: number) => roofY(x, z) + 0.18 // for single points (ghosts)
-      // Panel corners: keep the panel FLAT (the facet's fitted tilt) but anchor its centre to the ACTUAL
-      // DSM surface beneath it, so panels rest ON the real roof (never buried) without warping.
-      const CLEAR = 0.2
-      const panelY = (corners: { x: number; z: number }[]): number[] => {
-        if (usePhotoreal && dsm && fit) {
-          const cx = corners.reduce((s, k) => s + k.x, 0) / corners.length, cz = corners.reduce((s, k) => s + k.z, 0) / corners.length
-          const base = sampleHeight(dsm, cx - dcx, dcz - cz) + CLEAR
-          return corners.map((k) => fit!.a * (k.x - cx) + fit!.b * (k.z - cz) + base)
+      // The whole array is ONE rigid plane (the facet's fitted tilt), lifted just enough to rest on the
+      // highest point of the real roof beneath it — so it's clean/coplanar AND never buried or jagged.
+      let arrayLift = 0.15
+      if (usePhotoreal && dsm && fit) {
+        const xs = fp.map((v) => v.x), zs = fp.map((v) => v.z)
+        const minX = Math.min(...xs), maxX = Math.max(...xs), minZ = Math.min(...zs), maxZ = Math.max(...zs)
+        const step = Math.max(0.4, Math.min(maxX - minX, maxZ - minZ) / 12)
+        let maxAbove = 0
+        for (let x = minX; x <= maxX; x += step) for (let z = minZ; z <= maxZ; z += step) {
+          if (!pointInPolyXZ({ x, z }, fp)) continue
+          const d = sampleHeight(dsm, x - dcx, dcz - z) - (fit.a * x + fit.b * z + fit.c)
+          if (d > maxAbove) maxAbove = d
         }
-        return corners.map((k) => heightAt(k.x, k.z))
+        arrayLift = Math.min(maxAbove, 0.8) + 0.14 // clamp so an imperfect facet never floats panels absurdly high
       }
+      const heightAt = (x: number, z: number) => roofY(x, z) + arrayLift
+      const panelY = (corners: { x: number; z: number }[]): number[] => corners.map((k) => roofY(k.x, k.z) + arrayLift)
       planeGeo.set(p.id, { heightAt, panelY })
       roofCenters.push({ x: c.x, y: roofY(c.x, c.z), z: c.z })
 

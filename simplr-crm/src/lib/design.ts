@@ -58,7 +58,7 @@ export function compass(azFromNorth: number): string {
  *  segment box for now), its pitch, and azimuth expressed as degrees from north (0 = N, 180 = S). */
 export function planesFromAnalysis(a: RoofAnalysis, footprint?: LatLng[] | null): DesignPlane[] {
   const boxed = a.segments.filter((s) => s.box)
-  return boxed.map((s, i) => {
+  const mapped = boxed.map((s, i) => {
     const b = s.box!
     const box: LatLng[] = [
       { lat: b.sw.lat, lng: b.sw.lng },
@@ -85,6 +85,21 @@ export function planesFromAnalysis(a: RoofAnalysis, footprint?: LatLng[] | null)
       source: 'google' as const,
     }
   }).filter((p) => p.areaM2 > 4)
+  // Google often returns several segment boxes that cover the SAME roof plane and overlap. Keep the
+  // largest of each overlapping, same-facing cluster so detect doesn't stack duplicates.
+  const bbox = (poly: LatLng[]) => poly.reduce((a, p) => ({ minLat: Math.min(a.minLat, p.lat), maxLat: Math.max(a.maxLat, p.lat), minLng: Math.min(a.minLng, p.lng), maxLng: Math.max(a.maxLng, p.lng) }), { minLat: 90, maxLat: -90, minLng: 180, maxLng: -180 })
+  const overlap = (a: LatLng[], b: LatLng[]) => {
+    const A = bbox(a), B = bbox(b)
+    const ix = Math.max(0, Math.min(A.maxLng, B.maxLng) - Math.max(A.minLng, B.minLng)), iy = Math.max(0, Math.min(A.maxLat, B.maxLat) - Math.max(A.minLat, B.minLat))
+    const inter = ix * iy, aa = (A.maxLng - A.minLng) * (A.maxLat - A.minLat), ab = (B.maxLng - B.minLng) * (B.maxLat - B.minLat)
+    return inter / Math.max(1e-12, Math.min(aa, ab))
+  }
+  const kept: DesignPlane[] = []
+  for (const p of [...mapped].sort((x, y) => y.areaM2 - x.areaM2)) {
+    const dup = kept.some((k) => Math.min(Math.abs(k.azimuthDeg - p.azimuthDeg), 360 - Math.abs(k.azimuthDeg - p.azimuthDeg)) < 25 && overlap(k.polygon, p.polygon) > 0.45)
+    if (!dup) kept.push(p)
+  }
+  return kept
 }
 
 /** Fetch + convert in one call. Returns planes + the building centre for framing. */
@@ -96,7 +111,7 @@ export async function detectPlanes(address: string, center?: LatLng): Promise<{ 
   if (c) {
     const facets = await segmentRoofFacets(c.lat, c.lng).catch(() => null)
     const good = facets?.filter((f) => f.areaM2 >= 6) ?? []
-    if (good.length >= 1 && good.length <= 16) {
+    if (good.length >= 1 && good.length <= 24) {
       const planes: DesignPlane[] = good.map((f) => ({ id: uid('pl'), name: `${compass(f.azimuthDeg)}-facing plane`, polygon: f.polygon, pitchDeg: f.pitchDeg, azimuthDeg: f.azimuthDeg, areaM2: f.areaM2, source: 'google' }))
       return { planes, center: c, measured: true }
     }
