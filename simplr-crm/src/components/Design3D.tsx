@@ -206,9 +206,22 @@ export function Design3D({ design, onCapture, adding, moduleId, onCommitPanels }
         if (colors) { const [r, g, b] = fluxColor((dsm!.flux![idx] - fMin) / fSpan); colors[idx * 3] = r; colors[idx * 3 + 1] = g; colors[idx * 3 + 2] = b }
       }
       geo.computeVertexNormals()
+      // Per-vertex "wallness" (1 = vertical face) — the mesh has no rotation, so geometry normals are
+      // world normals. Steep faces (building walls) get a clean wall colour instead of stretched aerial.
+      const nrm = geo.attributes.normal as THREE.BufferAttribute
+      const wallAttr = new Float32Array(pos.count)
+      for (let i = 0; i < pos.count; i++) wallAttr[i] = 1 - Math.max(0, Math.min(1, nrm.getY(i)))
+      geo.setAttribute('aWall', new THREE.BufferAttribute(wallAttr, 1))
+      const wallShade = (mat: THREE.MeshStandardMaterial) => {
+        mat.onBeforeCompile = (sh) => {
+          sh.vertexShader = 'attribute float aWall;\nvarying float vWall;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vWall = aWall;')
+          sh.fragmentShader = 'varying float vWall;\n' + sh.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.80,0.79,0.77), smoothstep(0.42,0.72,vWall));')
+        }
+        return mat
+      }
       let mat: THREE.MeshStandardMaterial
       if (colors) { geo.setAttribute('color', new THREE.BufferAttribute(colors, 3)); mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0 }) }
-      else if (rgb) { const tex = new THREE.CanvasTexture(rgb); tex.colorSpace = THREE.SRGBColorSpace; mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.95, metalness: 0 }) }
+      else if (rgb) { const tex = new THREE.CanvasTexture(rgb); tex.colorSpace = THREE.SRGBColorSpace; mat = wallShade(new THREE.MeshStandardMaterial({ map: tex, roughness: 0.95, metalness: 0 })) }
       else mat = new THREE.MeshStandardMaterial({ color: 0x9aa2ac, roughness: 0.98 })
       const mesh = new THREE.Mesh(geo, mat)
       mesh.position.set(X(design.center), 0, Z(design.center))
