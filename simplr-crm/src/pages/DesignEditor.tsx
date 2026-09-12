@@ -13,6 +13,7 @@ import { detectPlanes, slopedAreaM2, totalRoofArea, compass, polygonAreaM2 } fro
 import { MODULES, moduleById, packWithSettings, autoLayout, kwpOf, planeSolarFactor, planeQuality, planeGrid, type Module, type LayoutGoal, type GridCell } from '../lib/panels'
 import { regionYield, fetchBuildingHeight } from '../lib/solar'
 import { parseDesignBrief } from '../lib/oviDesign'
+import { designIntentFromClaude } from '../lib/oviDesignAI'
 import { Design3D } from '../components/Design3D'
 import { DesignCopilot } from '../components/DesignCopilot'
 import type { Design, DesignPlane, PanelOrientation, RackingType } from '../store/types'
@@ -308,9 +309,12 @@ export function DesignEditor() {
     const d = designRef.current!
     const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
     if (!d.planes.length) { emit('Looking for a roof…'); await delay(300); return 'There’s no roof captured yet. Use “Detect roof” (needs a Google Solar key) or “Draw plane” to trace it, then ask me again.' }
-    emit('Reading your brief…'); await delay(450)
+    emit('Reading your brief…'); await delay(300)
     const yieldPerKwp = regionYield(d.address).yield
-    const intent = parseDesignBrief(brief, d, yieldPerKwp)
+    // Real brain: Claude reads the brief + the live roof faces; fall back to the offline parser.
+    const ai = await designIntentFromClaude(brief, d, yieldPerKwp, moduleId).catch(() => null)
+    const intent = ai ?? parseDesignBrief(brief, d, yieldPerKwp)
+    const aiMessage = ai?.aiMessage
     if (intent.moduleId) { setModuleId(intent.moduleId); emit(`Module → ${intent.moduleLabel}`); await delay(350) }
     emit(`Goal → ${intent.goalLabel}`); await delay(350)
     if (intent.restrictLabel) { emit(`Scope → ${intent.restrictLabel}`); await delay(300) }
@@ -326,7 +330,7 @@ export function DesignEditor() {
     const annual = res.planes.reduce((s, p) => { const m = moduleById(p.moduleId ?? mod.id); const n = p.panels?.length ?? 0; return s + (n * m.watts / 1000) * yieldPerKwp * planeYieldFactor(p) }, 0)
     const used = res.planes.filter((p) => p.panels?.length).length
     if (res.count === 0) return 'No panels fit those constraints — the roofs may be too small or the scope too narrow. Try “maximum coverage”, or widen the setback.'
-    let out = `Placed ${res.count} panels — ${res.kwp} kWp across ${used} plane${used === 1 ? '' : 's'} (~${Math.round(annual).toLocaleString()} kWh/yr).`
+    let out = `${aiMessage ? aiMessage + '\n' : ''}Placed ${res.count} panels — ${res.kwp} kWp across ${used} plane${used === 1 ? '' : 's'} (~${Math.round(annual).toLocaleString()} kWh/yr).`
     if (intent.billKwh) out += `\nThat covers ~${Math.round((annual / intent.billKwh) * 100)}% of the ${intent.billKwh.toLocaleString()} kWh bill.`
     out += '\nOpen the Array tab to fine-tune racking, spacing or the module.'
     return out
