@@ -56,9 +56,14 @@ function dominantAngle(poly: XY[]): number {
 export type BBox = { minLat: number; maxLat: number; minLng: number; maxLng: number }
 export type PackOpts = { orientation: PanelOrientation; gap?: number; setback?: number; rowGap?: number; bbox?: BBox }
 
-/** Pack a plane. Returns the laid-out panels (geo rectangles). With `bbox`, only cells whose centre
- *  falls inside the box are kept — that's how the manual click-drag array tool paints panels. */
-export function packPlane(polygon: LatLng[], module: Module, opts: PackOpts): DesignPanel[] {
+/** A single valid module position on a plane's roof-aligned grid — indexed by (row, col) so a drag
+ *  can select a perfectly aligned rectangular block of cells, never a scattered lat/lng box. */
+export type GridCell = { row: number; col: number; corners: LatLng[]; center: LatLng }
+
+/** Build the full grid of valid module positions on a plane. Rows follow the roof's longest edge,
+ *  every cell sits fully inside the polygon after the fire setback, and (row,col) are contiguous
+ *  integer indices — the spine of both auto-pack and precise manual placement. */
+export function planeGrid(polygon: LatLng[], module: Module, opts: PackOpts): GridCell[] {
   if (polygon.length < 3) return []
   const origin = polygon.reduce((a, p) => ({ lat: a.lat + p.lat / polygon.length, lng: a.lng + p.lng / polygon.length }), { lat: 0, lng: 0 })
   const proj = projector(origin)
@@ -76,24 +81,31 @@ export function packPlane(polygon: LatLng[], module: Module, opts: PackOpts): De
   const minX = Math.min(...R.map((p) => p.x)), maxX = Math.max(...R.map((p) => p.x))
   const minY = Math.min(...R.map((p) => p.y)), maxY = Math.max(...R.map((p) => p.y))
 
-  const panels: DesignPanel[] = []
-  for (let y = minY + setback; y + ph <= maxY - setback; y += ch) {
-    for (let x = minX + setback; x + pw <= maxX - setback; x += cw) {
-      // four corners of the panel in the grid frame (inset a hair so touching edges still count as in)
+  const cells: GridCell[] = []
+  let row = 0
+  for (let y = minY + setback; y + ph <= maxY - setback; y += ch, row++) {
+    let col = 0
+    for (let x = minX + setback; x + pw <= maxX - setback; x += cw, col++) {
+      // corners of the cell in the grid frame (inset a hair so touching edges still count as in)
       const corners: XY[] = [
         { x: x + 0.02, y: y + 0.02 }, { x: x + pw - 0.02, y: y + 0.02 },
         { x: x + pw - 0.02, y: y + ph - 0.02 }, { x: x + 0.02, y: y + ph - 0.02 },
       ]
       if (!corners.every((c) => pointInPoly(c, R))) continue
       const cornersLL = corners.map((c) => proj.toLL(unrot(c, theta)))
-      if (opts.bbox) {
-        const ctr = { lat: (cornersLL[0].lat + cornersLL[2].lat) / 2, lng: (cornersLL[0].lng + cornersLL[2].lng) / 2 }
-        if (ctr.lat < opts.bbox.minLat || ctr.lat > opts.bbox.maxLat || ctr.lng < opts.bbox.minLng || ctr.lng > opts.bbox.maxLng) continue
-      }
-      panels.push({ id: uid('pn'), corners: cornersLL })
+      const centerLL = proj.toLL(unrot({ x: x + pw / 2, y: y + ph / 2 }, theta))
+      cells.push({ row, col, corners: cornersLL, center: centerLL })
     }
   }
-  return panels
+  return cells
+}
+
+/** Pack a plane. Returns the laid-out panels (geo rectangles). With `bbox`, only cells whose centre
+ *  falls inside the box are kept. Built on the same grid the manual tool uses, so they stay aligned. */
+export function packPlane(polygon: LatLng[], module: Module, opts: PackOpts): DesignPanel[] {
+  return planeGrid(polygon, module, opts)
+    .filter((c) => !opts.bbox || (c.center.lat >= opts.bbox.minLat && c.center.lat <= opts.bbox.maxLat && c.center.lng >= opts.bbox.minLng && c.center.lng <= opts.bbox.maxLng))
+    .map((c) => ({ id: uid('pn'), corners: c.corners }))
 }
 
 /** Pick the orientation that fits the most panels — the AI's default packing choice. */

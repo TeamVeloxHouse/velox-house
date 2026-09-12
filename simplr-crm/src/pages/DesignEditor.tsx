@@ -10,7 +10,7 @@ import { Sun, Radar, Check, Person, Layers, Target, Sparkle, Plus, Grid, Wrench,
 import { useActions, useState_ } from '../store/store'
 import { geocodeLocation } from '../lib/commercialFinder'
 import { detectPlanes, slopedAreaM2, totalRoofArea, compass, polygonAreaM2 } from '../lib/design'
-import { MODULES, moduleById, packWithSettings, packPlane, autoLayout, kwpOf, planeSolarFactor, planeQuality, type Module, type LayoutGoal, type BBox } from '../lib/panels'
+import { MODULES, moduleById, packWithSettings, autoLayout, kwpOf, planeSolarFactor, planeQuality, planeGrid, type Module, type LayoutGoal, type GridCell } from '../lib/panels'
 import { regionYield, fetchBuildingHeight } from '../lib/solar'
 import { parseDesignBrief } from '../lib/oviDesign'
 import { Design3D } from '../components/Design3D'
@@ -29,18 +29,18 @@ function pointInRing(ring: LatLng[], pt: LatLng): boolean {
   }
   return inside
 }
-/** Box from two drag corners, padded by ~half a panel so clicks/short drags still catch cells. */
-function dragBBox(a: LatLng, b: LatLng, padM = 0.9): BBox {
-  const padLat = padM / 110540, padLng = padM / (111320 * Math.cos((a.lat * Math.PI) / 180))
-  return { minLat: Math.min(a.lat, b.lat) - padLat, maxLat: Math.max(a.lat, b.lat) + padLat, minLng: Math.min(a.lng, b.lng) - padLng, maxLng: Math.max(a.lng, b.lng) + padLng }
-}
 const panelCenter = (pn: { corners: LatLng[] }) => ({ lat: (pn.corners[0].lat + pn.corners[2].lat) / 2, lng: (pn.corners[0].lng + pn.corners[2].lng) / 2 })
-/** Add `incoming` panels to `existing`, skipping any that land on top of one already placed. */
-function mergePanels(existing: { id: string; corners: LatLng[] }[], incoming: { id: string; corners: LatLng[] }[]) {
-  const out = [...existing]
-  const near = (a: LatLng, b: LatLng) => Math.abs(a.lat - b.lat) * 110540 < 0.4 && Math.abs(a.lng - b.lng) * 90000 < 0.4
-  for (const g of incoming) { const c = panelCenter(g); if (!out.some((e) => near(panelCenter(e), c))) out.push(g) }
-  return out
+/** Same physical module position? (centres within ~0.35 m) — used to dedupe / toggle cells. */
+const sameCell = (a: LatLng, b: LatLng) => Math.abs(a.lat - b.lat) * 110540 < 0.35 && Math.abs(a.lng - b.lng) * 90000 < 0.35
+const nearestCell = (cells: GridCell[], ll: { lat: number; lng: number }): GridCell | null => {
+  let best: GridCell | null = null, bd = Infinity
+  for (const c of cells) { const d = (c.center.lat - ll.lat) ** 2 + (c.center.lng - ll.lng) ** 2; if (d < bd) { bd = d; best = c } }
+  return best
+}
+/** Every cell in the aligned rectangle between two grid cells (inclusive) — a roof-true block select. */
+const cellBlock = (cells: GridCell[], a: GridCell, b: GridCell): GridCell[] => {
+  const r0 = Math.min(a.row, b.row), r1 = Math.max(a.row, b.row), c0 = Math.min(a.col, b.col), c1 = Math.max(a.col, b.col)
+  return cells.filter((c) => c.row >= r0 && c.row <= r1 && c.col >= c0 && c.col <= c1)
 }
 
 /** Effective generating tilt — tilt-racking on a flat roof beats the flat pitch. */
@@ -100,41 +100,54 @@ export function DesignEditor() {
       m.pm.disableDraw(); setDrawing(false)
     })
 
-    // ── Manual array drawing: drag across a plane to paint panels (OpenSolar-style) ──
-    let dragStart: L.LatLng | null = null, dragPid: string | null = null
+    // ── Manual array placement: snap to the roof's own grid. Click = one module (click again to
+    //    remove), drag = an aligned block. Never a lat/lng flood — always cells on the roof grid. ──
+    let startCell: GridCell | null = null, dragCells: GridCell[] = [], dragPid: string | null = null, moved = false
     const planeAt = (ll: L.LatLng) => designRef.current?.planes.find((p) => pointInRing(p.polygon, { lat: ll.lat, lng: ll.lng }))
-    const packAt = (p: DesignPlane, bbox: BBox) => packPlane(p.polygon, moduleById(moduleIdRef.current), { orientation: p.orientation ?? 'portrait', setback: p.setbackM ?? designRef.current!.setbackM, rowGap: p.rowGapM, bbox })
-    const drawGhosts = (ghosts: { corners: LatLng[] }[], from?: L.LatLng, to?: L.LatLng) => {
+    const gridFor = (p: DesignPlane) => planeGrid(p.polygon, moduleById(p.moduleId ?? moduleIdRef.current), { orientation: p.orientation ?? 'portrait', setback: p.setbackM ?? designRef.current!.setbackM, rowGap: p.rowGapM })
+    const drawGhosts = (ghostCells: GridCell[], removing = false) => {
       const g = ghostLayer.current!; g.clearLayers()
-      ghosts.forEach((pn) => L.polygon(pn.corners.map((v) => [v.lat, v.lng]) as [number, number][], { color: '#A97BF3', weight: 1, dashArray: '3 3', fillColor: '#7C3AED', fillOpacity: 0.3, pmIgnore: true } as any).addTo(g))
-      if (from && to) L.polyline([from, to], { color: '#7C3AED', weight: 2, dashArray: '5 4', pmIgnore: true } as any).addTo(g)
+      ghostCells.forEach((c) => L.polygon(c.corners.map((v) => [v.lat, v.lng]) as [number, number][], { renderer: panelRenderer.current!, color: removing ? '#FF6B6B' : '#A97BF3', weight: 1.2, fillColor: removing ? '#FF6B6B' : '#7C3AED', fillOpacity: removing ? 0.25 : 0.4, pmIgnore: true, interactive: false } as any).addTo(g))
     }
+    const hasPanelAt = (p: DesignPlane, c: GridCell) => (p.panels ?? []).some((pn) => sameCell(panelCenter(pn), c.center))
+
     m.on('mousedown', (e: any) => {
       if (!addingRef.current) return
       const p = planeAt(e.latlng); if (!p) return
-      dragStart = e.latlng; dragPid = p.id; m.dragging.disable(); L.DomEvent.stop(e)
+      dragPid = p.id; dragCells = gridFor(p); startCell = nearestCell(dragCells, e.latlng); moved = false
+      m.dragging.disable(); L.DomEvent.stop(e)
     })
     m.on('mousemove', (e: any) => {
       if (!addingRef.current) return
-      if (dragStart && dragPid) {
-        const p = designRef.current!.planes.find((x) => x.id === dragPid); if (!p) return
-        const ghosts = packAt(p, dragBBox(dragStart, e.latlng)); drawGhosts(ghosts, dragStart, e.latlng); setGhostN(ghosts.length)
+      if (dragPid && startCell) {
+        const cur = nearestCell(dragCells, e.latlng); if (!cur) return
+        if (cur.row !== startCell.row || cur.col !== startCell.col) moved = true
+        const block = cellBlock(dragCells, startCell, cur)
+        const p = designRef.current!.planes.find((x) => x.id === dragPid)
+        drawGhosts(block, !moved && p ? hasPanelAt(p, startCell) : false); setGhostN(block.length)
       } else {
         const p = planeAt(e.latlng)
-        if (p) { drawGhosts(packAt(p, dragBBox(e.latlng, e.latlng, 0.5)).slice(0, 1)); setGhostN(null) }
+        if (p) { const c = nearestCell(gridFor(p), e.latlng); drawGhosts(c ? [c] : [], c ? hasPanelAt(p, c) : false); setGhostN(null) }
         else { ghostLayer.current?.clearLayers(); setGhostN(null) }
       }
     })
     m.on('mouseup', (e: any) => {
-      if (!addingRef.current || !dragStart || !dragPid) { dragStart = null; dragPid = null; return }
+      if (!addingRef.current || !dragPid || !startCell) { startCell = null; dragPid = null; m.dragging.enable(); return }
       const d = designRef.current!; const p = d.planes.find((x) => x.id === dragPid)
       if (p) {
-        const ghosts = packAt(p, dragBBox(dragStart, e.latlng))
-        const merged = mergePanels((p.panels as any) ?? [], ghosts)
-        const mid = p.moduleId ?? moduleIdRef.current
-        commitRef.current(d.planes.map((x) => (x.id === dragPid ? { ...x, panels: merged, moduleId: mid } : x)))
+        const cur = nearestCell(dragCells, e.latlng) ?? startCell
+        let panels = [...(p.panels ?? [])]
+        if (!moved) {
+          // single click → toggle that one module
+          const idx = panels.findIndex((pn) => sameCell(panelCenter(pn), startCell!.center))
+          if (idx >= 0) panels.splice(idx, 1)
+          else panels.push({ id: uid('pn'), corners: startCell.corners })
+        } else {
+          for (const c of cellBlock(dragCells, startCell, cur)) if (!panels.some((pn) => sameCell(panelCenter(pn), c.center))) panels.push({ id: uid('pn'), corners: c.corners })
+        }
+        commitRef.current(d.planes.map((x) => (x.id === dragPid ? { ...x, panels, moduleId: p.moduleId ?? moduleIdRef.current } : x)))
       }
-      ghostLayer.current?.clearLayers(); setGhostN(null); dragStart = null; dragPid = null; m.dragging.enable()
+      ghostLayer.current?.clearLayers(); setGhostN(null); startCell = null; dragCells = []; dragPid = null; m.dragging.enable()
     })
     map.current = m
     if ((import.meta as any).env?.DEV) (window as any).__lmap = m
@@ -413,7 +426,7 @@ export function DesignEditor() {
               <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[500] h-9 px-4 rounded-full text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Target size={14} />Click each corner of the roof, then click the first point to close</div>
             )}
             {adding && !busy && (
-              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[500] h-9 px-4 rounded-full text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Grid size={14} />Drag across a roof to lay panels{ghostN != null ? ` · ${ghostN}` : ''}</div>
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[500] h-9 px-4 rounded-full text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Grid size={14} />Click a module to place · drag for a block · click one to remove{ghostN != null ? ` · ${ghostN}` : ''}</div>
             )}
             {design.planes.length === 0 && !busy && !drawing && (
               <div className="absolute inset-0 z-[400] flex items-center justify-center pointer-events-none">
