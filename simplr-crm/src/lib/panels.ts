@@ -53,20 +53,25 @@ function dominantAngle(poly: XY[]): number {
   return best
 }
 
-/** Inset a polygon inward by d (angle-bisector offset) — the panel-safe area inside the fire setback. */
+const signedArea = (poly: XY[]) => { let a = 0; for (let i = 0; i < poly.length; i++) { const p = poly[i], q = poly[(i + 1) % poly.length]; a += p.x * q.y - q.x * p.y } return a / 2 }
+/** Inset a polygon inward by d (angle-bisector offset) — the panel-safe area inside the fire setback.
+ *  Robust: the per-vertex offset is clamped, and if the inset collapses/inverts (small or spiky faces)
+ *  we return the original polygon so those faces still take panels. */
 function insetXY(poly: XY[], d: number): XY[] {
   const n = poly.length; if (n < 3) return poly
-  let area = 0; for (let i = 0; i < n; i++) { const a = poly[i], b = poly[(i + 1) % n]; area += a.x * b.y - b.x * a.y }
-  const s = area > 0 ? 1 : -1
+  const orig = signedArea(poly); const s = orig > 0 ? 1 : -1
   const nrm = (vx: number, vy: number) => { const l = Math.hypot(vx, vy) || 1; return { x: vx / l, y: vy / l } }
   const out: XY[] = []
   for (let i = 0; i < n; i++) {
     const p0 = poly[(i - 1 + n) % n], p1 = poly[i], p2 = poly[(i + 1) % n]
     const n1 = nrm(-(p1.y - p0.y) * s, (p1.x - p0.x) * s), n2 = nrm(-(p2.y - p1.y) * s, (p2.x - p1.x) * s)
     let bx = n1.x + n2.x, by = n1.y + n2.y; const bl = Math.hypot(bx, by) || 1; bx /= bl; by /= bl
-    const cosHalf = Math.max(0.34, bx * n1.x + by * n1.y)
+    const cosHalf = Math.max(0.5, bx * n1.x + by * n1.y) // floor 0.5 → offset capped at 2× the setback
     out.push({ x: p1.x + (bx * d) / cosHalf, y: p1.y + (by * d) / cosHalf })
   }
+  const inset = signedArea(out)
+  // collapsed or flipped (over-eroded a small/spiky face) → keep the original so it still packs
+  if (Math.sign(inset) !== Math.sign(orig) || Math.abs(inset) < Math.abs(orig) * 0.25) return poly
   return out
 }
 

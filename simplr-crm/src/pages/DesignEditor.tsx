@@ -269,13 +269,17 @@ export function DesignEditor() {
   }
   function fillPlane(pid: string) {
     const d = designRef.current; if (!d) return
+    let filled = 0
     const planes = d.planes.map((p) => {
       if (p.id !== pid) return p
       const mod = moduleById(p.moduleId ?? moduleId)
       const { panels, orientation } = packWithSettings(p, mod, d.setbackM)
+      filled = panels.length
       return { ...p, panels, orientation, moduleId: p.moduleId ?? moduleId }
     })
     commitSnapshot(planes)
+    if (filled === 0) act.toast('That face is too small/narrow for a full module after the setback', 'warning')
+    else act.toast(`Filled ${filled} panel${filled === 1 ? '' : 's'}`, 'positive')
   }
   function clearPlane(pid: string) {
     const d = designRef.current; if (!d) return
