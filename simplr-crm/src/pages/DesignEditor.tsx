@@ -11,7 +11,7 @@ import { useActions, useState_ } from '../store/store'
 import { geocodeLocation } from '../lib/commercialFinder'
 import { detectPlanes, slopedAreaM2, totalRoofArea, compass, polygonAreaM2 } from '../lib/design'
 import { MODULES, moduleById, packWithSettings, packPlane, autoLayout, kwpOf, planeSolarFactor, planeQuality, type Module, type LayoutGoal, type BBox } from '../lib/panels'
-import { regionYield } from '../lib/solar'
+import { regionYield, fetchBuildingHeight } from '../lib/solar'
 import { parseDesignBrief } from '../lib/oviDesign'
 import { Design3D } from '../components/Design3D'
 import { DesignCopilot } from '../components/DesignCopilot'
@@ -154,6 +154,10 @@ export function DesignEditor() {
       if (!c && design.address) { const g = await geocodeLocation(design.address); if (g) { c = { lat: g.lat, lng: g.lng }; act.updateDesign(design.id, { center: c }) } }
       if (c) map.current!.setView([c.lat, c.lng], 19)
       if (c && design.planes.length === 0) runDetect(c)
+      // Pull the real building height from OSM once (free, no key) so the 3D model isn't a guess.
+      if (c && design.eaveHeightM == null) {
+        fetchBuildingHeight(c).then((h) => { if (h && designRef.current?.id === design.id) { act.updateDesign(design.id, { eaveHeightM: h.eaveM, heightSource: h.source }); act.toast(`Building height ${h.eaveM} m from OpenStreetMap`) } }).catch(() => {})
+      }
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [design?.id])
@@ -430,7 +434,7 @@ export function DesignEditor() {
           {tab === 'array'
             ? <ArrayInspector design={design} sel={sel} moduleId={moduleId} setModuleId={setModuleId} onSelect={setSelId} onUpdate={updatePlane} onFill={fillPlane} onClear={clearPlane} onDelete={deletePlane}
                 targetKwp={targetKwp} setTargetKwp={setTargetKwp} onGoal={runAutoLayout} kwp={kwp} count={totals.count} />
-            : <DesignInspector design={design} selId={selId} onSelect={setSelId} onUpdate={updatePlane} onFill={fillPlane} onClear={clearPlane} onDelete={deletePlane} moduleId={moduleId} setModuleId={setModuleId} kwp={kwp} totalPanels={totals.count} roofArea={roofArea} module={module} onBackToProspect={design.prospectId ? () => nav('/tools/company-search') : undefined} />
+            : <DesignInspector design={design} selId={selId} onSelect={setSelId} onUpdate={updatePlane} onFill={fillPlane} onClear={clearPlane} onDelete={deletePlane} moduleId={moduleId} setModuleId={setModuleId} kwp={kwp} totalPanels={totals.count} roofArea={roofArea} module={module} onHeight={(m) => act.updateDesign(design.id, { eaveHeightM: m, heightSource: 'manual' })} onBackToProspect={design.prospectId ? () => nav('/tools/company-search') : undefined} />
           }
         </div>
 
@@ -443,10 +447,10 @@ export function DesignEditor() {
 }
 
 /* ── Design-tab inspector: plane list + quick pitch/azimuth + fill ── */
-function DesignInspector({ design, selId, onSelect, onUpdate, onFill, onClear, onDelete, moduleId, setModuleId, kwp, totalPanels, roofArea, module, onBackToProspect }: {
+function DesignInspector({ design, selId, onSelect, onUpdate, onFill, onClear, onDelete, moduleId, setModuleId, kwp, totalPanels, roofArea, module, onHeight, onBackToProspect }: {
   design: Design; selId: string | null; onSelect: (id: string) => void; onUpdate: (id: string, patch: Partial<DesignPlane>, repack?: boolean) => void
   onFill: (id: string) => void; onClear: (id: string) => void; onDelete: (id: string) => void; moduleId: string; setModuleId: (v: string) => void
-  kwp: number; totalPanels: number; roofArea: number; module: Module; onBackToProspect?: () => void
+  kwp: number; totalPanels: number; roofArea: number; module: Module; onHeight: (m: number) => void; onBackToProspect?: () => void
 }) {
   return (
     <div className="w-[310px] shrink-0 rounded-card bg-surface border border-border flex flex-col overflow-hidden">
@@ -491,7 +495,8 @@ function DesignInspector({ design, selId, onSelect, onUpdate, onFill, onClear, o
           </div>
         ))}
       </div>
-      <div className="p-3 border-t border-divider flex flex-col gap-2">
+      <div className="p-3 border-t border-divider flex flex-col gap-2.5">
+        <Slider label={`Height${design.heightSource === 'osm' ? ' · OSM' : ''}`} value={Math.round(design.eaveHeightM ?? 5)} min={2} max={30} suffix=" m" onChange={onHeight} />
         <div className="text-[11px] text-muted-b flex items-center gap-1.5"><Layers size={12} />Open the <b>Array</b> tab for racking, module &amp; row settings.</div>
         {onBackToProspect && <Button variant="secondary" icon={<Person size={14} />} onClick={onBackToProspect}>Back to prospect</Button>}
       </div>

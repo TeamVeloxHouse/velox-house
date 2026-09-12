@@ -7,7 +7,7 @@ import type { Design } from '../store/types'
 
 type LL = { lat: number; lng: number }
 
-const EAVE_H = 5 // metres to the eave — a two-storey wall under the pitched roof
+const EAVE_DEFAULT = 5 // metres to the eave — a two-storey wall under the pitched roof (fallback)
 
 /** A live, photoreal-ish 3D model of the design — each roof plane tilted to its true pitch/azimuth,
  *  walls dropped to the ground, obstacles cut out, and the packed panels sitting flush on the slope
@@ -28,6 +28,7 @@ export function Design3D({ design, onCapture }: { design: Design; onCapture?: ()
     const planes = design.planes.filter((p) => p.polygon.length >= 3)
     const allPts: LL[] = planes.flatMap((p) => p.polygon)
     if (!allPts.length) return
+    const eaveH = design.eaveHeightM ?? EAVE_DEFAULT // real building height (OSM/Google) or fallback
 
     const origin = allPts.reduce((a, p) => ({ lat: a.lat + p.lat / allPts.length, lng: a.lng + p.lng / allPts.length }), { lat: 0, lng: 0 })
     const mPerLat = 110540, mPerLng = 111320 * Math.cos((origin.lat * Math.PI) / 180)
@@ -109,7 +110,7 @@ export function Design3D({ design, onCapture }: { design: Design; onCapture?: ()
 
     planes.forEach((p) => {
       const fp = p.polygon.map((pt) => ({ x: X(pt), z: Z(pt) }))
-      const pf = planeFrame(fp, p.pitchDeg, p.azimuthDeg, EAVE_H)
+      const pf = planeFrame(fp, p.pitchDeg, p.azimuthDeg, eaveH)
 
       // Roof surface — triangulate the footprint, then lift each vertex onto the tilted plane.
       const shape = new THREE.Shape(fp.map((v) => new THREE.Vector2(v.x, v.z)))
@@ -190,12 +191,12 @@ export function Design3D({ design, onCapture }: { design: Design; onCapture?: ()
       if (o.polygon.length < 3) return
       const fp = o.polygon.map((pt) => ({ x: X(pt), z: Z(pt) }))
       // sit it on the nearest roof surface (use the first plane's frame as the reference height)
-      const ref = planes[0] ? planeFrame(planes[0].polygon.map((pt) => ({ x: X(pt), z: Z(pt) })), planes[0].pitchDeg, planes[0].azimuthDeg, EAVE_H) : null
+      const ref = planes[0] ? planeFrame(planes[0].polygon.map((pt) => ({ x: X(pt), z: Z(pt) })), planes[0].pitchDeg, planes[0].azimuthDeg, eaveH) : null
       const shape = new THREE.Shape(fp.map((v) => new THREE.Vector2(v.x, v.z)))
       const h = o.kind === 'chimney' ? 1.6 : o.kind === 'hvac' ? 1.1 : 0.15
       const geo = new THREE.ExtrudeGeometry(shape, { depth: h, bevelEnabled: false })
       geo.rotateX(-Math.PI / 2)
-      const base = ref ? ref.elev(avg(fp).x, avg(fp).z) : EAVE_H
+      const base = ref ? ref.elev(avg(fp).x, avg(fp).z) : eaveH
       geo.translate(0, base, 0)
       const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: obsColors[o.kind] ?? 0xff5d5d, roughness: 0.7, transparent: o.kind === 'keepout', opacity: o.kind === 'keepout' ? 0.4 : 1 }))
       mesh.castShadow = true; mesh.receiveShadow = true
@@ -207,9 +208,9 @@ export function Design3D({ design, onCapture }: { design: Design; onCapture?: ()
     const cx = (Math.min(...bx) + Math.max(...bx)) / 2, cz = (Math.min(...bz) + Math.max(...bz)) / 2
     const span = Math.max(Math.max(...bx) - Math.min(...bx), Math.max(...bz) - Math.min(...bz), 22)
     const dist = span * 1.35 + 26
-    controls.target.set(cx, EAVE_H, cz)
-    camera.position.set(cx + dist * 0.62, EAVE_H + dist * 0.9, cz + dist * 0.62)
-    camera.lookAt(cx, EAVE_H, cz)
+    controls.target.set(cx, eaveH, cz)
+    camera.position.set(cx + dist * 0.62, eaveH + dist * 0.9, cz + dist * 0.62)
+    camera.lookAt(cx, eaveH, cz)
 
     // shadow frustum around the scene
     const S = span * 0.9 + 40
@@ -223,7 +224,7 @@ export function Design3D({ design, onCapture }: { design: Design; onCapture?: ()
       const elev = Math.max(0.04, Math.sin(Math.PI * t))
       const horiz = 340 * (1 - elev * 0.5)
       sun.position.set(cx + Math.sin(az) * horiz, 60 + elev * 380, cz + Math.cos(az) * horiz * 0.8 + 30)
-      sun.target.position.set(cx, EAVE_H, cz)
+      sun.target.position.set(cx, eaveH, cz)
       sun.intensity = 0.9 + elev * 1.6
       const warm = 1 - elev
       sun.color.setRGB(1, 0.95 - warm * 0.18, 0.86 - warm * 0.28)
@@ -243,7 +244,7 @@ export function Design3D({ design, onCapture }: { design: Design; onCapture?: ()
       if (renderer.domElement.parentNode === el) el.removeChild(renderer.domElement)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [design.id, design.planes, design.obstacles])
+  }, [design.id, design.planes, design.obstacles, design.eaveHeightM])
 
   const hasGeom = design.planes.some((p) => p.polygon.length >= 3)
   const hasPanels = design.planes.some((p) => p.panels?.length)
