@@ -99,7 +99,7 @@ export function Design3D({ design, onCapture, adding, moduleId, onCommitPanels }
   const [dsm, setDsm] = useState<DsmData | null>(null)
   const [rgb, setRgb] = useState<HTMLCanvasElement | null>(null)
   const [dsmStatus, setDsmStatus] = useState<'idle' | 'loading' | 'ready' | 'none'>('idle')
-  const [photoreal, setPhotoreal] = useState(true)
+  const [photoreal, setPhotoreal] = useState(false) // default = sharp reconstructed model; on = raw DSM blob
   const [showFlux, setShowFlux] = useState(false)
   const [showFaces, setShowFaces] = useState(true) // highlight the mapped usable roof faces
 
@@ -267,6 +267,11 @@ export function Design3D({ design, onCapture, adding, moduleId, onCommitPanels }
     }
 
     // ── Roof planes ──
+    // Aerial texture (projected onto the sharp reconstructed roof facets) + its metric frame.
+    const dsmW = dsm ? dsm.width * dsm.resM : 1, dsmH = dsm ? dsm.height * dsm.resM : 1
+    const halfWm = dsmW / 2, halfHm = dsmH / 2
+    const aerialTex = (dsm && rgb) ? (() => { const t = new THREE.CanvasTexture(rgb); t.colorSpace = THREE.SRGBColorSpace; return t })() : null
+    const uvFor = (sx: number, sz: number): [number, number] => [(sx - dcx + halfWm) / dsmW, (dcz - sz + halfHm) / dsmH]
     const panelEdgeSegments: number[] = []
     let panelTotal = 0
     const panelMats: THREE.Matrix4[] = []
@@ -275,26 +280,40 @@ export function Design3D({ design, onCapture, adding, moduleId, onCommitPanels }
     planes.forEach((p) => {
       const fp = p.polygon.map((pt) => ({ x: X(pt), z: Z(pt) }))
       const pf = planeFrame(fp, p.pitchDeg, p.azimuthDeg, eaveH)
+      const c = avg(fp)
+      // The roof surface height for this facet. When we have the DSM, FIT the real plane (true
+      // tilt/gradient) so the reconstructed facet + panels are pinpoint; else use the Google tilt.
+      let roofY: (x: number, z: number) => number
+      if (dsm && design.center) {
+        const fit = fitRoofPlane(dsm, fp, dcx, dcz)
+        if (fit) roofY = (x, z) => fit.a * x + fit.b * z + fit.c
+        else { const off = sampleHeight(dsm, c.x - dcx, dcz - c.z) - pf.elev(c.x, c.z); roofY = (x, z) => pf.elev(x, z) + off }
+      } else roofY = (x, z) => pf.elev(x, z)
+      const heightAt = (x: number, z: number) => roofY(x, z) + 0.18 // panels sit just above the roof
+      planeGeo.set(p.id, { heightAt })
+      roofCenters.push({ x: c.x, y: roofY(c.x, c.z), z: c.z })
 
-      // Clean extrusion path — the roof surface + walls (skipped in photoreal, where the DSM is it).
+      // Sharp reconstructed model (default view; skipped when showing the raw DSM blob): a FLAT roof
+      // facet at its fitted plane with the aerial projected on, plus clean walls to the ground.
       if (!usePhotoreal) {
         const shape = new THREE.Shape(fp.map((v) => new THREE.Vector2(v.x, v.z)))
         const rg = new THREE.ShapeGeometry(shape)
-        const pos = rg.attributes.position as THREE.BufferAttribute
+        const pos = rg.attributes.position as THREE.BufferAttribute, uv = rg.attributes.uv as THREE.BufferAttribute
         for (let i = 0; i < pos.count; i++) {
-          const sx = pos.getX(i), sz = pos.getY(i) // shape XY = scene XZ
-          pos.setXYZ(i, sx, pf.elev(sx, sz), sz)
+          const sx = pos.getX(i), sz = pos.getY(i)
+          pos.setXYZ(i, sx, roofY(sx, sz), sz)
+          if (aerialTex && uv) { const [u, v] = uvFor(sx, sz); uv.setXY(i, u, v) }
         }
         rg.computeVertexNormals()
-        const roof = new THREE.Mesh(rg, roofMat)
+        const roof = new THREE.Mesh(rg, aerialTex ? new THREE.MeshStandardMaterial({ map: aerialTex, roughness: 0.92, metalness: 0 }) : roofMat)
         roof.castShadow = true; roof.receiveShadow = true
         scene.add(roof)
         pickTargets.push(roof)
-        // Walls — drop each footprint edge to the ground.
+        // Walls — drop each facet edge straight to the ground.
         const wv: number[] = []
         for (let i = 0; i < fp.length; i++) {
           const a = fp[i], b = fp[(i + 1) % fp.length]
-          const ay = pf.elev(a.x, a.z), by = pf.elev(b.x, b.z)
+          const ay = roofY(a.x, a.z), by = roofY(b.x, b.z)
           wv.push(a.x, 0, a.z, b.x, 0, b.z, b.x, by, b.z)
           wv.push(a.x, 0, a.z, b.x, by, b.z, a.x, ay, a.z)
         }
@@ -304,22 +323,9 @@ export function Design3D({ design, onCapture, adding, moduleId, onCommitPanels }
         const walls = new THREE.Mesh(wg, wallMat)
         walls.castShadow = true; walls.receiveShadow = true
         scene.add(walls)
-        const ring = fp.map((v) => new THREE.Vector3(v.x, pf.elev(v.x, v.z), v.z))
-        ring.push(ring[0])
+        const ring = fp.map((v) => new THREE.Vector3(v.x, roofY(v.x, v.z), v.z)); ring.push(ring[0])
         scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(ring), edgeMat))
       }
-      const c = avg(fp)
-      // Height function for this plane. Photoreal: FIT the real roof plane to the DSM heights under the
-      // footprint (reads the true tilt/gradient) so panels sit pinpoint on the surface; if the fit is
-      // poor, fall back to the Google tilt lifted to the DSM height at the centroid. Clean: Google tilt.
-      let heightAt: (x: number, z: number) => number
-      if (usePhotoreal) {
-        const fit = fitRoofPlane(dsm!, fp, dcx, dcz)
-        if (fit) heightAt = (x, z) => fit.a * x + fit.b * z + fit.c + 0.2
-        else { const off = sampleHeight(dsm!, c.x - dcx, dcz - c.z) - pf.elev(c.x, c.z); heightAt = (x, z) => pf.elev(x, z) + off + 0.2 }
-      } else heightAt = (x, z) => pf.elev(x, z)
-      planeGeo.set(p.id, { heightAt })
-      roofCenters.push({ x: c.x, y: heightAt(c.x, c.z), z: c.z })
 
       // Usable-area overlay — the mapped roof face, drawn on the fitted plane so you can see & design
       // within the real usable space.
