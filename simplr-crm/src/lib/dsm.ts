@@ -97,6 +97,71 @@ export function sampleHeight(dsm: DsmData, east: number, north: number): number 
   return h - dsm.minH
 }
 
+type PXY = [number, number]
+/** Douglas–Peucker simplify (pixel space). */
+function dpSimplify(pts: PXY[], tol: number): PXY[] {
+  if (pts.length < 3) return pts
+  const keep = new Array(pts.length).fill(false); keep[0] = keep[pts.length - 1] = true
+  const perp = (p: PXY, a: PXY, b: PXY) => { const dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1; return Math.abs((p[0] - a[0]) * dy - (p[1] - a[1]) * dx) / l }
+  const stack: PXY[] = [[0, pts.length - 1]]
+  while (stack.length) {
+    const [i, j] = stack.pop()!
+    let md = 0, mi = -1
+    for (let k = i + 1; k < j; k++) { const d = perp(pts[k], pts[i], pts[j]); if (d > md) { md = d; mi = k } }
+    if (md > tol && mi > 0) { keep[mi] = true; stack.push([i, mi], [mi, j]) }
+  }
+  return pts.filter((_, i) => keep[i])
+}
+
+/** Trace the building outline from Google's mask (reliable, no Overpass) — a simplified lat/lng
+ *  polygon centred on (lat,lng). Used to clip Google's roof boxes to the true building shape. */
+export async function fetchBuildingOutline(lat: number, lng: number, radius = 40, px = 0.25): Promise<{ lat: number; lng: number }[] | null> {
+  try {
+    const r = await fetch(`/api/solar-layer?kind=mask&lat=${lat}&lng=${lng}&radius=${radius}&px=${px}`)
+    if (!r.ok) return null
+    const img = await (await fromArrayBuffer(await r.arrayBuffer())).getImage()
+    const W = img.getWidth(), H = img.getHeight(), res = Math.abs(img.getResolution()[0])
+    const raw = (await img.readRasters())[0] as Float32Array
+    const bin = new Uint8Array(W * H)
+    for (let i = 0; i < W * H; i++) bin[i] = raw[i] > 0.5 ? 1 : 0
+    // largest connected component (4-connected)
+    const label = new Int32Array(W * H).fill(-1)
+    let best = -1, bestSize = 0, cur = 0
+    const stack: number[] = []
+    for (let s = 0; s < W * H; s++) {
+      if (!bin[s] || label[s] >= 0) continue
+      let size = 0; stack.length = 0; stack.push(s); label[s] = cur
+      while (stack.length) {
+        const p = stack.pop()!; size++; const x = p % W, y = (p / W) | 0
+        const nb = [x > 0 ? p - 1 : -1, x < W - 1 ? p + 1 : -1, y > 0 ? p - W : -1, y < H - 1 ? p + W : -1]
+        for (const q of nb) if (q >= 0 && bin[q] && label[q] < 0) { label[q] = cur; stack.push(q) }
+      }
+      if (size > bestSize) { bestSize = size; best = cur }
+      cur++
+    }
+    if (best < 0 || bestSize < 24) return null
+    const inComp = (x: number, y: number) => x >= 0 && y >= 0 && x < W && y < H && label[y * W + x] === best
+    // Moore boundary trace (clockwise)
+    let sx = -1, sy = -1
+    for (let y = 0; y < H && sy < 0; y++) for (let x = 0; x < W; x++) if (inComp(x, y)) { sx = x; sy = y; break }
+    if (sx < 0) return null
+    const dirs = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]]
+    const boundary: PXY[] = []
+    let cx = sx, cy = sy, dir = 6, guard = 0
+    do {
+      boundary.push([cx, cy])
+      let found = false
+      for (let k = 0; k < 8; k++) { const d = (dir + k) % 8, nx = cx + dirs[d][0], ny = cy + dirs[d][1]; if (inComp(nx, ny)) { cx = nx; cy = ny; dir = (d + 5) % 8; found = true; break } }
+      if (!found) break
+    } while ((cx !== sx || cy !== sy) && ++guard < W * H)
+    if (boundary.length < 6) return null
+    const simplified = dpSimplify(boundary, 1.4)
+    if (simplified.length < 4) return null
+    const halfW = (W * res) / 2, halfH = (H * res) / 2, mLat = 110540, mLng = 111320 * Math.cos((lat * Math.PI) / 180)
+    return simplified.map(([c, rr]) => { const east = (c + 0.5) * res - halfW, north = halfH - (rr + 0.5) * res; return { lat: lat + north / mLat, lng: lng + east / mLng } })
+  } catch { return null }
+}
+
 /** A blue→green→yellow→red irradiance ramp (0..1) for the flux heatmap. */
 export function fluxColor(t: number): [number, number, number] {
   const c = Math.max(0, Math.min(1, t))
