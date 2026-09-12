@@ -187,9 +187,22 @@ export function Design3D({ design, onCapture, adding, moduleId, onCommitPanels }
       const heatmap = showFlux && !!dsm!.flux
       const colors = heatmap ? new Float32Array(pos.count * 3) : null
       const fMin = dsm!.fluxMin ?? 0, fSpan = (dsm!.fluxMax ?? 1) - fMin || 1
+      // Building mask (1-px dilated) — flatten everything that isn't the building so trees/ground/
+      // neighbours don't spike; the target house stands crisp on a flat aerial carpet.
+      const mask = dsm!.mask
+      let building: Uint8Array | null = null
+      if (mask) {
+        building = new Uint8Array(W * H)
+        for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+          let b = false
+          for (let dr = -1; dr <= 1 && !b; dr++) for (let dc = -1; dc <= 1 && !b; dc++) { const rr = j + dr, cc = i + dc; if (rr >= 0 && rr < H && cc >= 0 && cc < W && mask[rr * W + cc] > 0.5) b = true }
+          building[j * W + i] = b ? 1 : 0
+        }
+      }
       for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
         const idx = j * W + i, raw = heights[idx]
-        pos.setY(idx, raw > -500 && raw < 10000 ? raw - minH : 0)
+        const onBuilding = !building || building[idx] === 1
+        pos.setY(idx, onBuilding && raw > -500 && raw < 10000 ? raw - minH : 0)
         if (colors) { const [r, g, b] = fluxColor((dsm!.flux![idx] - fMin) / fSpan); colors[idx * 3] = r; colors[idx * 3 + 1] = g; colors[idx * 3 + 2] = b }
       }
       geo.computeVertexNormals()

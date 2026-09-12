@@ -64,6 +64,7 @@ export function DesignEditor() {
   designRef.current = design
 
   const [tab, setTab] = useState<StudioTab>('design')
+  const [mapReady, setMapReady] = useState(false)
   const [busy, setBusy] = useState(false)
   const [status, setStatus] = useState('')
   const [selId, setSelId] = useState<string | null>(null)
@@ -151,8 +152,8 @@ export function DesignEditor() {
     })
     map.current = m
     if ((import.meta as any).env?.DEV) (window as any).__lmap = m
-    setTimeout(() => m.invalidateSize(), 120)
-    return () => { m.remove(); map.current = null }
+    setTimeout(() => { m.invalidateSize(); setMapReady(true) }, 120)
+    return () => { m.remove(); map.current = null; setMapReady(false) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -178,7 +179,7 @@ export function DesignEditor() {
   // ── Redraw planes + panels whenever they change ──
   useEffect(() => {
     const lyr = planeLayer.current, pl = panelLayer.current
-    if (!lyr || !pl || !map.current || !design) return
+    if (!lyr || !pl || !map.current || !mapReady || !design) return
     lyr.clearLayers(); pl.clearLayers()
     design.planes.forEach((p) => {
       const on = p.id === selId
@@ -213,7 +214,7 @@ export function DesignEditor() {
       try { map.current.fitBounds(L.latLngBounds(all).pad(0.3), { maxZoom: 20, animate: false }) } catch { /* single point */ }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [design?.planes, selId])
+  }, [design?.planes, selId, mapReady])
 
   // ── Actions ──
   async function runDetect(center?: LatLng) {

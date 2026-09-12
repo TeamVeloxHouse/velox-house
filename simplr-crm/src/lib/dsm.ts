@@ -14,6 +14,7 @@ export type DsmData = {
   flux?: Float32Array // annual irradiance (kWh/kW/yr), same grid, if available
   fluxMin?: number
   fluxMax?: number
+  mask?: Float32Array // building mask (>0 = the analysed building), same grid — used to flatten trees/ground
 }
 
 const NODATA = -9999
@@ -28,15 +29,28 @@ async function readBand(buf: ArrayBuffer): Promise<{ w: number; h: number; res: 
 export async function fetchDsm(lat: number, lng: number, radius = 40, px = 0.25): Promise<DsmData | null> {
   try {
     const q = `lat=${lat}&lng=${lng}&radius=${radius}&px=${px}`
-    const [dsmR, fluxR] = await Promise.all([
+    const [dsmR, fluxR, maskR] = await Promise.all([
       fetch(`/api/solar-layer?kind=dsm&${q}`),
       fetch(`/api/solar-layer?kind=flux&${q}`).catch(() => null),
+      fetch(`/api/solar-layer?kind=mask&${q}`).catch(() => null),
     ])
     if (!dsmR.ok) return null
     const dsm = await readBand(await dsmR.arrayBuffer())
     let minH = Infinity, maxH = -Infinity
     for (let i = 0; i < dsm.data.length; i++) { const v = dsm.data[i]; if (v > -500 && v < 10000) { if (v < minH) minH = v; if (v > maxH) maxH = v } }
     const out: DsmData = { width: dsm.w, height: dsm.h, resM: dsm.res, heights: dsm.data, minH, maxH }
+    if (maskR && maskR.ok) {
+      try {
+        const m = await readBand(await maskR.arrayBuffer())
+        if (m.w === dsm.w && m.h === dsm.h) {
+          out.mask = m.data
+          // Base maxH on the building only, so tall trees don't skew the camera height.
+          let bMax = -Infinity
+          for (let i = 0; i < dsm.data.length; i++) { if (m.data[i] > 0.5) { const v = dsm.data[i]; if (v > -500 && v < 10000 && v > bMax) bMax = v } }
+          if (bMax > minH) out.maxH = bMax
+        }
+      } catch { /* mask optional */ }
+    }
     if (fluxR && fluxR.ok) {
       try {
         const flux = await readBand(await fluxR.arrayBuffer())
