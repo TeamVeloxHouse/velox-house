@@ -10,9 +10,11 @@ import { Sun, Radar, Check, Person, Layers, Target, Sparkle, Plus, Grid, Wrench,
 import { useActions, useState_ } from '../store/store'
 import { geocodeLocation } from '../lib/commercialFinder'
 import { detectPlanes, slopedAreaM2, totalRoofArea, compass, polygonAreaM2 } from '../lib/design'
-import { MODULES, moduleById, packWithSettings, autoLayout, kwpOf, planeSolarFactor, type Module, type LayoutGoal } from '../lib/panels'
+import { MODULES, moduleById, packWithSettings, autoLayout, kwpOf, planeSolarFactor, planeQuality, type Module, type LayoutGoal } from '../lib/panels'
 import { regionYield } from '../lib/solar'
+import { parseDesignBrief } from '../lib/oviDesign'
 import { Design3D } from '../components/Design3D'
+import { DesignCopilot } from '../components/DesignCopilot'
 import type { Design, DesignPlane, PanelOrientation, RackingType } from '../store/types'
 
 type LatLng = { lat: number; lng: number }
@@ -47,6 +49,7 @@ export function DesignEditor() {
   const [moduleId, setModuleId] = useState('m440')
   const [view, setView] = useState<'2d' | '3d'>('2d')
   const [targetKwp, setTargetKwp] = useState<string>('')
+  const [oviOpen, setOviOpen] = useState(false)
   const module = moduleById(moduleId)
   const canvasVisible = tab === 'design' || tab === 'array'
 
@@ -121,10 +124,18 @@ export function DesignEditor() {
     setBusy(true); setStatus('Measuring the roof from satellite…')
     try {
       const { planes, center: c, measured } = await detectPlanes(design.address, center || design.center)
-      act.updateDesign(design.id, { planes: [...planes, ...design.planes], center: c || design.center })
       if (c && map.current) map.current.setView([c.lat, c.lng], 19)
+      if (!measured) {
+        // No real measurement available (no Solar key) — don't fabricate giant boxes; ask for a trace.
+        act.updateDesign(design.id, { center: c || design.center })
+        act.toast('Can’t measure this roof without a Google Solar key — draw the real roof with “Draw plane”.', 'warning')
+        return
+      }
+      // Keep hand-drawn planes, REPLACE previously-detected ones so repeated taps don't stack boxes.
+      const kept = design.planes.filter((p) => p.source === 'manual')
+      act.updateDesign(design.id, { planes: [...planes, ...kept], center: c || design.center })
       if (!planes.length) act.toast('No roof planes found here — draw them by hand instead', 'warning')
-      else act.toast(`${planes.length} plane${planes.length === 1 ? '' : 's'} detected${measured ? '' : ' (estimated)'} — refine or draw the real roof`)
+      else act.toast(`${planes.length} plane${planes.length === 1 ? '' : 's'} detected — refine or draw the real roof`)
     } catch { act.toast('Could not measure this roof', 'warning') } finally { setBusy(false); setStatus('') }
   }
   function addManualPlane(ring: LatLng[]) {
@@ -193,6 +204,34 @@ export function DesignEditor() {
     })
     act.updateDesign(d.id, { planes, panels: count, systemKwp: Math.round(kwp * 10) / 10, annualKwh: Math.round(kwh) })
   }
+  // Ovi conversational design — parse a brief, then size + lay out live, streaming each step.
+  async function oviExecute(brief: string, emit: (line: string) => void): Promise<string> {
+    const d = designRef.current!
+    const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
+    if (!d.planes.length) { emit('Looking for a roof…'); await delay(300); return 'There’s no roof captured yet. Use “Detect roof” (needs a Google Solar key) or “Draw plane” to trace it, then ask me again.' }
+    emit('Reading your brief…'); await delay(450)
+    const yieldPerKwp = regionYield(d.address).yield
+    const intent = parseDesignBrief(brief, d, yieldPerKwp)
+    if (intent.moduleId) { setModuleId(intent.moduleId); emit(`Module → ${intent.moduleLabel}`); await delay(350) }
+    emit(`Goal → ${intent.goalLabel}`); await delay(350)
+    if (intent.restrictLabel) { emit(`Scope → ${intent.restrictLabel}`); await delay(300) }
+    intent.notes.forEach((n) => emit(n))
+    emit('Ranking roofs by orientation & tilt…'); await delay(500)
+    let restrict = intent.restrict
+    if (intent.bestOnly) { const best = [...d.planes].sort((a, b) => planeQuality(b) - planeQuality(a))[0]; restrict = (p) => p.id === best.id }
+    const mod = moduleById(intent.moduleId ?? moduleId)
+    const planesIn = intent.moduleId ? d.planes.map((p) => ({ ...p, moduleId: undefined })) : d.planes
+    emit('Packing panels on the best-facing planes…'); await delay(650)
+    const res = autoLayout(planesIn, mod, intent.goal, d.setbackM, { restrict })
+    commitSnapshot(res.planes)
+    const annual = res.planes.reduce((s, p) => { const m = moduleById(p.moduleId ?? mod.id); const n = p.panels?.length ?? 0; return s + (n * m.watts / 1000) * yieldPerKwp * planeYieldFactor(p) }, 0)
+    const used = res.planes.filter((p) => p.panels?.length).length
+    if (res.count === 0) return 'No panels fit those constraints — the roofs may be too small or the scope too narrow. Try “maximum coverage”, or widen the setback.'
+    let out = `Placed ${res.count} panels — ${res.kwp} kWp across ${used} plane${used === 1 ? '' : 's'} (~${Math.round(annual).toLocaleString()} kWh/yr).`
+    if (intent.billKwh) out += `\nThat covers ~${Math.round((annual / intent.billKwh) * 100)}% of the ${intent.billKwh.toLocaleString()} kWh bill.`
+    out += '\nOpen the Array tab to fine-tune racking, spacing or the module.'
+    return out
+  }
   function toggleDraw() {
     const m = map.current; if (!m) return
     if (editing) toggleEdit()
@@ -243,12 +282,15 @@ export function DesignEditor() {
             </button>
           )
         })}
-        <div className="ml-auto flex items-center gap-2 text-[12px] text-muted-b">
-          <span className="font-bold text-ink tabular-nums">{kwp || '—'}</span> kWp
-          <span className="w-px h-4 bg-divider" />
-          <span className="font-bold text-ink tabular-nums">{totals.count || '—'}</span> panels
-          <span className="w-px h-4 bg-divider" />
-          <span className="font-bold text-ink tabular-nums">{totals.kwh ? Math.round(totals.kwh).toLocaleString() : '—'}</span> kWh/yr
+        <div className="ml-auto flex items-center gap-3">
+          <button onClick={() => setOviOpen(true)} className="h-8 px-3 rounded-full text-white text-[12.5px] font-semibold inline-flex items-center gap-1.5 shadow-primary" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Sparkle size={13} />Design with Ovi</button>
+          <div className="flex items-center gap-2 text-[12px] text-muted-b">
+            <span className="font-bold text-ink tabular-nums">{kwp || '—'}</span> kWp
+            <span className="w-px h-4 bg-divider" />
+            <span className="font-bold text-ink tabular-nums">{totals.count || '—'}</span> panels
+            <span className="w-px h-4 bg-divider" />
+            <span className="font-bold text-ink tabular-nums">{totals.kwh ? Math.round(totals.kwh).toLocaleString() : '—'}</span> kWh/yr
+          </div>
         </div>
       </div>
 
@@ -300,6 +342,7 @@ export function DesignEditor() {
 
         {tab === 'production' && <ProductionPane design={design} moduleId={moduleId} kwp={kwp} count={totals.count} annualKwh={Math.round(totals.kwh)} />}
         {tab === 'proposal' && <ProposalPane design={design} kwp={kwp} count={totals.count} annualKwh={Math.round(totals.kwh)} onOpen={() => nav('/studio/proposals')} onConfirm={() => act.updateDesign(design.id, { status: 'confirmed', systemKwp: kwp, panels: totals.count, annualKwh: Math.round(totals.kwh) })} />}
+        <DesignCopilot open={oviOpen} onClose={() => setOviOpen(false)} onExecute={oviExecute} />
       </div>
     </>
   )
