@@ -84,8 +84,8 @@ export function DesignEditor() {
   // ── Map init (once) ──
   useEffect(() => {
     if (map.current || !mapEl.current) return
-    const m = L.map(mapEl.current, { center: [52.6, -1.9], zoom: 6, zoomControl: true })
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 21, maxNativeZoom: 19, attribution: 'Imagery © Esri, Maxar, Earthstar Geographics' }).addTo(m)
+    const m = L.map(mapEl.current, { center: [52.6, -1.9], zoom: 6, zoomControl: false, attributionControl: false })
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 21, maxNativeZoom: 19 }).addTo(m)
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', { maxZoom: 21, maxNativeZoom: 19, opacity: 0.9 }).addTo(m)
     panelRenderer.current = L.canvas({ padding: 0.5 })
     panelLayer.current = L.layerGroup().addTo(m)
@@ -406,7 +406,7 @@ export function DesignEditor() {
         <div className={`absolute inset-0 flex gap-4 px-5 py-4 ${canvasVisible ? '' : 'invisible pointer-events-none'}`}>
           <div className="relative flex-1 min-h-0 rounded-card overflow-hidden border border-border">
             <div ref={mapEl} className="absolute inset-0" style={{ background: '#0b1220', isolation: 'isolate' }} />
-            {view === '3d' && canvasVisible && <Design3D design={design} onCapture={() => { setView('2d'); setTimeout(() => { if (!drawing) toggleDraw() }, 80) }} />}
+            {view === '3d' && canvasVisible && <Design3D design={design} adding={adding} moduleId={moduleId} onCommitPanels={(pid, panels) => commitSnapshot(design.planes.map((p) => (p.id === pid ? { ...p, panels, moduleId: p.moduleId ?? moduleId } : p)))} onCapture={() => { setView('2d'); setTimeout(() => { if (!drawing) toggleDraw() }, 80) }} />}
             {view === '2d' && (
               <div className="absolute top-3 left-3 z-[500] flex items-center gap-1.5 bg-white/95 backdrop-blur border border-border rounded-control shadow-modal p-1">
                 <ToolBtn on={drawing} onClick={toggleDraw} icon={<Plus size={15} />} label="Draw plane" />

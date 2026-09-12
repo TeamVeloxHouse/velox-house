@@ -4,17 +4,43 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { frameFromPoints } from '../lib/solar'
 import { planeFrame } from '../lib/design'
 import { fetchDsm, fetchRgbCanvas, sampleHeight, fluxColor, type DsmData } from '../lib/dsm'
-import type { Design } from '../store/types'
+import { planeGrid, moduleById, type GridCell } from '../lib/panels'
+import type { Design, DesignPlane, DesignPanel } from '../store/types'
 
 type LL = { lat: number; lng: number }
 
 const EAVE_DEFAULT = 5 // metres to the eave — a two-storey wall under the pitched roof (fallback)
 
+const uid = (p: string) => `${p}${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`
+function pointInRing(ring: LL[], pt: LL): boolean {
+  let inside = false
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    if ((ring[i].lat > pt.lat) !== (ring[j].lat > pt.lat) && pt.lng < ((ring[j].lng - ring[i].lng) * (pt.lat - ring[i].lat)) / (ring[j].lat - ring[i].lat) + ring[i].lng) inside = !inside
+  }
+  return inside
+}
+const nearestCell = (cells: GridCell[], ll: LL): GridCell | null => {
+  let best: GridCell | null = null, bd = Infinity
+  for (const c of cells) { const d = (c.center.lat - ll.lat) ** 2 + (c.center.lng - ll.lng) ** 2; if (d < bd) { bd = d; best = c } }
+  return best
+}
+const cellBlock = (cells: GridCell[], a: GridCell, b: GridCell): GridCell[] => {
+  const r0 = Math.min(a.row, b.row), r1 = Math.max(a.row, b.row), c0 = Math.min(a.col, b.col), c1 = Math.max(a.col, b.col)
+  return cells.filter((c) => c.row >= r0 && c.row <= r1 && c.col >= c0 && c.col <= c1)
+}
+const sameCell = (a: LL, b: LL) => Math.abs(a.lat - b.lat) * 110540 < 0.35 && Math.abs(a.lng - b.lng) * 90000 < 0.35
+const panelCtr = (pn: { corners: LL[] }) => ({ lat: (pn.corners[0].lat + pn.corners[2].lat) / 2, lng: (pn.corners[0].lng + pn.corners[2].lng) / 2 })
+
 /** A live, photoreal-ish 3D model of the design — each roof plane tilted to its true pitch/azimuth,
  *  walls dropped to the ground, obstacles cut out, and the packed panels sitting flush on the slope
  *  (not flat). Satellite-textured ground, gradient sky, a moveable sun casting soft shadows. Built
  *  entirely from the design geometry we already hold — no extra API. */
-export function Design3D({ design, onCapture }: { design: Design; onCapture?: () => void }) {
+export function Design3D({ design, onCapture, adding, moduleId, onCommitPanels }: {
+  design: Design; onCapture?: () => void
+  adding?: boolean // "Add panels" tool active — enables click/drag placement on the 3D roof
+  moduleId?: string // default module for a plane with none set
+  onCommitPanels?: (planeId: string, panels: DesignPanel[]) => void
+}) {
   const host = useRef<HTMLDivElement>(null)
   const sunHour = useRef(13)
   const [hour, setHour] = useState(13)
@@ -22,6 +48,19 @@ export function Design3D({ design, onCapture }: { design: Design; onCapture?: ()
   const [spin, setSpin] = useState(false)
   const spinRef = useRef(false)
   spinRef.current = spin
+  const addingRef = useRef(adding); addingRef.current = adding
+  const moduleIdRef = useRef(moduleId); moduleIdRef.current = moduleId
+  const commitRef = useRef(onCommitPanels); commitRef.current = onCommitPanels
+  const designRef = useRef(design); designRef.current = design
+  const controlsRef = useRef<OrbitControls | null>(null)
+
+  // While the Add-panels tool is on, free the LEFT button for placement and orbit with the RIGHT.
+  useEffect(() => {
+    const c = controlsRef.current; if (!c) return
+    c.mouseButtons = adding
+      ? { LEFT: undefined as unknown as THREE.MOUSE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE }
+      : { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN }
+  }, [adding])
   // Photoreal DSM roof (Google Solar Data Layers) — real roof shape + aerial texture + irradiance.
   const [dsm, setDsm] = useState<DsmData | null>(null)
   const [rgb, setRgb] = useState<HTMLCanvasElement | null>(null)
@@ -66,10 +105,6 @@ export function Design3D({ design, onCapture }: { design: Design; onCapture?: ()
     const usePhotoreal = photoreal && !!dsm
     const cLat = design.center?.lat ?? origin.lat, cLng = design.center?.lng ?? origin.lng
     const enOf = (p: LL) => ({ east: (p.lng - cLng) * mPerLng, north: (p.lat - cLat) * mPerLat })
-    const cornerY = (p: LL, pf: { elev: (x: number, z: number) => number }) => {
-      if (usePhotoreal) { const { east, north } = enOf(p); return sampleHeight(dsm!, east, north) }
-      return pf.elev(X(p), Z(p))
-    }
     const roofTopY = usePhotoreal ? (dsm!.maxH - dsm!.minH) * 0.55 : eaveH
 
     const W = el.clientWidth || 800, H = el.clientHeight || 500
@@ -91,6 +126,10 @@ export function Design3D({ design, onCapture }: { design: Design; onCapture?: ()
     const controls = new OrbitControls(camera, renderer.domElement)
     controls.enableDamping = true; controls.dampingFactor = 0.08; controls.maxPolarAngle = Math.PI / 2.02
     controls.autoRotateSpeed = 0.8
+    controlsRef.current = controls
+    if (addingRef.current) controls.mouseButtons = { LEFT: undefined as unknown as THREE.MOUSE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE }
+    const pickTargets: THREE.Object3D[] = [] // roof meshes the placement raycaster hits
+    const planeGeo = new Map<string, { pf: { elev: (x: number, z: number) => number }; baseOffset: number }>()
 
     // ── Sky dome — vertical gradient, sits behind everything ──
     const sky = new THREE.Mesh(
@@ -162,6 +201,7 @@ export function Design3D({ design, onCapture }: { design: Design; onCapture?: ()
       mesh.position.set(X(design.center), 0, Z(design.center))
       mesh.receiveShadow = true; mesh.castShadow = true
       scene.add(mesh)
+      pickTargets.push(mesh)
     }
 
     // ── Roof planes ──
@@ -187,6 +227,7 @@ export function Design3D({ design, onCapture }: { design: Design; onCapture?: ()
         const roof = new THREE.Mesh(rg, roofMat)
         roof.castShadow = true; roof.receiveShadow = true
         scene.add(roof)
+        pickTargets.push(roof)
         // Walls — drop each footprint edge to the ground.
         const wv: number[] = []
         for (let i = 0; i < fp.length; i++) {
@@ -205,11 +246,22 @@ export function Design3D({ design, onCapture }: { design: Design; onCapture?: ()
         ring.push(ring[0])
         scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(ring), edgeMat))
       }
-      const c = avg(fp); roofCenters.push({ x: c.x, y: usePhotoreal ? roofTopY : pf.elev(c.x, c.z), z: c.z })
+      const c = avg(fp)
+      // Photoreal: keep the clean tilted panel geometry, but lift the whole array so it rests on the
+      // real roof height (sampled once at the plane centroid) — far cleaner than warping to noisy DSM.
+      let baseOffset = 0
+      if (usePhotoreal) {
+        const clat = p.polygon.reduce((a, v) => a + v.lat / p.polygon.length, 0)
+        const clng = p.polygon.reduce((a, v) => a + v.lng / p.polygon.length, 0)
+        const { east, north } = enOf({ lat: clat, lng: clng })
+        baseOffset = sampleHeight(dsm!, east, north) - pf.elev(c.x, c.z)
+      }
+      planeGeo.set(p.id, { pf, baseOffset })
+      roofCenters.push({ x: c.x, y: pf.elev(c.x, c.z) + baseOffset, z: c.z })
 
-      // Panels — sit each on the roof (DSM surface in photoreal, else the tilted plane).
+      // Panels — clean flat tilt (plane pitch/azimuth), lifted onto the roof.
       p.panels?.forEach((pn) => {
-        const g3 = pn.corners.map((v) => new THREE.Vector3(X(v), cornerY(v, pf) + (usePhotoreal ? 0.15 : 0), Z(v)))
+        const g3 = pn.corners.map((v) => new THREE.Vector3(X(v), pf.elev(X(v), Z(v)) + baseOffset + (usePhotoreal ? 0.25 : 0), Z(v)))
         if (g3.length < 4) return
         const center = new THREE.Vector3().addVectors(g3[0], g3[2]).add(g3[1]).add(g3[3]).multiplyScalar(0.25)
         const ex = new THREE.Vector3().subVectors(g3[1], g3[0]) // width edge
@@ -295,8 +347,77 @@ export function Design3D({ design, onCapture }: { design: Design; onCapture?: ()
     const onResize = () => { const w = el.clientWidth, h = el.clientHeight; if (!w || !h) return; camera.aspect = w / h; camera.updateProjectionMatrix(); renderer.setSize(w, h) }
     const ro = new ResizeObserver(onResize); ro.observe(el)
 
+    // ── Interactive panel placement on the 3D roof (Add-panels tool) ──
+    const ghostGroup = new THREE.Group(); scene.add(ghostGroup)
+    const raycaster = new THREE.Raycaster()
+    const ndc = new THREE.Vector2()
+    const ghostAdd = new THREE.MeshBasicMaterial({ color: 0x9b6cf5, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthTest: false })
+    const ghostRemove = new THREE.MeshBasicMaterial({ color: 0xff5d5d, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthTest: false })
+    const canvas = renderer.domElement
+    const pickLL = (ev: PointerEvent): LL | null => {
+      const rect = canvas.getBoundingClientRect()
+      ndc.x = ((ev.clientX - rect.left) / rect.width) * 2 - 1
+      ndc.y = -((ev.clientY - rect.top) / rect.height) * 2 + 1
+      raycaster.setFromCamera(ndc, camera)
+      const pt = raycaster.intersectObjects(pickTargets, false)[0]?.point
+      return pt ? { lat: origin.lat - pt.z / mPerLat, lng: origin.lng + pt.x / mPerLng } : null
+    }
+    const planeAtLL = (ll: LL) => designRef.current.planes.find((p) => p.polygon.length >= 3 && pointInRing(p.polygon, ll))
+    const gridFor = (p: DesignPlane) => planeGrid(p.polygon, moduleById(p.moduleId ?? moduleIdRef.current), { orientation: p.orientation ?? 'portrait', setback: p.setbackM ?? designRef.current.setbackM, rowGap: p.rowGapM })
+    const cellQuad = (pid: string, cell: GridCell) => { const g = planeGeo.get(pid); return cell.corners.map((v) => new THREE.Vector3(X(v), (g ? g.pf.elev(X(v), Z(v)) + g.baseOffset : 0) + 0.4, Z(v))) }
+    const drawGhost = (pid: string, cells: GridCell[], removing: boolean) => {
+      ghostGroup.clear()
+      cells.forEach((cell) => {
+        const q = cellQuad(pid, cell)
+        const geo = new THREE.BufferGeometry().setFromPoints([q[0], q[1], q[2], q[0], q[2], q[3]])
+        const m = new THREE.Mesh(geo, removing ? ghostRemove : ghostAdd); m.renderOrder = 999; ghostGroup.add(m)
+      })
+    }
+    let dragPid: string | null = null, startCell: GridCell | null = null, lastCell: GridCell | null = null, dragCells: GridCell[] = [], moved = false
+    const hasPanelAt = (p: DesignPlane, c: GridCell) => (p.panels ?? []).some((pn) => sameCell(panelCtr(pn), c.center))
+    const onMove = (ev: PointerEvent) => {
+      if (!addingRef.current) return
+      if (dragPid && startCell) {
+        const ll = pickLL(ev); if (!ll) return
+        const cur = nearestCell(dragCells, ll); if (!cur) return
+        lastCell = cur
+        if (cur.row !== startCell.row || cur.col !== startCell.col) moved = true
+        const p = designRef.current.planes.find((x) => x.id === dragPid)
+        drawGhost(dragPid, cellBlock(dragCells, startCell, cur), !moved && !!p && hasPanelAt(p, startCell))
+      } else {
+        const ll = pickLL(ev); const p = ll ? planeAtLL(ll) : undefined
+        if (p && ll) { const c = nearestCell(gridFor(p), ll); drawGhost(p.id, c ? [c] : [], !!c && hasPanelAt(p, c)) }
+        else ghostGroup.clear()
+      }
+    }
+    const onDown = (ev: PointerEvent) => {
+      if (!addingRef.current || ev.button !== 0) return
+      const ll = pickLL(ev); const p = ll ? planeAtLL(ll) : undefined
+      if (!p || !ll) return
+      dragPid = p.id; dragCells = gridFor(p); startCell = nearestCell(dragCells, ll); lastCell = startCell; moved = false
+    }
+    const onUp = () => {
+      if (!addingRef.current || !dragPid || !startCell) { dragPid = null; startCell = null; return }
+      const p = designRef.current.planes.find((x) => x.id === dragPid)
+      if (p) {
+        let panels = [...(p.panels ?? [])]
+        if (!moved) {
+          const idx = panels.findIndex((pn) => sameCell(panelCtr(pn), startCell!.center))
+          if (idx >= 0) panels.splice(idx, 1); else panels.push({ id: uid('pn'), corners: startCell.corners })
+        } else {
+          for (const c of cellBlock(dragCells, startCell, lastCell ?? startCell)) if (!panels.some((pn) => sameCell(panelCtr(pn), c.center))) panels.push({ id: uid('pn'), corners: c.corners })
+        }
+        commitRef.current?.(dragPid, panels)
+      }
+      ghostGroup.clear(); dragPid = null; startCell = null; dragCells = []; moved = false
+    }
+    canvas.addEventListener('pointermove', onMove)
+    canvas.addEventListener('pointerdown', onDown)
+    window.addEventListener('pointerup', onUp)
+
     return () => {
       cancelAnimationFrame(raf); ro.disconnect(); controls.dispose(); renderer.dispose()
+      canvas.removeEventListener('pointermove', onMove); canvas.removeEventListener('pointerdown', onDown); window.removeEventListener('pointerup', onUp)
       scene.traverse((o) => { const m = (o as THREE.Mesh); if (m.geometry) m.geometry.dispose?.() })
       if (renderer.domElement.parentNode === el) el.removeChild(renderer.domElement)
     }
@@ -316,8 +437,11 @@ export function Design3D({ design, onCapture }: { design: Design; onCapture?: ()
           </div>
         </div>
       )}
-      {hasGeom && !hasPanels && (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 bg-white/95 backdrop-blur border border-border rounded-full shadow-modal px-4 py-2 text-[12.5px] font-semibold text-ink-2">Roof is in 3D — switch to 2D and hit <b>AI auto-layout</b> to see the panels</div>
+      {adding && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-10 text-white rounded-full shadow-modal px-4 py-2 text-[12.5px] font-semibold inline-flex items-center gap-2" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}>Click the roof to place a module · drag for a block · click one to remove · right-drag to orbit</div>
+      )}
+      {hasGeom && !hasPanels && !adding && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-10 bg-white/95 backdrop-blur border border-border rounded-full shadow-modal px-4 py-2 text-[12.5px] font-semibold text-ink-2">Hit <b>Ovi auto-layout</b>, or use <b>Add panels</b> to place them on the roof</div>
       )}
       {!hasGeom && (
         <div className="absolute inset-0 flex items-center justify-center text-center">
