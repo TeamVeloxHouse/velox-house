@@ -174,7 +174,7 @@ export function DesignEditor() {
   function runAutoLayout(goal: LayoutGoal) {
     const d = designRef.current; if (!d || !d.planes.length) { act.toast('Draw or detect a roof plane first', 'warning'); return }
     setBusy(true)
-    setStatus(goal.kind === 'max' ? 'Ovi is maximising coverage across every plane…' : `Ovi is sizing the array to ${goal.kwp} kWp…`)
+    setStatus(goal.kind === 'max' ? 'Ovi is maximising coverage across every plane…' : goal.kind === 'target-kwp' ? `Ovi is sizing the array to ${goal.kwp} kWp…` : `Ovi is sizing the array to ~${goal.kwh.toLocaleString()} kWh/yr…`)
     setTimeout(() => {
       const res = autoLayout(d.planes, module, goal, d.setbackM)
       commitSnapshot(res.planes)

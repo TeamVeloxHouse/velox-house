@@ -104,8 +104,12 @@ export const kwpOf = (count: number, watts: number) => Math.round((count * watts
  * kWp — stops once the goal is met (trimming the last plane row-by-row to land close). */
 import { orientationTiltFactor } from './solar'
 
-export type LayoutGoal = { kind: 'max' } | { kind: 'target-kwp'; kwp: number }
-export type LayoutResult = { planes: DesignPlane[]; count: number; kwp: number }
+export type LayoutGoal =
+  | { kind: 'max' }
+  | { kind: 'target-kwp'; kwp: number }
+  | { kind: 'target-kwh'; kwh: number; yieldPerKwp: number } // hit an annual generation target (offset briefs)
+export type LayoutOpts = { restrict?: (p: DesignPlane) => boolean } // only lay out planes passing this
+export type LayoutResult = { planes: DesignPlane[]; count: number; kwp: number; kwh: number }
 
 /** Orientation/tilt yield factor (0–1) for a plane. Planes store azimuth from NORTH (0=N,180=S);
  *  orientationTiltFactor expects 0=due south, so shift by 180°. */
@@ -129,19 +133,28 @@ export function packWithSettings(plane: DesignPlane, module: Module, designSetba
   return landscape.length > portrait.length ? { panels: landscape, orientation: 'landscape' } : { panels: portrait, orientation: 'portrait' }
 }
 
-/** Lay out the whole design toward a goal. Best planes first; trims to hit a target kWp. */
-export function autoLayout(planes: DesignPlane[], module: Module, goal: LayoutGoal, designSetback: number): LayoutResult {
+/** Lay out the whole design toward a goal. Best planes first; trims the last plane to hit a target. */
+export function autoLayout(planes: DesignPlane[], module: Module, goal: LayoutGoal, designSetback: number, opts: LayoutOpts = {}): LayoutResult {
+  const kwhPerPanelOn = (p: DesignPlane) => goal.kind === 'target-kwh' ? (module.watts / 1000) * goal.yieldPerKwp * planeSolarFactor(p) : 0
   const order = [...planes].map((p, i) => ({ p, i, q: planeQuality(p) })).sort((a, b) => b.q - a.q)
   const targetCount = goal.kind === 'target-kwp' ? Math.max(0, Math.round((goal.kwp * 1000) / module.watts)) : Infinity
   const out = planes.map((p) => ({ ...p, panels: [] as DesignPanel[], orientation: p.orientation, moduleId: p.moduleId ?? module.id }))
-  let placed = 0
-  for (const { i } of order) {
+  let placed = 0, kwh = 0
+  for (const { i, p } of order) {
     if (placed >= targetCount) break
+    if (opts.restrict && !opts.restrict(p)) continue // skip planes the brief excluded
+    if (goal.kind === 'target-kwh' && kwh >= goal.kwh) break
     const packed = packWithSettings(planes[i], module, designSetback)
     let panels = packed.panels
-    if (placed + panels.length > targetCount) panels = panels.slice(0, targetCount - placed) // trim last plane to hit target
+    if (placed + panels.length > targetCount) panels = panels.slice(0, targetCount - placed) // trim to target kWp
+    if (goal.kind === 'target-kwh') {
+      const per = kwhPerPanelOn(p)
+      const need = per > 0 ? Math.ceil((goal.kwh - kwh) / per) : panels.length
+      if (need < panels.length) panels = panels.slice(0, Math.max(0, need))
+      kwh += panels.length * per
+    }
     out[i] = { ...out[i], panels, orientation: packed.orientation }
     placed += panels.length
   }
-  return { planes: out, count: placed, kwp: kwpOf(placed, module.watts) }
+  return { planes: out, count: placed, kwp: kwpOf(placed, module.watts), kwh: Math.round(kwh) }
 }

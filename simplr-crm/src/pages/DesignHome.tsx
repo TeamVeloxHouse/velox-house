@@ -19,11 +19,27 @@ export function DesignHome() {
   const [creating, setCreating] = useState(false)
 
   async function createFromAddress() {
-    if (!addr.trim() || creating) return
+    if (creating) return
+    if (!addr.trim()) { act.toast('Enter a site address first — or try the demo roof', 'warning'); return }
     setCreating(true)
     const g = pin ? { lat: pin.lat, lng: pin.lng } : await geocodeLocation(addr).then((r) => r && { lat: r.lat, lng: r.lng }).catch(() => undefined)
     const d = act.createDesign({ name: addr.split(',')[0], address: addr, center: g || undefined })
     setCreating(false)
+    nav(`/design/${d.id}`)
+  }
+  // One-click demo — a real pitched gable with two planes, so the studio + 3D open fully populated.
+  function createDemo() {
+    const lat0 = 52.6297, lng0 = -1.1355, mLat = 110540, mLng = 111320 * Math.cos((lat0 * Math.PI) / 180)
+    const dLat = 8 / mLat, dLng = 6 / mLng
+    const south = [{ lat: lat0, lng: lng0 - dLng }, { lat: lat0, lng: lng0 + dLng }, { lat: lat0 - dLat, lng: lng0 + dLng }, { lat: lat0 - dLat, lng: lng0 - dLng }]
+    const north = [{ lat: lat0, lng: lng0 - dLng }, { lat: lat0, lng: lng0 + dLng }, { lat: lat0 + dLat, lng: lng0 + dLng }, { lat: lat0 + dLat, lng: lng0 - dLng }]
+    const d = act.createDesign({
+      name: 'Demo — Leicester gable', address: 'Demo roof, Leicester', center: { lat: lat0, lng: lng0 },
+      planes: [
+        { id: `pl${Date.now().toString(36)}s`, name: 'South plane', polygon: south, pitchDeg: 35, azimuthDeg: 180, areaM2: 96, source: 'manual', racking: 'flush' },
+        { id: `pl${Date.now().toString(36)}n`, name: 'North plane', polygon: north, pitchDeg: 35, azimuthDeg: 0, areaM2: 96, source: 'manual', racking: 'flush' },
+      ],
+    })
     nav(`/design/${d.id}`)
   }
   function createFromProspect(id: string) {
@@ -55,6 +71,7 @@ export function DesignHome() {
                 onPick={async (p) => { setAddr(p.text); setPin(undefined); const g = await geocodeLocation(p.text); if (g) setPin({ lat: g.lat, lng: g.lng }) }} />
             </label>
             <Button variant="primary" icon={<Plus size={16} />} onClick={createFromAddress} className={creating ? 'opacity-60 pointer-events-none' : ''}>{creating ? 'Creating…' : 'New design'}</Button>
+            <Button variant="secondary" icon={<Sun size={16} />} onClick={createDemo}>Demo roof</Button>
           </div>
           {startable.length > 0 && (
             <div className="mt-4">
