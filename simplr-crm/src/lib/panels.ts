@@ -53,6 +53,23 @@ function dominantAngle(poly: XY[]): number {
   return best
 }
 
+/** Inset a polygon inward by d (angle-bisector offset) — the panel-safe area inside the fire setback. */
+function insetXY(poly: XY[], d: number): XY[] {
+  const n = poly.length; if (n < 3) return poly
+  let area = 0; for (let i = 0; i < n; i++) { const a = poly[i], b = poly[(i + 1) % n]; area += a.x * b.y - b.x * a.y }
+  const s = area > 0 ? 1 : -1
+  const nrm = (vx: number, vy: number) => { const l = Math.hypot(vx, vy) || 1; return { x: vx / l, y: vy / l } }
+  const out: XY[] = []
+  for (let i = 0; i < n; i++) {
+    const p0 = poly[(i - 1 + n) % n], p1 = poly[i], p2 = poly[(i + 1) % n]
+    const n1 = nrm(-(p1.y - p0.y) * s, (p1.x - p0.x) * s), n2 = nrm(-(p2.y - p1.y) * s, (p2.x - p1.x) * s)
+    let bx = n1.x + n2.x, by = n1.y + n2.y; const bl = Math.hypot(bx, by) || 1; bx /= bl; by /= bl
+    const cosHalf = Math.max(0.34, bx * n1.x + by * n1.y)
+    out.push({ x: p1.x + (bx * d) / cosHalf, y: p1.y + (by * d) / cosHalf })
+  }
+  return out
+}
+
 export type BBox = { minLat: number; maxLat: number; minLng: number; maxLng: number }
 export type PackOpts = { orientation: PanelOrientation; gap?: number; setback?: number; rowGap?: number; bbox?: BBox }
 
@@ -77,21 +94,24 @@ export function planeGrid(polygon: LatLng[], module: Module, opts: PackOpts): Gr
   const rowGap = opts.rowGap ?? gap
   const setback = opts.setback ?? 0.3
   const cw = pw + gap, ch = ph + rowGap
+  // Enforce the setback from every roof EDGE (not just the bounding box): erode the polygon and keep
+  // only modules whose corners fall inside it — so panels never overflow the safe zone.
+  const Rin = insetXY(R, setback)
 
   const minX = Math.min(...R.map((p) => p.x)), maxX = Math.max(...R.map((p) => p.x))
   const minY = Math.min(...R.map((p) => p.y)), maxY = Math.max(...R.map((p) => p.y))
 
   const cells: GridCell[] = []
   let row = 0
-  for (let y = minY + setback; y + ph <= maxY - setback; y += ch, row++) {
+  for (let y = minY; y + ph <= maxY; y += ch, row++) {
     let col = 0
-    for (let x = minX + setback; x + pw <= maxX - setback; x += cw, col++) {
+    for (let x = minX; x + pw <= maxX; x += cw, col++) {
       // corners of the cell in the grid frame (inset a hair so touching edges still count as in)
       const corners: XY[] = [
         { x: x + 0.02, y: y + 0.02 }, { x: x + pw - 0.02, y: y + 0.02 },
         { x: x + pw - 0.02, y: y + ph - 0.02 }, { x: x + 0.02, y: y + ph - 0.02 },
       ]
-      if (!corners.every((c) => pointInPoly(c, R))) continue
+      if (!corners.every((c) => pointInPoly(c, Rin))) continue
       const cornersLL = corners.map((c) => proj.toLL(unrot(c, theta)))
       const centerLL = proj.toLL(unrot({ x: x + pw / 2, y: y + ph / 2 }, theta))
       cells.push({ row, col, corners: cornersLL, center: centerLL })

@@ -61,6 +61,22 @@ function pointInPolyXZ(pt: XZ, poly: XZ[]): boolean {
   }
   return inside
 }
+/** Inset a polygon inward by d (angle-bisector offset) — the panel-safe area inside the roof edge. */
+function insetPolyXZ(poly: XZ[], d: number): XZ[] {
+  const n = poly.length; if (n < 3) return poly
+  let area = 0; for (let i = 0; i < n; i++) { const a = poly[i], b = poly[(i + 1) % n]; area += a.x * b.z - b.x * a.z }
+  const s = area > 0 ? 1 : -1
+  const nrm = (v: XZ) => { const l = Math.hypot(v.x, v.z) || 1; return { x: v.x / l, z: v.z / l } }
+  const out: XZ[] = []
+  for (let i = 0; i < n; i++) {
+    const p0 = poly[(i - 1 + n) % n], p1 = poly[i], p2 = poly[(i + 1) % n]
+    const n1 = nrm({ x: -(p1.z - p0.z) * s, z: (p1.x - p0.x) * s }), n2 = nrm({ x: -(p2.z - p1.z) * s, z: (p2.x - p1.x) * s })
+    let bx = n1.x + n2.x, bz = n1.z + n2.z; const bl = Math.hypot(bx, bz) || 1; bx /= bl; bz /= bl
+    const cosHalf = Math.max(0.34, bx * n1.x + bz * n1.z)
+    out.push({ x: p1.x + (bx * d) / cosHalf, z: p1.z + (bz * d) / cosHalf })
+  }
+  return out
+}
 /** Solve a 3×3 system by Cramer's rule; null if singular. */
 function solve3(M: number[][], B: number[]): number[] | null {
   const det = (m: number[][]) => m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0])
@@ -378,6 +394,14 @@ export function Design3D({ design, onCapture, adding, moduleId, onCommitPanels }
         const ring = fp.map((v) => new THREE.Vector3(v.x, heightAt(v.x, v.z) + 0.09, v.z)); ring.push(ring[0])
         const outline = new THREE.Line(new THREE.BufferGeometry().setFromPoints(ring), new THREE.LineBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.9, depthTest: false }))
         outline.renderOrder = 3; scene.add(outline)
+        // Safe-zone / fire setback — the amber line panels must stay inside.
+        const setb = (p.setbackM ?? design.setbackM) || 0.3
+        const inner = insetPolyXZ(fp, setb + 0.05)
+        if (inner.length >= 3) {
+          const iring = inner.map((v) => new THREE.Vector3(v.x, heightAt(v.x, v.z) + 0.1, v.z)); iring.push(iring[0])
+          const iline = new THREE.LineDashedMaterial({ color: 0xffb020, transparent: true, opacity: 0.85, depthTest: false, dashSize: 0.5, gapSize: 0.35 })
+          const iobj = new THREE.Line(new THREE.BufferGeometry().setFromPoints(iring), iline); iobj.computeLineDistances(); iobj.renderOrder = 4; scene.add(iobj)
+        }
       }
 
       // Panels — flat (facet tilt) but resting on the real DSM surface beneath each panel.
