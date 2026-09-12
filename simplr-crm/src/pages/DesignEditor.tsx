@@ -6,16 +6,22 @@ import '@geoman-io/leaflet-geoman-free'
 import '@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css'
 import { TopBar } from '../components/TopBar'
 import { Button } from '../components/ui'
-import { Sun, Radar, Check, Person, Layers, Target, Sparkle, Plus, Grid, Wrench } from '../components/icons'
+import { Sun, Radar, Check, Person, Layers, Target, Sparkle, Plus, Grid, Wrench, Bolt, Pie, File, Box } from '../components/icons'
 import { useActions, useState_ } from '../store/store'
 import { geocodeLocation } from '../lib/commercialFinder'
 import { detectPlanes, slopedAreaM2, totalRoofArea, compass, polygonAreaM2 } from '../lib/design'
-import { MODULES, moduleById, autoPackPlane, packPlane, kwpOf } from '../lib/panels'
+import { MODULES, moduleById, packWithSettings, autoLayout, kwpOf, planeSolarFactor, type Module, type LayoutGoal } from '../lib/panels'
+import { regionYield } from '../lib/solar'
 import { Design3D } from '../components/Design3D'
-import type { DesignPlane, PanelOrientation } from '../store/types'
+import type { Design, DesignPlane, PanelOrientation, RackingType } from '../store/types'
 
 type LatLng = { lat: number; lng: number }
 const uid = (p: string) => `${p}${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`
+type StudioTab = 'design' | 'array' | 'production' | 'proposal'
+
+/** Effective generating tilt — tilt-racking on a flat roof beats the flat pitch. */
+function effTilt(p: DesignPlane): number { return p.racking && p.racking !== 'flush' ? (p.tiltDeg ?? 10) : p.pitchDeg }
+function planeYieldFactor(p: DesignPlane): number { return planeSolarFactor({ azimuthDeg: p.azimuthDeg, pitchDeg: effTilt(p) }) }
 
 export function DesignEditor() {
   const { id } = useParams()
@@ -32,6 +38,7 @@ export function DesignEditor() {
   const designRef = useRef(design)
   designRef.current = design
 
+  const [tab, setTab] = useState<StudioTab>('design')
   const [busy, setBusy] = useState(false)
   const [status, setStatus] = useState('')
   const [selId, setSelId] = useState<string | null>(null)
@@ -39,7 +46,9 @@ export function DesignEditor() {
   const [editing, setEditing] = useState(false)
   const [moduleId, setModuleId] = useState('m440')
   const [view, setView] = useState<'2d' | '3d'>('2d')
+  const [targetKwp, setTargetKwp] = useState<string>('')
   const module = moduleById(moduleId)
+  const canvasVisible = tab === 'design' || tab === 'array'
 
   // ── Map init (once) ──
   useEffect(() => {
@@ -65,6 +74,9 @@ export function DesignEditor() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Keep Leaflet sized correctly when returning to a canvas tab (it was display:none)
+  useEffect(() => { if (canvasVisible && map.current) setTimeout(() => map.current!.invalidateSize(), 60) }, [canvasVisible])
+
   // ── Centre on the design; auto-detect the first time if empty ──
   useEffect(() => {
     if (!map.current || !design) return
@@ -72,7 +84,6 @@ export function DesignEditor() {
       let c = design.center
       if (!c && design.address) { const g = await geocodeLocation(design.address); if (g) { c = { lat: g.lat, lng: g.lng }; act.updateDesign(design.id, { center: c }) } }
       if (c) map.current!.setView([c.lat, c.lng], 19)
-      // First open with an empty roof → try Google Solar automatically so a roof appears without a click.
       if (c && design.planes.length === 0) runDetect(c)
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -91,9 +102,8 @@ export function DesignEditor() {
       ;(poly as any)._planeId = p.id
       poly.on('click', (e) => { L.DomEvent.stopPropagation(e); setSelId(p.id) })
       poly.on('pm:edit', () => syncGeometry(p.id, poly))
-      poly.bindTooltip(`${compass(p.azimuthDeg)} · ${p.pitchDeg}° · ${p.panels?.length ? `${p.panels.length} panels` : `${p.areaM2} m²`}`, { permanent: true, direction: 'center', className: 'roof-label' })
+      poly.bindTooltip(`${compass(p.azimuthDeg)} · ${effTilt(p)}° · ${p.panels?.length ? `${p.panels.length} panels` : `${p.areaM2} m²`}`, { permanent: true, direction: 'center', className: 'roof-label' })
       poly.addTo(lyr)
-      // panels
       p.panels?.forEach((pn) => {
         L.polygon(pn.corners.map((v) => [v.lat, v.lng]) as [number, number][], { pmIgnore: true, renderer: panelRenderer.current!, color: '#0A2A5E', weight: 0.6, fillColor: '#1E3A8A', fillOpacity: 0.9 } as any).addTo(pl)
       })
@@ -119,7 +129,7 @@ export function DesignEditor() {
   }
   function addManualPlane(ring: LatLng[]) {
     const d = designRef.current; if (!d) return
-    const plane: DesignPlane = { id: uid('pl'), name: `Roof plane ${d.planes.length + 1}`, polygon: ring, pitchDeg: 5, azimuthDeg: 180, areaM2: Math.round(polygonAreaM2(ring)), source: 'manual' }
+    const plane: DesignPlane = { id: uid('pl'), name: `Roof plane ${d.planes.length + 1}`, polygon: ring, pitchDeg: 5, azimuthDeg: 180, areaM2: Math.round(polygonAreaM2(ring)), source: 'manual', racking: 'flush' }
     act.updateDesign(d.id, { planes: [...d.planes, plane] })
     setSelId(plane.id)
   }
@@ -133,16 +143,27 @@ export function DesignEditor() {
     act.updateDesign(design.id, { planes: design.planes.filter((p) => p.id !== pid) })
     if (selId === pid) setSelId(null)
   }
-  function updatePlane(pid: string, patch: Partial<DesignPlane>) {
-    if (!design) return
-    act.updateDesign(design.id, { planes: design.planes.map((p) => (p.id === pid ? { ...p, ...patch } : p)) })
+  function updatePlane(pid: string, patch: Partial<DesignPlane>, repack = false) {
+    const d = designRef.current; if (!d) return
+    const planes = d.planes.map((p) => {
+      if (p.id !== pid) return p
+      const next = { ...p, ...patch }
+      if (repack && (p.panels?.length || patch.panels === undefined && p.panels?.length)) {
+        const mod = moduleById(next.moduleId ?? moduleId)
+        const { panels, orientation } = packWithSettings(next, mod, d.setbackM)
+        return { ...next, panels, orientation }
+      }
+      return next
+    })
+    commitSnapshot(planes)
   }
   function fillPlane(pid: string) {
     const d = designRef.current; if (!d) return
     const planes = d.planes.map((p) => {
       if (p.id !== pid) return p
-      const { panels, orientation } = autoPackPlane(p, module, d.setbackM)
-      return { ...p, panels, orientation, moduleId }
+      const mod = moduleById(p.moduleId ?? moduleId)
+      const { panels, orientation } = packWithSettings(p, mod, d.setbackM)
+      return { ...p, panels, orientation, moduleId: p.moduleId ?? moduleId }
     })
     commitSnapshot(planes)
   }
@@ -150,23 +171,27 @@ export function DesignEditor() {
     const d = designRef.current; if (!d) return
     commitSnapshot(d.planes.map((p) => (p.id === pid ? { ...p, panels: [] } : p)))
   }
-  function aiLayout() {
+  function runAutoLayout(goal: LayoutGoal) {
     const d = designRef.current; if (!d || !d.planes.length) { act.toast('Draw or detect a roof plane first', 'warning'); return }
-    setBusy(true); setStatus('Ovi is laying out the optimal array…')
+    setBusy(true)
+    setStatus(goal.kind === 'max' ? 'Ovi is maximising coverage across every plane…' : `Ovi is sizing the array to ${goal.kwp} kWp…`)
     setTimeout(() => {
-      const planes = d.planes.map((p) => {
-        const { panels, orientation } = autoPackPlane(p, module, d.setbackM)
-        return { ...p, panels, orientation, moduleId }
-      })
-      commitSnapshot(planes)
-      const total = planes.reduce((s, p) => s + (p.panels?.length ?? 0), 0)
+      const res = autoLayout(d.planes, module, goal, d.setbackM)
+      commitSnapshot(res.planes)
       setBusy(false); setStatus('')
-      act.toast(total ? `Ovi placed ${total} panels — ${kwpOf(total, module.watts)} kWp` : 'No room for panels on these planes', total ? 'positive' : 'warning')
-    }, 650)
+      act.toast(res.count ? `Ovi placed ${res.count} panels — ${res.kwp} kWp across ${res.planes.filter((p) => p.panels?.length).length} plane(s)` : 'No room for panels on these planes', res.count ? 'positive' : 'warning')
+    }, 700)
   }
   function commitSnapshot(planes: DesignPlane[]) {
-    const total = planes.reduce((s, p) => s + (p.panels?.length ?? 0), 0)
-    act.updateDesign(designRef.current!.id, { planes, panels: total, systemKwp: kwpOf(total, module.watts) })
+    const d = designRef.current!
+    let count = 0, kwp = 0, kwh = 0
+    planes.forEach((p) => {
+      const mod = moduleById(p.moduleId ?? moduleId)
+      const n = p.panels?.length ?? 0
+      count += n; kwp += (n * mod.watts) / 1000
+      kwh += (n * mod.watts / 1000) * regionYield(d.address).yield * planeYieldFactor(p)
+    })
+    act.updateDesign(d.id, { planes, panels: count, systemKwp: Math.round(kwp * 10) / 10, annualKwh: Math.round(kwh) })
   }
   function toggleDraw() {
     const m = map.current; if (!m) return
@@ -184,109 +209,332 @@ export function DesignEditor() {
   if (!design) return (<><TopBar title="Design" crumbs={['Design']} /><PageMissing onBack={() => nav('/design')} /></>)
 
   const roofArea = totalRoofArea(design.planes)
-  const totalPanels = design.planes.reduce((s, p) => s + (p.panels?.length ?? 0), 0)
-  const kwp = kwpOf(totalPanels, module.watts)
+  const totals = design.planes.reduce((a, p) => {
+    const mod = moduleById(p.moduleId ?? moduleId); const n = p.panels?.length ?? 0
+    return { count: a.count + n, kwp: a.kwp + (n * mod.watts) / 1000, kwh: a.kwh + (n * mod.watts / 1000) * regionYield(design.address).yield * planeYieldFactor(p) }
+  }, { count: 0, kwp: 0, kwh: 0 })
+  const kwp = Math.round(totals.kwp * 10) / 10
+  const sel = design.planes.find((p) => p.id === selId)
+
+  const tabs: { id: StudioTab; label: string; icon: any }[] = [
+    { id: 'design', label: 'Design', icon: Sun },
+    { id: 'array', label: 'Array', icon: Grid },
+    { id: 'production', label: 'Production', icon: Pie },
+    { id: 'proposal', label: 'Proposal', icon: File },
+  ]
 
   return (
     <>
       <TopBar title={design.name} crumbs={['Design', 'Studio']}
         actions={<div className="flex items-center gap-2">
           <Button variant="secondary" icon={<Radar size={15} />} onClick={() => runDetect()} className={busy ? 'opacity-60 pointer-events-none' : ''}>{busy ? 'Working…' : 'Detect roof'}</Button>
-          <Button variant="primary" icon={<Sparkle size={15} />} onClick={aiLayout} className={busy ? 'opacity-60 pointer-events-none' : ''}>AI auto-layout</Button>
-          <Button variant={design.status === 'confirmed' ? 'secondary' : 'secondary'} icon={<Check size={15} />} onClick={() => act.updateDesign(design.id, { status: design.status === 'confirmed' ? 'draft' : 'confirmed' })}>{design.status === 'confirmed' ? 'Confirmed' : 'Confirm'}</Button>
+          <Button variant="primary" icon={<Sparkle size={15} />} onClick={() => runAutoLayout({ kind: 'max' })} className={busy ? 'opacity-60 pointer-events-none' : ''}>Ovi auto-layout</Button>
+          <Button variant="secondary" icon={<Check size={15} />} onClick={() => act.updateDesign(design.id, { status: design.status === 'confirmed' ? 'draft' : 'confirmed' })}>{design.status === 'confirmed' ? 'Confirmed' : 'Confirm'}</Button>
         </div>} />
-      <div className="flex-1 min-h-0 flex gap-4 px-5 pb-5">
-        {/* Canvas */}
-        <div className="relative flex-1 min-h-0 rounded-card overflow-hidden border border-border">
-          <div ref={mapEl} className="absolute inset-0" style={{ background: '#0b1220' }} />
-          {view === '3d' && <Design3D design={design} onCapture={() => { setView('2d'); setTimeout(() => { if (!drawing) toggleDraw() }, 80) }} />}
-          {/* Draw toolbar (2D only) */}
-          {view === '2d' && (
-            <div className="absolute top-3 left-3 z-[500] flex items-center gap-1.5 bg-white/95 backdrop-blur border border-border rounded-control shadow-modal p-1">
-              <ToolBtn on={drawing} onClick={toggleDraw} icon={<Plus size={15} />} label="Draw plane" />
-              <ToolBtn on={editing} onClick={toggleEdit} icon={<Wrench size={14} />} label="Edit" />
+
+      {/* OpenSolar-style tab row — navigation *inside* the tool, CRM rail stays put */}
+      <div className="px-5 border-b border-divider flex items-center gap-1">
+        {tabs.map((t) => {
+          const on = t.id === tab
+          return (
+            <button key={t.id} onClick={() => setTab(t.id)} className={`relative h-11 px-3.5 text-[13.5px] font-semibold inline-flex items-center gap-2 transition-colors ${on ? 'text-accent' : 'text-muted-b hover:text-ink-3'}`}>
+              <t.icon size={15} />{t.label}
+              {on && <span className="absolute left-2 right-2 -bottom-px h-[2.5px] rounded-full" style={{ background: 'linear-gradient(90deg,#3B6BF5,#7C3AED)' }} />}
+            </button>
+          )
+        })}
+        <div className="ml-auto flex items-center gap-2 text-[12px] text-muted-b">
+          <span className="font-bold text-ink tabular-nums">{kwp || '—'}</span> kWp
+          <span className="w-px h-4 bg-divider" />
+          <span className="font-bold text-ink tabular-nums">{totals.count || '—'}</span> panels
+          <span className="w-px h-4 bg-divider" />
+          <span className="font-bold text-ink tabular-nums">{totals.kwh ? Math.round(totals.kwh).toLocaleString() : '—'}</span> kWh/yr
+        </div>
+      </div>
+
+      <div className="flex-1 min-h-0 relative">
+        {/* Canvas + inspector — always mounted, hidden (not unmounted) on info tabs so Leaflet survives */}
+        <div className={`absolute inset-0 flex gap-4 px-5 py-4 ${canvasVisible ? '' : 'invisible pointer-events-none'}`}>
+          <div className="relative flex-1 min-h-0 rounded-card overflow-hidden border border-border">
+            <div ref={mapEl} className="absolute inset-0" style={{ background: '#0b1220', isolation: 'isolate' }} />
+            {view === '3d' && canvasVisible && <Design3D design={design} onCapture={() => { setView('2d'); setTimeout(() => { if (!drawing) toggleDraw() }, 80) }} />}
+            {view === '2d' && (
+              <div className="absolute top-3 left-3 z-[500] flex items-center gap-1.5 bg-white/95 backdrop-blur border border-border rounded-control shadow-modal p-1">
+                <ToolBtn on={drawing} onClick={toggleDraw} icon={<Plus size={15} />} label="Draw plane" />
+                <ToolBtn on={editing} onClick={toggleEdit} icon={<Wrench size={14} />} label="Edit" />
+              </div>
+            )}
+            <div className="absolute top-3 right-3 z-[550] flex items-center bg-white/95 backdrop-blur border border-border rounded-control shadow-modal p-1">
+              {(['2d', '3d'] as const).map((v) => (
+                <button key={v} onClick={() => setView(v)} className={`h-8 px-3 rounded-[8px] text-[12.5px] font-bold ${view === v ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={view === v ? { background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' } : undefined}>{v.toUpperCase()}</button>
+              ))}
             </div>
-          )}
-          {/* 2D / 3D toggle */}
-          <div className="absolute top-3 right-3 z-[550] flex items-center bg-white/95 backdrop-blur border border-border rounded-control shadow-modal p-1">
-            {(['2d', '3d'] as const).map((v) => (
-              <button key={v} onClick={() => setView(v)} className={`h-8 px-3 rounded-[8px] text-[12.5px] font-bold ${view === v ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={view === v ? { background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' } : undefined}>{v.toUpperCase()}</button>
-            ))}
-          </div>
-          {busy && (
-            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[500] h-9 px-4 rounded-full bg-black/75 text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal"><span className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />{status}</div>
-          )}
-          {drawing && !busy && (
-            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[500] h-9 px-4 rounded-full bg-accent text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Target size={14} />Click each corner of the roof, then click the first point to close</div>
-          )}
-          {design.planes.length === 0 && !busy && !drawing && (
-            <div className="absolute inset-0 z-[400] flex items-center justify-center pointer-events-none">
-              <div className="bg-surface/95 backdrop-blur border border-border rounded-card px-6 py-5 text-center shadow-modal max-w-[380px] pointer-events-auto">
-                <span className="w-12 h-12 mx-auto rounded-2xl flex items-center justify-center text-white mb-3" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Sun size={22} /></span>
-                <div className="text-[15px] font-bold text-ink">Capture the roof</div>
-                <div className="text-[12.5px] text-muted-b mt-1">Try <b>Detect roof</b> for Google's read, or <b>Draw plane</b> to trace the real roof — best for big commercial sheds. Then hit <b>AI auto-layout</b>.</div>
-                <div className="flex items-center gap-2 justify-center mt-3">
-                  <button onClick={() => runDetect()} className="h-9 px-3.5 rounded-control border border-border text-[13px] font-semibold text-ink-3 hover:bg-control inline-flex items-center gap-1.5"><Radar size={14} />Detect</button>
-                  <button onClick={toggleDraw} className="h-9 px-3.5 rounded-control text-white text-[13px] font-semibold inline-flex items-center gap-1.5" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Plus size={14} />Draw plane</button>
+            {busy && (
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[500] h-9 px-4 rounded-full bg-black/75 text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal"><span className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />{status}</div>
+            )}
+            {drawing && !busy && (
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[500] h-9 px-4 rounded-full text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Target size={14} />Click each corner of the roof, then click the first point to close</div>
+            )}
+            {design.planes.length === 0 && !busy && !drawing && (
+              <div className="absolute inset-0 z-[400] flex items-center justify-center pointer-events-none">
+                <div className="bg-surface/95 backdrop-blur border border-border rounded-card px-6 py-5 text-center shadow-modal max-w-[380px] pointer-events-auto">
+                  <span className="w-12 h-12 mx-auto rounded-2xl flex items-center justify-center text-white mb-3" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Sun size={22} /></span>
+                  <div className="text-[15px] font-bold text-ink">Capture the roof</div>
+                  <div className="text-[12.5px] text-muted-b mt-1">Try <b>Detect roof</b> for Google's read, or <b>Draw plane</b> to trace the real roof — best for big commercial sheds. Then hit <b>Ovi auto-layout</b>.</div>
+                  <div className="flex items-center gap-2 justify-center mt-3">
+                    <button onClick={() => runDetect()} className="h-9 px-3.5 rounded-control border border-border text-[13px] font-semibold text-ink-3 hover:bg-control inline-flex items-center gap-1.5"><Radar size={14} />Detect</button>
+                    <button onClick={toggleDraw} className="h-9 px-3.5 rounded-control text-white text-[13px] font-semibold inline-flex items-center gap-1.5" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Plus size={14} />Draw plane</button>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
+
+          {/* Right inspector — switches depth by tab */}
+          {tab === 'array'
+            ? <ArrayInspector design={design} sel={sel} moduleId={moduleId} setModuleId={setModuleId} onSelect={setSelId} onUpdate={updatePlane} onFill={fillPlane} onClear={clearPlane} onDelete={deletePlane}
+                targetKwp={targetKwp} setTargetKwp={setTargetKwp} onGoal={runAutoLayout} kwp={kwp} count={totals.count} />
+            : <DesignInspector design={design} selId={selId} onSelect={setSelId} onUpdate={updatePlane} onFill={fillPlane} onClear={clearPlane} onDelete={deletePlane} moduleId={moduleId} setModuleId={setModuleId} kwp={kwp} totalPanels={totals.count} roofArea={roofArea} module={module} onBackToProspect={design.prospectId ? () => nav('/tools/company-search') : undefined} />
+          }
         </div>
 
-        {/* Inspector */}
-        <div className="w-[310px] shrink-0 rounded-card bg-surface border border-border flex flex-col overflow-hidden">
-          <div className="p-4 border-b border-divider">
-            <div className="grid grid-cols-3 gap-2">
-              <Metric v={kwp ? `${kwp}` : '—'} u="kWp" hero />
-              <Metric v={totalPanels ? String(totalPanels) : '—'} u="panels" hero />
-              <Metric v={`${roofArea}`} u="m² roof" hero />
-            </div>
-            <label className="flex items-center gap-2 mt-3 text-[12px] text-muted-b">
-              <Grid size={13} />Module
-              <select value={moduleId} onChange={(e) => setModuleId(e.target.value)} className="flex-1 h-8 px-2 rounded-control border border-input-border bg-white text-[12.5px] outline-none focus:border-accent">
-                {MODULES.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-              </select>
-            </label>
-          </div>
-          <div className="flex-1 overflow-y-auto">
-            {design.planes.length === 0 ? (
-              <div className="p-4 text-[12.5px] text-muted-b">No planes yet. Detect the roof or draw a plane, then fill it with panels.</div>
-            ) : design.planes.map((p) => (
-              <div key={p.id} className={`px-4 py-3 border-b border-divider cursor-pointer ${p.id === selId ? 'bg-accent-wash' : 'hover:bg-control/40'}`} onClick={() => setSelId(p.id)}>
-                <div className="flex items-center justify-between gap-2">
-                  <div className="font-semibold text-[13px] text-ink-2 flex items-center gap-1.5 min-w-0"><span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: p.id === selId ? '#7C3AED' : '#00E5FF' }} /><span className="truncate">{p.name}</span></div>
-                  <button onClick={(e) => { e.stopPropagation(); deletePlane(p.id) }} className="text-muted-2 hover:text-negative text-[15px] leading-none shrink-0">✕</button>
-                </div>
-                <div className="grid grid-cols-4 gap-1.5 mt-2 text-center">
-                  <Metric v={`${p.pitchDeg}°`} u="pitch" small />
-                  <Metric v={compass(p.azimuthDeg)} u="facing" small />
-                  <Metric v={`${Math.round(slopedAreaM2(p.areaM2, p.pitchDeg))}`} u="m²" small />
-                  <Metric v={p.panels?.length ? String(p.panels.length) : '—'} u="panels" small />
-                </div>
-                {p.id === selId && (
-                  <div className="mt-3 flex flex-col gap-2.5">
-                    <Slider label="Pitch" value={p.pitchDeg} min={0} max={60} suffix="°" onChange={(v) => updatePlane(p.id, { pitchDeg: v })} />
-                    <Slider label="Azimuth" value={p.azimuthDeg} min={0} max={359} suffix="°" onChange={(v) => updatePlane(p.id, { azimuthDeg: v })} />
-                    <div className="flex items-center gap-2">
-                      <button onClick={(e) => { e.stopPropagation(); fillPlane(p.id) }} className="flex-1 h-8 rounded-control text-white text-[12px] font-semibold inline-flex items-center justify-center gap-1.5" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Grid size={13} />Fill panels</button>
-                      {p.panels?.length ? <button onClick={(e) => { e.stopPropagation(); clearPlane(p.id) }} className="h-8 px-3 rounded-control border border-border text-[12px] font-semibold text-muted-b hover:bg-control">Clear</button> : null}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-          <div className="p-3 border-t border-divider flex flex-col gap-2">
-            <div className="text-[11px] text-muted-b flex items-center gap-1.5"><Layers size={12} />Strings, inverters &amp; yield come next.</div>
-            {design.prospectId && <Button variant="secondary" icon={<Person size={14} />} onClick={() => nav('/tools/company-search')}>Back to prospect</Button>}
-          </div>
-        </div>
+        {tab === 'production' && <ProductionPane design={design} moduleId={moduleId} kwp={kwp} count={totals.count} annualKwh={Math.round(totals.kwh)} />}
+        {tab === 'proposal' && <ProposalPane design={design} kwp={kwp} count={totals.count} annualKwh={Math.round(totals.kwh)} onOpen={() => nav('/studio/proposals')} onConfirm={() => act.updateDesign(design.id, { status: 'confirmed', systemKwp: kwp, panels: totals.count, annualKwh: Math.round(totals.kwh) })} />}
       </div>
     </>
   )
 }
 
+/* ── Design-tab inspector: plane list + quick pitch/azimuth + fill ── */
+function DesignInspector({ design, selId, onSelect, onUpdate, onFill, onClear, onDelete, moduleId, setModuleId, kwp, totalPanels, roofArea, module, onBackToProspect }: {
+  design: Design; selId: string | null; onSelect: (id: string) => void; onUpdate: (id: string, patch: Partial<DesignPlane>, repack?: boolean) => void
+  onFill: (id: string) => void; onClear: (id: string) => void; onDelete: (id: string) => void; moduleId: string; setModuleId: (v: string) => void
+  kwp: number; totalPanels: number; roofArea: number; module: Module; onBackToProspect?: () => void
+}) {
+  return (
+    <div className="w-[310px] shrink-0 rounded-card bg-surface border border-border flex flex-col overflow-hidden">
+      <div className="p-4 border-b border-divider">
+        <div className="grid grid-cols-3 gap-2">
+          <Metric v={kwp ? `${kwp}` : '—'} u="kWp" hero />
+          <Metric v={totalPanels ? String(totalPanels) : '—'} u="panels" hero />
+          <Metric v={`${roofArea}`} u="m² roof" hero />
+        </div>
+        <label className="flex items-center gap-2 mt-3 text-[12px] text-muted-b">
+          <Grid size={13} />Module
+          <select value={moduleId} onChange={(e) => setModuleId(e.target.value)} className="flex-1 h-8 px-2 rounded-control border border-input-border bg-white text-[12.5px] outline-none focus:border-accent">
+            {MODULES.map((m) => <option key={m.id} value={m.id}>{m.watts} W · {m.brand}</option>)}
+          </select>
+        </label>
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        {design.planes.length === 0 ? (
+          <div className="p-4 text-[12.5px] text-muted-b">No planes yet. Detect the roof or draw a plane, then fill it with panels.</div>
+        ) : design.planes.map((p) => (
+          <div key={p.id} className={`px-4 py-3 border-b border-divider cursor-pointer ${p.id === selId ? 'bg-accent-wash' : 'hover:bg-control/40'}`} onClick={() => onSelect(p.id)}>
+            <div className="flex items-center justify-between gap-2">
+              <div className="font-semibold text-[13px] text-ink-2 flex items-center gap-1.5 min-w-0"><span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: p.id === selId ? '#7C3AED' : '#00E5FF' }} /><span className="truncate">{p.name}</span></div>
+              <button onClick={(e) => { e.stopPropagation(); onDelete(p.id) }} className="text-muted-2 hover:text-negative text-[15px] leading-none shrink-0">✕</button>
+            </div>
+            <div className="grid grid-cols-4 gap-1.5 mt-2 text-center">
+              <Metric v={`${effTilt(p)}°`} u="pitch" small />
+              <Metric v={compass(p.azimuthDeg)} u="facing" small />
+              <Metric v={`${Math.round(slopedAreaM2(p.areaM2, p.pitchDeg))}`} u="m²" small />
+              <Metric v={p.panels?.length ? String(p.panels.length) : '—'} u="panels" small />
+            </div>
+            {p.id === selId && (
+              <div className="mt-3 flex flex-col gap-2.5">
+                <Slider label="Pitch" value={p.pitchDeg} min={0} max={60} suffix="°" onChange={(v) => onUpdate(p.id, { pitchDeg: v }, true)} />
+                <Slider label="Azimuth" value={p.azimuthDeg} min={0} max={359} suffix="°" onChange={(v) => onUpdate(p.id, { azimuthDeg: v })} />
+                <div className="flex items-center gap-2">
+                  <button onClick={(e) => { e.stopPropagation(); onFill(p.id) }} className="flex-1 h-8 rounded-control text-white text-[12px] font-semibold inline-flex items-center justify-center gap-1.5" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Grid size={13} />Fill panels</button>
+                  {p.panels?.length ? <button onClick={(e) => { e.stopPropagation(); onClear(p.id) }} className="h-8 px-3 rounded-control border border-border text-[12px] font-semibold text-muted-b hover:bg-control">Clear</button> : null}
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      <div className="p-3 border-t border-divider flex flex-col gap-2">
+        <div className="text-[11px] text-muted-b flex items-center gap-1.5"><Layers size={12} />Open the <b>Array</b> tab for racking, module &amp; row settings.</div>
+        {onBackToProspect && <Button variant="secondary" icon={<Person size={14} />} onClick={onBackToProspect}>Back to prospect</Button>}
+      </div>
+    </div>
+  )
+}
+
+/* ── Array-tab inspector: full OpenSolar-style Panel Group depth ── */
+function ArrayInspector({ design, sel, moduleId, setModuleId, onSelect, onUpdate, onFill, onClear, onDelete, targetKwp, setTargetKwp, onGoal, kwp, count }: {
+  design: Design; sel: DesignPlane | undefined; moduleId: string; setModuleId: (v: string) => void; onSelect: (id: string) => void
+  onUpdate: (id: string, patch: Partial<DesignPlane>, repack?: boolean) => void; onFill: (id: string) => void; onClear: (id: string) => void; onDelete: (id: string) => void
+  targetKwp: string; setTargetKwp: (v: string) => void; onGoal: (g: LayoutGoal) => void; kwp: number; count: number
+}) {
+  const mod = moduleById(sel?.moduleId ?? moduleId)
+  const rackingOpts: { id: RackingType; label: string }[] = [{ id: 'flush', label: 'Flush' }, { id: 'single-tilt', label: 'Single-tilt' }, { id: 'dual-tilt', label: 'Dual-tilt' }]
+  return (
+    <div className="w-[360px] shrink-0 rounded-card bg-surface border border-border flex flex-col overflow-hidden">
+      {/* Goal-driven auto-layout */}
+      <div className="p-3.5 border-b border-divider">
+        <div className="eyebrow text-muted-3 mb-2">Ovi auto-layout</div>
+        <button onClick={() => onGoal({ kind: 'max' })} className="w-full h-9 rounded-control text-white text-[13px] font-semibold inline-flex items-center justify-center gap-2 mb-2" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Sparkle size={14} />Maximum coverage</button>
+        <div className="flex items-center gap-2">
+          <input value={targetKwp} onChange={(e) => setTargetKwp(e.target.value.replace(/[^0-9.]/g, ''))} placeholder="Target kWp" className="flex-1 h-9 px-3 rounded-control border border-input-border bg-white text-[13px] outline-none focus:border-accent" />
+          <button onClick={() => { const v = parseFloat(targetKwp); if (v > 0) onGoal({ kind: 'target-kwp', kwp: v }) }} className="h-9 px-3.5 rounded-control border border-border text-[12.5px] font-semibold text-ink-3 hover:bg-control inline-flex items-center gap-1.5"><Bolt size={13} />Size it</button>
+        </div>
+        <div className="mt-2 text-[11.5px] text-muted-b flex items-center gap-1.5"><Target size={12} />Now: <b className="text-ink-2">{kwp || 0} kWp · {count} panels</b> — best-facing planes filled first.</div>
+      </div>
+      {/* Group list */}
+      <div className="px-3 pt-3 pb-1 flex items-center justify-between">
+        <div className="eyebrow text-muted-3">Panel groups</div>
+        <span className="text-[11px] text-muted-2">{design.planes.length}</span>
+      </div>
+      <div className="px-2 flex flex-col gap-1 max-h-[26%] overflow-y-auto">
+        {design.planes.map((p) => (
+          <button key={p.id} onClick={() => onSelect(p.id)} className={`w-full text-left px-2.5 py-2 rounded-lg flex items-center gap-2 ${p.id === sel?.id ? 'bg-accent-wash-2 text-accent-700' : 'hover:bg-control text-ink-3'}`}>
+            <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: p.id === sel?.id ? '#7C3AED' : '#00E5FF' }} />
+            <span className="flex-1 truncate text-[12.5px] font-medium">{p.name}</span>
+            <span className="text-[11px] tabular-nums text-muted-2">{p.panels?.length ?? 0}</span>
+          </button>
+        ))}
+      </div>
+      {/* Selected group depth */}
+      <div className="flex-1 overflow-y-auto border-t border-divider mt-2">
+        {!sel ? (
+          <div className="p-4 text-[12.5px] text-muted-b">Select a panel group to edit its module, racking, orientation and spacing.</div>
+        ) : (
+          <div className="p-3.5 flex flex-col gap-3.5">
+            <div className="flex items-center justify-between">
+              <div className="font-bold text-[14px] text-ink truncate">{sel.name}</div>
+              <button onClick={() => onDelete(sel.id)} className="text-muted-2 hover:text-negative text-[13px]">Delete</button>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <Metric v={sel.panels?.length ? String(sel.panels.length) : '—'} u="modules" small />
+              <Metric v={`${kwpOf(sel.panels?.length ?? 0, mod.watts)}`} u="kWp" small />
+              <Metric v={`${Math.round(planeYieldFactor(sel) * 100)}%`} u="of ideal" small />
+            </div>
+
+            {/* Module */}
+            <Field label="Module">
+              <select value={sel.moduleId ?? moduleId} onChange={(e) => onUpdate(sel.id, { moduleId: e.target.value }, true)} className="w-full h-9 px-2 rounded-control border border-input-border bg-white text-[12.5px] outline-none focus:border-accent">
+                {MODULES.map((m) => <option key={m.id} value={m.id}>{m.brand} {m.name} · {m.watts} W</option>)}
+              </select>
+              <div className="text-[11px] text-muted-2 mt-1">{mod.cell} · {mod.effPct}% · {mod.w}×{mod.h} m · £{mod.priceGbp}/panel · {mod.warrantyYr} yr</div>
+            </Field>
+
+            {/* Racking */}
+            <Field label="Racking">
+              <div className="grid grid-cols-3 gap-1.5">
+                {rackingOpts.map((r) => {
+                  const on = (sel.racking ?? 'flush') === r.id
+                  return <button key={r.id} onClick={() => onUpdate(sel.id, { racking: r.id }, true)} className={`h-8 rounded-control text-[12px] font-semibold ${on ? 'text-white' : 'border border-border text-ink-3 hover:bg-control'}`} style={on ? { background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' } : undefined}>{r.label}</button>
+                })}
+              </div>
+            </Field>
+
+            {/* Orientation */}
+            <Field label="Orientation">
+              <div className="grid grid-cols-3 gap-1.5">
+                {([['auto', 'Auto'], ['portrait', 'Portrait'], ['landscape', 'Landscape']] as const).map(([id, label]) => {
+                  const cur = sel.orientation ?? 'auto'
+                  const on = cur === id
+                  return <button key={id} onClick={() => onUpdate(sel.id, { orientation: id === 'auto' ? undefined : (id as PanelOrientation) }, true)} className={`h-8 rounded-control text-[12px] font-semibold ${on ? 'text-white' : 'border border-border text-ink-3 hover:bg-control'}`} style={on ? { background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' } : undefined}>{label}</button>
+                })}
+              </div>
+            </Field>
+
+            <Slider label="Azimuth" value={sel.azimuthDeg} min={0} max={359} suffix="°" onChange={(v) => onUpdate(sel.id, { azimuthDeg: v })} />
+            {(sel.racking ?? 'flush') === 'flush'
+              ? <Slider label="Roof pitch" value={sel.pitchDeg} min={0} max={60} suffix="°" onChange={(v) => onUpdate(sel.id, { pitchDeg: v }, true)} />
+              : <Slider label="Frame tilt" value={sel.tiltDeg ?? 10} min={5} max={35} suffix="°" onChange={(v) => onUpdate(sel.id, { tiltDeg: v })} />}
+            <Slider label="Row gap" value={Math.round((sel.rowGapM ?? 0.02) * 100)} min={2} max={80} suffix=" cm" onChange={(v) => onUpdate(sel.id, { rowGapM: v / 100 }, true)} />
+            <Slider label="Setback" value={Math.round((sel.setbackM ?? design.setbackM) * 100)} min={0} max={100} suffix=" cm" onChange={(v) => onUpdate(sel.id, { setbackM: v / 100 }, true)} />
+
+            <label className="flex items-center justify-between text-[12.5px] text-ink-3">
+              <span className="flex items-center gap-1.5"><Bolt size={13} className="text-muted-2" />Module optimisers</span>
+              <input type="checkbox" checked={!!sel.optimisers} onChange={(e) => onUpdate(sel.id, { optimisers: e.target.checked })} className="accent-accent w-4 h-4" />
+            </label>
+
+            <div className="flex items-center gap-2 pt-1">
+              <button onClick={() => onFill(sel.id)} className="flex-1 h-9 rounded-control text-white text-[12.5px] font-semibold inline-flex items-center justify-center gap-1.5" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Grid size={13} />Fill this group</button>
+              {sel.panels?.length ? <button onClick={() => onClear(sel.id)} className="h-9 px-3 rounded-control border border-border text-[12.5px] font-semibold text-muted-b hover:bg-control">Clear</button> : null}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ── Production tab: yield estimate + per-plane breakdown ── */
+function ProductionPane({ design, moduleId, kwp, count, annualKwh }: { design: Design; moduleId: string; kwp: number; count: number; annualKwh: number }) {
+  const region = regionYield(design.address)
+  const specific = kwp ? Math.round(annualKwh / kwp) : 0
+  return (
+    <div className="absolute inset-0 overflow-y-auto px-5 py-5">
+      <div className="max-w-[880px] mx-auto flex flex-col gap-4">
+        <div className="grid grid-cols-4 gap-3">
+          <BigStat v={kwp ? `${kwp}` : '—'} u="kWp system" />
+          <BigStat v={annualKwh ? annualKwh.toLocaleString() : '—'} u="kWh / year" />
+          <BigStat v={specific ? `${specific}` : '—'} u="kWh / kWp (yield)" />
+          <BigStat v={count ? String(count) : '—'} u="modules" />
+        </div>
+        <div className="rounded-card bg-surface border border-border p-4">
+          <div className="flex items-center gap-2 mb-3"><Pie size={16} className="text-accent" /><div className="font-bold text-[14px] text-ink">Generation by roof plane</div><span className="ml-auto text-[12px] text-muted-b">{region.name} · {region.yield} kWh/kWp baseline</span></div>
+          {design.planes.filter((p) => p.panels?.length).length === 0 ? (
+            <div className="text-[13px] text-muted-b py-6 text-center">No panels placed yet — run <b>Ovi auto-layout</b> or fill a group in the Array tab.</div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {design.planes.filter((p) => p.panels?.length).map((p) => {
+                const mod = moduleById(p.moduleId ?? moduleId); const n = p.panels!.length
+                const pkwp = kwpOf(n, mod.watts); const factor = planeYieldFactor(p); const pkwh = Math.round(pkwp * region.yield * factor)
+                const pct = annualKwh ? Math.round((pkwh / annualKwh) * 100) : 0
+                return (
+                  <div key={p.id} className="flex items-center gap-3">
+                    <div className="w-40 shrink-0 text-[12.5px] font-medium text-ink-2 truncate">{p.name} <span className="text-muted-2">· {compass(p.azimuthDeg)} {effTilt(p)}°</span></div>
+                    <div className="flex-1 h-6 rounded-md bg-control overflow-hidden"><div className="h-full rounded-md flex items-center px-2 text-[10.5px] font-bold text-white" style={{ width: `${Math.max(pct, 6)}%`, background: 'linear-gradient(90deg,#3B6BF5,#7C3AED)' }}>{pct}%</div></div>
+                    <div className="w-32 shrink-0 text-right text-[12.5px] tabular-nums text-ink-2"><b>{pkwh.toLocaleString()}</b> kWh · {n}×</div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+        <div className="text-[11.5px] text-muted-b flex items-center gap-1.5"><Box size={12} />Estimate uses MCS regional yield × each plane's orientation/tilt factor. Shading &amp; inter-row losses refine this in a later pass.</div>
+      </div>
+    </div>
+  )
+}
+
+/* ── Proposal tab: summary + handoff ── */
+function ProposalPane({ design, kwp, count, annualKwh, onOpen, onConfirm }: { design: Design; kwp: number; count: number; annualKwh: number; onOpen: () => void; onConfirm: () => void }) {
+  return (
+    <div className="absolute inset-0 overflow-y-auto px-5 py-5">
+      <div className="max-w-[720px] mx-auto flex flex-col gap-4">
+        <div className="rounded-card bg-surface border border-border p-5">
+          <div className="text-[12px] eyebrow text-muted-3">Design summary</div>
+          <div className="text-[20px] font-bold text-ink mt-1">{design.name}</div>
+          <div className="text-[13px] text-muted-b">{design.address}</div>
+          <div className="grid grid-cols-3 gap-3 mt-4">
+            <BigStat v={kwp ? `${kwp}` : '—'} u="kWp" />
+            <BigStat v={count ? String(count) : '—'} u="modules" />
+            <BigStat v={annualKwh ? annualKwh.toLocaleString() : '—'} u="kWh / yr" />
+          </div>
+          <div className="flex items-center gap-2 mt-4">
+            <button onClick={onConfirm} className="h-10 px-4 rounded-control text-white text-[13px] font-semibold inline-flex items-center gap-2" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Check size={15} />Confirm design {design.status === 'confirmed' && '✓'}</button>
+            <button onClick={onOpen} className="h-10 px-4 rounded-control border border-border text-[13px] font-semibold text-ink-3 hover:bg-control inline-flex items-center gap-2"><File size={15} />Open proposals</button>
+          </div>
+        </div>
+        <div className="text-[11.5px] text-muted-b">Pricing, finance options and the branded PDF live in <b>Design → Proposals</b>. Confirming the design snapshots the kWp, module count and yield onto the deal.</div>
+      </div>
+    </div>
+  )
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return <div><div className="text-[11px] font-semibold text-muted-b uppercase tracking-wide mb-1.5">{label}</div>{children}</div>
+}
+function BigStat({ v, u }: { v: string; u: string }) {
+  return <div className="rounded-card bg-surface border border-border px-4 py-3.5"><div className="text-[24px] font-bold text-ink leading-none tabular-nums">{v}</div><div className="text-[11px] text-muted-b mt-1.5">{u}</div></div>
+}
 function ToolBtn({ on, onClick, icon, label }: { on: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
   return (
     <button onClick={onClick} className={`h-8 px-2.5 rounded-[8px] text-[12.5px] font-semibold inline-flex items-center gap-1.5 ${on ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={on ? { background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' } : undefined}>{icon}{label}</button>
@@ -298,9 +546,9 @@ function Metric({ v, u, small, hero }: { v: string; u: string; small?: boolean; 
 function Slider({ label, value, min, max, suffix, onChange }: { label: string; value: number; min: number; max: number; suffix?: string; onChange: (v: number) => void }) {
   return (
     <label className="flex items-center gap-2 text-[11.5px] text-muted-b">
-      <span className="w-12 shrink-0">{label}</span>
+      <span className="w-16 shrink-0">{label}</span>
       <input type="range" min={min} max={max} value={value} onChange={(e) => onChange(+e.target.value)} className="flex-1 accent-accent" onClick={(e) => e.stopPropagation()} />
-      <b className="text-ink-2 w-9 text-right tabular-nums">{value}{suffix}</b>
+      <b className="text-ink-2 w-12 text-right tabular-nums">{value}{suffix}</b>
     </label>
   )
 }

@@ -915,9 +915,12 @@ export interface SolarCampaign {
  * Roof planes and obstacles are georeferenced (lat/lng) so panel placement + stringing stay true
  * to the real roof; later phases fill in panels, strings, inverters and the yield/BOM snapshot. */
 export type PanelOrientation = 'portrait' | 'landscape'
+/** How the array is mounted: flush to a pitched roof, or tilted up on a flat roof (single/dual). */
+export type RackingType = 'flush' | 'single-tilt' | 'dual-tilt'
 export interface DesignPanel {
   id: ID
   corners: { lat: number; lng: number }[] // the panel rectangle on the roof (4 geo corners)
+  string?: number // which electrical string this panel belongs to
 }
 export interface DesignPlane {
   id: ID
@@ -930,6 +933,13 @@ export interface DesignPlane {
   moduleId?: string // which module fills this plane (defaults to the design's module)
   orientation?: PanelOrientation
   panels?: DesignPanel[] // the laid-out array (Phase 2)
+  // ── Array / racking depth (OpenSolar-style "Panel Group" settings) ──
+  racking?: RackingType // default 'flush'
+  tiltDeg?: number // mounting tilt for single/dual-tilt racking on flat roofs
+  groundClearanceM?: number // gap under the array (flat-roof ballast frames)
+  rowGapM?: number // gap between panel rows (m); wider = less inter-row shading
+  setbackM?: number // per-plane fire-setback override (defaults to design.setbackM)
+  optimisers?: boolean // module-level power electronics on this array
 }
 export type DesignObstacleKind = 'chimney' | 'skylight' | 'hvac' | 'keepout'
 export interface DesignObstacle {

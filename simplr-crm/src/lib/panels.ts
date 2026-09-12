@@ -4,12 +4,19 @@
 import type { LatLng } from './solar'
 import type { DesignPanel, DesignPlane, PanelOrientation } from '../store/types'
 
-export type Module = { id: string; name: string; watts: number; w: number; h: number } // w = short side, h = long side (m)
+// w = short side, h = long side (m). Extra fields drive the module picker + BOM.
+export type Module = {
+  id: string; name: string; watts: number; w: number; h: number
+  brand: string; cell: string; effPct: number; priceGbp: number; warrantyYr?: number
+}
 export const MODULES: Module[] = [
-  { id: 'm405', name: '405 W all-black', watts: 405, w: 1.134, h: 1.722 },
-  { id: 'm440', name: '440 W mono PERC', watts: 440, w: 1.134, h: 1.762 },
-  { id: 'm500', name: '500 W half-cut', watts: 500, w: 1.134, h: 1.96 },
-  { id: 'm550', name: '550 W bifacial', watts: 550, w: 1.134, h: 2.279 },
+  { id: 'm405', name: 'AC-405-MH-108', watts: 405, w: 1.134, h: 1.722, brand: 'Aiko', cell: 'N-type ABC all-black', effPct: 20.7, priceGbp: 118, warrantyYr: 25 },
+  { id: 'm440', name: 'JKM440N-54HL4R', watts: 440, w: 1.134, h: 1.762, brand: 'Jinko Solar', cell: 'N-type TOPCon mono', effPct: 22.0, priceGbp: 96, warrantyYr: 30 },
+  { id: 'm450', name: 'TSM-450 NEG9R', watts: 450, w: 1.134, h: 1.762, brand: 'Trina Solar', cell: 'N-type i-TOPCon', effPct: 22.5, priceGbp: 104, warrantyYr: 25 },
+  { id: 'm500', name: 'LR5-66HTH-500M', watts: 500, w: 1.134, h: 1.96, brand: 'LONGi', cell: 'Hi-MO 6 half-cut', effPct: 22.5, priceGbp: 132, warrantyYr: 25 },
+  { id: 'm430b', name: 'SPR-MAX3-430', watts: 430, w: 1.05, h: 1.69, brand: 'Maxeon', cell: 'Maxeon Gen III mono', effPct: 22.2, priceGbp: 205, warrantyYr: 40 },
+  { id: 'm550', name: 'VSMDH-550', watts: 550, w: 1.134, h: 2.279, brand: 'JA Solar', cell: 'Bifacial half-cut', effPct: 21.3, priceGbp: 138, warrantyYr: 30 },
+  { id: 'm500g', name: 'GC-500-N16', watts: 500, w: 1.134, h: 1.96, brand: 'GameChange', cell: 'N-type bifacial', effPct: 22.5, priceGbp: 129, warrantyYr: 30 },
 ]
 export const moduleById = (id?: string) => MODULES.find((m) => m.id === id) || MODULES[1]
 
@@ -90,3 +97,51 @@ export function autoPackPlane(plane: DesignPlane, module: Module, setback: numbe
 }
 
 export const kwpOf = (count: number, watts: number) => Math.round((count * watts) / 100) / 10
+
+/* ── Smart, goal-driven auto-layout ──────────────────────────────────────────
+ * Ovi's layout brain. Ranks roof planes by solar quality (orientation × tilt × area), then packs
+ * best-first honouring each plane's own racking/orientation/setback/row-gap, and — for a target
+ * kWp — stops once the goal is met (trimming the last plane row-by-row to land close). */
+import { orientationTiltFactor } from './solar'
+
+export type LayoutGoal = { kind: 'max' } | { kind: 'target-kwp'; kwp: number }
+export type LayoutResult = { planes: DesignPlane[]; count: number; kwp: number }
+
+/** Orientation/tilt yield factor (0–1) for a plane. Planes store azimuth from NORTH (0=N,180=S);
+ *  orientationTiltFactor expects 0=due south, so shift by 180°. */
+export function planeSolarFactor(p: Pick<DesignPlane, 'azimuthDeg' | 'pitchDeg'>): number {
+  return orientationTiltFactor(p.azimuthDeg + 180, p.pitchDeg)
+}
+/** Solar quality of a plane (yield factor × sloped area) — higher = pack first. */
+export function planeQuality(p: DesignPlane): number {
+  return planeSolarFactor(p) * Math.max(1, p.areaM2)
+}
+
+/** Pack one plane using its own settings (falls back to the design defaults passed in). */
+export function packWithSettings(plane: DesignPlane, module: Module, designSetback: number): { panels: DesignPanel[]; orientation: PanelOrientation } {
+  const setback = plane.setbackM ?? designSetback
+  const rowGap = plane.rowGapM
+  if (plane.orientation) {
+    return { panels: packPlane(plane.polygon, module, { orientation: plane.orientation, setback, rowGap }), orientation: plane.orientation }
+  }
+  const portrait = packPlane(plane.polygon, module, { orientation: 'portrait', setback, rowGap })
+  const landscape = packPlane(plane.polygon, module, { orientation: 'landscape', setback, rowGap })
+  return landscape.length > portrait.length ? { panels: landscape, orientation: 'landscape' } : { panels: portrait, orientation: 'portrait' }
+}
+
+/** Lay out the whole design toward a goal. Best planes first; trims to hit a target kWp. */
+export function autoLayout(planes: DesignPlane[], module: Module, goal: LayoutGoal, designSetback: number): LayoutResult {
+  const order = [...planes].map((p, i) => ({ p, i, q: planeQuality(p) })).sort((a, b) => b.q - a.q)
+  const targetCount = goal.kind === 'target-kwp' ? Math.max(0, Math.round((goal.kwp * 1000) / module.watts)) : Infinity
+  const out = planes.map((p) => ({ ...p, panels: [] as DesignPanel[], orientation: p.orientation, moduleId: p.moduleId ?? module.id }))
+  let placed = 0
+  for (const { i } of order) {
+    if (placed >= targetCount) break
+    const packed = packWithSettings(planes[i], module, designSetback)
+    let panels = packed.panels
+    if (placed + panels.length > targetCount) panels = panels.slice(0, targetCount - placed) // trim last plane to hit target
+    out[i] = { ...out[i], panels, orientation: packed.orientation }
+    placed += panels.length
+  }
+  return { planes: out, count: placed, kwp: kwpOf(placed, module.watts) }
+}
