@@ -53,9 +53,11 @@ function dominantAngle(poly: XY[]): number {
   return best
 }
 
-export type PackOpts = { orientation: PanelOrientation; gap?: number; setback?: number; rowGap?: number }
+export type BBox = { minLat: number; maxLat: number; minLng: number; maxLng: number }
+export type PackOpts = { orientation: PanelOrientation; gap?: number; setback?: number; rowGap?: number; bbox?: BBox }
 
-/** Pack a plane. Returns the laid-out panels (geo rectangles). */
+/** Pack a plane. Returns the laid-out panels (geo rectangles). With `bbox`, only cells whose centre
+ *  falls inside the box are kept — that's how the manual click-drag array tool paints panels. */
 export function packPlane(polygon: LatLng[], module: Module, opts: PackOpts): DesignPanel[] {
   if (polygon.length < 3) return []
   const origin = polygon.reduce((a, p) => ({ lat: a.lat + p.lat / polygon.length, lng: a.lng + p.lng / polygon.length }), { lat: 0, lng: 0 })
@@ -83,7 +85,12 @@ export function packPlane(polygon: LatLng[], module: Module, opts: PackOpts): De
         { x: x + pw - 0.02, y: y + ph - 0.02 }, { x: x + 0.02, y: y + ph - 0.02 },
       ]
       if (!corners.every((c) => pointInPoly(c, R))) continue
-      panels.push({ id: uid('pn'), corners: corners.map((c) => proj.toLL(unrot(c, theta))) })
+      const cornersLL = corners.map((c) => proj.toLL(unrot(c, theta)))
+      if (opts.bbox) {
+        const ctr = { lat: (cornersLL[0].lat + cornersLL[2].lat) / 2, lng: (cornersLL[0].lng + cornersLL[2].lng) / 2 }
+        if (ctr.lat < opts.bbox.minLat || ctr.lat > opts.bbox.maxLat || ctr.lng < opts.bbox.minLng || ctr.lng > opts.bbox.maxLng) continue
+      }
+      panels.push({ id: uid('pn'), corners: cornersLL })
     }
   }
   return panels

@@ -960,6 +960,9 @@ export interface Design {
   obstacles: DesignObstacle[]
   moduleWatts: number // chosen module wattage (default 440 W)
   setbackM: number // fire-code perimeter kept clear of panels
+  // Real building height (metres to the eave) for the 3D model — from OSM tags or Google, editable.
+  eaveHeightM?: number
+  heightSource?: 'osm' | 'google' | 'manual'
   // Snapshot — filled in as the panel/electrical/yield phases land.
   systemKwp?: number
   panels?: number

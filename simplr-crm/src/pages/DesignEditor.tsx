@@ -10,7 +10,7 @@ import { Sun, Radar, Check, Person, Layers, Target, Sparkle, Plus, Grid, Wrench,
 import { useActions, useState_ } from '../store/store'
 import { geocodeLocation } from '../lib/commercialFinder'
 import { detectPlanes, slopedAreaM2, totalRoofArea, compass, polygonAreaM2 } from '../lib/design'
-import { MODULES, moduleById, packWithSettings, autoLayout, kwpOf, planeSolarFactor, planeQuality, type Module, type LayoutGoal } from '../lib/panels'
+import { MODULES, moduleById, packWithSettings, packPlane, autoLayout, kwpOf, planeSolarFactor, planeQuality, type Module, type LayoutGoal, type BBox } from '../lib/panels'
 import { regionYield } from '../lib/solar'
 import { parseDesignBrief } from '../lib/oviDesign'
 import { Design3D } from '../components/Design3D'
@@ -20,6 +20,28 @@ import type { Design, DesignPlane, PanelOrientation, RackingType } from '../stor
 type LatLng = { lat: number; lng: number }
 const uid = (p: string) => `${p}${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`
 type StudioTab = 'design' | 'array' | 'production' | 'proposal'
+
+// ── Manual array-drawing helpers ──
+function pointInRing(ring: LatLng[], pt: LatLng): boolean {
+  let inside = false
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    if ((ring[i].lat > pt.lat) !== (ring[j].lat > pt.lat) && pt.lng < ((ring[j].lng - ring[i].lng) * (pt.lat - ring[i].lat)) / (ring[j].lat - ring[i].lat) + ring[i].lng) inside = !inside
+  }
+  return inside
+}
+/** Box from two drag corners, padded by ~half a panel so clicks/short drags still catch cells. */
+function dragBBox(a: LatLng, b: LatLng, padM = 0.9): BBox {
+  const padLat = padM / 110540, padLng = padM / (111320 * Math.cos((a.lat * Math.PI) / 180))
+  return { minLat: Math.min(a.lat, b.lat) - padLat, maxLat: Math.max(a.lat, b.lat) + padLat, minLng: Math.min(a.lng, b.lng) - padLng, maxLng: Math.max(a.lng, b.lng) + padLng }
+}
+const panelCenter = (pn: { corners: LatLng[] }) => ({ lat: (pn.corners[0].lat + pn.corners[2].lat) / 2, lng: (pn.corners[0].lng + pn.corners[2].lng) / 2 })
+/** Add `incoming` panels to `existing`, skipping any that land on top of one already placed. */
+function mergePanels(existing: { id: string; corners: LatLng[] }[], incoming: { id: string; corners: LatLng[] }[]) {
+  const out = [...existing]
+  const near = (a: LatLng, b: LatLng) => Math.abs(a.lat - b.lat) * 110540 < 0.4 && Math.abs(a.lng - b.lng) * 90000 < 0.4
+  for (const g of incoming) { const c = panelCenter(g); if (!out.some((e) => near(panelCenter(e), c))) out.push(g) }
+  return out
+}
 
 /** Effective generating tilt — tilt-racking on a flat roof beats the flat pitch. */
 function effTilt(p: DesignPlane): number { return p.racking && p.racking !== 'flush' ? (p.tiltDeg ?? 10) : p.pitchDeg }
@@ -36,6 +58,7 @@ export function DesignEditor() {
   const map = useRef<L.Map | null>(null)
   const planeLayer = useRef<L.LayerGroup | null>(null)
   const panelLayer = useRef<L.LayerGroup | null>(null)
+  const ghostLayer = useRef<L.LayerGroup | null>(null)
   const panelRenderer = useRef<L.Canvas | null>(null)
   const designRef = useRef(design)
   designRef.current = design
@@ -46,7 +69,12 @@ export function DesignEditor() {
   const [selId, setSelId] = useState<string | null>(null)
   const [drawing, setDrawing] = useState(false)
   const [editing, setEditing] = useState(false)
+  const [adding, setAdding] = useState(false)
+  const [ghostN, setGhostN] = useState<number | null>(null)
   const [moduleId, setModuleId] = useState('m440')
+  const addingRef = useRef(adding); addingRef.current = adding
+  const moduleIdRef = useRef(moduleId); moduleIdRef.current = moduleId
+  const commitRef = useRef<(planes: DesignPlane[]) => void>(() => {})
   const [view, setView] = useState<'2d' | '3d'>('2d')
   const [targetKwp, setTargetKwp] = useState<string>('')
   const [oviOpen, setOviOpen] = useState(false)
@@ -62,6 +90,7 @@ export function DesignEditor() {
     panelRenderer.current = L.canvas({ padding: 0.5 })
     panelLayer.current = L.layerGroup().addTo(m)
     planeLayer.current = L.layerGroup().addTo(m)
+    ghostLayer.current = L.layerGroup().addTo(m)
     m.pm.setGlobalOptions({ snappable: true, snapDistance: 12 })
     m.pm.setPathOptions({ color: '#00E5FF', fillColor: '#22E0FF', fillOpacity: 0.24 })
     m.on('pm:create', (e: any) => {
@@ -69,6 +98,43 @@ export function DesignEditor() {
       e.layer.remove()
       addManualPlane(ring)
       m.pm.disableDraw(); setDrawing(false)
+    })
+
+    // ── Manual array drawing: drag across a plane to paint panels (OpenSolar-style) ──
+    let dragStart: L.LatLng | null = null, dragPid: string | null = null
+    const planeAt = (ll: L.LatLng) => designRef.current?.planes.find((p) => pointInRing(p.polygon, { lat: ll.lat, lng: ll.lng }))
+    const packAt = (p: DesignPlane, bbox: BBox) => packPlane(p.polygon, moduleById(moduleIdRef.current), { orientation: p.orientation ?? 'portrait', setback: p.setbackM ?? designRef.current!.setbackM, rowGap: p.rowGapM, bbox })
+    const drawGhosts = (ghosts: { corners: LatLng[] }[], from?: L.LatLng, to?: L.LatLng) => {
+      const g = ghostLayer.current!; g.clearLayers()
+      ghosts.forEach((pn) => L.polygon(pn.corners.map((v) => [v.lat, v.lng]) as [number, number][], { color: '#A97BF3', weight: 1, dashArray: '3 3', fillColor: '#7C3AED', fillOpacity: 0.3, pmIgnore: true } as any).addTo(g))
+      if (from && to) L.polyline([from, to], { color: '#7C3AED', weight: 2, dashArray: '5 4', pmIgnore: true } as any).addTo(g)
+    }
+    m.on('mousedown', (e: any) => {
+      if (!addingRef.current) return
+      const p = planeAt(e.latlng); if (!p) return
+      dragStart = e.latlng; dragPid = p.id; m.dragging.disable(); L.DomEvent.stop(e)
+    })
+    m.on('mousemove', (e: any) => {
+      if (!addingRef.current) return
+      if (dragStart && dragPid) {
+        const p = designRef.current!.planes.find((x) => x.id === dragPid); if (!p) return
+        const ghosts = packAt(p, dragBBox(dragStart, e.latlng)); drawGhosts(ghosts, dragStart, e.latlng); setGhostN(ghosts.length)
+      } else {
+        const p = planeAt(e.latlng)
+        if (p) { drawGhosts(packAt(p, dragBBox(e.latlng, e.latlng, 0.5)).slice(0, 1)); setGhostN(null) }
+        else { ghostLayer.current?.clearLayers(); setGhostN(null) }
+      }
+    })
+    m.on('mouseup', (e: any) => {
+      if (!addingRef.current || !dragStart || !dragPid) { dragStart = null; dragPid = null; return }
+      const d = designRef.current!; const p = d.planes.find((x) => x.id === dragPid)
+      if (p) {
+        const ghosts = packAt(p, dragBBox(dragStart, e.latlng))
+        const merged = mergePanels((p.panels as any) ?? [], ghosts)
+        const mid = p.moduleId ?? moduleIdRef.current
+        commitRef.current(d.planes.map((x) => (x.id === dragPid ? { ...x, panels: merged, moduleId: mid } : x)))
+      }
+      ghostLayer.current?.clearLayers(); setGhostN(null); dragStart = null; dragPid = null; m.dragging.enable()
     })
     map.current = m
     if ((import.meta as any).env?.DEV) (window as any).__lmap = m
@@ -107,11 +173,25 @@ export function DesignEditor() {
       poly.on('pm:edit', () => syncGeometry(p.id, poly))
       poly.bindTooltip(`${compass(p.azimuthDeg)} · ${effTilt(p)}° · ${p.panels?.length ? `${p.panels.length} panels` : `${p.areaM2} m²`}`, { permanent: true, direction: 'center', className: 'roof-label' })
       poly.addTo(lyr)
+      // Sleek black modules (OpenSolar look) — near-black glass with a thin cool frame.
       p.panels?.forEach((pn) => {
-        L.polygon(pn.corners.map((v) => [v.lat, v.lng]) as [number, number][], { pmIgnore: true, renderer: panelRenderer.current!, color: '#0A2A5E', weight: 0.6, fillColor: '#1E3A8A', fillOpacity: 0.9 } as any).addTo(pl)
+        L.polygon(pn.corners.map((v) => [v.lat, v.lng]) as [number, number][], { pmIgnore: true, renderer: panelRenderer.current!, color: '#3A4A6B', weight: 0.7, fillColor: '#0A0E17', fillOpacity: 0.94 } as any).addTo(pl)
       })
+      // Facing arrow — one per filled array, pointing downslope (the way the panels face).
+      if (p.panels?.length) {
+        const c = p.polygon.reduce((a, v) => ({ lat: a.lat + v.lat / p.polygon.length, lng: a.lng + v.lng / p.polygon.length }), { lat: 0, lng: 0 })
+        const az = (p.azimuthDeg * Math.PI) / 180, len = 3.5
+        const dlat = (len * Math.cos(az)) / 110540, dlng = (len * Math.sin(az)) / (111320 * Math.cos((c.lat * Math.PI) / 180))
+        const tip: [number, number] = [c.lat + dlat, c.lng + dlng]
+        const back = az + Math.PI, wing = 0.5
+        const bl: [number, number] = [tip[0] + (1.4 * Math.cos(back + wing)) / 110540, tip[1] + (1.4 * Math.sin(back + wing)) / (111320 * Math.cos((c.lat * Math.PI) / 180))]
+        const br: [number, number] = [tip[0] + (1.4 * Math.cos(back - wing)) / 110540, tip[1] + (1.4 * Math.sin(back - wing)) / (111320 * Math.cos((c.lat * Math.PI) / 180))]
+        const arrowStyle = { color: '#EAF0FF', weight: 2.5, opacity: 0.9, pmIgnore: true, interactive: false } as any
+        L.polyline([[c.lat, c.lng], tip], arrowStyle).addTo(pl)
+        L.polyline([bl, tip, br], arrowStyle).addTo(pl)
+      }
     })
-    if (design.planes.length && !editing && !drawing) {
+    if (design.planes.length && !editing && !drawing && !addingRef.current) {
       const all = design.planes.flatMap((p) => p.polygon.map((v) => [v.lat, v.lng] as [number, number]))
       try { map.current.fitBounds(L.latLngBounds(all).pad(0.3), { maxZoom: 20, animate: false }) } catch { /* single point */ }
     }
@@ -204,6 +284,7 @@ export function DesignEditor() {
     })
     act.updateDesign(d.id, { planes, panels: count, systemKwp: Math.round(kwp * 10) / 10, annualKwh: Math.round(kwh) })
   }
+  commitRef.current = commitSnapshot
   // Ovi conversational design — parse a brief, then size + lay out live, streaming each step.
   async function oviExecute(brief: string, emit: (line: string) => void): Promise<string> {
     const d = designRef.current!
@@ -235,14 +316,23 @@ export function DesignEditor() {
   function toggleDraw() {
     const m = map.current; if (!m) return
     if (editing) toggleEdit()
+    if (adding) setAdding(false)
     if (drawing) { m.pm.disableDraw(); setDrawing(false) }
     else { m.pm.enableDraw('Polygon', { snappable: true }); setDrawing(true) }
   }
   function toggleEdit() {
     const m = map.current; if (!m) return
     if (drawing) { m.pm.disableDraw(); setDrawing(false) }
+    if (adding) setAdding(false)
     if (editing) { m.pm.disableGlobalEditMode(); setEditing(false) }
     else { m.pm.enableGlobalEditMode({ allowSelfIntersection: false }); setEditing(true) }
+  }
+  function toggleAdd() {
+    const m = map.current; if (!m) return
+    if (drawing) { m.pm.disableDraw(); setDrawing(false) }
+    if (editing) { m.pm.disableGlobalEditMode(); setEditing(false) }
+    if (adding) { setAdding(false); m.dragging.enable(); ghostLayer.current?.clearLayers(); setGhostN(null) }
+    else { setAdding(true); if (!design?.planes.length) act.toast('Draw or detect a roof first, then drag to add panels', 'warning') }
   }
 
   if (!design) return (<><TopBar title="Design" crumbs={['Design']} /><PageMissing onBack={() => nav('/design')} /></>)
@@ -303,6 +393,7 @@ export function DesignEditor() {
             {view === '2d' && (
               <div className="absolute top-3 left-3 z-[500] flex items-center gap-1.5 bg-white/95 backdrop-blur border border-border rounded-control shadow-modal p-1">
                 <ToolBtn on={drawing} onClick={toggleDraw} icon={<Plus size={15} />} label="Draw plane" />
+                <ToolBtn on={adding} onClick={toggleAdd} icon={<Grid size={14} />} label="Add panels" />
                 <ToolBtn on={editing} onClick={toggleEdit} icon={<Wrench size={14} />} label="Edit" />
               </div>
             )}
@@ -316,6 +407,9 @@ export function DesignEditor() {
             )}
             {drawing && !busy && (
               <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[500] h-9 px-4 rounded-full text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Target size={14} />Click each corner of the roof, then click the first point to close</div>
+            )}
+            {adding && !busy && (
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[500] h-9 px-4 rounded-full text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Grid size={14} />Drag across a roof to lay panels{ghostN != null ? ` · ${ghostN}` : ''}</div>
             )}
             {design.planes.length === 0 && !busy && !drawing && (
               <div className="absolute inset-0 z-[400] flex items-center justify-center pointer-events-none">

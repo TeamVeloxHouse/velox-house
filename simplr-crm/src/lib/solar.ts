@@ -345,6 +345,40 @@ export async function fetchBuildingFootprint(center: LatLng): Promise<LatLng[] |
   return null
 }
 
+/** Real building height at a point, from OSM `height` / `building:levels` tags. Returns the eave
+ *  height in metres (what the 3D walls rise to) + which tag it came from, or null if untagged. */
+export async function fetchBuildingHeight(center: LatLng): Promise<{ eaveM: number; source: 'osm' } | null> {
+  const q = `[out:json][timeout:12];way(around:120,${center.lat},${center.lng})["building"];out tags geom;`
+  for (const url of OVERPASS) {
+    try {
+      const ctrl = new AbortController()
+      const t = setTimeout(() => ctrl.abort(), 9000)
+      const r = await fetch(url, { method: 'POST', body: `data=${encodeURIComponent(q)}`, signal: ctrl.signal })
+      clearTimeout(t)
+      if (!r.ok) continue
+      const j = await r.json()
+      type W = { ring: LatLng[]; tags: Record<string, string>; area: number }
+      const ways: W[] = (j.elements || [])
+        .filter((e: { type: string; geometry?: unknown[] }) => e.type === 'way' && Array.isArray(e.geometry) && e.geometry.length >= 4)
+        .map((e: { geometry: { lat: number; lon: number }[]; tags?: Record<string, string> }) => {
+          const ring = e.geometry.map((g) => ({ lat: g.lat, lng: g.lon }))
+          return { ring, tags: e.tags || {}, area: ringAreaish(ring) }
+        })
+      if (!ways.length) return null
+      const containing = ways.filter((w) => ringContains(w.ring, center)).sort((a, b) => b.area - a.area)
+      const centroidDist = (w: W) => { const c = w.ring.reduce((a, p) => ({ lat: a.lat + p.lat / w.ring.length, lng: a.lng + p.lng / w.ring.length }), { lat: 0, lng: 0 }); return (c.lat - center.lat) ** 2 + (c.lng - center.lng) ** 2 }
+      const pick = containing[0] ?? [...ways].sort((a, b) => centroidDist(a) - centroidDist(b))[0]
+      const tags = pick.tags
+      const h = parseFloat(tags['height'] || tags['building:height'] || '')
+      if (isFinite(h) && h > 2) return { eaveM: Math.max(2.4, Math.round(h * 0.85 * 10) / 10), source: 'osm' } // height is to the ridge; eave ≈ 0.85×
+      const lv = parseFloat(tags['building:levels'] || '')
+      if (isFinite(lv) && lv >= 1) return { eaveM: Math.max(2.4, Math.round(lv * 3 * 10) / 10), source: 'osm' } // ~3 m per storey
+      return null
+    } catch { /* try next endpoint */ }
+  }
+  return null
+}
+
 /** Frame a satellite tile on a lat/lng ring — centre + a zoom that fits it with margin. */
 export function frameFromPoints(points: LatLng[], w = 560, h = 360): { center: LatLng; zoom: number } | null {
   if (!points.length) return null
