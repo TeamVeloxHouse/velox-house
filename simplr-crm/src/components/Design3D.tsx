@@ -324,6 +324,8 @@ export function Design3D({ design, onCapture, adding, moduleId, onCommitPanels }
       let roofY: (x: number, z: number) => number
       let fit: { a: number; b: number; c: number } | null = null
       if (dsm && design.center) {
+        // The DSM fit is the source of truth for tilt — a hand-drawn outline (default 5° pitch) gets the
+        // SAME real pitch as auto-detect. Only fall back to the stored pitch if the fit can't be made.
         fit = fitRoofPlane(dsm, fp, dcx, dcz)
         if (fit) roofY = (x, z) => fit!.a * x + fit!.b * z + fit!.c
         else { const off = sampleHeight(dsm, c.x - dcx, dcz - c.z) - pf.elev(c.x, c.z); roofY = (x, z) => pf.elev(x, z) + off }
