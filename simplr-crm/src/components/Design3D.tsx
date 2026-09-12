@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { frameFromPoints } from '../lib/solar'
 import { planeFrame } from '../lib/design'
+import { fetchDsm, fetchRgbCanvas, sampleHeight, fluxColor, type DsmData } from '../lib/dsm'
 import type { Design } from '../store/types'
 
 type LL = { lat: number; lng: number }
@@ -21,6 +22,31 @@ export function Design3D({ design, onCapture }: { design: Design; onCapture?: ()
   const [spin, setSpin] = useState(false)
   const spinRef = useRef(false)
   spinRef.current = spin
+  // Photoreal DSM roof (Google Solar Data Layers) — real roof shape + aerial texture + irradiance.
+  const [dsm, setDsm] = useState<DsmData | null>(null)
+  const [rgb, setRgb] = useState<HTMLCanvasElement | null>(null)
+  const [dsmStatus, setDsmStatus] = useState<'idle' | 'loading' | 'ready' | 'none'>('idle')
+  const [photoreal, setPhotoreal] = useState(true)
+  const [showFlux, setShowFlux] = useState(false)
+
+  // Fetch the DSM + aerial once per location (needs the Google key; silently no-ops without it).
+  useEffect(() => {
+    const c = design.center
+    if (!c) { setDsmStatus('none'); return }
+    let alive = true
+    setDsmStatus('loading')
+    ;(async () => {
+      const d = await fetchDsm(c.lat, c.lng)
+      if (!alive) return
+      if (!d) { setDsmStatus('none'); return }
+      setDsm(d)
+      const canvas = await fetchRgbCanvas(c.lat, c.lng)
+      if (!alive) return
+      setRgb(canvas); setDsmStatus('ready')
+    })()
+    return () => { alive = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [design.id, design.center?.lat, design.center?.lng])
 
   useEffect(() => {
     const el = host.current
@@ -34,6 +60,17 @@ export function Design3D({ design, onCapture }: { design: Design; onCapture?: ()
     const mPerLat = 110540, mPerLng = 111320 * Math.cos((origin.lat * Math.PI) / 180)
     const X = (p: LL) => (p.lng - origin.lng) * mPerLng
     const Z = (p: LL) => -(p.lat - origin.lat) * mPerLat // north → −z
+
+    // Photoreal mode: real roof shape from the DSM. The DSM is centred on design.center; a point's
+    // height is sampled from it (relative to ground datum), so panels sit on the true roof surface.
+    const usePhotoreal = photoreal && !!dsm
+    const cLat = design.center?.lat ?? origin.lat, cLng = design.center?.lng ?? origin.lng
+    const enOf = (p: LL) => ({ east: (p.lng - cLng) * mPerLng, north: (p.lat - cLat) * mPerLat })
+    const cornerY = (p: LL, pf: { elev: (x: number, z: number) => number }) => {
+      if (usePhotoreal) { const { east, north } = enOf(p); return sampleHeight(dsm!, east, north) }
+      return pf.elev(X(p), Z(p))
+    }
+    const roofTopY = usePhotoreal ? (dsm!.maxH - dsm!.minH) * 0.55 : eaveH
 
     const W = el.clientWidth || 800, H = el.clientHeight || 500
     const scene = new THREE.Scene()
@@ -84,7 +121,7 @@ export function Design3D({ design, onCapture }: { design: Design; onCapture?: ()
       new THREE.PlaneGeometry(groundM, groundM),
       new THREE.MeshStandardMaterial({ color: 0x9aa2ac, roughness: 1 }),
     )
-    ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; ground.position.set(X(frame.center), 0.02, Z(frame.center))
+    ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; ground.position.set(X(frame.center), usePhotoreal ? -0.6 : 0.02, Z(frame.center))
     scene.add(ground)
     new THREE.TextureLoader().load(`/api/roof-image?lat=${frame.center.lat}&lng=${frame.center.lng}&z=${frame.zoom}&size=640x640`, (tex) => {
       tex.colorSpace = THREE.SRGBColorSpace
@@ -102,6 +139,31 @@ export function Design3D({ design, onCapture }: { design: Design; onCapture?: ()
     // helper — average of scene points
     const avg = (pts: { x: number; z: number }[]) => pts.reduce((a, p) => ({ x: a.x + p.x / pts.length, z: a.z + p.z / pts.length }), { x: 0, z: 0 })
 
+    // ── Photoreal roof — the real DSM heightmesh, draped with the aerial (or the irradiance heatmap) ──
+    if (usePhotoreal && design.center) {
+      const W = dsm!.width, H = dsm!.height, res = dsm!.resM, heights = dsm!.heights, minH = dsm!.minH
+      const geo = new THREE.PlaneGeometry(W * res, H * res, W - 1, H - 1)
+      geo.rotateX(-Math.PI / 2) // XY → XZ, normal +Y; top row (north) → −z
+      const pos = geo.attributes.position as THREE.BufferAttribute
+      const heatmap = showFlux && !!dsm!.flux
+      const colors = heatmap ? new Float32Array(pos.count * 3) : null
+      const fMin = dsm!.fluxMin ?? 0, fSpan = (dsm!.fluxMax ?? 1) - fMin || 1
+      for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+        const idx = j * W + i, raw = heights[idx]
+        pos.setY(idx, raw > -500 && raw < 10000 ? raw - minH : 0)
+        if (colors) { const [r, g, b] = fluxColor((dsm!.flux![idx] - fMin) / fSpan); colors[idx * 3] = r; colors[idx * 3 + 1] = g; colors[idx * 3 + 2] = b }
+      }
+      geo.computeVertexNormals()
+      let mat: THREE.MeshStandardMaterial
+      if (colors) { geo.setAttribute('color', new THREE.BufferAttribute(colors, 3)); mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0 }) }
+      else if (rgb) { const tex = new THREE.CanvasTexture(rgb); tex.colorSpace = THREE.SRGBColorSpace; mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.95, metalness: 0 }) }
+      else mat = new THREE.MeshStandardMaterial({ color: 0x9aa2ac, roughness: 0.98 })
+      const mesh = new THREE.Mesh(geo, mat)
+      mesh.position.set(X(design.center), 0, Z(design.center))
+      mesh.receiveShadow = true; mesh.castShadow = true
+      scene.add(mesh)
+    }
+
     // ── Roof planes ──
     const panelEdgeSegments: number[] = []
     let panelTotal = 0
@@ -112,47 +174,42 @@ export function Design3D({ design, onCapture }: { design: Design; onCapture?: ()
       const fp = p.polygon.map((pt) => ({ x: X(pt), z: Z(pt) }))
       const pf = planeFrame(fp, p.pitchDeg, p.azimuthDeg, eaveH)
 
-      // Roof surface — triangulate the footprint, then lift each vertex onto the tilted plane.
-      const shape = new THREE.Shape(fp.map((v) => new THREE.Vector2(v.x, v.z)))
-      const rg = new THREE.ShapeGeometry(shape)
-      const pos = rg.attributes.position as THREE.BufferAttribute
-      for (let i = 0; i < pos.count; i++) {
-        const sx = pos.getX(i), sz = pos.getY(i) // shape XY = scene XZ
-        pos.setXYZ(i, sx, pf.elev(sx, sz), sz)
+      // Clean extrusion path — the roof surface + walls (skipped in photoreal, where the DSM is it).
+      if (!usePhotoreal) {
+        const shape = new THREE.Shape(fp.map((v) => new THREE.Vector2(v.x, v.z)))
+        const rg = new THREE.ShapeGeometry(shape)
+        const pos = rg.attributes.position as THREE.BufferAttribute
+        for (let i = 0; i < pos.count; i++) {
+          const sx = pos.getX(i), sz = pos.getY(i) // shape XY = scene XZ
+          pos.setXYZ(i, sx, pf.elev(sx, sz), sz)
+        }
+        rg.computeVertexNormals()
+        const roof = new THREE.Mesh(rg, roofMat)
+        roof.castShadow = true; roof.receiveShadow = true
+        scene.add(roof)
+        // Walls — drop each footprint edge to the ground.
+        const wv: number[] = []
+        for (let i = 0; i < fp.length; i++) {
+          const a = fp[i], b = fp[(i + 1) % fp.length]
+          const ay = pf.elev(a.x, a.z), by = pf.elev(b.x, b.z)
+          wv.push(a.x, 0, a.z, b.x, 0, b.z, b.x, by, b.z)
+          wv.push(a.x, 0, a.z, b.x, by, b.z, a.x, ay, a.z)
+        }
+        const wg = new THREE.BufferGeometry()
+        wg.setAttribute('position', new THREE.Float32BufferAttribute(wv, 3))
+        wg.computeVertexNormals()
+        const walls = new THREE.Mesh(wg, wallMat)
+        walls.castShadow = true; walls.receiveShadow = true
+        scene.add(walls)
+        const ring = fp.map((v) => new THREE.Vector3(v.x, pf.elev(v.x, v.z), v.z))
+        ring.push(ring[0])
+        scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(ring), edgeMat))
       }
-      rg.computeVertexNormals()
-      const roof = new THREE.Mesh(rg, roofMat)
-      roof.castShadow = true; roof.receiveShadow = true
-      scene.add(roof)
-      const c = avg(fp); roofCenters.push({ x: c.x, y: pf.elev(c.x, c.z), z: c.z })
+      const c = avg(fp); roofCenters.push({ x: c.x, y: usePhotoreal ? roofTopY : pf.elev(c.x, c.z), z: c.z })
 
-      // Walls — drop each footprint edge to the ground.
-      const wv: number[] = []
-      for (let i = 0; i < fp.length; i++) {
-        const a = fp[i], b = fp[(i + 1) % fp.length]
-        const ay = pf.elev(a.x, a.z), by = pf.elev(b.x, b.z)
-        // two triangles: a0,b0,bTop  and  a0,bTop,aTop
-        wv.push(a.x, 0, a.z, b.x, 0, b.z, b.x, by, b.z)
-        wv.push(a.x, 0, a.z, b.x, by, b.z, a.x, ay, a.z)
-      }
-      const wg = new THREE.BufferGeometry()
-      wg.setAttribute('position', new THREE.Float32BufferAttribute(wv, 3))
-      wg.computeVertexNormals()
-      const walls = new THREE.Mesh(wg, wallMat)
-      walls.castShadow = true; walls.receiveShadow = true
-      scene.add(walls)
-
-      // Roof outline (crisp ridge/eave lines)
-      const ring = fp.map((v) => new THREE.Vector3(v.x, pf.elev(v.x, v.z), v.z))
-      ring.push(ring[0])
-      scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(ring), edgeMat))
-
-      // Obstacles on this footprint — raised keep-out prisms.
-      // (obstacles are design-level; drawn once below)
-
-      // Panels — tilt each flush onto the plane.
+      // Panels — sit each on the roof (DSM surface in photoreal, else the tilted plane).
       p.panels?.forEach((pn) => {
-        const g3 = pn.corners.map((v) => { const x = X(v), z = Z(v); return new THREE.Vector3(x, pf.elev(x, z), z) })
+        const g3 = pn.corners.map((v) => new THREE.Vector3(X(v), cornerY(v, pf) + (usePhotoreal ? 0.15 : 0), Z(v)))
         if (g3.length < 4) return
         const center = new THREE.Vector3().addVectors(g3[0], g3[2]).add(g3[1]).add(g3[3]).multiplyScalar(0.25)
         const ex = new THREE.Vector3().subVectors(g3[1], g3[0]) // width edge
@@ -208,9 +265,9 @@ export function Design3D({ design, onCapture }: { design: Design; onCapture?: ()
     const cx = (Math.min(...bx) + Math.max(...bx)) / 2, cz = (Math.min(...bz) + Math.max(...bz)) / 2
     const span = Math.max(Math.max(...bx) - Math.min(...bx), Math.max(...bz) - Math.min(...bz), 22)
     const dist = span * 1.35 + 26
-    controls.target.set(cx, eaveH, cz)
-    camera.position.set(cx + dist * 0.62, eaveH + dist * 0.9, cz + dist * 0.62)
-    camera.lookAt(cx, eaveH, cz)
+    controls.target.set(cx, roofTopY, cz)
+    camera.position.set(cx + dist * 0.62, roofTopY + dist * 0.9, cz + dist * 0.62)
+    camera.lookAt(cx, roofTopY, cz)
 
     // shadow frustum around the scene
     const S = span * 0.9 + 40
@@ -224,7 +281,7 @@ export function Design3D({ design, onCapture }: { design: Design; onCapture?: ()
       const elev = Math.max(0.04, Math.sin(Math.PI * t))
       const horiz = 340 * (1 - elev * 0.5)
       sun.position.set(cx + Math.sin(az) * horiz, 60 + elev * 380, cz + Math.cos(az) * horiz * 0.8 + 30)
-      sun.target.position.set(cx, eaveH, cz)
+      sun.target.position.set(cx, roofTopY, cz)
       sun.intensity = 0.9 + elev * 1.6
       const warm = 1 - elev
       sun.color.setRGB(1, 0.95 - warm * 0.18, 0.86 - warm * 0.28)
@@ -244,7 +301,7 @@ export function Design3D({ design, onCapture }: { design: Design; onCapture?: ()
       if (renderer.domElement.parentNode === el) el.removeChild(renderer.domElement)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [design.id, design.planes, design.obstacles, design.eaveHeightM])
+  }, [design.id, design.planes, design.obstacles, design.eaveHeightM, photoreal, dsm, rgb, showFlux])
 
   const hasGeom = design.planes.some((p) => p.polygon.length >= 3)
   const hasPanels = design.planes.some((p) => p.panels?.length)
@@ -273,9 +330,22 @@ export function Design3D({ design, onCapture }: { design: Design; onCapture?: ()
       )}
       {hasGeom && (
         <>
-          <button onClick={() => setSpin((s) => !s)} className={`absolute top-3 left-3 z-10 h-9 px-3.5 rounded-full backdrop-blur border shadow-modal text-[12.5px] font-semibold inline-flex items-center gap-2 ${spin ? 'bg-accent text-white border-transparent' : 'bg-white/95 text-ink-2 border-border'}`} style={spin ? { background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' } : undefined}>
-            <span className={spin ? 'animate-spin' : ''}>⟳</span>{spin ? 'Orbiting' : 'Orbit'}
-          </button>
+          <div className="absolute top-3 left-3 z-10 flex items-center gap-2">
+            <button onClick={() => setSpin((s) => !s)} className={`h-9 px-3.5 rounded-full backdrop-blur border shadow-modal text-[12.5px] font-semibold inline-flex items-center gap-2 ${spin ? 'text-white border-transparent' : 'bg-white/95 text-ink-2 border-border'}`} style={spin ? { background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' } : undefined}>
+              <span className={spin ? 'animate-spin' : ''}>⟳</span>{spin ? 'Orbiting' : 'Orbit'}
+            </button>
+            {dsmStatus === 'loading' && (
+              <span className="h-9 px-3.5 rounded-full bg-white/95 backdrop-blur border border-border shadow-modal text-[12px] font-semibold text-ink-3 inline-flex items-center gap-2"><span className="w-3.5 h-3.5 rounded-full border-2 border-accent border-t-transparent animate-spin" />Loading real roof…</span>
+            )}
+            {dsmStatus === 'ready' && (
+              <>
+                <button onClick={() => setPhotoreal((v) => !v)} title="Toggle the real 3D roof (Google DSM) vs the clean model" className={`h-9 px-3.5 rounded-full backdrop-blur border shadow-modal text-[12.5px] font-semibold inline-flex items-center gap-1.5 ${photoreal ? 'text-white border-transparent' : 'bg-white/95 text-ink-2 border-border'}`} style={photoreal ? { background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' } : undefined}>◈ Photoreal</button>
+                {photoreal && dsm?.flux && (
+                  <button onClick={() => setShowFlux((v) => !v)} title="Annual sun / shading heatmap" className={`h-9 px-3.5 rounded-full backdrop-blur border shadow-modal text-[12.5px] font-semibold inline-flex items-center gap-1.5 ${showFlux ? 'text-white border-transparent' : 'bg-white/95 text-ink-2 border-border'}`} style={showFlux ? { background: 'linear-gradient(90deg,#2f6bd6,#e6dc3c,#dc3228)' } : undefined}>☀ Heatmap</button>
+                )}
+              </>
+            )}
+          </div>
           <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 bg-white/95 backdrop-blur border border-border rounded-full shadow-modal px-4 py-2 flex items-center gap-3">
             <span className="text-[11.5px] font-semibold text-ink-2 tabular-nums w-16">☀ {hour}:00</span>
             <input type="range" min={6} max={20} value={hour} onChange={(e) => { const h = +e.target.value; setHour(h); sunHour.current = h }} className="w-48 accent-accent" />

@@ -1,6 +1,6 @@
 import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
-import { googleSolarAnalysis, googleSolarAnalysisAt, geocode } from './server/solarProvider.mjs'
+import { googleSolarAnalysis, googleSolarAnalysisAt, geocode, solarLayerBytes } from './server/solarProvider.mjs'
 import { pdlSearch } from './server/sourcingProvider.mjs'
 import { staticSatellite } from './server/roofImage.mjs'
 import { placesSearch, placesRadiusScan, placesAutocomplete } from './server/placesProvider.mjs'
@@ -110,6 +110,27 @@ function roofImageApi(env: Record<string, string>): Plugin {
         staticSatellite(lat, lng, z, size, key)
           .then(({ buf, contentType }) => { res.setHeader('Content-Type', contentType); res.setHeader('Cache-Control', 'public, max-age=86400'); res.end(buf) })
           .catch(() => { res.statusCode = 404; res.end() })
+      })
+    },
+  }
+}
+
+/** Dev-only proxy for Solar API Data Layers (DSM / flux / mask GeoTIFFs) — streams the raw bytes
+ *  with the key kept server-side, so the client can parse the real roof heightfield + irradiance. */
+function solarLayerApi(env: Record<string, string>): Plugin {
+  const key = env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || ''
+  return {
+    name: 'solar-layer-api',
+    configureServer(server) {
+      server.middlewares.use('/api/solar-layer', (req, res) => {
+        const u = new URL(req.url || '', 'http://localhost')
+        const lat = Number(u.searchParams.get('lat')), lng = Number(u.searchParams.get('lng'))
+        const kind = u.searchParams.get('kind') || 'dsm'
+        const radiusMeters = Number(u.searchParams.get('radius') || '40'), pixelSizeMeters = Number(u.searchParams.get('px') || '0.25')
+        if (!key || !isFinite(lat) || !isFinite(lng)) { res.statusCode = 404; return res.end() }
+        solarLayerBytes(lat, lng, kind, key, { radiusMeters, pixelSizeMeters })
+          .then(({ buf, contentType }) => { res.setHeader('Content-Type', contentType); res.setHeader('Cache-Control', 'public, max-age=86400'); res.end(buf) })
+          .catch((e) => { res.statusCode = 404; res.end(String(e?.message || e)) })
       })
     },
   }
@@ -237,7 +258,7 @@ function epcApi(_env: Record<string, string>): Plugin {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   return {
-    plugins: [react(), solarApi(env), sourcingApi(env), roofImageApi(env), placesApi(env), autocompleteApi(env), pvgisApi(), geocodeApi(env), epcApi(env), oviApi(env)],
+    plugins: [react(), solarApi(env), solarLayerApi(env), sourcingApi(env), roofImageApi(env), placesApi(env), autocompleteApi(env), pvgisApi(), geocodeApi(env), epcApi(env), oviApi(env)],
     server: { port: 3010 },
   }
 })

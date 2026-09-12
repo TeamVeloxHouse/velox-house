@@ -61,6 +61,29 @@ export async function googleSolarAnalysis(address, key) {
   return googleSolarAnalysisAt(lat, lng, key)
 }
 
+/** Solar API Data Layers — GeoTIFF URLs for DSM (roof heightfield), RGB aerial, mask, and annual
+ *  solar flux (irradiance/shading). Each returned URL needs the key appended to download. */
+export async function solarDataLayers(lat, lng, key, { radiusMeters = 40, pixelSizeMeters = 0.25 } = {}) {
+  if (!key) throw new Error('no key')
+  const url = `https://solar.googleapis.com/v1/dataLayers:get?location.latitude=${lat}&location.longitude=${lng}&radiusMeters=${radiusMeters}&view=FULL_LAYERS&requiredQuality=HIGH&pixelSizeMeters=${pixelSizeMeters}&exactQualityRequired=false&key=${key}`
+  const r = await fetch(url)
+  const j = await r.json()
+  if (!r.ok || (!j.dsmUrl && !j.rgbUrl)) throw new Error(`dataLayers ${r.status} ${j?.error?.status || ''}`)
+  return { imageryDate: j.imageryDate, imageryQuality: j.imageryQuality, dsmUrl: j.dsmUrl, rgbUrl: j.rgbUrl, maskUrl: j.maskUrl, annualFluxUrl: j.annualFluxUrl, monthlyFluxUrl: j.monthlyFluxUrl }
+}
+
+/** Fetch one data-layer GeoTIFF/PNG by kind, streaming the raw bytes (keeps the key server-side). */
+export async function solarLayerBytes(lat, lng, kind, key, opts) {
+  const layers = await solarDataLayers(lat, lng, key, opts)
+  const map = { dsm: layers.dsmUrl, rgb: layers.rgbUrl, mask: layers.maskUrl, flux: layers.annualFluxUrl }
+  const u = map[kind]
+  if (!u) throw new Error(`no ${kind} layer`)
+  const r = await fetch(`${u}&key=${key}`)
+  if (!r.ok) throw new Error(`${kind} ${r.status}`)
+  const buf = Buffer.from(await r.arrayBuffer())
+  return { buf, contentType: r.headers.get('content-type') || 'image/tiff' }
+}
+
 function mapAnalysis(sp, lat, lng) {
   const panelWatts = Math.round(sp.panelCapacityWatts || 400)
   const maxPanels = sp.maxArrayPanelsCount || 0
