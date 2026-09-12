@@ -162,6 +162,144 @@ export async function fetchBuildingOutline(lat: number, lng: number, radius = 40
   } catch { return null }
 }
 
+/** Moore boundary trace of a region (clockwise) → ordered pixel loop, or null. */
+function mooreTrace(inRegion: (x: number, y: number) => boolean, W: number, H: number): PXY[] | null {
+  let sx = -1, sy = -1
+  for (let y = 0; y < H && sy < 0; y++) for (let x = 0; x < W; x++) if (inRegion(x, y)) { sx = x; sy = y; break }
+  if (sx < 0) return null
+  const dirs = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]]
+  const boundary: PXY[] = []; let cx = sx, cy = sy, dir = 6, guard = 0
+  do {
+    boundary.push([cx, cy]); let found = false
+    for (let k = 0; k < 8; k++) { const d = (dir + k) % 8, nx = cx + dirs[d][0], ny = cy + dirs[d][1]; if (inRegion(nx, ny)) { cx = nx; cy = ny; dir = (d + 5) % 8; found = true; break } }
+    if (!found) break
+  } while ((cx !== sx || cy !== sy) && ++guard < W * H)
+  return boundary.length >= 4 ? boundary : null
+}
+
+export type RoofFacet = { polygon: { lat: number; lng: number }[]; pitchDeg: number; azimuthDeg: number; areaM2: number }
+
+/** Segment a building's roof into true planar facets from the DSM itself — compute a normal per pixel,
+ *  region-grow coplanar roof pixels, then fit + outline each facet. Gives one correctly-tilted plane
+ *  per real roof face (gable side, hip, dormer) instead of Google's coarse boxes. */
+export async function segmentRoofFacets(lat: number, lng: number, radius = 40, px = 0.25): Promise<RoofFacet[] | null> {
+  try {
+    const q = `lat=${lat}&lng=${lng}&radius=${radius}&px=${px}`
+    const [dsmR, maskR] = await Promise.all([fetch(`/api/solar-layer?kind=dsm&${q}`), fetch(`/api/solar-layer?kind=mask&${q}`)])
+    if (!dsmR.ok || !maskR.ok) return null
+    const dsm = await readBand(await dsmR.arrayBuffer())
+    const mk = await readBand(await maskR.arrayBuffer())
+    if (mk.w !== dsm.w || mk.h !== dsm.h) return null
+    const W = dsm.w, H = dsm.h, res = dsm.res
+    // smooth heights (3×3) to tame normal noise
+    const hs = new Float32Array(W * H)
+    let minH = Infinity
+    for (let i = 0; i < W * H; i++) { const v = dsm.data[i]; if (v > -500 && v < 10000 && v < minH) minH = v }
+    for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) {
+      let s = 0, n = 0
+      for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) { const rr = r + dr, cc = c + dc; if (rr >= 0 && rr < H && cc >= 0 && cc < W) { const v = dsm.data[rr * W + cc]; if (v > -500 && v < 10000) { s += v; n++ } } }
+      hs[r * W + c] = n ? s / n : minH
+    }
+    // Restrict to the TARGET building = the mask component containing the centre (the query point),
+    // else we'd segment the whole terrace/neighbourhood that falls in the DSM window.
+    const comp = new Int32Array(W * H).fill(-1)
+    { let cur = 0; const st: number[] = []
+      for (let s = 0; s < W * H; s++) {
+        if (mk.data[s] <= 0.5 || comp[s] >= 0) continue
+        st.length = 0; st.push(s); comp[s] = cur
+        while (st.length) { const p = st.pop()!; const x = p % W, y = (p / W) | 0; const nb = [x > 0 ? p - 1 : -1, x < W - 1 ? p + 1 : -1, y > 0 ? p - W : -1, y < H - 1 ? p + W : -1]; for (const q of nb) if (q >= 0 && mk.data[q] > 0.5 && comp[q] < 0) { comp[q] = cur; st.push(q) } }
+        cur++
+      } }
+    const cxp = (W / 2) | 0, cyp = (H / 2) | 0
+    let target = -1, bd = Infinity
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const idx = y * W + x; if (mk.data[idx] > 0.5) { const dd = (x - cxp) ** 2 + (y - cyp) ** 2; if (dd < bd) { bd = dd; target = comp[idx] } } }
+    if (target < 0) return null
+    // per-pixel roof test + gradient (a = ∂h/∂east, b = ∂h/∂north); reject walls (near-vertical) & ground
+    const isRoof = new Uint8Array(W * H), gA = new Float32Array(W * H), gB = new Float32Array(W * H), up = new Float32Array(W * H)
+    for (let r = 1; r < H - 1; r++) for (let c = 1; c < W - 1; c++) {
+      const idx = r * W + c
+      if (comp[idx] !== target || hs[idx] - minH < 1.0) continue
+      const a = (hs[idx + 1] - hs[idx - 1]) / (2 * res) // east
+      const b = (hs[(r - 1) * W + c] - hs[(r + 1) * W + c]) / (2 * res) // north (row 0 = north)
+      const u = 1 / Math.sqrt(a * a + b * b + 1)
+      if (u < 0.32) continue // slope > ~72° → wall/edge, not a roof face
+      isRoof[idx] = 1; gA[idx] = a; gB[idx] = b; up[idx] = u
+    }
+    // region-grow coplanar facets by normal similarity (≈18°)
+    const label = new Int32Array(W * H).fill(-1)
+    const COS = Math.cos((18 * Math.PI) / 180)
+    const facets: number[][] = []
+    const queue: number[] = []
+    for (let s = 0; s < W * H; s++) {
+      if (!isRoof[s] || label[s] >= 0) continue
+      const px0 = -gA[s] * up[s], py0 = up[s], pz0 = -gB[s] * up[s]
+      let ax = px0, ay = py0, az = pz0 // running average normal (unnormalised sum)
+      const pixels: number[] = []
+      queue.length = 0; queue.push(s); label[s] = facets.length
+      while (queue.length) {
+        const p = queue.pop()!; pixels.push(p); const x = p % W, y = (p / W) | 0
+        const nb = [x > 0 ? p - 1 : -1, x < W - 1 ? p + 1 : -1, y > 0 ? p - W : -1, y < H - 1 ? p + W : -1]
+        // current average normal (normalised)
+        const am = Math.hypot(ax, ay, az) || 1
+        for (const nq of nb) {
+          if (nq < 0 || !isRoof[nq] || label[nq] >= 0) continue
+          const nx = -gA[nq] * up[nq], ny = up[nq], nz = -gB[nq] * up[nq]
+          if ((nx * ax + ny * ay + nz * az) / am >= COS) { label[nq] = facets.length; ax += nx; ay += ny; az += nz; queue.push(nq) }
+        }
+      }
+      if (pixels.length >= 24) facets.push(pixels)
+      else pixels.forEach((p) => (label[p] = -1))
+    }
+    if (!facets.length) return null
+    const halfW = (W * res) / 2, halfH = (H * res) / 2, mLat = 110540, mLng = 111320 * Math.cos((lat * Math.PI) / 180)
+    const pxToLL = (c: number, r: number) => { const east = (c + 0.5) * res - halfW, north = halfH - (r + 0.5) * res; return { lat: lat + north / mLat, lng: lng + east / mLng } }
+    const fitPixels = (pixels: number[]) => {
+      let Sxx = 0, Sxz = 0, Sx = 0, Szz = 0, Sz = 0, Sxy = 0, Szy = 0, Sy = 0, n = 0
+      for (const p of pixels) { const c = p % W, r = (p / W) | 0, e = (c + 0.5) * res - halfW, no = halfH - (r + 0.5) * res, h = hs[p]; n++; Sxx += e * e; Sxz += e * no; Sx += e; Szz += no * no; Sz += no; Sxy += e * h; Szy += no * h; Sy += h }
+      return solve3v([[Sxx, Sxz, Sx], [Sxz, Szz, Sz], [Sx, Sz, n]], [Sxy, Szy, Sy])
+    }
+    // Merge adjacent, coplanar facets (one roof face split by DSM noise) via union-find on planes.
+    const planes = facets.map(fitPixels)
+    const parent = facets.map((_, i) => i)
+    const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i])))
+    for (let p = 0; p < W * H; p++) {
+      const l = label[p]; if (l < 0) continue
+      const x = p % W, y = (p / W) | 0
+      for (const q of [x < W - 1 ? p + 1 : -1, y < H - 1 ? p + W : -1]) {
+        if (q < 0) continue; const m = label[q]; if (m < 0 || find(m) === find(l)) continue
+        const A = planes[l], B = planes[m]; if (!A || !B) continue
+        if (Math.abs(A[0] - B[0]) < 0.16 && Math.abs(A[1] - B[1]) < 0.16 && Math.abs(A[2] - B[2]) < 1.2) parent[find(l)] = find(m)
+      }
+    }
+    const groups = new Map<number, number[]>()
+    for (let i = 0; i < facets.length; i++) { const r = find(i); if (!groups.has(r)) groups.set(r, []); for (const p of facets[i]) groups.get(r)!.push(p) }
+    const rlabel = new Int32Array(W * H).fill(-1)
+    const gList: number[][] = []
+    for (const [, pix] of groups) { const gi = gList.length; pix.forEach((p) => (rlabel[p] = gi)); gList.push(pix) }
+    const out: RoofFacet[] = []
+    gList.forEach((pixels, fid) => {
+      const sol = fitPixels(pixels); if (!sol) return
+      const [a, b] = sol
+      const pitch = Math.round((Math.atan(Math.hypot(a, b)) * 180) / Math.PI)
+      if (pitch > 55) return // walls / spurious steep faces
+      const azimuth = Math.round(((Math.atan2(-a, -b) * 180) / Math.PI + 360) % 360) // down-slope = facing, from north
+      const boundary = mooreTrace((x, y) => x >= 0 && y >= 0 && x < W && y < H && rlabel[y * W + x] === fid, W, H)
+      if (!boundary) return
+      const simp = dpSimplify(boundary, 1.3); if (simp.length < 3) return
+      const polygon = simp.map(([c, r]) => pxToLL(c, r))
+      const areaM2 = Math.round((pixels.length * res * res) / Math.max(0.2, Math.cos((pitch * Math.PI) / 180)))
+      if (areaM2 >= 8) out.push({ polygon, pitchDeg: Math.max(0, Math.min(60, pitch)), azimuthDeg: azimuth, areaM2 })
+    })
+    return out.length ? out.sort((p, q) => q.areaM2 - p.areaM2) : null
+  } catch { return null }
+}
+function solve3v(M: number[][], B: number[]): number[] | null {
+  const det = (m: number[][]) => m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0])
+  const d = det(M); if (Math.abs(d) < 1e-9) return null
+  const col = (k: number) => M.map((row, i) => row.map((v, j) => (j === k ? B[i] : v)))
+  return [det(col(0)) / d, det(col(1)) / d, det(col(2)) / d]
+}
+
 /** A blue→green→yellow→red irradiance ramp (0..1) for the flux heatmap. */
 export function fluxColor(t: number): [number, number, number] {
   const c = Math.max(0, Math.min(1, t))

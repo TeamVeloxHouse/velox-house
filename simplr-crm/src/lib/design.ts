@@ -2,7 +2,7 @@
  * geometry (areas) the canvas needs. Google Solar gives per-plane pitch/azimuth + an axis-aligned
  * bounding box; we seed planes from those (editable), and refine to true shapes in a later phase. */
 import { analyseRoofLive, fetchBuildingFootprint, type LatLng, type RoofAnalysis } from './solar'
-import { fetchBuildingOutline } from './dsm'
+import { fetchBuildingOutline, segmentRoofFacets } from './dsm'
 import type { DesignPlane } from '../store/types'
 
 const uid = (p: string) => `${p}${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`
@@ -91,8 +91,17 @@ export function planesFromAnalysis(a: RoofAnalysis, footprint?: LatLng[] | null)
 export async function detectPlanes(address: string, center?: LatLng): Promise<{ planes: DesignPlane[]; center?: LatLng; measured: boolean }> {
   const analysis = await analyseRoofLive(address, center)
   const c = analysis.center || center
-  // Real building outline to clip Google's boxes to the true roof shape. Prefer Google's own mask
-  // (always available with the key), fall back to OSM (free but flaky), else the raw boxes.
+  // BEST: segment the roof into true planar facets from the DSM (each real face, correctly tilted) —
+  // this is the "usable area" per facet. Use it when it yields a sensible set.
+  if (c) {
+    const facets = await segmentRoofFacets(c.lat, c.lng).catch(() => null)
+    const good = facets?.filter((f) => f.areaM2 >= 6) ?? []
+    if (good.length >= 1 && good.length <= 16) {
+      const planes: DesignPlane[] = good.map((f) => ({ id: uid('pl'), name: `${compass(f.azimuthDeg)}-facing plane`, polygon: f.polygon, pitchDeg: f.pitchDeg, azimuthDeg: f.azimuthDeg, areaM2: f.areaM2, source: 'google' }))
+      return { planes, center: c, measured: true }
+    }
+  }
+  // Fallback: clip Google's boxes to the building outline (mask, else flaky OSM, else raw box).
   let footprint: LatLng[] | null = null
   if (c) footprint = await fetchBuildingOutline(c.lat, c.lng).catch(() => null)
   if (!footprint && c) footprint = await fetchBuildingFootprint(c).catch(() => null)

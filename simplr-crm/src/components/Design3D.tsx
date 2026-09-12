@@ -101,6 +101,7 @@ export function Design3D({ design, onCapture, adding, moduleId, onCommitPanels }
   const [dsmStatus, setDsmStatus] = useState<'idle' | 'loading' | 'ready' | 'none'>('idle')
   const [photoreal, setPhotoreal] = useState(true)
   const [showFlux, setShowFlux] = useState(false)
+  const [showFaces, setShowFaces] = useState(true) // highlight the mapped usable roof faces
 
   // Fetch the DSM + aerial once per location (needs the Google key; silently no-ops without it).
   useEffect(() => {
@@ -320,6 +321,20 @@ export function Design3D({ design, onCapture, adding, moduleId, onCommitPanels }
       planeGeo.set(p.id, { heightAt })
       roofCenters.push({ x: c.x, y: heightAt(c.x, c.z), z: c.z })
 
+      // Usable-area overlay — the mapped roof face, drawn on the fitted plane so you can see & design
+      // within the real usable space.
+      if (showFaces && fp.length >= 3) {
+        const fshape = new THREE.Shape(fp.map((v) => new THREE.Vector2(v.x, v.z)))
+        const fgeo = new THREE.ShapeGeometry(fshape)
+        const fp2 = fgeo.attributes.position as THREE.BufferAttribute
+        for (let i = 0; i < fp2.count; i++) { const sx = fp2.getX(i), sz = fp2.getY(i); fp2.setXYZ(i, sx, heightAt(sx, sz) + 0.06, sz) }
+        const fill = new THREE.Mesh(fgeo, new THREE.MeshBasicMaterial({ color: 0x27e0ff, transparent: true, opacity: 0.15, side: THREE.DoubleSide, depthWrite: false }))
+        fill.renderOrder = 2; scene.add(fill)
+        const ring = fp.map((v) => new THREE.Vector3(v.x, heightAt(v.x, v.z) + 0.09, v.z)); ring.push(ring[0])
+        const outline = new THREE.Line(new THREE.BufferGeometry().setFromPoints(ring), new THREE.LineBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.9, depthTest: false }))
+        outline.renderOrder = 3; scene.add(outline)
+      }
+
       // Panels — corners placed on the (fitted) roof plane, so they read the real tilt/gradient.
       p.panels?.forEach((pn) => {
         const g3 = pn.corners.map((v) => new THREE.Vector3(X(v), heightAt(X(v), Z(v)), Z(v)))
@@ -483,7 +498,7 @@ export function Design3D({ design, onCapture, adding, moduleId, onCommitPanels }
       if (renderer.domElement.parentNode === el) el.removeChild(renderer.domElement)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [design.id, design.planes, design.obstacles, design.eaveHeightM, photoreal, dsm, rgb, showFlux])
+  }, [design.id, design.planes, design.obstacles, design.eaveHeightM, photoreal, dsm, rgb, showFlux, showFaces])
 
   const hasGeom = design.planes.some((p) => p.polygon.length >= 3)
   const hasPanels = design.planes.some((p) => p.panels?.length)
@@ -525,6 +540,7 @@ export function Design3D({ design, onCapture, adding, moduleId, onCommitPanels }
             {dsmStatus === 'ready' && (
               <>
                 <button onClick={() => setPhotoreal((v) => !v)} title="Toggle the real 3D roof (Google DSM) vs the clean model" className={`h-9 px-3.5 rounded-full backdrop-blur border shadow-modal text-[12.5px] font-semibold inline-flex items-center gap-1.5 ${photoreal ? 'text-white border-transparent' : 'bg-white/95 text-ink-2 border-border'}`} style={photoreal ? { background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' } : undefined}>◈ Photoreal</button>
+                <button onClick={() => setShowFaces((v) => !v)} title="Highlight the usable roof faces we mapped" className={`h-9 px-3.5 rounded-full backdrop-blur border shadow-modal text-[12.5px] font-semibold inline-flex items-center gap-1.5 ${showFaces ? 'text-white border-transparent' : 'bg-white/95 text-ink-2 border-border'}`} style={showFaces ? { background: 'linear-gradient(135deg,#00E5FF,#3B6BF5)' } : undefined}>▧ Usable area</button>
                 {photoreal && dsm?.flux && (
                   <button onClick={() => setShowFlux((v) => !v)} title="Annual sun / shading heatmap" className={`h-9 px-3.5 rounded-full backdrop-blur border shadow-modal text-[12.5px] font-semibold inline-flex items-center gap-1.5 ${showFlux ? 'text-white border-transparent' : 'bg-white/95 text-ink-2 border-border'}`} style={showFlux ? { background: 'linear-gradient(90deg,#2f6bd6,#e6dc3c,#dc3228)' } : undefined}>☀ Heatmap</button>
                 )}
