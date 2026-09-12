@@ -26,7 +26,7 @@ async function readBand(buf: ArrayBuffer): Promise<{ w: number; h: number; res: 
 }
 
 /** Fetch + parse the DSM (and flux) for a point. Returns null if the proxy/key has no data here. */
-export async function fetchDsm(lat: number, lng: number, radius = 40, px = 0.25): Promise<DsmData | null> {
+export async function fetchDsm(lat: number, lng: number, radius = 35, px = 0.1): Promise<DsmData | null> {
   try {
     const q = `lat=${lat}&lng=${lng}&radius=${radius}&px=${px}`
     const [dsmR, fluxR, maskR] = await Promise.all([
@@ -66,7 +66,7 @@ export async function fetchDsm(lat: number, lng: number, radius = 40, px = 0.25)
 }
 
 /** Fetch the RGB aerial data-layer (same grid as the DSM) as a canvas, to drape on the roof mesh. */
-export async function fetchRgbCanvas(lat: number, lng: number, radius = 40, px = 0.25): Promise<HTMLCanvasElement | null> {
+export async function fetchRgbCanvas(lat: number, lng: number, radius = 35, px = 0.1): Promise<HTMLCanvasElement | null> {
   try {
     const r = await fetch(`/api/solar-layer?kind=rgb&lat=${lat}&lng=${lng}&radius=${radius}&px=${px}`)
     if (!r.ok) return null

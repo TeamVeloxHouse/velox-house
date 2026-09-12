@@ -99,7 +99,7 @@ export function Design3D({ design, onCapture, adding, moduleId, onCommitPanels }
   const [dsm, setDsm] = useState<DsmData | null>(null)
   const [rgb, setRgb] = useState<HTMLCanvasElement | null>(null)
   const [dsmStatus, setDsmStatus] = useState<'idle' | 'loading' | 'ready' | 'none'>('idle')
-  const [photoreal, setPhotoreal] = useState(false) // default = sharp reconstructed model; on = raw DSM blob
+  const [photoreal, setPhotoreal] = useState(true) // default = the real DSM house; off = clean reconstructed model
   const [showFlux, setShowFlux] = useState(false)
   const [showFaces, setShowFaces] = useState(true) // highlight the mapped usable roof faces
 
