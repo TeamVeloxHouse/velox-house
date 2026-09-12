@@ -470,7 +470,9 @@ export function Design3D({ design, onCapture, adding, moduleId, onCommitPanels }
       })
     }
     let dragPid: string | null = null, startCell: GridCell | null = null, lastCell: GridCell | null = null, dragCells: GridCell[] = [], moved = false
+    let movingArray = false, occupied: { row: number; col: number }[] = [] // drag FROM a panel = move the whole array
     const hasPanelAt = (p: DesignPlane, c: GridCell) => (p.panels ?? []).some((pn) => sameCell(panelCtr(pn), c.center))
+    const cellOfPanel = (pn: { corners: LL[] }) => nearestCell(dragCells, panelCtr(pn))
     const onMove = (ev: PointerEvent) => {
       if (!addingRef.current) return
       if (dragPid && startCell) {
@@ -478,8 +480,14 @@ export function Design3D({ design, onCapture, adding, moduleId, onCommitPanels }
         const cur = nearestCell(dragCells, ll); if (!cur) return
         lastCell = cur
         if (cur.row !== startCell.row || cur.col !== startCell.col) moved = true
-        const p = designRef.current.planes.find((x) => x.id === dragPid)
-        drawGhost(dragPid, cellBlock(dragCells, startCell, cur), !moved && !!p && hasPanelAt(p, startCell))
+        if (movingArray) { // preview the whole array shifted by the grid delta
+          const dr = cur.row - startCell.row, dc = cur.col - startCell.col
+          const shifted = occupied.map((o) => dragCells.find((c) => c.row === o.row + dr && c.col === o.col + dc)).filter(Boolean) as GridCell[]
+          drawGhost(dragPid, shifted, false)
+        } else {
+          const p = designRef.current.planes.find((x) => x.id === dragPid)
+          drawGhost(dragPid, cellBlock(dragCells, startCell, cur), !moved && !!p && hasPanelAt(p, startCell))
+        }
       } else {
         const ll = pickLL(ev); const p = ll ? planeAtLL(ll) : undefined
         if (p && ll) { const c = nearestCell(gridFor(p), ll); drawGhost(p.id, c ? [c] : [], !!c && hasPanelAt(p, c)) }
@@ -491,21 +499,31 @@ export function Design3D({ design, onCapture, adding, moduleId, onCommitPanels }
       const ll = pickLL(ev); const p = ll ? planeAtLL(ll) : undefined
       if (!p || !ll) return
       dragPid = p.id; dragCells = gridFor(p); startCell = nearestCell(dragCells, ll); lastCell = startCell; moved = false
+      // If the press starts on an existing module, this drag MOVES the whole array.
+      movingArray = !!startCell && hasPanelAt(p, startCell)
+      occupied = movingArray ? (p.panels ?? []).map(cellOfPanel).filter(Boolean).map((c) => ({ row: c!.row, col: c!.col })) : []
     }
     const onUp = () => {
-      if (!addingRef.current || !dragPid || !startCell) { dragPid = null; startCell = null; return }
+      if (!addingRef.current || !dragPid || !startCell) { dragPid = null; startCell = null; movingArray = false; return }
       const p = designRef.current.planes.find((x) => x.id === dragPid)
       if (p) {
-        let panels = [...(p.panels ?? [])]
-        if (!moved) {
-          const idx = panels.findIndex((pn) => sameCell(panelCtr(pn), startCell!.center))
-          if (idx >= 0) panels.splice(idx, 1); else panels.push({ id: uid('pn'), corners: startCell.corners })
+        if (movingArray && moved) {
+          // shift every module in this array by the grid delta; drop any pushed off the facet
+          const dr = (lastCell ?? startCell).row - startCell.row, dc = (lastCell ?? startCell).col - startCell.col
+          const newPanels = (p.panels ?? []).map((pn) => { const c = cellOfPanel(pn); const nc = c && dragCells.find((x) => x.row === c.row + dr && x.col === c.col + dc); return nc ? { ...pn, corners: nc.corners } : null }).filter(Boolean) as DesignPanel[]
+          if (newPanels.length) commitRef.current?.(dragPid, newPanels)
         } else {
-          for (const c of cellBlock(dragCells, startCell, lastCell ?? startCell)) if (!panels.some((pn) => sameCell(panelCtr(pn), c.center))) panels.push({ id: uid('pn'), corners: c.corners })
+          let panels = [...(p.panels ?? [])]
+          if (!moved) {
+            const idx = panels.findIndex((pn) => sameCell(panelCtr(pn), startCell!.center))
+            if (idx >= 0) panels.splice(idx, 1); else panels.push({ id: uid('pn'), corners: startCell.corners })
+          } else {
+            for (const c of cellBlock(dragCells, startCell, lastCell ?? startCell)) if (!panels.some((pn) => sameCell(panelCtr(pn), c.center))) panels.push({ id: uid('pn'), corners: c.corners })
+          }
+          commitRef.current?.(dragPid, panels)
         }
-        commitRef.current?.(dragPid, panels)
       }
-      ghostGroup.clear(); dragPid = null; startCell = null; dragCells = []; moved = false
+      ghostGroup.clear(); dragPid = null; startCell = null; dragCells = []; moved = false; movingArray = false
     }
     canvas.addEventListener('pointermove', onMove)
     canvas.addEventListener('pointerdown', onDown)
@@ -534,7 +552,7 @@ export function Design3D({ design, onCapture, adding, moduleId, onCommitPanels }
         </div>
       )}
       {adding && (
-        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-10 text-white rounded-full shadow-modal px-4 py-2 text-[12.5px] font-semibold inline-flex items-center gap-2" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}>Click the roof to place a module · drag for a block · click one to remove · right-drag to orbit</div>
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-10 text-white rounded-full shadow-modal px-4 py-2 text-[12px] font-semibold inline-flex items-center gap-2 text-center" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}>Click to place · drag empty roof for a block · drag a panel to move the array · click one to remove · right-drag to orbit</div>
       )}
       {hasGeom && !hasPanels && !adding && (
         <div className="absolute top-16 left-1/2 -translate-x-1/2 z-10 bg-white/95 backdrop-blur border border-border rounded-full shadow-modal px-4 py-2 text-[12.5px] font-semibold text-ink-2">Hit <b>Ovi auto-layout</b>, or use <b>Add panels</b> to place them on the roof</div>
