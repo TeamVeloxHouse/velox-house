@@ -1,0 +1,40 @@
+IMPARA! — Learn Italian  🇮🇹
+============================
+
+This folder IS the app. No installing, no build step.
+
+--------------------------------------------------------------
+TRY IT RIGHT NOW (on this computer)
+--------------------------------------------------------------
+Double-click  index.html  — it opens in your web browser and works.
+(Audio and all lessons work. "Add to phone" + full offline mode
+ need it to be hosted online — see below.)
+
+--------------------------------------------------------------
+PUT IT ON YOUR PHONE (free, ~2 minutes, no app store)
+--------------------------------------------------------------
+1. On your computer, go to:   https://app.netlify.com/drop
+2. Drag THIS "italian-app" folder onto that web page.
+   (You may need a free Netlify account — sign up takes a moment.)
+3. Netlify gives you a live web link (e.g. something.netlify.app).
+4. Open that link ON YOUR PHONE, then:
+      iPhone  : Share button  ->  "Add to Home Screen"
+      Android : menu (⋮)       ->  "Install app"
+5. It now opens full-screen like a normal app and works offline.
+
+--------------------------------------------------------------
+WHAT'S INSIDE
+--------------------------------------------------------------
+- Guided path: beginner (A1) to advanced (C1)
+- Exercises: multiple choice, word-bank, typing, listening, match
+- XP, streaks, hearts, crowns, spaced-repetition practice
+- "Create" tab: type ANY word/phrase/sentence -> instant lesson
+  (needs internet the first time for a new word; then saved offline)
+
+Your progress is saved privately on your own device only.
+
+--------------------------------------------------------------
+ADD YOUR OWN CONTENT
+--------------------------------------------------------------
+Open  js/course-extra.js  in any text editor and copy the pattern
+to add lessons. Exercises build themselves from the words you add.
