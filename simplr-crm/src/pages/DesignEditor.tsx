@@ -79,6 +79,7 @@ export function DesignEditor() {
   const panelLayer = useRef<L.LayerGroup | null>(null)
   const ghostLayer = useRef<L.LayerGroup | null>(null)
   const rgbLayer = useRef<L.ImageOverlay | null>(null)
+  const gTiles = useRef<L.TileLayer | null>(null)
   const aerialKey = useRef<string | null>(null)
   const fittedRef = useRef<string | null>(null) // last framed design:planeCount — refit on structure change only
   const undoStack = useRef<DesignPlane[][]>([])
@@ -304,6 +305,19 @@ export function DesignEditor() {
 
   // Keep Leaflet sized correctly when returning to a canvas tab (it was display:none)
   useEffect(() => { if (canvasVisible && map.current) setTimeout(() => map.current!.invalidateSize(), 60) }, [canvasVisible])
+
+  // ── High-res Google base tiles: probe once; if the Map Tiles API is enabled on the key, swap the
+  //    Esri base for Google satellite everywhere. Silently keeps Esri if the probe 404s. ──
+  useEffect(() => {
+    if (!mapReady || !map.current || gTiles.current) return
+    let cancelled = false
+    fetch('/api/maptiles/2/1/1').then((r) => {
+      if (cancelled || !r.ok || !map.current) return
+      const g = L.tileLayer('/api/maptiles/{z}/{x}/{y}', { maxZoom: 21, maxNativeZoom: 20, keepBuffer: 3, errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAAAAACwAAAAAAQABAAA=' })
+      g.addTo(map.current); gTiles.current = g // sits in the tile pane, above Esri, below the RGB overlay + vectors
+    }).catch(() => { /* keep Esri */ })
+    return () => { cancelled = true }
+  }, [mapReady])
 
   // ── High-res Google aerial: fetch the Solar RGB layer once per location and drape it on the 2D map
   //    (Pylon-grade sharpness where you design). Silently no-ops without a Solar key. ──

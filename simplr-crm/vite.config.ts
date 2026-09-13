@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { googleSolarAnalysis, googleSolarAnalysisAt, geocode, solarLayerBytes } from './server/solarProvider.mjs'
+import { mapTileBytes } from './server/mapTilesProvider.mjs'
 import { pdlSearch } from './server/sourcingProvider.mjs'
 import { staticSatellite } from './server/roofImage.mjs'
 import { placesSearch, placesRadiusScan, placesAutocomplete } from './server/placesProvider.mjs'
@@ -136,6 +137,26 @@ function solarLayerApi(env: Record<string, string>): Plugin {
   }
 }
 
+/** Dev-only proxy for Google Map Tiles (2D satellite) — high-res aerial base map, key kept server-side.
+ *  URL: /api/maptiles/{z}/{x}/{y}. 404s (→ client keeps the Esri base) when the Map Tiles API isn't
+ *  enabled on GOOGLE_MAPS_API_KEY. */
+function mapTilesApi(env: Record<string, string>): Plugin {
+  const key = env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || ''
+  return {
+    name: 'map-tiles-api',
+    configureServer(server) {
+      server.middlewares.use('/api/maptiles', (req, res) => {
+        const path = (req.url || '').split('?')[0].replace(/^\//, '') // "z/x/y"
+        const [z, x, y] = path.split('/').map(Number)
+        if (!key || ![z, x, y].every(Number.isFinite)) { res.statusCode = 404; return res.end() }
+        mapTileBytes(z, x, y, key)
+          .then(({ buf, contentType }) => { res.setHeader('Content-Type', contentType); res.setHeader('Cache-Control', 'public, max-age=86400'); res.end(buf) })
+          .catch((e) => { res.statusCode = 404; res.end(String(e?.message || e)) })
+      })
+    },
+  }
+}
+
 /** Dev-only backend for Google Places discovery — keeps the key server-side.
  *  Set GOOGLE_MAPS_API_KEY (Places API enabled); without it /api/places returns { buildings: [] }
  *  and the Commercial Solar Engine reports "no building source configured". */
@@ -258,7 +279,7 @@ function epcApi(_env: Record<string, string>): Plugin {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   return {
-    plugins: [react(), solarApi(env), solarLayerApi(env), sourcingApi(env), roofImageApi(env), placesApi(env), autocompleteApi(env), pvgisApi(), geocodeApi(env), epcApi(env), oviApi(env)],
+    plugins: [react(), solarApi(env), solarLayerApi(env), mapTilesApi(env), sourcingApi(env), roofImageApi(env), placesApi(env), autocompleteApi(env), pvgisApi(), geocodeApi(env), epcApi(env), oviApi(env)],
     server: { port: 3010 },
   }
 })
