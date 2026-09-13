@@ -66,6 +66,10 @@ const panelAngle = (corners: LatLng[]) => Math.atan2((corners[1].lat - corners[0
 /** Do two panel quads overlap? Corner-containment either way — enough for near-equal rectangles. */
 const anyCornerInside = (p: LatLng[], q: LatLng[]) => p.some((c) => pointInRing(q, c))
 const quadsOverlap = (a: LatLng[], b: LatLng[]) => anyCornerInside(a, b) || anyCornerInside(b, a)
+// A circular-arrow "rotate" cursor shown when hovering a selection's corner node / rotate handle.
+const ROTATE_CURSOR = (() => {
+  try { const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v5h-5"/></svg>`; return `url("data:image/svg+xml;base64,${btoa(svg)}") 13 13, auto` } catch { return 'grab' }
+})()
 
 /** Effective generating tilt — tilt-racking on a flat roof beats the flat pitch. */
 function effTilt(p: DesignPlane): number { return p.racking && p.racking !== 'flush' ? (p.tiltDeg ?? 10) : p.pitchDeg }
@@ -124,9 +128,9 @@ export function DesignEditor() {
   // ── Map init (once) ──
   useEffect(() => {
     if (map.current || !mapEl.current) return
-    const m = L.map(mapEl.current, { center: [52.6, -1.9], zoom: 6, zoomControl: false, attributionControl: false })
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 21, maxNativeZoom: 19 }).addTo(m)
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', { maxZoom: 21, maxNativeZoom: 19, opacity: 0.9 }).addTo(m)
+    const m = L.map(mapEl.current, { center: [52.6, -1.9], zoom: 6, maxZoom: 23, zoomControl: false, attributionControl: false })
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 23, maxNativeZoom: 19 }).addTo(m)
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', { maxZoom: 23, maxNativeZoom: 19, opacity: 0.9 }).addTo(m)
     panelRenderer.current = L.canvas({ padding: 0.5 })
     panelLayer.current = L.layerGroup().addTo(m)
     planeLayer.current = L.layerGroup().addTo(m)
@@ -218,6 +222,27 @@ export function DesignEditor() {
       grp = { items, center }; grpMode = mode; grpStart = ll; grpRot0 = bearingTo(center, ll); m.dragging.disable()
     }
     const startGroup = (mode: 'move' | 'rotate', ll: L.LatLng) => { const items = selectionItems(); if (!items.length) return; startGroupWith(items.map((i) => ({ pid: i.pid, panelId: i.panel.id, corners0: i.panel.corners })), mode, ll) }
+    // Magnetic align: nudge a move so the selection snaps onto the NEAREST other panel's module lattice
+    // (edge-to-edge with a standard gap) — the "suggested placement" that lines panels up neatly.
+    const snapMove = (dLat: number, dLng: number): [number, number] => {
+      if (!grp) return [dLat, dLng]
+      const ids = new Set(grp.items.map((i) => i.panelId)); const others = panelsOutside(ids); if (!others.length) return [dLat, dLng]
+      const ref0 = panelCenter({ corners: grp.items[0].corners0 }); const refC = { lat: ref0.lat + dLat, lng: ref0.lng + dLng }
+      let N: DesignPanel | null = null, bd = Infinity
+      for (const pn of others) { const c = panelCenter(pn); const d2 = (c.lat - refC.lat) ** 2 + (c.lng - refC.lng) ** 2; if (d2 < bd) { bd = d2; N = pn } }
+      if (!N) return [dLat, dLng]
+      const Nc = panelCenter(N), Na = panelAngle(N.corners), mLat = 110540, mLng = mLngAt(Nc.lat), ca = Math.cos(Na), sa = Math.sin(Na)
+      const edgeU = Math.hypot((N.corners[1].lng - N.corners[0].lng) * mLng, (N.corners[1].lat - N.corners[0].lat) * mLat)
+      const edgeV = Math.hypot((N.corners[2].lng - N.corners[1].lng) * mLng, (N.corners[2].lat - N.corners[1].lat) * mLat)
+      const GAP = 0.02, pu = edgeU + GAP, pv = edgeV + GAP, SNAP = 0.32
+      const ex = (refC.lng - Nc.lng) * mLng, ny = (refC.lat - Nc.lat) * mLat
+      const du = ex * ca + ny * sa, dv = -ex * sa + ny * ca
+      const su = Math.round(du / pu) * pu, sv = Math.round(dv / pv) * pv
+      const adu = Math.abs(du - su) < SNAP ? su : du, adv = Math.abs(dv - sv) < SNAP ? sv : dv
+      if (adu === du && adv === dv) return [dLat, dLng]
+      const nex = adu * ca - adv * sa, nny = adu * sa + adv * ca
+      return [dLat + (Nc.lat + nny / mLat - refC.lat), dLng + (Nc.lng + nex / mLng - refC.lng)]
+    }
     const drawGroupGhost = (transform: (c: LatLng[]) => LatLng[], checkOverlap: boolean) => {
       const outside = checkOverlap ? panelsOutside(new Set(grp!.items.map((i) => i.panelId))) : []
       const sets = grp!.items.map((i) => transform(i.corners0))
@@ -267,7 +292,7 @@ export function DesignEditor() {
         drawGhosts(cellBlock(dragCells, startCell, cur), t === 'remove' ? 'remove' : 'add'); setGhostN(cellBlock(dragCells, startCell, cur).length); return
       }
       if (t === 'select' && grpMode && grp) {
-        if (grpMode === 'move' && grpStart) drawGroupGhost((c) => translateCorners(c, e.latlng.lat - grpStart!.lat, e.latlng.lng - grpStart!.lng), true)
+        if (grpMode === 'move' && grpStart) { const [sd1, sd2] = snapMove(e.latlng.lat - grpStart.lat, e.latlng.lng - grpStart.lng); drawGroupGhost((c) => translateCorners(c, sd1, sd2), true) }
         else if (grpMode === 'rotate') { const delta = bearingTo(grp.center, e.latlng) - grpRot0; setRotDeg(Math.round((((-delta * 180) / Math.PI) % 360 + 360) % 360)); drawGroupGhost((c) => rotateCorners(c, grp!.center, delta), false) }
         return
       }
@@ -275,6 +300,13 @@ export function DesignEditor() {
         const a = marqStart, b = e.latlng
         const g = ghostLayer.current!; g.clearLayers()
         L.polygon([[a.lat, a.lng], [a.lat, b.lng], [b.lat, b.lng], [b.lat, a.lng]] as [number, number][], { renderer: panelRenderer.current!, pmIgnore: true, interactive: false, color: '#7C3AED', weight: 1.4, dashArray: '5 3', fillColor: '#7C3AED', fillOpacity: 0.08 } as any).addTo(g)
+        return
+      }
+      if (t === 'select' && !grpMode && !marqStart) { // idle hover → show a rotate cursor over nodes/handle, move cursor over the selection/panels
+        const ll = { lat: e.latlng.lat, lng: e.latlng.lng }, box = selectionBox(); let cur = ''
+        if (box) { const cp = m.latLngToContainerPoint(e.latlng); if (box.corners.some((c) => cp.distanceTo(m.latLngToContainerPoint([c.lat, c.lng])) < 12) || cp.distanceTo(boxHandlePt(box.corners)) < 16) cur = ROTATE_CURSOR; else if (selPanelRef.current.length && pointInRing(box.corners, ll)) cur = 'move' }
+        if (!cur && findPanelAt(ll)) cur = 'move'
+        m.getContainer().style.cursor = cur
         return
       }
       if (t === 'add' || t === 'remove') { // hover preview — add shows the open grid + nearest slot; remove highlights the panel under the cursor
@@ -311,7 +343,7 @@ export function DesignEditor() {
         }
       } else if (t === 'select' && grpMode && grp) {
         let transform: ((c: LatLng[]) => LatLng[]) | null = null
-        if (grpMode === 'move' && grpStart) { const dLat = e.latlng.lat - grpStart.lat, dLng = e.latlng.lng - grpStart.lng; transform = (c) => translateCorners(c, dLat, dLng) }
+        if (grpMode === 'move' && grpStart) { const [dLat, dLng] = snapMove(e.latlng.lat - grpStart.lat, e.latlng.lng - grpStart.lng); transform = (c) => translateCorners(c, dLat, dLng) }
         else if (grpMode === 'rotate') { const delta = bearingTo(grp.center, e.latlng) - grpRot0; transform = (c) => rotateCorners(c, grp!.center, delta) }
         if (transform) {
           const outside = panelsOutside(new Set(grp.items.map((i) => i.panelId)))
@@ -350,7 +382,7 @@ export function DesignEditor() {
     let cancelled = false
     fetch('/api/maptiles/2/1/1').then((r) => {
       if (cancelled || !r.ok || !map.current) return
-      const g = L.tileLayer('/api/maptiles/{z}/{x}/{y}', { maxZoom: 21, maxNativeZoom: 20, keepBuffer: 3, errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAAAAACwAAAAAAQABAAA=' })
+      const g = L.tileLayer('/api/maptiles/{z}/{x}/{y}', { maxZoom: 23, maxNativeZoom: 21, keepBuffer: 3, errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAAAAACwAAAAAAQABAAA=' })
       g.addTo(map.current); gTiles.current = g // sits in the tile pane, above Esri, below the RGB overlay + vectors
     }).catch(() => { /* keep Esri */ })
     return () => { cancelled = true }
@@ -411,7 +443,10 @@ export function DesignEditor() {
       ;(poly as any)._planeId = p.id
       poly.on('click', (e) => { L.DomEvent.stopPropagation(e); if (toolRef.current !== 'pan') setSelId(p.id) })
       poly.on('pm:edit', () => syncGeometry(p.id, poly))
-      poly.bindTooltip(`${compass(p.azimuthDeg)} · ${effTilt(p)}° · ${p.panels?.length ? `${p.panels.length} panels` : `${p.areaM2} m²`}`, { permanent: true, direction: 'center', className: 'roof-label' })
+      // Empty plane → a permanent label at its top edge; a FILLED plane → hover-only, so it never covers panels.
+      const topPt = p.polygon.reduce((a, v) => (v.lat > a.lat ? v : a), p.polygon[0])
+      const tip = poly.bindTooltip(`${compass(p.azimuthDeg)} · ${effTilt(p)}° · ${p.panels?.length ? `${p.panels.length} panels` : `${p.areaM2} m²`}`, { permanent: !p.panels?.length, direction: 'top', className: 'roof-label', offset: [0, -4] })
+      if (!p.panels?.length) tip.openTooltip([topPt.lat, topPt.lng])
       poly.addTo(lyr)
       // Sleek black modules (OpenSolar look) — near-black glass with a thin cool frame.
       p.panels?.forEach((pn) => {
@@ -648,7 +683,7 @@ export function DesignEditor() {
     const m = map.current; if (!m) return
     if (drawing) m.pm.disableDraw()
     if (editing) m.pm.disableGlobalEditMode()
-    ghostLayer.current?.clearLayers(); setGhostN(null); setRotDeg(null); m.dragging.enable()
+    ghostLayer.current?.clearLayers(); setGhostN(null); setRotDeg(null); m.dragging.enable(); m.getContainer().style.cursor = ''
     const next: Tool = t !== 'select' && tool === t ? 'select' : t
     setTool(next)
     if (next !== 'select') setSelPanelIds([])
