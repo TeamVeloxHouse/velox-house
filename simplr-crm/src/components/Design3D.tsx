@@ -628,6 +628,9 @@ export function Design3D({ design, onCapture, adding, moduleId, onCommitPanels }
             {dsmStatus === 'loading' && (
               <span className="h-9 px-3.5 rounded-full bg-white/95 backdrop-blur border border-border shadow-modal text-[12px] font-semibold text-ink-3 inline-flex items-center gap-2"><span className="w-3.5 h-3.5 rounded-full border-2 border-accent border-t-transparent animate-spin" />Loading real roof…</span>
             )}
+            {dsmStatus === 'none' && (
+              <span className="h-9 px-3.5 rounded-full bg-white/95 backdrop-blur border border-border shadow-modal text-[12px] font-semibold text-amber-700 inline-flex items-center gap-1.5" title="The photoreal 3D needs Google's DSM elevation at the design's exact centre. Drop a pin on the roof in 2D to set it; rural areas have no Google 3D data.">⚠ {design.center ? 'No Google 3D data here — showing the modelled roof' : 'Set the roof location (drop a pin in 2D) for the real 3D'}</span>
+            )}
             {dsmStatus === 'ready' && (
               <>
                 <button onClick={() => setPhotoreal((v) => !v)} title="Toggle the real 3D roof (Google DSM) vs the clean model" className={`h-9 px-3.5 rounded-full backdrop-blur border shadow-modal text-[12.5px] font-semibold inline-flex items-center gap-1.5 ${photoreal ? 'text-white border-transparent' : 'bg-white/95 text-ink-2 border-border'}`} style={photoreal ? { background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' } : undefined}>◈ Photoreal</button>
