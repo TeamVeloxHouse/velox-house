@@ -776,7 +776,10 @@ function BigStat({ v, u }: { v: string; u: string }) {
 }
 function ToolBtn({ on, onClick, icon, label }: { on: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
   return (
-    <button onClick={onClick} title={label} className={`h-8 w-[168px] px-2.5 rounded-[8px] text-[12.5px] font-semibold inline-flex items-center gap-2 ${on ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={on ? { background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' } : undefined}><span className="w-4 flex justify-center shrink-0">{icon}</span>{label}</button>
+    <button onClick={onClick} aria-label={label} className={`group relative h-9 w-9 rounded-[8px] flex items-center justify-center ${on ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={on ? { background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' } : undefined}>
+      {icon}
+      <span className="pointer-events-none absolute left-[calc(100%+10px)] top-1/2 -translate-y-1/2 whitespace-nowrap rounded-md bg-[#0A1B2B] text-white text-[11.5px] font-semibold px-2.5 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-modal z-[20]">{label}</span>
+    </button>
   )
 }
 // Tiny inline glyphs for the tools the icon set doesn't cover (cursor / eraser / rotate).
