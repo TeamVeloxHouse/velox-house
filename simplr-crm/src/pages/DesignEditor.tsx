@@ -12,6 +12,7 @@ import { geocodeLocation } from '../lib/commercialFinder'
 import { detectPlanes, slopedAreaM2, totalRoofArea, compass, polygonAreaM2 } from '../lib/design'
 import { MODULES, moduleById, packWithSettings, autoLayout, kwpOf, planeSolarFactor, planeQuality, planeGrid, type Module, type LayoutGoal, type GridCell } from '../lib/panels'
 import { regionYield, fetchBuildingHeight } from '../lib/solar'
+import { fetchRgbOverlay } from '../lib/dsm'
 import { parseDesignBrief } from '../lib/oviDesign'
 import { designIntentFromClaude } from '../lib/oviDesignAI'
 import { Design3D } from '../components/Design3D'
@@ -62,6 +63,8 @@ export function DesignEditor() {
   const planeLayer = useRef<L.LayerGroup | null>(null)
   const panelLayer = useRef<L.LayerGroup | null>(null)
   const ghostLayer = useRef<L.LayerGroup | null>(null)
+  const rgbLayer = useRef<L.ImageOverlay | null>(null)
+  const aerialKey = useRef<string | null>(null)
   const panelRenderer = useRef<L.Canvas | null>(null)
   const designRef = useRef(design)
   designRef.current = design
@@ -74,6 +77,8 @@ export function DesignEditor() {
   const [tool, setTool] = useState<Tool>('select')
   const [ghostN, setGhostN] = useState<number | null>(null)
   const [rotDeg, setRotDeg] = useState<number | null>(null)
+  const [hdReady, setHdReady] = useState(false)
+  const [hdOn, setHdOn] = useState(true)
   const [moduleId, setModuleId] = useState('m440')
   // draw/edit are geoman modes; add/remove/move/rotate are our own roof-grid tools
   const drawing = tool === 'draw', editing = tool === 'edit', adding = tool === 'add'
@@ -96,6 +101,8 @@ export function DesignEditor() {
     panelLayer.current = L.layerGroup().addTo(m)
     planeLayer.current = L.layerGroup().addTo(m)
     ghostLayer.current = L.layerGroup().addTo(m)
+    // Dedicated pane for the Google high-res aerial overlay: above the base tiles, below the vectors.
+    m.createPane('rgb'); const rp = m.getPane('rgb'); if (rp) { rp.style.zIndex = '250'; rp.style.pointerEvents = 'none' }
     m.pm.setGlobalOptions({ snappable: true, snapDistance: 12 })
     m.pm.setPathOptions({ color: '#00E5FF', fillColor: '#22E0FF', fillOpacity: 0.24 })
     m.on('pm:create', (e: any) => {
@@ -233,6 +240,32 @@ export function DesignEditor() {
 
   // Keep Leaflet sized correctly when returning to a canvas tab (it was display:none)
   useEffect(() => { if (canvasVisible && map.current) setTimeout(() => map.current!.invalidateSize(), 60) }, [canvasVisible])
+
+  // ── High-res Google aerial: fetch the Solar RGB layer once per location and drape it on the 2D map
+  //    (Pylon-grade sharpness where you design). Silently no-ops without a Solar key. ──
+  useEffect(() => {
+    const c = design?.center; if (!map.current || !c) return
+    const key = `${c.lat.toFixed(6)},${c.lng.toFixed(6)}`
+    if (aerialKey.current === key) return
+    aerialKey.current = key
+    let cancelled = false
+    ;(async () => {
+      const ov = await fetchRgbOverlay(c.lat, c.lng)
+      if (cancelled || !ov || !map.current) return
+      rgbLayer.current?.remove()
+      const layer = L.imageOverlay(ov.dataUrl, ov.bounds, { pane: 'rgb', interactive: false } as any)
+      rgbLayer.current = layer
+      if (hdOn) layer.addTo(map.current)
+      setHdReady(true)
+    })()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [design?.center?.lat, design?.center?.lng])
+  // Toggle the loaded aerial on/off without refetching
+  useEffect(() => {
+    const m = map.current, layer = rgbLayer.current; if (!m || !layer) return
+    if (hdOn) layer.addTo(m); else layer.remove()
+  }, [hdOn, hdReady])
 
   // ── Centre on the design; auto-detect the first time if empty ──
   useEffect(() => {
@@ -492,7 +525,13 @@ export function DesignEditor() {
                 <ToolBtn on={tool === 'edit'} onClick={() => selectTool('edit')} icon={<Wrench size={14} />} label="Edit vertices" />
               </div>
             )}
-            <div className="absolute top-3 right-3 z-[550] flex items-center bg-white/95 backdrop-blur border border-border rounded-control shadow-modal p-1">
+            <div className="absolute top-3 right-3 z-[550] flex items-center gap-1 bg-white/95 backdrop-blur border border-border rounded-control shadow-modal p-1">
+              {view === '2d' && hdReady && (
+                <>
+                  <button onClick={() => setHdOn((v) => !v)} title={hdOn ? 'High-res Google aerial — on' : 'Show high-res Google aerial'} className={`h-8 px-2.5 rounded-[8px] text-[12px] font-bold inline-flex items-center gap-1 ${hdOn ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={hdOn ? { background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' } : undefined}><Sun size={12} />HD</button>
+                  <span className="w-px h-5 bg-divider" />
+                </>
+              )}
               {(['2d', '3d'] as const).map((v) => (
                 <button key={v} onClick={() => setView(v)} className={`h-8 px-3 rounded-[8px] text-[12.5px] font-bold ${view === v ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={view === v ? { background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' } : undefined}>{v.toUpperCase()}</button>
               ))}

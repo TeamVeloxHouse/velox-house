@@ -83,6 +83,28 @@ export async function fetchRgbCanvas(lat: number, lng: number, radius = 35, px =
   } catch { return null }
 }
 
+export type RgbOverlay = { dataUrl: string; bounds: [[number, number], [number, number]] }
+/** Fetch the RGB aerial as a georeferenced overlay for the 2D map — the same Google Solar high-res
+ *  imagery we drape in 3D, returned as a PNG data-URL plus its true [[south,west],[north,east]] bounds
+ *  (metric extent from the GeoTIFF's own resolution, centred on the query point). Null with no key/data. */
+export async function fetchRgbOverlay(lat: number, lng: number, radius = 40, px = 0.1): Promise<RgbOverlay | null> {
+  try {
+    const r = await fetch(`/api/solar-layer?kind=rgb&lat=${lat}&lng=${lng}&radius=${radius}&px=${px}`)
+    if (!r.ok) return null
+    const img = await (await fromArrayBuffer(await r.arrayBuffer())).getImage()
+    const w = img.getWidth(), h = img.getHeight(), res = Math.abs(img.getResolution()[0])
+    const bands = await img.readRasters() as unknown as number[][]
+    const [R, G, B] = [bands[0], bands[1] ?? bands[0], bands[2] ?? bands[0]]
+    const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h
+    const ctx = canvas.getContext('2d'); if (!ctx) return null
+    const id = ctx.createImageData(w, h)
+    for (let i = 0; i < w * h; i++) { id.data[i * 4] = R[i]; id.data[i * 4 + 1] = G[i]; id.data[i * 4 + 2] = B[i]; id.data[i * 4 + 3] = 255 }
+    ctx.putImageData(id, 0, 0)
+    const halfW = (w * res) / 2, halfH = (h * res) / 2, mLat = 110540, mLng = 111320 * Math.cos((lat * Math.PI) / 180)
+    return { dataUrl: canvas.toDataURL('image/png'), bounds: [[lat - halfH / mLat, lng - halfW / mLng], [lat + halfH / mLat, lng + halfW / mLng]] }
+  } catch { return null }
+}
+
 /** Bilinear height (relative to ground datum) at an east/north offset from the DSM centre, in metres.
  *  east = +metres east of centre, north = +metres north of centre. Returns 0 outside the grid. */
 export function sampleHeight(dsm: DsmData, east: number, north: number): number {
