@@ -81,6 +81,10 @@ export function DesignEditor() {
   const rgbLayer = useRef<L.ImageOverlay | null>(null)
   const aerialKey = useRef<string | null>(null)
   const fittedRef = useRef<string | null>(null) // last framed design:planeCount — refit on structure change only
+  const undoStack = useRef<DesignPlane[][]>([])
+  const redoStack = useRef<DesignPlane[][]>([])
+  const undoRef = useRef<() => void>(() => {})
+  const redoRef = useRef<() => void>(() => {})
   const panelRenderer = useRef<L.Canvas | null>(null)
   const designRef = useRef(design)
   designRef.current = design
@@ -97,6 +101,7 @@ export function DesignEditor() {
   const [rotDeg, setRotDeg] = useState<number | null>(null)
   const [hdReady, setHdReady] = useState(false)
   const [hdOn, setHdOn] = useState(true)
+  const [, setHistTick] = useState(0) // bump re-renders so undo/redo buttons re-evaluate enablement
   const [moduleId, setModuleId] = useState('m440')
   // draw/edit are geoman modes; add/remove/move/rotate are our own roof-grid tools
   const drawing = tool === 'draw', editing = tool === 'edit', adding = tool === 'add'
@@ -141,7 +146,7 @@ export function DesignEditor() {
     const planeAt = (ll: L.LatLng) => designRef.current?.planes.find((p) => pointInRing(p.polygon, { lat: ll.lat, lng: ll.lng }))
     // Manual placement uses NO setback — you can drop panels right to the roof edge (Pylon-style). A
     // fire setback, if wanted, is a per-plane slider that only trims auto-fill, never manual placement.
-    const gridFor = (p: DesignPlane) => planeGrid(p.polygon, moduleById(p.moduleId ?? moduleIdRef.current), { orientation: p.orientation ?? 'portrait', setback: 0, rowGap: p.rowGapM, angleDeg: p.arrayAngleDeg })
+    const gridFor = (p: DesignPlane) => planeGrid(p.polygon, moduleById(p.moduleId ?? moduleIdRef.current), { orientation: p.orientation ?? 'portrait', setback: 0, rowGap: p.rowGapM, gap: p.panelGapM, angleDeg: p.arrayAngleDeg })
     // Ghost styling — draw intended modules as real panels (dark glass + a thin intent-coloured frame)
     // so the preview reads exactly like what will land. Purple = place, teal = move, red = clear.
     const GH: Record<string, { frame: string; glass: string; fill: number; weight: number }> = {
@@ -397,9 +402,12 @@ export function DesignEditor() {
   // Delete / Backspace removes the selected panel (ignored while typing in a field).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Delete' && e.key !== 'Backspace') return
       const el = e.target as HTMLElement | null
-      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return
+      const typing = !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) { if (typing) return; e.preventDefault(); e.shiftKey ? redoRef.current() : undoRef.current(); return }
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || e.key === 'Y')) { if (typing) return; e.preventDefault(); redoRef.current(); return }
+      if (e.key !== 'Delete' && e.key !== 'Backspace') return
+      if (typing) return
       if (!selPanelRef.current) return
       e.preventDefault()
       const d = designRef.current; if (!d) return
@@ -433,18 +441,18 @@ export function DesignEditor() {
   }
   function addManualPlane(ring: LatLng[]) {
     const d = designRef.current; if (!d) return
-    const plane: DesignPlane = { id: uid('pl'), name: `Roof plane ${d.planes.length + 1}`, polygon: ring, pitchDeg: 5, azimuthDeg: 180, areaM2: Math.round(polygonAreaM2(ring)), source: 'manual', racking: 'flush' }
-    act.updateDesign(d.id, { planes: [...d.planes, plane] })
+    const plane: DesignPlane = { id: uid('pl'), name: `Roof plane ${d.planes.length + 1}`, polygon: ring, pitchDeg: 30, azimuthDeg: 180, areaM2: Math.round(polygonAreaM2(ring)), source: 'manual', racking: 'flush' }
+    commitSnapshot([...d.planes, plane])
     setSelId(plane.id)
   }
   function syncGeometry(pid: string, poly: L.Polygon) {
     const d = designRef.current; if (!d) return
     const ring = (poly.getLatLngs()[0] as L.LatLng[]).map((p) => ({ lat: p.lat, lng: p.lng }))
-    act.updateDesign(d.id, { planes: d.planes.map((p) => (p.id === pid ? { ...p, polygon: ring, areaM2: Math.round(polygonAreaM2(ring)), panels: [] } : p)) })
+    commitSnapshot(d.planes.map((p) => (p.id === pid ? { ...p, polygon: ring, areaM2: Math.round(polygonAreaM2(ring)), panels: [] } : p)))
   }
   function deletePlane(pid: string) {
-    if (!design) return
-    act.updateDesign(design.id, { planes: design.planes.filter((p) => p.id !== pid) })
+    const d = designRef.current; if (!d) return
+    commitSnapshot(d.planes.filter((p) => p.id !== pid))
     if (selId === pid) setSelId(null)
   }
   function updatePlane(pid: string, patch: Partial<DesignPlane>, repack = false) {
@@ -490,18 +498,41 @@ export function DesignEditor() {
       act.toast(res.count ? `Ovi placed ${res.count} panels — ${res.kwp} kWp across ${res.planes.filter((p) => p.panels?.length).length} plane(s)` : 'No room for panels on these planes', res.count ? 'positive' : 'warning')
     }, 700)
   }
-  function commitSnapshot(planes: DesignPlane[]) {
-    const d = designRef.current!
-    let count = 0, kwp = 0, kwh = 0
+  function computeTotals(planes: DesignPlane[]) {
+    const d = designRef.current!; let count = 0, kwp = 0, kwh = 0
     planes.forEach((p) => {
-      const mod = moduleById(p.moduleId ?? moduleId)
-      const n = p.panels?.length ?? 0
-      count += n; kwp += (n * mod.watts) / 1000
-      kwh += (n * mod.watts / 1000) * regionYield(d.address).yield * planeYieldFactor(p)
+      const mod = moduleById(p.moduleId ?? moduleId); const n = p.panels?.length ?? 0
+      count += n; kwp += (n * mod.watts) / 1000; kwh += (n * mod.watts / 1000) * regionYield(d.address).yield * planeYieldFactor(p)
     })
-    act.updateDesign(d.id, { planes, panels: count, systemKwp: Math.round(kwp * 10) / 10, annualKwh: Math.round(kwh) })
+    return { panels: count, systemKwp: Math.round(kwp * 10) / 10, annualKwh: Math.round(kwh) }
+  }
+  // Undo/redo: every mutation snapshots the previous planes here; undo/redo swap between the stacks.
+  function recordHistory() {
+    const d = designRef.current; if (!d) return
+    undoStack.current.push(d.planes); if (undoStack.current.length > 80) undoStack.current.shift()
+    redoStack.current = []; setHistTick((t) => t + 1)
+  }
+  function commitSnapshot(planes: DesignPlane[]) {
+    recordHistory()
+    const d = designRef.current!
+    act.updateDesign(d.id, { planes, ...computeTotals(planes) })
+  }
+  function undo() {
+    const d = designRef.current; if (!d || !undoStack.current.length) return
+    redoStack.current.push(d.planes)
+    const prev = undoStack.current.pop()!
+    act.updateDesign(d.id, { planes: prev, ...computeTotals(prev) })
+    setSelPanelId(null); setHistTick((t) => t + 1)
+  }
+  function redo() {
+    const d = designRef.current; if (!d || !redoStack.current.length) return
+    undoStack.current.push(d.planes)
+    const next = redoStack.current.pop()!
+    act.updateDesign(d.id, { planes: next, ...computeTotals(next) })
+    setSelPanelId(null); setHistTick((t) => t + 1)
   }
   commitRef.current = commitSnapshot
+  undoRef.current = undo; redoRef.current = redo
   // Ovi conversational design — parse a brief, then size + lay out live, streaming each step.
   async function oviExecute(brief: string, emit: (line: string) => void): Promise<string> {
     const d = designRef.current!
@@ -631,7 +662,12 @@ export function DesignEditor() {
             {drawing && !busy && (
               <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[500] h-9 px-4 rounded-full text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Target size={14} />Click each corner of the roof, then click the first point to close</div>
             )}
-            {view === '2d' && !busy && !drawing && design.planes.length > 0 && (tool === 'add' || tool === 'remove' || tool === 'rotate' || tool === 'select') && (
+            {view === '2d' && !busy && sel && (
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[540]">
+                <ArrayToolbar sel={sel} moduleId={moduleId} onUpdate={updatePlane} onUndo={undo} onRedo={redo} canUndo={undoStack.current.length > 0} canRedo={redoStack.current.length > 0} />
+              </div>
+            )}
+            {view === '2d' && !busy && !drawing && !sel && design.planes.length > 0 && (tool === 'add' || tool === 'remove' || tool === 'rotate' || tool === 'select') && (
               <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[500] h-9 px-4 rounded-full text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}>
                 {tool === 'add' && <><Grid size={14} />Click to place a module · drag for a block{ghostN != null ? ` · ${ghostN}` : ''}</>}
                 {tool === 'remove' && <><EraseIcon />Click a panel to remove · drag to clear a block{ghostN != null ? ` · ${ghostN}` : ''}</>}
@@ -910,6 +946,54 @@ function ToolBtn({ on, onClick, icon, label }: { on: boolean; onClick: () => voi
     </button>
   )
 }
+/* ── Pylon-style top toolbar for the selected array — inline tilt, azimuth, orientation, margins, undo/redo ── */
+function ArrayToolbar({ sel, moduleId, onUpdate, onUndo, onRedo, canUndo, canRedo }: {
+  sel: DesignPlane; moduleId: string; onUpdate: (id: string, patch: Partial<DesignPlane>, repack?: boolean) => void
+  onUndo: () => void; onRedo: () => void; canUndo: boolean; canRedo: boolean
+}) {
+  const mod = moduleById(sel.moduleId ?? moduleId)
+  const n = sel.panels?.length ?? 0
+  const flush = (sel.racking ?? 'flush') === 'flush'
+  const tilt = flush ? sel.pitchDeg : (sel.tiltDeg ?? 10)
+  const orient = sel.orientation ?? 'auto'
+  return (
+    <div className="flex items-center gap-1 h-11 px-1.5 rounded-control bg-white/95 backdrop-blur border border-border shadow-modal">
+      <TB onClick={onUndo} disabled={!canUndo} title="Undo (Ctrl+Z)"><UndoIcon /></TB>
+      <TB onClick={onRedo} disabled={!canRedo} title="Redo (Ctrl+Shift+Z)"><RedoIcon /></TB>
+      <ToolSep />
+      <NumField icon={<RotateIcon />} label="Tilt" value={tilt} suffix="°" min={0} max={60} onChange={(v) => (flush ? onUpdate(sel.id, { pitchDeg: v }, true) : onUpdate(sel.id, { tiltDeg: v }))} />
+      <NumField icon={<Target size={12} />} label="Azimuth" value={sel.azimuthDeg} suffix="°" min={0} max={359} onChange={(v) => onUpdate(sel.id, { azimuthDeg: v })} />
+      <ToolSep />
+      <div className="flex items-center rounded-[7px] border border-border overflow-hidden">
+        {([['portrait', '▯'], ['landscape', '▭']] as const).map(([o, g]) => (
+          <button key={o} title={o} onClick={() => onUpdate(sel.id, { orientation: o as PanelOrientation }, true)} className={`h-7 px-2 text-[12px] font-semibold ${orient === o ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={orient === o ? { background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' } : undefined}>{g}</button>
+        ))}
+      </div>
+      <ToolSep />
+      <NumField icon={<span className="text-[11px] font-bold">⇕</span>} label="Row gap" value={Math.round((sel.rowGapM ?? 0.02) * 1000)} suffix="mm" min={0} max={800} step={5} onChange={(v) => onUpdate(sel.id, { rowGapM: v / 1000 }, true)} />
+      <NumField icon={<span className="text-[11px] font-bold">⇔</span>} label="Panel gap" value={Math.round((sel.panelGapM ?? 0.02) * 1000)} suffix="mm" min={0} max={800} step={5} onChange={(v) => onUpdate(sel.id, { panelGapM: v / 1000 }, true)} />
+      <ToolSep />
+      <div className="px-1.5 text-[11.5px] text-muted-b whitespace-nowrap">Selected: <b className="text-ink tabular-nums">{n}</b> panels · <b className="text-ink tabular-nums">{kwpOf(n, mod.watts)}</b> kWp</div>
+    </div>
+  )
+}
+function TB({ onClick, disabled, title, children }: { onClick: () => void; disabled?: boolean; title: string; children: React.ReactNode }) {
+  return <button onClick={onClick} disabled={disabled} title={title} className={`h-7 w-7 rounded-[6px] flex items-center justify-center ${disabled ? 'text-muted-2/40 cursor-default' : 'text-ink-3 hover:bg-control'}`}>{children}</button>
+}
+function ToolSep() { return <span className="w-px h-5 bg-divider mx-0.5" /> }
+function NumField({ icon, label, value, suffix, min, max, step = 1, onChange }: { icon: React.ReactNode; label: string; value: number; suffix: string; min: number; max: number; step?: number; onChange: (v: number) => void }) {
+  return (
+    <label className="flex items-center gap-1 px-0.5" title={label}>
+      <span className="text-muted-2 flex items-center">{icon}</span>
+      <input type="number" value={value} min={min} max={max} step={step} onClick={(e) => e.stopPropagation()}
+        onChange={(e) => { const v = +e.target.value; if (!isNaN(v)) onChange(Math.max(min, Math.min(max, Math.round(v)))) }}
+        className="w-11 h-7 px-1 text-[12px] tabular-nums text-ink-2 rounded-[6px] border border-input-border bg-white outline-none focus:border-accent text-center" />
+      <span className="text-[10px] text-muted-2">{suffix}</span>
+    </label>
+  )
+}
+function UndoIcon() { return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 14L4 9l5-5" /><path d="M4 9h11a5 5 0 0 1 0 10h-1" /></svg> }
+function RedoIcon() { return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 14l5-5-5-5" /><path d="M20 9H9a5 5 0 0 0 0 10h1" /></svg> }
 // Tiny inline glyphs for the tools the icon set doesn't cover (cursor / eraser / rotate).
 function CursorIcon() { return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 3l7 17 2.5-6.5L20 11 4 3z" /></svg> }
 function EraseIcon() { return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 21h13" /><path d="M4.5 15.5l6-6 5 5-4.5 4.5H8l-3.5-3.5z" /><path d="M10.5 9.5l5-5 4 4-5 5" /></svg> }

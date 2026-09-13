@@ -939,6 +939,7 @@ export interface DesignPlane {
   tiltDeg?: number // mounting tilt for single/dual-tilt racking on flat roofs
   groundClearanceM?: number // gap under the array (flat-roof ballast frames)
   rowGapM?: number // gap between panel rows (m); wider = less inter-row shading
+  panelGapM?: number // gap between panels within a row (m); the column margin
   setbackM?: number // per-plane fire-setback override (defaults to design.setbackM)
   optimisers?: boolean // module-level power electronics on this array
 }

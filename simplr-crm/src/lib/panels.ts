@@ -169,12 +169,13 @@ export function planeQuality(p: DesignPlane): number {
 export function packWithSettings(plane: DesignPlane, module: Module, designSetback: number): { panels: DesignPanel[]; orientation: PanelOrientation } {
   const setback = plane.setbackM ?? designSetback
   const rowGap = plane.rowGapM
+  const gap = plane.panelGapM
   const angleDeg = plane.arrayAngleDeg
   if (plane.orientation) {
-    return { panels: packPlane(plane.polygon, module, { orientation: plane.orientation, setback, rowGap, angleDeg }), orientation: plane.orientation }
+    return { panels: packPlane(plane.polygon, module, { orientation: plane.orientation, setback, rowGap, gap, angleDeg }), orientation: plane.orientation }
   }
-  const portrait = packPlane(plane.polygon, module, { orientation: 'portrait', setback, rowGap, angleDeg })
-  const landscape = packPlane(plane.polygon, module, { orientation: 'landscape', setback, rowGap, angleDeg })
+  const portrait = packPlane(plane.polygon, module, { orientation: 'portrait', setback, rowGap, gap, angleDeg })
+  const landscape = packPlane(plane.polygon, module, { orientation: 'landscape', setback, rowGap, gap, angleDeg })
   return landscape.length > portrait.length ? { panels: landscape, orientation: 'landscape' } : { panels: portrait, orientation: 'portrait' }
 }
 
