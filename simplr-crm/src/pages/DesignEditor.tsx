@@ -23,7 +23,7 @@ type LatLng = { lat: number; lng: number }
 const uid = (p: string) => `${p}${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`
 type StudioTab = 'design' | 'array' | 'production' | 'proposal'
 // Pylon-style 2D tools: select/move arrays · add · remove · rotate array · draw face · edit vertices
-type Tool = 'select' | 'add' | 'remove' | 'rotate' | 'draw' | 'edit' | 'pin'
+type Tool = 'pan' | 'select' | 'add' | 'remove' | 'rotate' | 'draw' | 'edit' | 'pin'
 
 // ── Manual array-drawing helpers ──
 function pointInRing(ring: LatLng[], pt: LatLng): boolean {
@@ -61,6 +61,8 @@ function rotateCorners(corners: LatLng[], c: LatLng, delta: number): LatLng[] {
 const translateCorners = (corners: LatLng[], dLat: number, dLng: number): LatLng[] => corners.map((p) => ({ lat: p.lat + dLat, lng: p.lng + dLng }))
 /** Metric bearing (rad) from a centre to a point. */
 const bearingTo = (c: LatLng, ll: { lat: number; lng: number }) => Math.atan2((ll.lat - c.lat) * 110540, (ll.lng - c.lng) * mLngAt(c.lat))
+/** A panel's own bearing (rad) — the direction of its first edge. */
+const panelAngle = (corners: LatLng[]) => Math.atan2((corners[1].lat - corners[0].lat) * 110540, (corners[1].lng - corners[0].lng) * mLngAt(corners[0].lat))
 /** Do two panel quads overlap? Corner-containment either way — enough for near-equal rectangles. */
 const anyCornerInside = (p: LatLng[], q: LatLng[]) => p.some((c) => pointInRing(q, c))
 const quadsOverlap = (a: LatLng[], b: LatLng[]) => anyCornerInside(a, b) || anyCornerInside(b, a)
@@ -99,8 +101,8 @@ export function DesignEditor() {
   const [busy, setBusy] = useState(false)
   const [status, setStatus] = useState('')
   const [selId, setSelId] = useState<string | null>(null)
-  const [selPanelId, setSelPanelId] = useState<string | null>(null)
-  const selPanelRef = useRef<string | null>(null); selPanelRef.current = selPanelId
+  const [selPanelIds, setSelPanelIds] = useState<string[]>([])
+  const selPanelRef = useRef<string[]>([]); selPanelRef.current = selPanelIds
   const [tool, setTool] = useState<Tool>('select')
   const [ghostN, setGhostN] = useState<number | null>(null)
   const [rotDeg, setRotDeg] = useState<number | null>(null)
@@ -179,20 +181,49 @@ export function DesignEditor() {
       sets.forEach((corners) => L.polygon(corners.map((v) => [v.lat, v.lng]) as [number, number][], { renderer: panelRenderer.current!, pmIgnore: true, interactive: false, color: s.frame, weight: s.weight, fillColor: s.glass, fillOpacity: s.fill } as any).addTo(g))
     }
 
-    // ── Single-panel free manipulation (Pylon-style): grab any panel to drag it freely, or its rotate
-    //    handle to spin it, independent of the grid. ──
-    let spPanel: { pid: string; panelId: string; corners0: LatLng[]; center0: LatLng } | null = null
-    let spMode: 'move' | 'rotate' | null = null
-    let spStart: L.LatLng | null = null, spRot0 = 0, spInvalid = false
-    const otherPanels = (exceptId: string) => (designRef.current?.planes.flatMap((p) => p.panels ?? []) ?? []).filter((pn) => pn.id !== exceptId)
+    // ── Selection & free manipulation (Pylon-style). A selection is a SET of panels (1 = a single
+    //    module, many = a marquee'd array). Drag inside the box to move the whole set, drag a corner
+    //    node or the rotate handle to spin it, Del to remove. Drag empty roof = marquee-select. ──
+    type GrpItem = { pid: string; panelId: string; corners0: LatLng[] }
+    let grp: { items: GrpItem[]; center: LatLng } | null = null
+    let grpMode: 'move' | 'rotate' | null = null
+    let grpStart: L.LatLng | null = null, grpRot0 = 0, grpInvalid = false
+    let marqStart: L.LatLng | null = null
     const findPanelAt = (ll: { lat: number; lng: number }) => {
       const planes = designRef.current?.planes ?? []
       for (let i = planes.length - 1; i >= 0; i--) { const pans = planes[i].panels ?? []; for (let j = pans.length - 1; j >= 0; j--) if (pointInRing(pans[j].corners, ll)) return { pid: planes[i].id, panel: pans[j] } }
       return null
     }
-    const findPanelById = (id: string) => { for (const p of designRef.current?.planes ?? []) { const pan = (p.panels ?? []).find((x) => x.id === id); if (pan) return { pid: p.id, panel: pan } } return null }
-    const handlePt = (panel: { corners: LatLng[] }) => { const c = panelCenter(panel); const cp = m.latLngToContainerPoint([c.lat, c.lng]); return L.point(cp.x, cp.y - 34) }
-    const ghostOne = (corners: LatLng[], kind: keyof typeof GH = 'move') => { const g = ghostLayer.current!; g.clearLayers(); const s = GH[kind]; L.polygon(corners.map((v) => [v.lat, v.lng]) as [number, number][], { renderer: panelRenderer.current!, pmIgnore: true, interactive: false, color: s.frame, weight: s.weight, fillColor: s.glass, fillOpacity: s.fill } as any).addTo(g) }
+    const selectionItems = () => { const ids = new Set(selPanelRef.current); const out: { pid: string; panel: DesignPanel }[] = []; for (const p of designRef.current?.planes ?? []) for (const pn of p.panels ?? []) if (ids.has(pn.id)) out.push({ pid: p.id, panel: pn }); return out }
+    const panelsOutside = (ids: Set<string>) => (designRef.current?.planes.flatMap((p) => p.panels ?? []) ?? []).filter((pn) => !ids.has(pn.id))
+    // Oriented bounding box of the current selection, aligned to the first panel's angle (so a joined
+    // array's nodes sit at the ARRAY's ends, and a lone panel's nodes sit on its own corners).
+    const selectionBox = (): { corners: LatLng[]; center: LatLng } | null => {
+      const items = selectionItems(); if (!items.length) return null
+      const angle = panelAngle(items[0].panel.corners), c0 = items[0].panel.corners[0]
+      const mLat = 110540, mLng = mLngAt(c0.lat), ca = Math.cos(angle), sa = Math.sin(angle)
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+      for (const { panel } of items) for (const v of panel.corners) {
+        const ex = (v.lng - c0.lng) * mLng, ny = (v.lat - c0.lat) * mLat
+        const rx = ex * ca + ny * sa, ry = -ex * sa + ny * ca // rotate by -angle → axis-aligned frame
+        minX = Math.min(minX, rx); maxX = Math.max(maxX, rx); minY = Math.min(minY, ry); maxY = Math.max(maxY, ry)
+      }
+      const back = (rx: number, ry: number): LatLng => ({ lat: c0.lat + (rx * sa + ry * ca) / mLat, lng: c0.lng + (rx * ca - ry * sa) / mLng })
+      return { corners: [back(minX, minY), back(maxX, minY), back(maxX, maxY), back(minX, maxY)], center: back((minX + maxX) / 2, (minY + maxY) / 2) }
+    }
+    const boxHandlePt = (corners: LatLng[]) => { const pts = corners.map((c) => m.latLngToContainerPoint([c.lat, c.lng])); const minx = Math.min(...pts.map((p) => p.x)), maxx = Math.max(...pts.map((p) => p.x)), miny = Math.min(...pts.map((p) => p.y)); return L.point((minx + maxx) / 2, miny - 24) }
+    const startGroupWith = (items: GrpItem[], mode: 'move' | 'rotate', ll: L.LatLng) => {
+      const cs = items.map((i) => panelCenter({ corners: i.corners0 }))
+      const center = { lat: cs.reduce((s, c) => s + c.lat, 0) / cs.length, lng: cs.reduce((s, c) => s + c.lng, 0) / cs.length }
+      grp = { items, center }; grpMode = mode; grpStart = ll; grpRot0 = bearingTo(center, ll); m.dragging.disable()
+    }
+    const startGroup = (mode: 'move' | 'rotate', ll: L.LatLng) => { const items = selectionItems(); if (!items.length) return; startGroupWith(items.map((i) => ({ pid: i.pid, panelId: i.panel.id, corners0: i.panel.corners })), mode, ll) }
+    const drawGroupGhost = (transform: (c: LatLng[]) => LatLng[], checkOverlap: boolean) => {
+      const outside = checkOverlap ? panelsOutside(new Set(grp!.items.map((i) => i.panelId))) : []
+      const sets = grp!.items.map((i) => transform(i.corners0))
+      grpInvalid = checkOverlap && sets.some((s) => outside.some((pn) => quadsOverlap(s, pn.corners)))
+      drawGhostSet(sets, grpInvalid ? 'bad' : 'move')
+    }
 
     m.on('mousedown', (e: any) => {
       const t = toolRef.current; const p = planeAt(e.latlng)
@@ -209,20 +240,17 @@ export function DesignEditor() {
       }
       if (t === 'select') {
         const ll = { lat: e.latlng.lat, lng: e.latlng.lng }
-        // 1) grabbing the rotate handle of the already-selected panel → spin it
-        const cur = selPanelRef.current && findPanelById(selPanelRef.current)
-        if (cur) { const cp = m.latLngToContainerPoint(e.latlng); if (cp.distanceTo(handlePt(cur.panel)) < 14) { spPanel = { pid: cur.pid, panelId: cur.panel.id, corners0: cur.panel.corners, center0: panelCenter(cur.panel) }; spMode = 'rotate'; spRot0 = bearingTo(spPanel.center0, ll); m.dragging.disable(); L.DomEvent.stop(e); return } }
-        // 2) a panel under the cursor → select it and free-drag it anywhere
+        const box = selectionBox(), cp = m.latLngToContainerPoint(e.latlng)
+        // 1) rotate handle above the selection, or one of its corner nodes → rotate the whole set
+        if (box && (cp.distanceTo(boxHandlePt(box.corners)) < 16 || box.corners.some((c) => cp.distanceTo(m.latLngToContainerPoint([c.lat, c.lng])) < 12))) { startGroup('rotate', e.latlng); L.DomEvent.stop(e); return }
+        // 2) inside the current selection box → move the whole set
+        if (box && selPanelRef.current.length && pointInRing(box.corners, ll)) { startGroup('move', e.latlng); L.DomEvent.stop(e); return }
+        // 3) a panel under the cursor → select just it, then free-drag it
         const hit = findPanelAt(ll)
-        if (hit) { setSelPanelId(hit.panel.id); setSelId(hit.pid); spPanel = { pid: hit.pid, panelId: hit.panel.id, corners0: hit.panel.corners, center0: panelCenter(hit.panel) }; spMode = 'move'; spStart = e.latlng; m.dragging.disable(); L.DomEvent.stop(e); return }
-        // 3) empty roof → select the plane; grabbing a gap in a filled array still drags the whole block
-        if (!p) { setSelPanelId(null); return }
-        setSelId(p.id); setSelPanelId(null)
-        if (p.panels?.length) {
-          dragPid = p.id; dragCells = gridFor(p); startCell = nearestCell(dragCells, e.latlng); moved = false
-          moveOccupied = dragCells.filter((c) => hasPanelAt(p, c))
-          m.dragging.disable(); L.DomEvent.stop(e)
-        }
+        if (hit) { setSelPanelIds([hit.panel.id]); setSelId(hit.pid); startGroupWith([{ pid: hit.pid, panelId: hit.panel.id, corners0: hit.panel.corners }], 'move', e.latlng); L.DomEvent.stop(e); return }
+        // 4) empty → clear the selection and start a marquee box-select
+        setSelPanelIds([]); if (p) setSelId(p.id)
+        marqStart = e.latlng; m.dragging.disable(); L.DomEvent.stop(e)
       }
     })
     m.on('mousemove', (e: any) => {
@@ -238,20 +266,15 @@ export function DesignEditor() {
         if (cur.row !== startCell.row || cur.col !== startCell.col) moved = true
         drawGhosts(cellBlock(dragCells, startCell, cur), t === 'remove' ? 'remove' : 'add'); setGhostN(cellBlock(dragCells, startCell, cur).length); return
       }
-      if (t === 'select' && spMode && spPanel) {
-        if (spMode === 'move' && spStart) {
-          const moved = translateCorners(spPanel.corners0, e.latlng.lat - spStart.lat, e.latlng.lng - spStart.lng)
-          spInvalid = otherPanels(spPanel.panelId).some((pn) => quadsOverlap(moved, pn.corners)) // can't drop on another panel
-          ghostOne(moved, spInvalid ? 'bad' : 'move')
-        } else if (spMode === 'rotate') ghostOne(rotateCorners(spPanel.corners0, spPanel.center0, bearingTo(spPanel.center0, e.latlng) - spRot0))
+      if (t === 'select' && grpMode && grp) {
+        if (grpMode === 'move' && grpStart) drawGroupGhost((c) => translateCorners(c, e.latlng.lat - grpStart!.lat, e.latlng.lng - grpStart!.lng), true)
+        else if (grpMode === 'rotate') { const delta = bearingTo(grp.center, e.latlng) - grpRot0; setRotDeg(Math.round((((-delta * 180) / Math.PI) % 360 + 360) % 360)); drawGroupGhost((c) => rotateCorners(c, grp!.center, delta), false) }
         return
       }
-      if (t === 'select' && dragPid && startCell && moveOccupied.length) {
-        const cur = nearestCell(dragCells, e.latlng); if (!cur) return
-        const dr = cur.row - startCell.row, dc = cur.col - startCell.col; if (dr || dc) moved = true
-        const idx = new Map(dragCells.map((c) => [cellKey(c), c]))
-        const dest = moveOccupied.map((c) => idx.get(`${c.row + dr},${c.col + dc}`))
-        if (dest.every(Boolean)) { drawGhosts(dest as GridCell[], 'move'); setGhostN(dest.length) } else { drawGhosts(moveOccupied, 'bad'); setGhostN(null) }
+      if (t === 'select' && marqStart) { // marquee rectangle
+        const a = marqStart, b = e.latlng
+        const g = ghostLayer.current!; g.clearLayers()
+        L.polygon([[a.lat, a.lng], [a.lat, b.lng], [b.lat, b.lng], [b.lat, a.lng]] as [number, number][], { renderer: panelRenderer.current!, pmIgnore: true, interactive: false, color: '#7C3AED', weight: 1.4, dashArray: '5 3', fillColor: '#7C3AED', fillOpacity: 0.08 } as any).addTo(g)
         return
       }
       if (t === 'add' || t === 'remove') { // hover preview — add shows the open grid + nearest slot; remove highlights the panel under the cursor
@@ -286,27 +309,29 @@ export function DesignEditor() {
           else for (const c of block) if (!panels.some((pn) => sameCell(panelCenter(pn), c.center))) panels.push({ id: uid('pn'), corners: c.corners })
           commitRef.current(d.planes.map((x) => (x.id === dragPid ? { ...x, panels, moduleId: p.moduleId ?? moduleIdRef.current } : x)))
         }
-      } else if (t === 'select' && spMode && spPanel) {
-        let corners: LatLng[] | null = null
-        if (spMode === 'move' && spStart) {
-          const moved2 = translateCorners(spPanel.corners0, e.latlng.lat - spStart.lat, e.latlng.lng - spStart.lng)
-          if (!otherPanels(spPanel.panelId).some((pn) => quadsOverlap(moved2, pn.corners))) corners = moved2 // reject an overlapping drop → panel stays put
-          else act.toast('Panels can’t overlap — dropped back', 'warning')
-        } else if (spMode === 'rotate') corners = rotateCorners(spPanel.corners0, spPanel.center0, bearingTo(spPanel.center0, e.latlng) - spRot0)
-        if (corners) { const d = designRef.current!; commitRef.current(d.planes.map((x) => (x.id === spPanel!.pid ? { ...x, panels: (x.panels ?? []).map((pn) => (pn.id === spPanel!.panelId ? { ...pn, corners: corners! } : pn)) } : x))) }
-      } else if (t === 'select' && dragPid && startCell && moveOccupied.length && moved) {
-        const d = designRef.current!; const p = d.planes.find((x) => x.id === dragPid)
-        const cur = nearestCell(dragCells, e.latlng) ?? startCell
-        if (p) {
-          const dr = cur.row - startCell.row, dc = cur.col - startCell.col
-          const idx = new Map(dragCells.map((c) => [cellKey(c), c]))
-          const dest = moveOccupied.map((c) => idx.get(`${c.row + dr},${c.col + dc}`))
-          if (dest.every(Boolean)) commitRef.current(d.planes.map((x) => (x.id === dragPid ? { ...x, panels: (dest as GridCell[]).map((c) => ({ id: uid('pn'), corners: c.corners })), moduleId: p.moduleId ?? moduleIdRef.current } : x)))
+      } else if (t === 'select' && grpMode && grp) {
+        let transform: ((c: LatLng[]) => LatLng[]) | null = null
+        if (grpMode === 'move' && grpStart) { const dLat = e.latlng.lat - grpStart.lat, dLng = e.latlng.lng - grpStart.lng; transform = (c) => translateCorners(c, dLat, dLng) }
+        else if (grpMode === 'rotate') { const delta = bearingTo(grp.center, e.latlng) - grpRot0; transform = (c) => rotateCorners(c, grp!.center, delta) }
+        if (transform) {
+          const outside = panelsOutside(new Set(grp.items.map((i) => i.panelId)))
+          const moved2 = grp.items.map((i) => ({ panelId: i.panelId, corners: transform!(i.corners0) }))
+          if (moved2.some((mv) => outside.some((pn) => quadsOverlap(mv.corners, pn.corners)))) act.toast('Panels can’t overlap — dropped back', 'warning')
+          else { const d = designRef.current!; const byId = new Map(moved2.map((mv) => [mv.panelId, mv.corners])); commitRef.current(d.planes.map((x) => ({ ...x, panels: (x.panels ?? []).map((pn) => (byId.has(pn.id) ? { ...pn, corners: byId.get(pn.id)! } : pn)) }))) }
+        }
+      } else if (t === 'select' && marqStart) {
+        const a = marqStart, b = e.latlng
+        const latLo = Math.min(a.lat, b.lat), latHi = Math.max(a.lat, b.lat), lngLo = Math.min(a.lng, b.lng), lngHi = Math.max(a.lng, b.lng)
+        const dragged = Math.abs(a.lat - b.lat) * 110540 > 0.6 || Math.abs(a.lng - b.lng) * mLngAt(a.lat) > 0.6
+        if (dragged) {
+          const ids: string[] = []; let firstPid: string | null = null
+          for (const p of designRef.current?.planes ?? []) for (const pn of p.panels ?? []) { const c = panelCenter(pn); if (c.lat >= latLo && c.lat <= latHi && c.lng >= lngLo && c.lng <= lngHi) { ids.push(pn.id); if (!firstPid) firstPid = p.id } }
+          setSelPanelIds(ids); if (firstPid) setSelId(firstPid)
         }
       }
       ghostLayer.current?.clearLayers(); setGhostN(null); setRotDeg(null)
       startCell = null; dragCells = []; dragPid = null; moveOccupied = []; rotPid = null; rotCenLL = null; rotPanels0 = []
-      spPanel = null; spMode = null; spStart = null; spInvalid = false; m.dragging.enable()
+      grp = null; grpMode = null; grpStart = null; grpInvalid = false; marqStart = null; m.dragging.enable()
     })
     map.current = m
     if ((import.meta as any).env?.DEV) (window as any).__lmap = m
@@ -384,7 +409,7 @@ export function DesignEditor() {
       L.polygon(ring, { pmIgnore: true, color: '#0A1B2B', weight: 6, opacity: 0.4, fill: false } as any).addTo(lyr)
       const poly = L.polygon(ring, { color: on ? '#A97BF3' : '#00E5FF', weight: on ? 4 : 2.5, fillColor: on ? '#7C3AED' : '#22E0FF', fillOpacity: p.panels?.length ? 0.06 : (on ? 0.28 : 0.2) })
       ;(poly as any)._planeId = p.id
-      poly.on('click', (e) => { L.DomEvent.stopPropagation(e); setSelId(p.id) })
+      poly.on('click', (e) => { L.DomEvent.stopPropagation(e); if (toolRef.current !== 'pan') setSelId(p.id) })
       poly.on('pm:edit', () => syncGeometry(p.id, poly))
       poly.bindTooltip(`${compass(p.azimuthDeg)} · ${effTilt(p)}° · ${p.panels?.length ? `${p.panels.length} panels` : `${p.areaM2} m²`}`, { permanent: true, direction: 'center', className: 'roof-label' })
       poly.addTo(lyr)
@@ -406,13 +431,25 @@ export function DesignEditor() {
         L.polyline([bl, tip, br], arrowStyle).addTo(pl)
       }
     })
-    // Selected single panel — a dashed transform box + a rotate handle you drag to spin it.
-    const selP = selPanelId ? design.planes.flatMap((p) => p.panels ?? []).find((pn) => pn.id === selPanelId) : null
-    if (selP && map.current) {
-      L.polygon(selP.corners.map((v) => [v.lat, v.lng]) as [number, number][], { pmIgnore: true, interactive: false, color: '#7C3AED', weight: 2.4, fill: false, dashArray: '4 3' } as any).addTo(pl)
-      const c = panelCenter(selP), cp = map.current.latLngToContainerPoint([c.lat, c.lng])
-      const hp = map.current.containerPointToLatLng(L.point(cp.x, cp.y - 34))
-      L.polyline([[c.lat, c.lng], [hp.lat, hp.lng]], { color: '#7C3AED', weight: 1.6, opacity: 0.9, pmIgnore: true, interactive: false } as any).addTo(pl)
+    // Selection — a dashed oriented box with corner nodes + a rotate handle. A lone panel's box sits on
+    // its own corners; a joined array's box wraps the whole array (nodes at its ends). Drag a corner or
+    // the handle to rotate, drag inside to move, Del to remove.
+    const selItems: DesignPanel[] = selPanelIds.length ? design.planes.flatMap((p) => p.panels ?? []).filter((pn) => new Set(selPanelIds).has(pn.id)) : []
+    if (selItems.length && map.current) {
+      const mp = map.current
+      const angle = panelAngle(selItems[0].corners), c0 = selItems[0].corners[0]
+      const mLat = 110540, mLng = 111320 * Math.cos((c0.lat * Math.PI) / 180), ca = Math.cos(angle), sa = Math.sin(angle)
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+      for (const pn of selItems) for (const v of pn.corners) { const ex = (v.lng - c0.lng) * mLng, ny = (v.lat - c0.lat) * mLat; const rx = ex * ca + ny * sa, ry = -ex * sa + ny * ca; minX = Math.min(minX, rx); maxX = Math.max(maxX, rx); minY = Math.min(minY, ry); maxY = Math.max(maxY, ry) }
+      const back = (rx: number, ry: number) => ({ lat: c0.lat + (rx * sa + ry * ca) / mLat, lng: c0.lng + (rx * ca - ry * sa) / mLng })
+      const corners = [back(minX, minY), back(maxX, minY), back(maxX, maxY), back(minX, maxY)]
+      L.polygon(corners.map((v) => [v.lat, v.lng]) as [number, number][], { pmIgnore: true, interactive: false, color: '#7C3AED', weight: 2, fill: false, dashArray: '4 3' } as any).addTo(pl)
+      corners.forEach((v) => L.circleMarker([v.lat, v.lng], { radius: 5, color: '#7C3AED', weight: 2, fillColor: '#fff', fillOpacity: 1, pmIgnore: true, interactive: false } as any).addTo(pl))
+      // rotate handle — top-centre of the screen bounding box, offset up (matches the hit-test)
+      const pts = corners.map((v) => mp.latLngToContainerPoint([v.lat, v.lng]))
+      const minx = Math.min(...pts.map((p) => p.x)), maxx = Math.max(...pts.map((p) => p.x)), miny = Math.min(...pts.map((p) => p.y))
+      const anchor = mp.containerPointToLatLng(L.point((minx + maxx) / 2, miny)), hp = mp.containerPointToLatLng(L.point((minx + maxx) / 2, miny - 24))
+      L.polyline([[anchor.lat, anchor.lng], [hp.lat, hp.lng]], { color: '#7C3AED', weight: 1.6, opacity: 0.9, pmIgnore: true, interactive: false } as any).addTo(pl)
       L.circleMarker([hp.lat, hp.lng], { radius: 6, color: '#7C3AED', weight: 2, fillColor: '#fff', fillOpacity: 1, pmIgnore: true, interactive: false } as any).addTo(pl)
     }
     // Frame the roof only when the structure changes (detect/draw) — never on a panel edit, or the map would jump mid-drag.
@@ -423,7 +460,7 @@ export function DesignEditor() {
       try { map.current.fitBounds(L.latLngBounds(all).pad(0.3), { maxZoom: 20, animate: false }) } catch { /* single point */ }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [design?.planes, selId, selPanelId, mapReady])
+  }, [design?.planes, selId, selPanelIds, mapReady])
 
   // Delete / Backspace removes the selected panel (ignored while typing in a field).
   useEffect(() => {
@@ -434,12 +471,12 @@ export function DesignEditor() {
       if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || e.key === 'Y')) { if (typing) return; e.preventDefault(); redoRef.current(); return }
       if (e.key !== 'Delete' && e.key !== 'Backspace') return
       if (typing) return
-      if (!selPanelRef.current) return
+      if (!selPanelRef.current.length) return
       e.preventDefault()
       const d = designRef.current; if (!d) return
-      const id = selPanelRef.current
-      commitRef.current(d.planes.map((p) => ({ ...p, panels: (p.panels ?? []).filter((pn) => pn.id !== id) })))
-      setSelPanelId(null)
+      const ids = new Set(selPanelRef.current)
+      commitRef.current(d.planes.map((p) => ({ ...p, panels: (p.panels ?? []).filter((pn) => !ids.has(pn.id)) })))
+      setSelPanelIds([])
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -513,6 +550,13 @@ export function DesignEditor() {
     const d = designRef.current; if (!d) return
     commitSnapshot(d.planes.map((p) => (p.id === pid ? { ...p, panels: [] } : p)))
   }
+  function clearAllPanels() {
+    const d = designRef.current; if (!d) return
+    const n = d.planes.reduce((s, p) => s + (p.panels?.length ?? 0), 0); if (!n) return
+    commitSnapshot(d.planes.map((p) => ({ ...p, panels: [] })))
+    setSelPanelIds([])
+    act.toast(`Cleared all ${n} panel${n === 1 ? '' : 's'} — undo with Ctrl+Z`, 'warning')
+  }
   function runAutoLayout(goal: LayoutGoal) {
     const d = designRef.current; if (!d || !d.planes.length) { act.toast('Draw or detect a roof plane first', 'warning'); return }
     setBusy(true)
@@ -548,14 +592,14 @@ export function DesignEditor() {
     redoStack.current.push(d.planes)
     const prev = undoStack.current.pop()!
     act.updateDesign(d.id, { planes: prev, ...computeTotals(prev) })
-    setSelPanelId(null); setHistTick((t) => t + 1)
+    setSelPanelIds([]); setHistTick((t) => t + 1)
   }
   function redo() {
     const d = designRef.current; if (!d || !redoStack.current.length) return
     undoStack.current.push(d.planes)
     const next = redoStack.current.pop()!
     act.updateDesign(d.id, { planes: next, ...computeTotals(next) })
-    setSelPanelId(null); setHistTick((t) => t + 1)
+    setSelPanelIds([]); setHistTick((t) => t + 1)
   }
   commitRef.current = commitSnapshot
   undoRef.current = undo; redoRef.current = redo
@@ -607,7 +651,7 @@ export function DesignEditor() {
     ghostLayer.current?.clearLayers(); setGhostN(null); setRotDeg(null); m.dragging.enable()
     const next: Tool = t !== 'select' && tool === t ? 'select' : t
     setTool(next)
-    if (next !== 'select') setSelPanelId(null)
+    if (next !== 'select') setSelPanelIds([])
     if (next === 'draw') m.pm.enableDraw('Polygon', { snappable: true })
     else if (next === 'edit') m.pm.enableGlobalEditMode({ allowSelfIntersection: false })
     else if ((next === 'add' || next === 'remove' || next === 'rotate') && !design?.planes.length) act.toast('Draw or detect a roof first, then use the panel tools', 'warning')
@@ -636,6 +680,7 @@ export function DesignEditor() {
         actions={<div className="flex items-center gap-2">
           <Button variant="secondary" icon={<Radar size={15} />} onClick={() => runDetect()} className={busy ? 'opacity-60 pointer-events-none' : ''}>{busy ? 'Working…' : 'Detect roof'}</Button>
           <Button variant="primary" icon={<Sparkle size={15} />} onClick={() => runAutoLayout({ kind: 'max' })} className={busy ? 'opacity-60 pointer-events-none' : ''}>Ovi auto-layout</Button>
+          {totals.count > 0 && <Button variant="secondary" icon={<EraseIcon />} onClick={clearAllPanels}>Clear all</Button>}
           <Button variant="secondary" icon={<Check size={15} />} onClick={() => act.updateDesign(design.id, { status: design.status === 'confirmed' ? 'draft' : 'confirmed' })}>{design.status === 'confirmed' ? 'Confirmed' : 'Confirm'}</Button>
         </div>} />
 
@@ -670,6 +715,7 @@ export function DesignEditor() {
             {view === '3d' && canvasVisible && <Design3D design={design} adding={adding} moduleId={moduleId} onCommitPanels={(pid, panels) => commitSnapshot(design.planes.map((p) => (p.id === pid ? { ...p, panels, moduleId: p.moduleId ?? moduleId } : p)))} onCapture={() => { setView('2d'); setTimeout(() => selectTool('draw'), 80) }} />}
             {view === '2d' && (
               <div className="absolute top-3 left-3 z-[500] flex flex-col gap-1 bg-white/95 backdrop-blur border border-border rounded-control shadow-modal p-1">
+                <ToolBtn on={tool === 'pan'} onClick={() => selectTool('pan')} icon={<HandIcon />} label="Pan (move the map)" />
                 <ToolBtn on={tool === 'select'} onClick={() => selectTool('select')} icon={<CursorIcon />} label="Select / move array" />
                 <ToolBtn on={tool === 'add'} onClick={() => selectTool('add')} icon={<Grid size={15} />} label="Add panels" />
                 <ToolBtn on={tool === 'remove'} onClick={() => selectTool('remove')} icon={<EraseIcon />} label="Remove panels" />
@@ -710,7 +756,7 @@ export function DesignEditor() {
                 {tool === 'add' && <><Grid size={14} />Click to place a module · drag for a block{ghostN != null ? ` · ${ghostN}` : ''}</>}
                 {tool === 'remove' && <><EraseIcon />Click a panel to remove · drag to clear a block{ghostN != null ? ` · ${ghostN}` : ''}</>}
                 {tool === 'rotate' && <><RotateIcon />Drag around the array to spin the grid{rotDeg != null ? ` · ${rotDeg}°` : ''}</>}
-                {tool === 'select' && <><CursorIcon />Drag a panel to move it · handle to rotate · Del removes{ghostN != null ? ` · ${ghostN}` : ''}</>}
+                {tool === 'select' && <><CursorIcon />Click a panel · drag empty to box-select · drag to move · corner/handle to rotate · Del removes</>}
               </div>
             )}
             {design.planes.length === 0 && !busy && !drawing && (
@@ -1034,6 +1080,7 @@ function UndoIcon() { return <svg width="15" height="15" viewBox="0 0 24 24" fil
 function RedoIcon() { return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 14l5-5-5-5" /><path d="M20 9H9a5 5 0 0 0 0 10h1" /></svg> }
 // Tiny inline glyphs for the tools the icon set doesn't cover (cursor / eraser / rotate).
 function CursorIcon() { return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 3l7 17 2.5-6.5L20 11 4 3z" /></svg> }
+function HandIcon() { return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 11V6a2 2 0 0 0-4 0M14 10V4a2 2 0 0 0-4 0v2M10 10.5V6a2 2 0 0 0-4 0v8" /><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15" /></svg> }
 function EraseIcon() { return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 21h13" /><path d="M4.5 15.5l6-6 5 5-4.5 4.5H8l-3.5-3.5z" /><path d="M10.5 9.5l5-5 4 4-5 5" /></svg> }
 function RotateIcon() { return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7" /><path d="M21 3v5h-5" /></svg> }
 function Metric({ v, u, small, hero }: { v: string; u: string; small?: boolean; hero?: boolean }) {
