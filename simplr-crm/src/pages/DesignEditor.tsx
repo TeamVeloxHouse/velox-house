@@ -781,7 +781,7 @@ export function DesignEditor() {
             {view === '2d' && !busy && tool === 'pin' && (
               <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[510] h-9 px-4 rounded-full text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Target size={14} />Click the exact roof to re-centre &amp; detect here</div>
             )}
-            {view === '2d' && !busy && tool !== 'pin' && sel && (
+            {!busy && sel && !(view === '2d' && tool === 'pin') && (
               <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[540]">
                 <ArrayToolbar sel={sel} moduleId={moduleId} onUpdate={updatePlane} onUndo={undo} onRedo={redo} canUndo={undoStack.current.length > 0} canRedo={redoStack.current.length > 0} />
               </div>
