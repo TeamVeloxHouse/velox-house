@@ -52,6 +52,8 @@ const cellBlock = (cells: GridCell[], a: GridCell, b: GridCell): GridCell[] => {
 }
 const sameCell = (a: LL, b: LL) => Math.abs(a.lat - b.lat) * 110540 < 0.35 && Math.abs(a.lng - b.lng) * 90000 < 0.35
 const panelCtr = (pn: { corners: LL[] }) => ({ lat: (pn.corners[0].lat + pn.corners[2].lat) / 2, lng: (pn.corners[0].lng + pn.corners[2].lng) / 2 })
+const anyCornerInside = (p: LL[], q: LL[]) => p.some((c) => pointInRing(q, c))
+const quadsOverlap = (a: LL[], b: LL[]) => anyCornerInside(a, b) || anyCornerInside(b, a)
 
 type XZ = { x: number; z: number }
 function pointInPolyXZ(pt: XZ, poly: XZ[]): boolean {
@@ -107,11 +109,13 @@ function fitRoofPlane(dsm: DsmData, fp: XZ[], dcx: number, dcz: number): { a: nu
  *  walls dropped to the ground, obstacles cut out, and the packed panels sitting flush on the slope
  *  (not flat). Satellite-textured ground, gradient sky, a moveable sun casting soft shadows. Built
  *  entirely from the design geometry we already hold — no extra API. */
-export function Design3D({ design, onCapture, adding, moduleId, onCommitPanels }: {
+export function Design3D({ design, onCapture, adding, selecting, moduleId, onCommitPanels, onSelectPanels }: {
   design: Design; onCapture?: () => void
   adding?: boolean // "Add panels" tool active — enables click/drag placement on the 3D roof
+  selecting?: boolean // "Select" tool active — click a panel to select it, drag to move it freely
   moduleId?: string // default module for a plane with none set
   onCommitPanels?: (planeId: string, panels: DesignPanel[]) => void
+  onSelectPanels?: (planeId: string, panelIds: string[]) => void // sync the 3D selection back to the editor
 }) {
   const host = useRef<HTMLDivElement>(null)
   const sunHour = useRef(13)
@@ -121,18 +125,20 @@ export function Design3D({ design, onCapture, adding, moduleId, onCommitPanels }
   const spinRef = useRef(false)
   spinRef.current = spin
   const addingRef = useRef(adding); addingRef.current = adding
+  const selectingRef = useRef(selecting); selectingRef.current = selecting
   const moduleIdRef = useRef(moduleId); moduleIdRef.current = moduleId
   const commitRef = useRef(onCommitPanels); commitRef.current = onCommitPanels
+  const onSelectRef = useRef(onSelectPanels); onSelectRef.current = onSelectPanels
   const designRef = useRef(design); designRef.current = design
   const controlsRef = useRef<OrbitControls | null>(null)
 
-  // While the Add-panels tool is on, free the LEFT button for placement and orbit with the RIGHT.
+  // While Add or Select is on, free the LEFT button for placement/drag and orbit with the RIGHT.
   useEffect(() => {
     const c = controlsRef.current; if (!c) return
-    c.mouseButtons = adding
+    c.mouseButtons = (adding || selecting)
       ? { LEFT: undefined as unknown as THREE.MOUSE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE }
       : { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN }
-  }, [adding])
+  }, [adding, selecting])
   // Photoreal DSM roof (Google Solar Data Layers) — real roof shape + aerial texture + irradiance.
   const [dsm, setDsm] = useState<DsmData | null>(null)
   const [rgb, setRgb] = useState<HTMLCanvasElement | null>(null)
@@ -201,7 +207,7 @@ export function Design3D({ design, onCapture, adding, moduleId, onCommitPanels }
     controls.enableDamping = true; controls.dampingFactor = 0.08; controls.maxPolarAngle = Math.PI / 2.02
     controls.autoRotateSpeed = 0.8; controls.minDistance = 4; controls.maxDistance = 600; controls.zoomSpeed = 1.15
     controlsRef.current = controls
-    if (addingRef.current) controls.mouseButtons = { LEFT: undefined as unknown as THREE.MOUSE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE }
+    if (addingRef.current || selectingRef.current) controls.mouseButtons = { LEFT: undefined as unknown as THREE.MOUSE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE }
     const pickTargets: THREE.Object3D[] = [] // roof meshes the placement raycaster hits
     const planeGeo = new Map<string, { heightAt: (x: number, z: number) => number; panelY: (corners: { x: number; z: number }[]) => number[] }>() // roof height + panel-corner heights per plane
 
@@ -524,9 +530,17 @@ export function Design3D({ design, onCapture, adding, moduleId, onCommitPanels }
     }
     let dragPid: string | null = null, startCell: GridCell | null = null, lastCell: GridCell | null = null, dragCells: GridCell[] = [], moved = false
     let movingArray = false, occupied: { row: number; col: number }[] = [] // drag FROM a panel = move the whole array
+    // ── Select tool: click a panel to select it, drag to move it freely on the roof (2D-parity) ──
+    let selPid: string | null = null, selPanelId: string | null = null, selCorners0: LL[] | null = null, selStartLL: LL | null = null
+    const findPanelAtLL = (ll: LL) => { const planes = designRef.current.planes; for (let i = planes.length - 1; i >= 0; i--) { const pans = planes[i].panels ?? []; for (let j = pans.length - 1; j >= 0; j--) if (pointInRing(pans[j].corners, ll)) return { pid: planes[i].id, panel: pans[j] } } return null }
+    const drawFreeGhost = (pid: string, cornersLL: LL[]) => { ghostGroup.clear(); const g = planeGeo.get(pid); const sc = cornersLL.map((v) => ({ x: X(v), z: Z(v) })); const ys = g ? g.panelY(sc) : sc.map(() => 0); const q = cornersLL.map((v, i) => new THREE.Vector3(X(v), ys[i] + 0.08, Z(v))); const geo = new THREE.BufferGeometry().setFromPoints([q[0], q[1], q[2], q[0], q[2], q[3]]); const mm = new THREE.Mesh(geo, ghostAdd); mm.renderOrder = 999; ghostGroup.add(mm) }
     const hasPanelAt = (p: DesignPlane, c: GridCell) => (p.panels ?? []).some((pn) => sameCell(panelCtr(pn), c.center))
     const cellOfPanel = (pn: { corners: LL[] }) => nearestCell(dragCells, panelCtr(pn))
     const onMove = (ev: PointerEvent) => {
+      if (selectingRef.current) {
+        if (selPid && selCorners0 && selStartLL) { const ll = pickLL(ev); if (!ll) return; const dLat = ll.lat - selStartLL.lat, dLng = ll.lng - selStartLL.lng; drawFreeGhost(selPid, selCorners0.map((c) => ({ lat: c.lat + dLat, lng: c.lng + dLng }))) }
+        return
+      }
       if (!addingRef.current) return
       if (dragPid && startCell) {
         const ll = pickLL(ev); if (!ll) return
@@ -548,6 +562,13 @@ export function Design3D({ design, onCapture, adding, moduleId, onCommitPanels }
       }
     }
     const onDown = (ev: PointerEvent) => {
+      if (selectingRef.current) {
+        if (ev.button !== 0) return
+        const ll = pickLL(ev); const hit = ll ? findPanelAtLL(ll) : null
+        if (hit && ll) { selPid = hit.pid; selPanelId = hit.panel.id; selCorners0 = hit.panel.corners; selStartLL = ll; if (controlsRef.current) controlsRef.current.enabled = false; onSelectRef.current?.(hit.pid, [hit.panel.id]) }
+        else onSelectRef.current?.('', [])
+        return
+      }
       if (!addingRef.current || ev.button !== 0) return
       const ll = pickLL(ev); const p = ll ? planeAtLL(ll) : undefined
       if (!p || !ll) return
@@ -556,7 +577,24 @@ export function Design3D({ design, onCapture, adding, moduleId, onCommitPanels }
       movingArray = !!startCell && hasPanelAt(p, startCell)
       occupied = movingArray ? (p.panels ?? []).map(cellOfPanel).filter(Boolean).map((c) => ({ row: c!.row, col: c!.col })) : []
     }
-    const onUp = () => {
+    const onUp = (ev: PointerEvent) => {
+      if (controlsRef.current) controlsRef.current.enabled = true
+      if (selectingRef.current) {
+        if (selPid && selPanelId && selCorners0 && selStartLL) {
+          const ll = pickLL(ev)
+          if (ll) {
+            const dLat = ll.lat - selStartLL.lat, dLng = ll.lng - selStartLL.lng
+            const d = designRef.current, plane = d.planes.find((x) => x.id === selPid)
+            if (plane) {
+              const moved = selCorners0.map((c) => ({ lat: c.lat + dLat, lng: c.lng + dLng }))
+              const others = d.planes.flatMap((p) => p.panels ?? []).filter((pn) => pn.id !== selPanelId)
+              if (!others.some((pn) => quadsOverlap(moved, pn.corners))) commitRef.current?.(selPid, (plane.panels ?? []).map((pn) => (pn.id === selPanelId ? { ...pn, corners: moved } : pn)))
+            }
+          }
+        }
+        ghostGroup.clear(); selPid = null; selPanelId = null; selCorners0 = null; selStartLL = null
+        return
+      }
       if (!addingRef.current || !dragPid || !startCell) { dragPid = null; startCell = null; movingArray = false; return }
       const p = designRef.current.planes.find((x) => x.id === dragPid)
       if (p) {

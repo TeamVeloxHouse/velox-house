@@ -747,7 +747,7 @@ export function DesignEditor() {
         <div className={`absolute inset-0 flex gap-4 px-5 py-4 ${canvasVisible ? '' : 'invisible pointer-events-none'}`}>
           <div className="relative flex-1 min-h-0 rounded-card overflow-hidden border border-border">
             <div ref={mapEl} className="absolute inset-0" style={{ background: '#0b1220', isolation: 'isolate' }} />
-            {view === '3d' && canvasVisible && <Design3D design={design} adding={adding} moduleId={moduleId} onCommitPanels={(pid, panels) => commitSnapshot(design.planes.map((p) => (p.id === pid ? { ...p, panels, moduleId: p.moduleId ?? moduleId } : p)))} onCapture={() => { setView('2d'); setTimeout(() => selectTool('draw'), 80) }} />}
+            {view === '3d' && canvasVisible && <Design3D design={design} adding={adding} selecting={tool === 'select'} moduleId={moduleId} onCommitPanels={(pid, panels) => commitSnapshot(design.planes.map((p) => (p.id === pid ? { ...p, panels, moduleId: p.moduleId ?? moduleId } : p)))} onSelectPanels={(pid, ids) => { if (pid) setSelId(pid); setSelPanelIds(ids) }} onCapture={() => { setView('2d'); setTimeout(() => selectTool('draw'), 80) }} />}
             {view === '2d' && (
               <div className="absolute top-3 left-3 z-[500] flex flex-col gap-1 bg-white/95 backdrop-blur border border-border rounded-control shadow-modal p-1">
                 <ToolBtn on={tool === 'pan'} onClick={() => selectTool('pan')} icon={<HandIcon />} label="Pan (move the map)" />
