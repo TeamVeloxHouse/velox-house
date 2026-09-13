@@ -659,7 +659,7 @@ export function Design3D({ design, onCapture, adding, selecting, moduleId, onCom
       )}
       {hasGeom && (
         <>
-          <div className="absolute top-3 left-3 z-10 flex items-center gap-2">
+          <div className="absolute top-[104px] left-3 z-10 flex flex-col items-start gap-2">
             <button onClick={() => setSpin((s) => !s)} className={`h-9 px-3.5 rounded-full backdrop-blur border shadow-modal text-[12.5px] font-semibold inline-flex items-center gap-2 ${spin ? 'text-white border-transparent' : 'bg-white/95 text-ink-2 border-border'}`} style={spin ? { background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' } : undefined}>
               <span className={spin ? 'animate-spin' : ''}>⟳</span>{spin ? 'Orbiting' : 'Orbit'}
             </button>

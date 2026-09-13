@@ -748,20 +748,22 @@ export function DesignEditor() {
           <div className="relative flex-1 min-h-0 rounded-card overflow-hidden border border-border">
             <div ref={mapEl} className="absolute inset-0" style={{ background: '#0b1220', isolation: 'isolate' }} />
             {view === '3d' && canvasVisible && <Design3D design={design} adding={adding} selecting={tool === 'select'} moduleId={moduleId} onCommitPanels={(pid, panels) => commitSnapshot(design.planes.map((p) => (p.id === pid ? { ...p, panels, moduleId: p.moduleId ?? moduleId } : p)))} onSelectPanels={(pid, ids) => { if (pid) setSelId(pid); setSelPanelIds(ids) }} onCapture={() => { setView('2d'); setTimeout(() => selectTool('draw'), 80) }} />}
-            {view === '2d' && (
-              <div className="absolute top-3 left-3 z-[500] flex flex-col gap-1 bg-white/95 backdrop-blur border border-border rounded-control shadow-modal p-1">
-                <ToolBtn on={tool === 'pan'} onClick={() => selectTool('pan')} icon={<HandIcon />} label="Pan (move the map)" />
-                <ToolBtn on={tool === 'select'} onClick={() => selectTool('select')} icon={<CursorIcon />} label="Select / move array" />
+            {canvasVisible && (
+              <div className="absolute top-3 left-3 z-[560] flex flex-col gap-1 bg-white/95 backdrop-blur border border-border rounded-control shadow-modal p-1">
+                {view === '2d' && <ToolBtn on={tool === 'pan'} onClick={() => selectTool('pan')} icon={<HandIcon />} label="Pan (move the map)" />}
+                <ToolBtn on={tool === 'select'} onClick={() => selectTool('select')} icon={<CursorIcon />} label={view === '3d' ? 'Select / move a panel' : 'Select / move array'} />
                 <ToolBtn on={tool === 'add'} onClick={() => selectTool('add')} icon={<Grid size={15} />} label="Add panels" />
+                {view === '2d' && <>
                 <ToolBtn on={tool === 'remove'} onClick={() => selectTool('remove')} icon={<EraseIcon />} label="Remove panels" />
                 <ToolBtn on={tool === 'rotate'} onClick={() => selectTool('rotate')} icon={<RotateIcon />} label="Rotate array" />
                 <span className="h-px mx-1.5 my-0.5 bg-divider" />
                 <ToolBtn on={tool === 'draw'} onClick={() => selectTool('draw')} icon={<Plus size={15} />} label="Draw roof face" />
                 <ToolBtn on={tool === 'edit'} onClick={() => selectTool('edit')} icon={<Wrench size={14} />} label="Edit vertices" />
                 <ToolBtn on={tool === 'pin'} onClick={() => selectTool('pin')} icon={<Target size={15} />} label="Drop pin & detect here" />
+                </>}
               </div>
             )}
-            <div className="absolute top-3 right-3 z-[550] flex items-center gap-1 bg-white/95 backdrop-blur border border-border rounded-control shadow-modal p-1">
+            <div className={`absolute z-[550] flex items-center gap-1 bg-white/95 backdrop-blur border border-border rounded-control shadow-modal p-1 ${view === '3d' ? 'bottom-3 right-3' : 'top-3 right-3'}`}>
               {view === '2d' && hdReady && (
                 <>
                   <button onClick={() => setHdOn((v) => !v)} title={hdOn ? 'High-res Google aerial — on' : 'Show high-res Google aerial'} className={`h-8 px-2.5 rounded-[8px] text-[12px] font-bold inline-flex items-center gap-1 ${hdOn ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={hdOn ? { background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' } : undefined}><Sun size={12} />HD</button>
@@ -1092,7 +1094,7 @@ function ArrayToolbar({ sel, moduleId, onUpdate, onUndo, onRedo, canUndo, canRed
       <NumField icon={<span className="text-[11px] font-bold">⇕</span>} label="Row gap" value={Math.round((sel.rowGapM ?? 0.02) * 1000)} suffix="mm" min={0} max={800} step={5} onChange={(v) => onUpdate(sel.id, { rowGapM: v / 1000 }, true)} />
       <NumField icon={<span className="text-[11px] font-bold">⇔</span>} label="Panel gap" value={Math.round((sel.panelGapM ?? 0.02) * 1000)} suffix="mm" min={0} max={800} step={5} onChange={(v) => onUpdate(sel.id, { panelGapM: v / 1000 }, true)} />
       <ToolSep />
-      <div className="px-1.5 text-[11.5px] text-muted-b whitespace-nowrap">Selected: <b className="text-ink tabular-nums">{n}</b> panels · <b className="text-ink tabular-nums">{kwpOf(n, mod.watts)}</b> kWp</div>
+      <div className="px-1.5 text-[11.5px] text-muted-b whitespace-nowrap"><b className="text-ink tabular-nums">{n}</b> · <b className="text-ink tabular-nums">{kwpOf(n, mod.watts)}</b> kWp</div>
     </div>
   )
 }
