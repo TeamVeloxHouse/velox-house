@@ -114,12 +114,28 @@ export function DesignEditor() {
     const centroid = (p: DesignPlane) => p.polygon.reduce((a, v) => ({ lat: a.lat + v.lat / p.polygon.length, lng: a.lng + v.lng / p.polygon.length }), { lat: 0, lng: 0 })
     const planeAt = (ll: L.LatLng) => designRef.current?.planes.find((p) => pointInRing(p.polygon, { lat: ll.lat, lng: ll.lng }))
     const gridFor = (p: DesignPlane) => planeGrid(p.polygon, moduleById(p.moduleId ?? moduleIdRef.current), { orientation: p.orientation ?? 'portrait', setback: p.setbackM ?? designRef.current!.setbackM, rowGap: p.rowGapM, angleDeg: p.arrayAngleDeg })
-    const GH: Record<string, [string, string, number]> = { add: ['#A97BF3', '#7C3AED', 0.4], remove: ['#FF6B6B', '#FF6B6B', 0.28], move: ['#5EE0BE', '#17B890', 0.42], bad: ['#FF6B6B', '#FF6B6B', 0.16] }
+    // Ghost styling — draw intended modules as real panels (dark glass + a thin intent-coloured frame)
+    // so the preview reads exactly like what will land. Purple = place, teal = move, red = clear.
+    const GH: Record<string, { frame: string; glass: string; fill: number; weight: number }> = {
+      add: { frame: '#7C3AED', glass: '#0A0E17', fill: 0.82, weight: 1.6 },
+      move: { frame: '#17B890', glass: '#0A0E17', fill: 0.82, weight: 1.6 },
+      remove: { frame: '#FF5A5A', glass: '#FF6B6B', fill: 0.34, weight: 1.6 },
+      bad: { frame: '#FF5A5A', glass: '#FF6B6B', fill: 0.14, weight: 1.4 },
+    }
+    const cellPoly = (c: GridCell, style: any) => L.polygon(c.corners.map((v) => [v.lat, v.lng]) as [number, number][], { renderer: panelRenderer.current!, pmIgnore: true, interactive: false, ...style } as any)
     const drawGhosts = (cells: GridCell[], kind: keyof typeof GH = 'add') => {
-      const g = ghostLayer.current!; g.clearLayers(); const [c1, c2, fo] = GH[kind]
-      cells.forEach((c) => L.polygon(c.corners.map((v) => [v.lat, v.lng]) as [number, number][], { renderer: panelRenderer.current!, color: c1, weight: 1.2, fillColor: c2, fillOpacity: fo, pmIgnore: true, interactive: false } as any).addTo(g))
+      const g = ghostLayer.current!; g.clearLayers(); const s = GH[kind]
+      cells.forEach((c) => cellPoly(c, { color: s.frame, weight: s.weight, fillColor: s.glass, fillOpacity: s.fill }).addTo(g))
     }
     const hasPanelAt = (p: DesignPlane, c: GridCell) => (p.panels ?? []).some((pn) => sameCell(panelCenter(pn), c.center))
+    // Add-hover: faint outline of every open slot on the plane's grid (the Pylon "here's where panels
+    // can go" hint) with the solid glass ghost snapping to the nearest slot under the cursor.
+    const GRID_HINT = { color: '#BFD0EC', weight: 0.7, opacity: 0.55, fill: false }
+    const drawAddHover = (p: DesignPlane, grid: GridCell[], nearest: GridCell | null) => {
+      const g = ghostLayer.current!; g.clearLayers()
+      grid.forEach((c) => { if (!hasPanelAt(p, c)) cellPoly(c, GRID_HINT).addTo(g) })
+      if (nearest) { const s = GH.add; cellPoly(nearest, { color: s.frame, weight: s.weight, fillColor: s.glass, fillOpacity: s.fill }).addTo(g) }
+    }
     const repackAtAngle = (pid: string, angleDeg: number) => {
       const d = designRef.current!; const p = d.planes.find((x) => x.id === pid); if (!p) return
       const mod = moduleById(p.moduleId ?? moduleIdRef.current); const next = { ...p, arrayAngleDeg: angleDeg }
@@ -171,10 +187,13 @@ export function DesignEditor() {
         if (dest.every(Boolean)) { drawGhosts(dest as GridCell[], 'move'); setGhostN(dest.length) } else { drawGhosts(moveOccupied, 'bad'); setGhostN(null) }
         return
       }
-      if (t === 'add' || t === 'remove') { // hover preview of a single cell
+      if (t === 'add' || t === 'remove') { // hover preview — add shows the open grid + nearest slot; remove highlights the panel under the cursor
         const p = planeAt(e.latlng)
-        if (p) { const c = nearestCell(gridFor(p), e.latlng); drawGhosts(c ? [c] : [], t === 'remove' ? 'remove' : 'add') }
-        else ghostLayer.current?.clearLayers()
+        if (p) {
+          const grid = gridFor(p), c = nearestCell(grid, e.latlng)
+          if (t === 'add') drawAddHover(p, grid, c)
+          else drawGhosts(c && hasPanelAt(p, c) ? [c] : [], 'remove')
+        } else ghostLayer.current?.clearLayers()
         setGhostN(null)
       }
     })
