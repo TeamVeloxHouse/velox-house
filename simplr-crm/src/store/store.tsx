@@ -954,7 +954,7 @@ export function useActions() {
     // ── Design Studio ─────────────────────────────────────────────────────────
     createDesign: (partial: Partial<import('./types').Design> & { name: string; address: string }) => {
       const design: import('./types').Design = {
-        id: uid('dz'), status: 'draft', planes: [], obstacles: [], moduleWatts: 440, setbackM: 0.3,
+        id: uid('dz'), status: 'draft', planes: [], obstacles: [], moduleWatts: 440, setbackM: 0,
         createdAt: Date.now(), updatedAt: Date.now(), ...partial,
       }
       dispatch({ type: 'ADD_DESIGN', design }); toast('Design created'); return design

@@ -47,6 +47,21 @@ const cellBlock = (cells: GridCell[], a: GridCell, b: GridCell): GridCell[] => {
   return cells.filter((c) => c.row >= r0 && c.row <= r1 && c.col >= c0 && c.col <= c1)
 }
 
+const DEGr = Math.PI / 180
+const mLngAt = (lat: number) => 111320 * Math.cos(lat * DEGr)
+/** Rotate a panel's corners about a centre by delta radians (metric-accurate). */
+function rotateCorners(corners: LatLng[], c: LatLng, delta: number): LatLng[] {
+  const mLat = 110540, mLng = mLngAt(c.lat), ca = Math.cos(delta), sa = Math.sin(delta)
+  return corners.map((p) => {
+    const ex = (p.lng - c.lng) * mLng, ny = (p.lat - c.lat) * mLat
+    return { lat: c.lat + (ex * sa + ny * ca) / mLat, lng: c.lng + (ex * ca - ny * sa) / mLng }
+  })
+}
+/** Translate corners by a lat/lng delta. */
+const translateCorners = (corners: LatLng[], dLat: number, dLng: number): LatLng[] => corners.map((p) => ({ lat: p.lat + dLat, lng: p.lng + dLng }))
+/** Metric bearing (rad) from a centre to a point. */
+const bearingTo = (c: LatLng, ll: { lat: number; lng: number }) => Math.atan2((ll.lat - c.lat) * 110540, (ll.lng - c.lng) * mLngAt(c.lat))
+
 /** Effective generating tilt — tilt-racking on a flat roof beats the flat pitch. */
 function effTilt(p: DesignPlane): number { return p.racking && p.racking !== 'flush' ? (p.tiltDeg ?? 10) : p.pitchDeg }
 function planeYieldFactor(p: DesignPlane): number { return planeSolarFactor({ azimuthDeg: p.azimuthDeg, pitchDeg: effTilt(p) }) }
@@ -65,6 +80,7 @@ export function DesignEditor() {
   const ghostLayer = useRef<L.LayerGroup | null>(null)
   const rgbLayer = useRef<L.ImageOverlay | null>(null)
   const aerialKey = useRef<string | null>(null)
+  const fittedRef = useRef<string | null>(null) // last framed design:planeCount — refit on structure change only
   const panelRenderer = useRef<L.Canvas | null>(null)
   const designRef = useRef(design)
   designRef.current = design
@@ -74,6 +90,8 @@ export function DesignEditor() {
   const [busy, setBusy] = useState(false)
   const [status, setStatus] = useState('')
   const [selId, setSelId] = useState<string | null>(null)
+  const [selPanelId, setSelPanelId] = useState<string | null>(null)
+  const selPanelRef = useRef<string | null>(null); selPanelRef.current = selPanelId
   const [tool, setTool] = useState<Tool>('select')
   const [ghostN, setGhostN] = useState<number | null>(null)
   const [rotDeg, setRotDeg] = useState<number | null>(null)
@@ -120,7 +138,9 @@ export function DesignEditor() {
     const cellKey = (c: GridCell) => `${c.row},${c.col}`
     const centroid = (p: DesignPlane) => p.polygon.reduce((a, v) => ({ lat: a.lat + v.lat / p.polygon.length, lng: a.lng + v.lng / p.polygon.length }), { lat: 0, lng: 0 })
     const planeAt = (ll: L.LatLng) => designRef.current?.planes.find((p) => pointInRing(p.polygon, { lat: ll.lat, lng: ll.lng }))
-    const gridFor = (p: DesignPlane) => planeGrid(p.polygon, moduleById(p.moduleId ?? moduleIdRef.current), { orientation: p.orientation ?? 'portrait', setback: p.setbackM ?? designRef.current!.setbackM, rowGap: p.rowGapM, angleDeg: p.arrayAngleDeg })
+    // Manual placement uses NO setback — you can drop panels right to the roof edge (Pylon-style). A
+    // fire setback, if wanted, is a per-plane slider that only trims auto-fill, never manual placement.
+    const gridFor = (p: DesignPlane) => planeGrid(p.polygon, moduleById(p.moduleId ?? moduleIdRef.current), { orientation: p.orientation ?? 'portrait', setback: 0, rowGap: p.rowGapM, angleDeg: p.arrayAngleDeg })
     // Ghost styling — draw intended modules as real panels (dark glass + a thin intent-coloured frame)
     // so the preview reads exactly like what will land. Purple = place, teal = move, red = clear.
     const GH: Record<string, { frame: string; glass: string; fill: number; weight: number }> = {
@@ -152,6 +172,20 @@ export function DesignEditor() {
     const angleAt = (ll: L.LatLng) => { const pt = m.latLngToContainerPoint(ll); return Math.atan2(pt.y - rotCen!.y, pt.x - rotCen!.x) }
     const rotFrom = (ll: L.LatLng) => { let d = rotBase + ((angleAt(ll) - rotStart) * 180) / Math.PI; return ((d % 180) + 180) % 180 }
 
+    // ── Single-panel free manipulation (Pylon-style): grab any panel to drag it freely, or its rotate
+    //    handle to spin it, independent of the grid. ──
+    let spPanel: { pid: string; panelId: string; corners0: LatLng[]; center0: LatLng } | null = null
+    let spMode: 'move' | 'rotate' | null = null
+    let spStart: L.LatLng | null = null, spRot0 = 0
+    const findPanelAt = (ll: { lat: number; lng: number }) => {
+      const planes = designRef.current?.planes ?? []
+      for (let i = planes.length - 1; i >= 0; i--) { const pans = planes[i].panels ?? []; for (let j = pans.length - 1; j >= 0; j--) if (pointInRing(pans[j].corners, ll)) return { pid: planes[i].id, panel: pans[j] } }
+      return null
+    }
+    const findPanelById = (id: string) => { for (const p of designRef.current?.planes ?? []) { const pan = (p.panels ?? []).find((x) => x.id === id); if (pan) return { pid: p.id, panel: pan } } return null }
+    const handlePt = (panel: { corners: LatLng[] }) => { const c = panelCenter(panel); const cp = m.latLngToContainerPoint([c.lat, c.lng]); return L.point(cp.x, cp.y - 34) }
+    const ghostOne = (corners: LatLng[], kind: keyof typeof GH = 'move') => { const g = ghostLayer.current!; g.clearLayers(); const s = GH[kind]; L.polygon(corners.map((v) => [v.lat, v.lng]) as [number, number][], { renderer: panelRenderer.current!, pmIgnore: true, interactive: false, color: s.frame, weight: s.weight, fillColor: s.glass, fillOpacity: s.fill } as any).addTo(g) }
+
     m.on('mousedown', (e: any) => {
       const t = toolRef.current; const p = planeAt(e.latlng)
       if (t === 'rotate') {
@@ -165,8 +199,17 @@ export function DesignEditor() {
         m.dragging.disable(); L.DomEvent.stop(e); return
       }
       if (t === 'select') {
-        if (!p) return; setSelId(p.id)
-        if (p.panels?.length) { // grab the whole array to drag it across the grid
+        const ll = { lat: e.latlng.lat, lng: e.latlng.lng }
+        // 1) grabbing the rotate handle of the already-selected panel → spin it
+        const cur = selPanelRef.current && findPanelById(selPanelRef.current)
+        if (cur) { const cp = m.latLngToContainerPoint(e.latlng); if (cp.distanceTo(handlePt(cur.panel)) < 14) { spPanel = { pid: cur.pid, panelId: cur.panel.id, corners0: cur.panel.corners, center0: panelCenter(cur.panel) }; spMode = 'rotate'; spRot0 = bearingTo(spPanel.center0, ll); m.dragging.disable(); L.DomEvent.stop(e); return } }
+        // 2) a panel under the cursor → select it and free-drag it anywhere
+        const hit = findPanelAt(ll)
+        if (hit) { setSelPanelId(hit.panel.id); setSelId(hit.pid); spPanel = { pid: hit.pid, panelId: hit.panel.id, corners0: hit.panel.corners, center0: panelCenter(hit.panel) }; spMode = 'move'; spStart = e.latlng; m.dragging.disable(); L.DomEvent.stop(e); return }
+        // 3) empty roof → select the plane; grabbing a gap in a filled array still drags the whole block
+        if (!p) { setSelPanelId(null); return }
+        setSelId(p.id); setSelPanelId(null)
+        if (p.panels?.length) {
           dragPid = p.id; dragCells = gridFor(p); startCell = nearestCell(dragCells, e.latlng); moved = false
           moveOccupied = dragCells.filter((c) => hasPanelAt(p, c))
           m.dragging.disable(); L.DomEvent.stop(e)
@@ -185,6 +228,11 @@ export function DesignEditor() {
         const cur = nearestCell(dragCells, e.latlng); if (!cur) return
         if (cur.row !== startCell.row || cur.col !== startCell.col) moved = true
         drawGhosts(cellBlock(dragCells, startCell, cur), t === 'remove' ? 'remove' : 'add'); setGhostN(cellBlock(dragCells, startCell, cur).length); return
+      }
+      if (t === 'select' && spMode && spPanel) {
+        if (spMode === 'move' && spStart) ghostOne(translateCorners(spPanel.corners0, e.latlng.lat - spStart.lat, e.latlng.lng - spStart.lng))
+        else if (spMode === 'rotate') ghostOne(rotateCorners(spPanel.corners0, spPanel.center0, bearingTo(spPanel.center0, e.latlng) - spRot0))
+        return
       }
       if (t === 'select' && dragPid && startCell && moveOccupied.length) {
         const cur = nearestCell(dragCells, e.latlng); if (!cur) return
@@ -213,11 +261,19 @@ export function DesignEditor() {
           const cur = nearestCell(dragCells, e.latlng) ?? startCell
           const block = moved ? cellBlock(dragCells, startCell, cur) : [startCell]
           let panels = [...(p.panels ?? [])]
-          if (t === 'remove') panels = panels.filter((pn) => !block.some((c) => sameCell(panelCenter(pn), c.center)))
+          if (t === 'remove') {
+            if (!moved) { const hit = findPanelAt({ lat: e.latlng.lat, lng: e.latlng.lng }); panels = hit ? panels.filter((pn) => pn.id !== hit.panel.id) : panels }
+            else panels = panels.filter((pn) => !block.some((c) => sameCell(panelCenter(pn), c.center)))
+          }
           else if (!moved) { const i = panels.findIndex((pn) => sameCell(panelCenter(pn), startCell!.center)); if (i >= 0) panels.splice(i, 1); else panels.push({ id: uid('pn'), corners: startCell.corners }) }
           else for (const c of block) if (!panels.some((pn) => sameCell(panelCenter(pn), c.center))) panels.push({ id: uid('pn'), corners: c.corners })
           commitRef.current(d.planes.map((x) => (x.id === dragPid ? { ...x, panels, moduleId: p.moduleId ?? moduleIdRef.current } : x)))
         }
+      } else if (t === 'select' && spMode && spPanel) {
+        let corners: LatLng[] | null = null
+        if (spMode === 'move' && spStart) corners = translateCorners(spPanel.corners0, e.latlng.lat - spStart.lat, e.latlng.lng - spStart.lng)
+        else if (spMode === 'rotate') corners = rotateCorners(spPanel.corners0, spPanel.center0, bearingTo(spPanel.center0, e.latlng) - spRot0)
+        if (corners) { const d = designRef.current!; commitRef.current(d.planes.map((x) => (x.id === spPanel!.pid ? { ...x, panels: (x.panels ?? []).map((pn) => (pn.id === spPanel!.panelId ? { ...pn, corners: corners! } : pn)) } : x))) }
       } else if (t === 'select' && dragPid && startCell && moveOccupied.length && moved) {
         const d = designRef.current!; const p = d.planes.find((x) => x.id === dragPid)
         const cur = nearestCell(dragCells, e.latlng) ?? startCell
@@ -229,7 +285,8 @@ export function DesignEditor() {
         }
       }
       ghostLayer.current?.clearLayers(); setGhostN(null); setRotDeg(null)
-      startCell = null; dragCells = []; dragPid = null; moveOccupied = []; rotPid = null; m.dragging.enable()
+      startCell = null; dragCells = []; dragPid = null; moveOccupied = []; rotPid = null
+      spPanel = null; spMode = null; spStart = null; m.dragging.enable()
     })
     map.current = m
     if ((import.meta as any).env?.DEV) (window as any).__lmap = m
@@ -246,12 +303,12 @@ export function DesignEditor() {
   useEffect(() => {
     const c = design?.center; if (!map.current || !c) return
     const key = `${c.lat.toFixed(6)},${c.lng.toFixed(6)}`
-    if (aerialKey.current === key) return
-    aerialKey.current = key
+    if (aerialKey.current === key && rgbLayer.current) return // already loaded for this location
     let cancelled = false
     ;(async () => {
       const ov = await fetchRgbOverlay(c.lat, c.lng)
-      if (cancelled || !ov || !map.current) return
+      if (cancelled || !ov || !map.current) return // StrictMode's first pass is cancelled; the second loads
+      aerialKey.current = key
       rgbLayer.current?.remove()
       const layer = L.imageOverlay(ov.dataUrl, ov.bounds, { pane: 'rgb', interactive: false } as any)
       rgbLayer.current = layer
@@ -316,12 +373,41 @@ export function DesignEditor() {
         L.polyline([bl, tip, br], arrowStyle).addTo(pl)
       }
     })
-    if (design.planes.length && toolRef.current === 'select') {
+    // Selected single panel — a dashed transform box + a rotate handle you drag to spin it.
+    const selP = selPanelId ? design.planes.flatMap((p) => p.panels ?? []).find((pn) => pn.id === selPanelId) : null
+    if (selP && map.current) {
+      L.polygon(selP.corners.map((v) => [v.lat, v.lng]) as [number, number][], { pmIgnore: true, interactive: false, color: '#7C3AED', weight: 2.4, fill: false, dashArray: '4 3' } as any).addTo(pl)
+      const c = panelCenter(selP), cp = map.current.latLngToContainerPoint([c.lat, c.lng])
+      const hp = map.current.containerPointToLatLng(L.point(cp.x, cp.y - 34))
+      L.polyline([[c.lat, c.lng], [hp.lat, hp.lng]], { color: '#7C3AED', weight: 1.6, opacity: 0.9, pmIgnore: true, interactive: false } as any).addTo(pl)
+      L.circleMarker([hp.lat, hp.lng], { radius: 6, color: '#7C3AED', weight: 2, fillColor: '#fff', fillOpacity: 1, pmIgnore: true, interactive: false } as any).addTo(pl)
+    }
+    // Frame the roof only when the structure changes (detect/draw) — never on a panel edit, or the map would jump mid-drag.
+    const fitKey = `${design.id}:${design.planes.length}`
+    if (design.planes.length && toolRef.current === 'select' && fittedRef.current !== fitKey) {
+      fittedRef.current = fitKey
       const all = design.planes.flatMap((p) => p.polygon.map((v) => [v.lat, v.lng] as [number, number]))
       try { map.current.fitBounds(L.latLngBounds(all).pad(0.3), { maxZoom: 20, animate: false }) } catch { /* single point */ }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [design?.planes, selId, mapReady])
+  }, [design?.planes, selId, selPanelId, mapReady])
+
+  // Delete / Backspace removes the selected panel (ignored while typing in a field).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Delete' && e.key !== 'Backspace') return
+      const el = e.target as HTMLElement | null
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return
+      if (!selPanelRef.current) return
+      e.preventDefault()
+      const d = designRef.current; if (!d) return
+      const id = selPanelRef.current
+      commitRef.current(d.planes.map((p) => ({ ...p, panels: (p.panels ?? []).filter((pn) => pn.id !== id) })))
+      setSelPanelId(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   // ── Actions ──
   async function runDetect(center?: LatLng) {
@@ -454,6 +540,7 @@ export function DesignEditor() {
     ghostLayer.current?.clearLayers(); setGhostN(null); setRotDeg(null); m.dragging.enable()
     const next: Tool = t !== 'select' && tool === t ? 'select' : t
     setTool(next)
+    if (next !== 'select') setSelPanelId(null)
     if (next === 'draw') m.pm.enableDraw('Polygon', { snappable: true })
     else if (next === 'edit') m.pm.enableGlobalEditMode({ allowSelfIntersection: false })
     else if ((next === 'add' || next === 'remove' || next === 'rotate') && !design?.planes.length) act.toast('Draw or detect a roof first, then use the panel tools', 'warning')
@@ -542,12 +629,12 @@ export function DesignEditor() {
             {drawing && !busy && (
               <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[500] h-9 px-4 rounded-full text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Target size={14} />Click each corner of the roof, then click the first point to close</div>
             )}
-            {view === '2d' && !busy && !drawing && (tool === 'add' || tool === 'remove' || tool === 'rotate' || (tool === 'select' && ghostN != null)) && (
+            {view === '2d' && !busy && !drawing && design.planes.length > 0 && (tool === 'add' || tool === 'remove' || tool === 'rotate' || tool === 'select') && (
               <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[500] h-9 px-4 rounded-full text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}>
                 {tool === 'add' && <><Grid size={14} />Click to place a module · drag for a block{ghostN != null ? ` · ${ghostN}` : ''}</>}
                 {tool === 'remove' && <><EraseIcon />Click a panel to remove · drag to clear a block{ghostN != null ? ` · ${ghostN}` : ''}</>}
                 {tool === 'rotate' && <><RotateIcon />Drag around the array to spin the grid{rotDeg != null ? ` · ${rotDeg}°` : ''}</>}
-                {tool === 'select' && <><CursorIcon />Drag the array to move it{ghostN != null ? ` · ${ghostN}` : ''}</>}
+                {tool === 'select' && <><CursorIcon />Drag a panel to move it · handle to rotate · Del removes{ghostN != null ? ` · ${ghostN}` : ''}</>}
               </div>
             )}
             {design.planes.length === 0 && !busy && !drawing && (
