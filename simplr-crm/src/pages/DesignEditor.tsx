@@ -23,7 +23,7 @@ type LatLng = { lat: number; lng: number }
 const uid = (p: string) => `${p}${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`
 type StudioTab = 'design' | 'array' | 'production' | 'proposal'
 // Pylon-style 2D tools: select/move arrays · add · remove · rotate array · draw face · edit vertices
-type Tool = 'select' | 'add' | 'remove' | 'rotate' | 'draw' | 'edit'
+type Tool = 'select' | 'add' | 'remove' | 'rotate' | 'draw' | 'edit' | 'pin'
 
 // ── Manual array-drawing helpers ──
 function pointInRing(ring: LatLng[], pt: LatLng): boolean {
@@ -61,6 +61,9 @@ function rotateCorners(corners: LatLng[], c: LatLng, delta: number): LatLng[] {
 const translateCorners = (corners: LatLng[], dLat: number, dLng: number): LatLng[] => corners.map((p) => ({ lat: p.lat + dLat, lng: p.lng + dLng }))
 /** Metric bearing (rad) from a centre to a point. */
 const bearingTo = (c: LatLng, ll: { lat: number; lng: number }) => Math.atan2((ll.lat - c.lat) * 110540, (ll.lng - c.lng) * mLngAt(c.lat))
+/** Do two panel quads overlap? Corner-containment either way — enough for near-equal rectangles. */
+const anyCornerInside = (p: LatLng[], q: LatLng[]) => p.some((c) => pointInRing(q, c))
+const quadsOverlap = (a: LatLng[], b: LatLng[]) => anyCornerInside(a, b) || anyCornerInside(b, a)
 
 /** Effective generating tilt — tilt-racking on a flat roof beats the flat pitch. */
 function effTilt(p: DesignPlane): number { return p.racking && p.racking !== 'flush' ? (p.tiltDeg ?? 10) : p.pitchDeg }
@@ -86,6 +89,7 @@ export function DesignEditor() {
   const redoStack = useRef<DesignPlane[][]>([])
   const undoRef = useRef<() => void>(() => {})
   const redoRef = useRef<() => void>(() => {})
+  const onPinRef = useRef<(ll: LatLng) => void>(() => {})
   const panelRenderer = useRef<L.Canvas | null>(null)
   const designRef = useRef(design)
   designRef.current = design
@@ -179,7 +183,8 @@ export function DesignEditor() {
     //    handle to spin it, independent of the grid. ──
     let spPanel: { pid: string; panelId: string; corners0: LatLng[]; center0: LatLng } | null = null
     let spMode: 'move' | 'rotate' | null = null
-    let spStart: L.LatLng | null = null, spRot0 = 0
+    let spStart: L.LatLng | null = null, spRot0 = 0, spInvalid = false
+    const otherPanels = (exceptId: string) => (designRef.current?.planes.flatMap((p) => p.panels ?? []) ?? []).filter((pn) => pn.id !== exceptId)
     const findPanelAt = (ll: { lat: number; lng: number }) => {
       const planes = designRef.current?.planes ?? []
       for (let i = planes.length - 1; i >= 0; i--) { const pans = planes[i].panels ?? []; for (let j = pans.length - 1; j >= 0; j--) if (pointInRing(pans[j].corners, ll)) return { pid: planes[i].id, panel: pans[j] } }
@@ -191,6 +196,7 @@ export function DesignEditor() {
 
     m.on('mousedown', (e: any) => {
       const t = toolRef.current; const p = planeAt(e.latlng)
+      if (t === 'pin') { L.DomEvent.stop(e); onPinRef.current({ lat: e.latlng.lat, lng: e.latlng.lng }); return }
       if (t === 'rotate') {
         if (!p || !p.panels?.length) return; setSelId(p.id)
         rotPid = p.id; rotPanels0 = p.panels; rotCenLL = arrayCentroid(p.panels); rotBear0 = bearingTo(rotCenLL, { lat: e.latlng.lat, lng: e.latlng.lng })
@@ -233,8 +239,11 @@ export function DesignEditor() {
         drawGhosts(cellBlock(dragCells, startCell, cur), t === 'remove' ? 'remove' : 'add'); setGhostN(cellBlock(dragCells, startCell, cur).length); return
       }
       if (t === 'select' && spMode && spPanel) {
-        if (spMode === 'move' && spStart) ghostOne(translateCorners(spPanel.corners0, e.latlng.lat - spStart.lat, e.latlng.lng - spStart.lng))
-        else if (spMode === 'rotate') ghostOne(rotateCorners(spPanel.corners0, spPanel.center0, bearingTo(spPanel.center0, e.latlng) - spRot0))
+        if (spMode === 'move' && spStart) {
+          const moved = translateCorners(spPanel.corners0, e.latlng.lat - spStart.lat, e.latlng.lng - spStart.lng)
+          spInvalid = otherPanels(spPanel.panelId).some((pn) => quadsOverlap(moved, pn.corners)) // can't drop on another panel
+          ghostOne(moved, spInvalid ? 'bad' : 'move')
+        } else if (spMode === 'rotate') ghostOne(rotateCorners(spPanel.corners0, spPanel.center0, bearingTo(spPanel.center0, e.latlng) - spRot0))
         return
       }
       if (t === 'select' && dragPid && startCell && moveOccupied.length) {
@@ -279,8 +288,11 @@ export function DesignEditor() {
         }
       } else if (t === 'select' && spMode && spPanel) {
         let corners: LatLng[] | null = null
-        if (spMode === 'move' && spStart) corners = translateCorners(spPanel.corners0, e.latlng.lat - spStart.lat, e.latlng.lng - spStart.lng)
-        else if (spMode === 'rotate') corners = rotateCorners(spPanel.corners0, spPanel.center0, bearingTo(spPanel.center0, e.latlng) - spRot0)
+        if (spMode === 'move' && spStart) {
+          const moved2 = translateCorners(spPanel.corners0, e.latlng.lat - spStart.lat, e.latlng.lng - spStart.lng)
+          if (!otherPanels(spPanel.panelId).some((pn) => quadsOverlap(moved2, pn.corners))) corners = moved2 // reject an overlapping drop → panel stays put
+          else act.toast('Panels can’t overlap — dropped back', 'warning')
+        } else if (spMode === 'rotate') corners = rotateCorners(spPanel.corners0, spPanel.center0, bearingTo(spPanel.center0, e.latlng) - spRot0)
         if (corners) { const d = designRef.current!; commitRef.current(d.planes.map((x) => (x.id === spPanel!.pid ? { ...x, panels: (x.panels ?? []).map((pn) => (pn.id === spPanel!.panelId ? { ...pn, corners: corners! } : pn)) } : x))) }
       } else if (t === 'select' && dragPid && startCell && moveOccupied.length && moved) {
         const d = designRef.current!; const p = d.planes.find((x) => x.id === dragPid)
@@ -294,7 +306,7 @@ export function DesignEditor() {
       }
       ghostLayer.current?.clearLayers(); setGhostN(null); setRotDeg(null)
       startCell = null; dragCells = []; dragPid = null; moveOccupied = []; rotPid = null; rotCenLL = null; rotPanels0 = []
-      spPanel = null; spMode = null; spStart = null; m.dragging.enable()
+      spPanel = null; spMode = null; spStart = null; spInvalid = false; m.dragging.enable()
     })
     map.current = m
     if ((import.meta as any).env?.DEV) (window as any).__lmap = m
@@ -547,6 +559,14 @@ export function DesignEditor() {
   }
   commitRef.current = commitSnapshot
   undoRef.current = undo; redoRef.current = redo
+  // Drop-pin → recentre the design on the exact roof and re-detect there (fixes an off postcode geocode).
+  onPinRef.current = (ll: LatLng) => {
+    if (!design) return
+    act.updateDesign(design.id, { center: ll })
+    if (map.current) map.current.setView([ll.lat, ll.lng], 20)
+    setTool('select')
+    runDetect(ll)
+  }
   // Ovi conversational design — parse a brief, then size + lay out live, streaming each step.
   async function oviExecute(brief: string, emit: (line: string) => void): Promise<string> {
     const d = designRef.current!
@@ -657,6 +677,7 @@ export function DesignEditor() {
                 <span className="h-px mx-1.5 my-0.5 bg-divider" />
                 <ToolBtn on={tool === 'draw'} onClick={() => selectTool('draw')} icon={<Plus size={15} />} label="Draw roof face" />
                 <ToolBtn on={tool === 'edit'} onClick={() => selectTool('edit')} icon={<Wrench size={14} />} label="Edit vertices" />
+                <ToolBtn on={tool === 'pin'} onClick={() => selectTool('pin')} icon={<Target size={15} />} label="Drop pin & detect here" />
               </div>
             )}
             <div className="absolute top-3 right-3 z-[550] flex items-center gap-1 bg-white/95 backdrop-blur border border-border rounded-control shadow-modal p-1">
@@ -676,7 +697,10 @@ export function DesignEditor() {
             {drawing && !busy && (
               <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[500] h-9 px-4 rounded-full text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Target size={14} />Click each corner of the roof, then click the first point to close</div>
             )}
-            {view === '2d' && !busy && sel && (
+            {view === '2d' && !busy && tool === 'pin' && (
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[510] h-9 px-4 rounded-full text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Target size={14} />Click the exact roof to re-centre &amp; detect here</div>
+            )}
+            {view === '2d' && !busy && tool !== 'pin' && sel && (
               <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[540]">
                 <ArrayToolbar sel={sel} moduleId={moduleId} onUpdate={updatePlane} onUndo={undo} onRedo={redo} canUndo={undoStack.current.length > 0} canRedo={redoStack.current.length > 0} />
               </div>
