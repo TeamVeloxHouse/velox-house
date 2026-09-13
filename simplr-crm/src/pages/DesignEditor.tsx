@@ -17,7 +17,7 @@ import { parseDesignBrief } from '../lib/oviDesign'
 import { designIntentFromClaude } from '../lib/oviDesignAI'
 import { Design3D } from '../components/Design3D'
 import { DesignCopilot } from '../components/DesignCopilot'
-import type { Design, DesignPlane, PanelOrientation, RackingType } from '../store/types'
+import type { Design, DesignPanel, DesignPlane, PanelOrientation, RackingType } from '../store/types'
 
 type LatLng = { lat: number; lng: number }
 const uid = (p: string) => `${p}${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`
@@ -134,9 +134,10 @@ export function DesignEditor() {
     //    module grid (indexed by row,col) so panels always stay aligned and inside the setback. ──
     let startCell: GridCell | null = null, dragCells: GridCell[] = [], dragPid: string | null = null, moved = false
     let moveOccupied: GridCell[] = [] // select-tool: the array's current cells, dragged as a block
-    let rotBase = 0, rotStart = 0, rotCen: L.Point | null = null, rotPid: string | null = null
+    // Rotate-array: spin the EXISTING panels as a rigid group about their centroid (never a repack).
+    let rotPid: string | null = null, rotPanels0: DesignPanel[] = [], rotCenLL: LatLng | null = null, rotBear0 = 0
     const cellKey = (c: GridCell) => `${c.row},${c.col}`
-    const centroid = (p: DesignPlane) => p.polygon.reduce((a, v) => ({ lat: a.lat + v.lat / p.polygon.length, lng: a.lng + v.lng / p.polygon.length }), { lat: 0, lng: 0 })
+    const arrayCentroid = (pans: DesignPanel[]): LatLng => { const cs = pans.map((pn) => panelCenter(pn)); return { lat: cs.reduce((s, c) => s + c.lat, 0) / cs.length, lng: cs.reduce((s, c) => s + c.lng, 0) / cs.length } }
     const planeAt = (ll: L.LatLng) => designRef.current?.planes.find((p) => pointInRing(p.polygon, { lat: ll.lat, lng: ll.lng }))
     // Manual placement uses NO setback — you can drop panels right to the roof edge (Pylon-style). A
     // fire setback, if wanted, is a per-plane slider that only trims auto-fill, never manual placement.
@@ -163,14 +164,10 @@ export function DesignEditor() {
       grid.forEach((c) => { if (!hasPanelAt(p, c)) cellPoly(c, GRID_HINT).addTo(g) })
       if (nearest) { const s = GH.add; cellPoly(nearest, { color: s.frame, weight: s.weight, fillColor: s.glass, fillOpacity: s.fill }).addTo(g) }
     }
-    const repackAtAngle = (pid: string, angleDeg: number) => {
-      const d = designRef.current!; const p = d.planes.find((x) => x.id === pid); if (!p) return
-      const mod = moduleById(p.moduleId ?? moduleIdRef.current); const next = { ...p, arrayAngleDeg: angleDeg }
-      const { panels, orientation } = packWithSettings(next, mod, d.setbackM)
-      commitRef.current(d.planes.map((x) => (x.id === pid ? { ...next, panels, orientation, moduleId: p.moduleId ?? moduleIdRef.current } : x)))
+    const drawGhostSet = (sets: LatLng[][], kind: keyof typeof GH = 'move') => {
+      const g = ghostLayer.current!; g.clearLayers(); const s = GH[kind]
+      sets.forEach((corners) => L.polygon(corners.map((v) => [v.lat, v.lng]) as [number, number][], { renderer: panelRenderer.current!, pmIgnore: true, interactive: false, color: s.frame, weight: s.weight, fillColor: s.glass, fillOpacity: s.fill } as any).addTo(g))
     }
-    const angleAt = (ll: L.LatLng) => { const pt = m.latLngToContainerPoint(ll); return Math.atan2(pt.y - rotCen!.y, pt.x - rotCen!.x) }
-    const rotFrom = (ll: L.LatLng) => { let d = rotBase + ((angleAt(ll) - rotStart) * 180) / Math.PI; return ((d % 180) + 180) % 180 }
 
     // ── Single-panel free manipulation (Pylon-style): grab any panel to drag it freely, or its rotate
     //    handle to spin it, independent of the grid. ──
@@ -189,8 +186,8 @@ export function DesignEditor() {
     m.on('mousedown', (e: any) => {
       const t = toolRef.current; const p = planeAt(e.latlng)
       if (t === 'rotate') {
-        if (!p) return; setSelId(p.id)
-        rotPid = p.id; rotBase = p.arrayAngleDeg ?? 0; rotCen = m.latLngToContainerPoint([centroid(p).lat, centroid(p).lng]); rotStart = angleAt(e.latlng)
+        if (!p || !p.panels?.length) return; setSelId(p.id)
+        rotPid = p.id; rotPanels0 = p.panels; rotCenLL = arrayCentroid(p.panels); rotBear0 = bearingTo(rotCenLL, { lat: e.latlng.lat, lng: e.latlng.lng })
         m.dragging.disable(); L.DomEvent.stop(e); return
       }
       if (t === 'add' || t === 'remove') {
@@ -218,10 +215,10 @@ export function DesignEditor() {
     })
     m.on('mousemove', (e: any) => {
       const t = toolRef.current
-      if (t === 'rotate' && rotPid && rotCen) {
-        const deg = rotFrom(e.latlng); setRotDeg(Math.round(deg))
-        const pp = designRef.current!.planes.find((x) => x.id === rotPid)
-        if (pp) drawGhosts(gridFor({ ...pp, arrayAngleDeg: deg }), 'move')
+      if (t === 'rotate' && rotPid && rotCenLL) {
+        const delta = bearingTo(rotCenLL, e.latlng) - rotBear0
+        setRotDeg(Math.round((((-delta * 180) / Math.PI) % 360 + 360) % 360))
+        drawGhostSet(rotPanels0.map((pn) => rotateCorners(pn.corners, rotCenLL!, delta)), 'move')
         return
       }
       if ((t === 'add' || t === 'remove') && dragPid && startCell) {
@@ -254,7 +251,12 @@ export function DesignEditor() {
     })
     m.on('mouseup', (e: any) => {
       const t = toolRef.current
-      if (t === 'rotate' && rotPid) { repackAtAngle(rotPid, rotFrom(e.latlng)); rotPid = null; rotCen = null }
+      if (t === 'rotate' && rotPid && rotCenLL) {
+        const delta = bearingTo(rotCenLL, e.latlng) - rotBear0
+        const d = designRef.current!
+        commitRef.current(d.planes.map((x) => (x.id === rotPid ? { ...x, panels: rotPanels0.map((pn) => ({ ...pn, corners: rotateCorners(pn.corners, rotCenLL!, delta) })) } : x)))
+        rotPid = null; rotCenLL = null; rotPanels0 = []
+      }
       else if ((t === 'add' || t === 'remove') && dragPid && startCell) {
         const d = designRef.current!; const p = d.planes.find((x) => x.id === dragPid)
         if (p) {
@@ -285,7 +287,7 @@ export function DesignEditor() {
         }
       }
       ghostLayer.current?.clearLayers(); setGhostN(null); setRotDeg(null)
-      startCell = null; dragCells = []; dragPid = null; moveOccupied = []; rotPid = null
+      startCell = null; dragCells = []; dragPid = null; moveOccupied = []; rotPid = null; rotCenLL = null; rotPanels0 = []
       spPanel = null; spMode = null; spStart = null; m.dragging.enable()
     })
     map.current = m
