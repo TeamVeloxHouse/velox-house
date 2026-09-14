@@ -650,6 +650,19 @@ export function DesignEditor() {
     const d = designRef.current; if (!d) return
     commitSnapshot(d.planes.map((p) => (p.id === pid ? { ...p, panels: [] } : p)))
   }
+  // Centre the current selection (or the selected plane's whole array) within its roof face.
+  function centreArray() {
+    const d = designRef.current; if (!d) return
+    const plane = d.planes.find((p) => p.id === selId); if (!plane || !plane.panels?.length) return
+    const selSet = new Set(selPanelIds)
+    const movers = plane.panels.filter((pn) => (selPanelIds.length ? selSet.has(pn.id) : true))
+    if (!movers.length) return
+    const avg = (pts: { lat: number; lng: number }[]) => ({ lat: pts.reduce((s, p) => s + p.lat, 0) / pts.length, lng: pts.reduce((s, p) => s + p.lng, 0) / pts.length })
+    const arrC = avg(movers.map((pn) => panelCenter(pn))), planeC = avg(plane.polygon)
+    const dLat = planeC.lat - arrC.lat, dLng = planeC.lng - arrC.lng
+    const moved = new Map(movers.map((pn) => [pn.id, pn.corners.map((c) => ({ lat: c.lat + dLat, lng: c.lng + dLng }))]))
+    commitSnapshot(d.planes.map((p) => (p.id === plane.id ? { ...p, panels: (p.panels ?? []).map((pn) => (moved.has(pn.id) ? { ...pn, corners: moved.get(pn.id)! } : pn)) } : p)))
+  }
   function clearAllPanels() {
     const d = designRef.current; if (!d) return
     const n = d.planes.reduce((s, p) => s + (p.panels?.length ?? 0), 0); if (!n) return
@@ -853,7 +866,7 @@ export function DesignEditor() {
             )}
             {!busy && sel && !(view === '2d' && tool === 'pin') && (
               <div className={`absolute top-3 left-[64px] z-[540] flex pointer-events-none [&>*]:pointer-events-auto overflow-x-auto ${view === '3d' ? 'right-3' : 'right-[232px]'}`}>
-                <ArrayToolbar sel={sel} moduleId={moduleId} onUpdate={updatePlane} onUndo={undo} onRedo={redo} canUndo={undoStack.current.length > 0} canRedo={redoStack.current.length > 0} />
+                <ArrayToolbar sel={sel} moduleId={moduleId} onUpdate={updatePlane} onUndo={undo} onRedo={redo} canUndo={undoStack.current.length > 0} canRedo={redoStack.current.length > 0} onCentre={centreArray} onFill={() => fillPlane(sel.id)} />
               </div>
             )}
             {view === '2d' && boundaryOn && boundaryInfo && (
@@ -1150,9 +1163,9 @@ function ToolBtn({ on, onClick, icon, label }: { on: boolean; onClick: () => voi
   )
 }
 /* ── Pylon-style top toolbar for the selected array — inline tilt, azimuth, orientation, margins, undo/redo ── */
-function ArrayToolbar({ sel, moduleId, onUpdate, onUndo, onRedo, canUndo, canRedo }: {
+function ArrayToolbar({ sel, moduleId, onUpdate, onUndo, onRedo, canUndo, canRedo, onCentre, onFill }: {
   sel: DesignPlane; moduleId: string; onUpdate: (id: string, patch: Partial<DesignPlane>, repack?: boolean) => void
-  onUndo: () => void; onRedo: () => void; canUndo: boolean; canRedo: boolean
+  onUndo: () => void; onRedo: () => void; canUndo: boolean; canRedo: boolean; onCentre: () => void; onFill: () => void
 }) {
   const mod = moduleById(sel.moduleId ?? moduleId)
   const n = sel.panels?.length ?? 0
@@ -1176,10 +1189,14 @@ function ArrayToolbar({ sel, moduleId, onUpdate, onUndo, onRedo, canUndo, canRed
       <NumField icon={<span className="text-[11px] font-bold">⇕</span>} label="Row gap" value={Math.round((sel.rowGapM ?? 0.02) * 1000)} suffix="mm" min={0} max={800} step={5} onChange={(v) => onUpdate(sel.id, { rowGapM: v / 1000 }, true)} />
       <NumField icon={<span className="text-[11px] font-bold">⇔</span>} label="Panel gap" value={Math.round((sel.panelGapM ?? 0.02) * 1000)} suffix="mm" min={0} max={800} step={5} onChange={(v) => onUpdate(sel.id, { panelGapM: v / 1000 }, true)} />
       <ToolSep />
+      <button onClick={onFill} title="Fill this face with panels" className="h-7 px-2.5 rounded-[7px] text-white text-[12px] font-semibold inline-flex items-center gap-1" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Grid size={12} />Fill</button>
+      <button onClick={onCentre} disabled={!n} title="Centre the array on this face" className={`h-7 px-2.5 rounded-[7px] text-[12px] font-semibold inline-flex items-center gap-1 border border-border ${n ? 'text-ink-3 hover:bg-control' : 'text-muted-2/40 cursor-default'}`}><CentreIcon />Centre</button>
+      <ToolSep />
       <div className="px-1.5 text-[11.5px] text-muted-b whitespace-nowrap"><b className="text-ink tabular-nums">{n}</b> · <b className="text-ink tabular-nums">{kwpOf(n, mod.watts)}</b> kWp</div>
     </div>
   )
 }
+function CentreIcon() { return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="8" y="8" width="8" height="8" rx="1" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /></svg> }
 function TB({ onClick, disabled, title, children }: { onClick: () => void; disabled?: boolean; title: string; children: React.ReactNode }) {
   return <button onClick={onClick} disabled={disabled} title={title} className={`h-7 w-7 rounded-[6px] flex items-center justify-center ${disabled ? 'text-muted-2/40 cursor-default' : 'text-ink-3 hover:bg-control'}`}>{children}</button>
 }
