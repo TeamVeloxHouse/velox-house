@@ -969,6 +969,10 @@ export interface Design {
   systemKwp?: number
   panels?: number
   annualKwh?: number
+  // Energy modelling (consumption offset / self-consumption / bill savings)
+  annualConsumptionKwh?: number // household/site annual demand (kWh)
+  occupancy?: 'home_all_day' | 'in_half_day' | 'out_all_day'
+  batteryKwh?: number // usable battery capacity (kWh), 0 = none
   createdAt: number
   updatedAt: number
 }

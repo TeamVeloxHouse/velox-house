@@ -17,6 +17,7 @@ import { parseDesignBrief } from '../lib/oviDesign'
 import { designIntentFromClaude } from '../lib/oviDesignAI'
 import { Design3D } from '../components/Design3D'
 import { DesignCopilot } from '../components/DesignCopilot'
+import { EnergyPanel } from '../components/EnergyPanel'
 import type { Design, DesignPanel, DesignPlane, PanelOrientation, RackingType } from '../store/types'
 
 type LatLng = { lat: number; lng: number }
@@ -112,6 +113,8 @@ export function DesignEditor() {
   const [rotDeg, setRotDeg] = useState<number | null>(null)
   const [hdReady, setHdReady] = useState(false)
   const [hdOn, setHdOn] = useState(true)
+  const rootRef = useRef<HTMLDivElement>(null)
+  const [isFs, setIsFs] = useState(false)
   const [, setHistTick] = useState(0) // bump re-renders so undo/redo buttons re-evaluate enablement
   const [moduleId, setModuleId] = useState('m440')
   // draw/edit are geoman modes; add/remove/move/rotate are our own roof-grid tools
@@ -374,6 +377,14 @@ export function DesignEditor() {
 
   // Keep Leaflet sized correctly when returning to a canvas tab (it was display:none)
   useEffect(() => { if (canvasVisible && map.current) setTimeout(() => map.current!.invalidateSize(), 60) }, [canvasVisible])
+
+  // Fullscreen the whole editor (native Fullscreen API) — the map is resized on enter/exit.
+  useEffect(() => {
+    const onFs = () => { setIsFs(!!document.fullscreenElement); setTimeout(() => map.current?.invalidateSize(), 90) }
+    document.addEventListener('fullscreenchange', onFs)
+    return () => document.removeEventListener('fullscreenchange', onFs)
+  }, [])
+  const toggleFs = () => { const el = rootRef.current; if (!el) return; if (!document.fullscreenElement) el.requestFullscreen?.().catch(() => {}); else document.exitFullscreen?.() }
 
   // ── High-res Google base tiles: probe once; if the Map Tiles API is enabled on the key, swap the
   //    Esri base for Google satellite everywhere. Silently keeps Esri if the probe 404s. ──
@@ -710,9 +721,10 @@ export function DesignEditor() {
   ]
 
   return (
-    <>
+    <div ref={rootRef} className="flex flex-col flex-1 min-h-0 h-full bg-surface">
       <TopBar title={design.name} crumbs={['Design', 'Studio']}
         actions={<div className="flex items-center gap-2">
+          <Button variant="secondary" icon={<MaximizeIcon on={isFs} />} onClick={toggleFs}>{isFs ? 'Exit full screen' : 'Full screen'}</Button>
           <Button variant="secondary" icon={<Radar size={15} />} onClick={() => runDetect()} className={busy ? 'opacity-60 pointer-events-none' : ''}>{busy ? 'Working…' : 'Detect roof'}</Button>
           <Button variant="primary" icon={<Sparkle size={15} />} onClick={() => runAutoLayout({ kind: 'max' })} className={busy ? 'opacity-60 pointer-events-none' : ''}>Ovi auto-layout</Button>
           {totals.count > 0 && <Button variant="secondary" icon={<EraseIcon />} onClick={clearAllPanels}>Clear all</Button>}
@@ -815,7 +827,7 @@ export function DesignEditor() {
           {tab === 'array'
             ? <ArrayInspector design={design} sel={sel} moduleId={moduleId} setModuleId={setModuleId} onSelect={setSelId} onUpdate={updatePlane} onFill={fillPlane} onClear={clearPlane} onDelete={deletePlane}
                 targetKwp={targetKwp} setTargetKwp={setTargetKwp} onGoal={runAutoLayout} kwp={kwp} count={totals.count} />
-            : <DesignInspector design={design} selId={selId} onSelect={setSelId} onUpdate={updatePlane} onFill={fillPlane} onClear={clearPlane} onDelete={deletePlane} moduleId={moduleId} setModuleId={setModuleId} kwp={kwp} totalPanels={totals.count} roofArea={roofArea} module={module} onHeight={(m) => act.updateDesign(design.id, { eaveHeightM: m, heightSource: 'manual' })} onBackToProspect={design.prospectId ? () => nav('/tools/company-search') : undefined} />
+            : <DesignInspector design={design} selId={selId} onSelect={setSelId} onUpdate={updatePlane} onFill={fillPlane} onClear={clearPlane} onDelete={deletePlane} moduleId={moduleId} setModuleId={setModuleId} kwp={kwp} totalPanels={totals.count} annualKwh={totals.kwh} roofArea={roofArea} module={module} onHeight={(m) => act.updateDesign(design.id, { eaveHeightM: m, heightSource: 'manual' })} onPatch={(patch) => act.updateDesign(design.id, patch)} onBackToProspect={design.prospectId ? () => nav('/tools/company-search') : undefined} />
           }
         </div>
 
@@ -823,18 +835,18 @@ export function DesignEditor() {
         {tab === 'proposal' && <ProposalPane design={design} kwp={kwp} count={totals.count} annualKwh={Math.round(totals.kwh)} onOpen={() => nav('/studio/proposals')} onConfirm={() => act.updateDesign(design.id, { status: 'confirmed', systemKwp: kwp, panels: totals.count, annualKwh: Math.round(totals.kwh) })} />}
         <DesignCopilot open={oviOpen} onClose={() => setOviOpen(false)} onExecute={oviExecute} />
       </div>
-    </>
+    </div>
   )
 }
 
 /* ── Design-tab inspector: plane list + quick pitch/azimuth + fill ── */
-function DesignInspector({ design, selId, onSelect, onUpdate, onFill, onClear, onDelete, moduleId, setModuleId, kwp, totalPanels, roofArea, module, onHeight, onBackToProspect }: {
+function DesignInspector({ design, selId, onSelect, onUpdate, onFill, onClear, onDelete, moduleId, setModuleId, kwp, totalPanels, annualKwh, roofArea, module, onHeight, onPatch, onBackToProspect }: {
   design: Design; selId: string | null; onSelect: (id: string) => void; onUpdate: (id: string, patch: Partial<DesignPlane>, repack?: boolean) => void
   onFill: (id: string) => void; onClear: (id: string) => void; onDelete: (id: string) => void; moduleId: string; setModuleId: (v: string) => void
-  kwp: number; totalPanels: number; roofArea: number; module: Module; onHeight: (m: number) => void; onBackToProspect?: () => void
+  kwp: number; totalPanels: number; annualKwh: number; roofArea: number; module: Module; onHeight: (m: number) => void; onPatch: (patch: Partial<Design>) => void; onBackToProspect?: () => void
 }) {
   return (
-    <div className="w-[310px] shrink-0 rounded-card bg-surface border border-border flex flex-col overflow-hidden">
+    <div className="w-[330px] shrink-0 rounded-card bg-surface border border-border flex flex-col overflow-hidden">
       <div className="p-4 border-b border-divider">
         <div className="grid grid-cols-3 gap-2">
           <Metric v={kwp ? `${kwp}` : '—'} u="kWp" hero />
@@ -876,6 +888,7 @@ function DesignInspector({ design, selId, onSelect, onUpdate, onFill, onClear, o
             )}
           </div>
         ))}
+        {design.planes.length > 0 && <EnergyPanel design={design} annualKwh={annualKwh} onUpdate={onPatch} />}
       </div>
       <div className="p-3 border-t border-divider flex flex-col gap-2.5">
         <Slider label={`Height${design.heightSource === 'osm' ? ' · OSM' : ''}`} value={Math.round(design.eaveHeightM ?? 5)} min={2} max={30} suffix=" m" onChange={onHeight} />
@@ -1118,6 +1131,9 @@ function RedoIcon() { return <svg width="15" height="15" viewBox="0 0 24 24" fil
 // Tiny inline glyphs for the tools the icon set doesn't cover (cursor / eraser / rotate).
 function CursorIcon() { return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 3l7 17 2.5-6.5L20 11 4 3z" /></svg> }
 function HandIcon() { return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 11V6a2 2 0 0 0-4 0M14 10V4a2 2 0 0 0-4 0v2M10 10.5V6a2 2 0 0 0-4 0v8" /><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15" /></svg> }
+function MaximizeIcon({ on }: { on?: boolean }) { return on
+  ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3" /></svg>
+  : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3" /></svg> }
 function EraseIcon() { return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 21h13" /><path d="M4.5 15.5l6-6 5 5-4.5 4.5H8l-3.5-3.5z" /><path d="M10.5 9.5l5-5 4 4-5 5" /></svg> }
 function RotateIcon() { return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7" /><path d="M21 3v5h-5" /></svg> }
 function Metric({ v, u, small, hero }: { v: string; u: string; small?: boolean; hero?: boolean }) {
