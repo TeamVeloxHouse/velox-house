@@ -786,7 +786,7 @@ export function DesignEditor() {
             <div ref={mapEl} className="absolute inset-0" style={{ background: '#0b1220', isolation: 'isolate' }} />
             {view === '3d' && canvasVisible && <Design3D design={design} adding={adding} selecting={tool === 'select'} moduleId={moduleId} onCommitPanels={(pid, panels) => commitSnapshot(design.planes.map((p) => (p.id === pid ? { ...p, panels, moduleId: p.moduleId ?? moduleId } : p)))} onSelectPanels={(pid, ids) => { if (pid) setSelId(pid); setSelPanelIds(ids) }} onCapture={() => { setView('2d'); setTimeout(() => selectTool('draw'), 80) }} />}
             {canvasVisible && (
-              <div className="absolute top-3 left-3 z-[560] flex flex-col gap-1 bg-white/95 backdrop-blur border border-border rounded-control shadow-modal p-1">
+              <div className="absolute top-3 left-3 z-[560] flex flex-col gap-1 bg-white/95 backdrop-blur border border-border rounded-control shadow-modal p-1 overflow-y-auto" style={{ maxHeight: 'calc(100% - 24px)' }}>
                 <ToolBtn on={tool === 'pan'} onClick={() => selectTool('pan')} icon={<HandIcon />} label={view === '3d' ? 'Orbit / move the camera' : 'Pan (move the map)'} />
                 <ToolBtn on={tool === 'select'} onClick={() => selectTool('select')} icon={<CursorIcon />} label={view === '3d' ? 'Select / move a panel' : 'Select / move array'} />
                 <ToolBtn on={tool === 'add'} onClick={() => selectTool('add')} icon={<Grid size={15} />} label="Add panels" />
