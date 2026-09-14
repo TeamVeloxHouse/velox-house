@@ -11,8 +11,8 @@ import { useActions, useState_ } from '../store/store'
 import { geocodeLocation } from '../lib/commercialFinder'
 import { detectPlanes, slopedAreaM2, totalRoofArea, compass, polygonAreaM2 } from '../lib/design'
 import { MODULES, moduleById, packWithSettings, autoLayout, kwpOf, planeSolarFactor, planeQuality, planeGrid, type Module, type LayoutGoal, type GridCell } from '../lib/panels'
-import { regionYield, fetchBuildingHeight } from '../lib/solar'
-import { fetchRgbOverlay } from '../lib/dsm'
+import { regionYield, fetchBuildingHeight, fetchBuildingFootprint } from '../lib/solar'
+import { fetchRgbOverlay, fetchBuildingOutline } from '../lib/dsm'
 import { parseDesignBrief } from '../lib/oviDesign'
 import { designIntentFromClaude } from '../lib/oviDesignAI'
 import { Design3D } from '../components/Design3D'
@@ -564,6 +564,23 @@ export function DesignEditor() {
     commitSnapshot(d.planes.filter((p) => p.id !== pid))
     if (selId === pid) setSelId(null)
   }
+  // Trace the real building outline from OpenStreetMap (free, no key) — a dependable, accurate polygon
+  // when Google's auto-detect is off. Drop it as a plane you then split into faces with Draw/Edit.
+  async function traceBuilding() {
+    const d = designRef.current; if (!d || busy) return
+    const c = d.center; if (!c) { act.toast('Set the location first — drop a pin on the roof', 'warning'); return }
+    setBusy(true); setStatus('Tracing the building outline…')
+    try {
+      // Google's DSM mask gives the true building shape wherever Solar coverage exists (most urban UK);
+      // OSM is the fallback (patchy for UK houses). Either way it's free and needs no extra key.
+      const ring = (await fetchBuildingOutline(c.lat, c.lng).catch(() => null)) || (await fetchBuildingFootprint(c).catch(() => null))
+      if (!ring || ring.length < 3) { act.toast('No building outline found here — draw it by hand with the pen tool', 'warning'); return }
+      const plane: DesignPlane = { id: uid('pl'), name: `Building outline`, polygon: ring, pitchDeg: 30, azimuthDeg: 180, areaM2: Math.round(polygonAreaM2(ring)), source: 'manual', racking: 'flush' }
+      commitSnapshot([...d.planes, plane])
+      setSelId(plane.id)
+      act.toast('Traced the outline — split it into roof faces with Draw / Edit vertices', 'positive')
+    } catch { act.toast('Could not fetch the outline', 'warning') } finally { setBusy(false); setStatus('') }
+  }
   function clearAllPlanes() {
     const d = designRef.current; if (!d || !d.planes.length) return
     const n = d.planes.length
@@ -733,6 +750,7 @@ export function DesignEditor() {
         actions={<div className="flex items-center gap-2">
           <Button variant="secondary" icon={<MaximizeIcon on={isFs} />} onClick={toggleFs}>{isFs ? 'Exit full screen' : 'Full screen'}</Button>
           <Button variant="secondary" icon={<Radar size={15} />} onClick={() => runDetect()} className={busy ? 'opacity-60 pointer-events-none' : ''}>{busy ? 'Working…' : 'Detect roof'}</Button>
+          <Button variant="secondary" icon={<Layers size={15} />} onClick={traceBuilding} className={busy ? 'opacity-60 pointer-events-none' : ''}>Trace building</Button>
           <Button variant="primary" icon={<Sparkle size={15} />} onClick={() => runAutoLayout({ kind: 'max' })} className={busy ? 'opacity-60 pointer-events-none' : ''}>Ovi auto-layout</Button>
           {totals.count > 0 && <Button variant="secondary" icon={<EraseIcon />} onClick={clearAllPanels}>Clear all</Button>}
           <Button variant="secondary" icon={<Check size={15} />} onClick={() => act.updateDesign(design.id, { status: design.status === 'confirmed' ? 'draft' : 'confirmed' })}>{design.status === 'confirmed' ? 'Confirmed' : 'Confirm'}</Button>
@@ -820,10 +838,11 @@ export function DesignEditor() {
                 <div className="bg-surface/95 backdrop-blur border border-border rounded-card px-6 py-5 text-center shadow-modal max-w-[380px] pointer-events-auto">
                   <span className="w-12 h-12 mx-auto rounded-2xl flex items-center justify-center text-white mb-3" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Sun size={22} /></span>
                   <div className="text-[15px] font-bold text-ink">Capture the roof</div>
-                  <div className="text-[12.5px] text-muted-b mt-1">Try <b>Detect roof</b> for Google's read, or <b>Draw plane</b> to trace the real roof — best for big commercial sheds. Then hit <b>Ovi auto-layout</b>.</div>
-                  <div className="flex items-center gap-2 justify-center mt-3">
+                  <div className="text-[12.5px] text-muted-b mt-1"><b>Trace building</b> pulls the real outline from OpenStreetMap (most reliable), <b>Detect</b> tries Google's read, or <b>Draw</b> by hand. Then split into faces and <b>Ovi auto-layout</b>.</div>
+                  <div className="flex items-center gap-2 justify-center mt-3 flex-wrap">
+                    <button onClick={traceBuilding} className="h-9 px-3.5 rounded-control text-white text-[13px] font-semibold inline-flex items-center gap-1.5" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Layers size={14} />Trace building</button>
                     <button onClick={() => runDetect()} className="h-9 px-3.5 rounded-control border border-border text-[13px] font-semibold text-ink-3 hover:bg-control inline-flex items-center gap-1.5"><Radar size={14} />Detect</button>
-                    <button onClick={() => selectTool('draw')} className="h-9 px-3.5 rounded-control text-white text-[13px] font-semibold inline-flex items-center gap-1.5" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Plus size={14} />Draw plane</button>
+                    <button onClick={() => selectTool('draw')} className="h-9 px-3.5 rounded-control border border-border text-[13px] font-semibold text-ink-3 hover:bg-control inline-flex items-center gap-1.5"><Plus size={14} />Draw</button>
                   </div>
                 </div>
               </div>
