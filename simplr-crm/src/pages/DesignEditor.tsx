@@ -115,6 +115,9 @@ export function DesignEditor() {
   const [hdOn, setHdOn] = useState(true)
   const rootRef = useRef<HTMLDivElement>(null)
   const [isFs, setIsFs] = useState(false)
+  const boundaryLayer = useRef<L.LayerGroup | null>(null)
+  const [boundaryOn, setBoundaryOn] = useState(false)
+  const [boundaryInfo, setBoundaryInfo] = useState<{ source: 'inspire' | 'footprint'; found: boolean } | null>(null)
   const [, setHistTick] = useState(0) // bump re-renders so undo/redo buttons re-evaluate enablement
   const [moduleId, setModuleId] = useState('m440')
   // draw/edit are geoman modes; add/remove/move/rotate are our own roof-grid tools
@@ -138,6 +141,7 @@ export function DesignEditor() {
     panelLayer.current = L.layerGroup().addTo(m)
     planeLayer.current = L.layerGroup().addTo(m)
     ghostLayer.current = L.layerGroup().addTo(m)
+    boundaryLayer.current = L.layerGroup().addTo(m)
     // Dedicated pane for the Google high-res aerial overlay: above the base tiles, below the vectors.
     m.createPane('rgb'); const rp = m.getPane('rgb'); if (rp) { rp.style.zIndex = '250'; rp.style.pointerEvents = 'none' }
     m.pm.setGlobalOptions({ snappable: true, snapDistance: 12 })
@@ -424,6 +428,32 @@ export function DesignEditor() {
     const m = map.current, layer = rgbLayer.current; if (!m || !layer) return
     if (hdOn) layer.addTo(m); else layer.remove()
   }, [hdOn, hdReady])
+
+  // ── Land-ownership boundary overlay (HMLR INSPIRE, Pylon-style). Real title boundary when INSPIRE
+  //    data is wired (/api/parcel); otherwise the real building footprint so the plot is still shown. ──
+  useEffect(() => {
+    const lyr = boundaryLayer.current; if (!lyr || !map.current) return
+    lyr.clearLayers()
+    if (!boundaryOn || !design?.center) { setBoundaryInfo(null); return }
+    let cancelled = false
+    const c = design.center
+    ;(async () => {
+      let ring: LatLng[] | null = null, neighbours: LatLng[][] = [], source: 'inspire' | 'footprint' = 'footprint'
+      try { const r = await fetch(`/api/parcel?lat=${c.lat}&lng=${c.lng}`); const j = await r.json(); if (j.configured && j.parcel) { ring = j.parcel; neighbours = j.neighbours ?? []; source = 'inspire' } } catch { /* fall back */ }
+      if (!ring) { ring = (await fetchBuildingOutline(c.lat, c.lng).catch(() => null)) || (await fetchBuildingFootprint(c).catch(() => null)); source = 'footprint' }
+      if (cancelled || !boundaryLayer.current) return
+      const g = boundaryLayer.current; g.clearLayers()
+      if (source === 'inspire') {
+        neighbours.forEach((nr) => L.polygon(nr.map((v) => [v.lat, v.lng]) as [number, number][], { color: '#E5484D', weight: 1, opacity: 0.35, fill: false, pmIgnore: true, interactive: false } as any).addTo(g))
+        if (ring) L.polygon(ring.map((v) => [v.lat, v.lng]) as [number, number][], { color: '#E5484D', weight: 3, opacity: 0.95, fillColor: '#E5484D', fillOpacity: 0.05, pmIgnore: true, interactive: false } as any).addTo(g)
+      } else if (ring) {
+        L.polygon(ring.map((v) => [v.lat, v.lng]) as [number, number][], { color: '#F5A524', weight: 2, opacity: 0.9, dashArray: '6 4', fill: false, pmIgnore: true, interactive: false } as any).addTo(g)
+      }
+      setBoundaryInfo({ source, found: !!ring })
+    })()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [boundaryOn, design?.center?.lat, design?.center?.lng])
 
   // ── Centre on the design; auto-detect the first time if empty ──
   useEffect(() => {
@@ -801,9 +831,10 @@ export function DesignEditor() {
               </div>
             )}
             <div className={`absolute z-[550] flex items-center gap-1 bg-white/95 backdrop-blur border border-border rounded-control shadow-modal p-1 ${view === '3d' ? 'bottom-3 right-3' : 'top-3 right-3'}`}>
-              {view === '2d' && hdReady && (
+              {view === '2d' && (
                 <>
-                  <button onClick={() => setHdOn((v) => !v)} title={hdOn ? 'High-res Google aerial — on' : 'Show high-res Google aerial'} className={`h-8 px-2.5 rounded-[8px] text-[12px] font-bold inline-flex items-center gap-1 ${hdOn ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={hdOn ? { background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' } : undefined}><Sun size={12} />HD</button>
+                  {hdReady && <button onClick={() => setHdOn((v) => !v)} title={hdOn ? 'High-res Google aerial — on' : 'Show high-res Google aerial'} className={`h-8 px-2.5 rounded-[8px] text-[12px] font-bold inline-flex items-center gap-1 ${hdOn ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={hdOn ? { background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' } : undefined}><Sun size={12} />HD</button>}
+                  <button onClick={() => setBoundaryOn((v) => !v)} title="Land-ownership boundary (HMLR INSPIRE, else building footprint)" className={`h-8 px-2.5 rounded-[8px] text-[12px] font-bold inline-flex items-center gap-1 ${boundaryOn ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={boundaryOn ? { background: '#E5484D' } : undefined}><Target size={12} />Plot</button>
                   <span className="w-px h-5 bg-divider" />
                 </>
               )}
@@ -823,6 +854,12 @@ export function DesignEditor() {
             {!busy && sel && !(view === '2d' && tool === 'pin') && (
               <div className={`absolute top-3 left-[64px] z-[540] flex pointer-events-none [&>*]:pointer-events-auto overflow-x-auto ${view === '3d' ? 'right-3' : 'right-[232px]'}`}>
                 <ArrayToolbar sel={sel} moduleId={moduleId} onUpdate={updatePlane} onUndo={undo} onRedo={redo} canUndo={undoStack.current.length > 0} canRedo={redoStack.current.length > 0} />
+              </div>
+            )}
+            {view === '2d' && boundaryOn && boundaryInfo && (
+              <div className="absolute bottom-3 left-3 z-[500] h-8 px-3 rounded-full bg-white/95 backdrop-blur border border-border shadow-modal text-[11.5px] font-semibold inline-flex items-center gap-1.5 max-w-[380px]">
+                <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: boundaryInfo.source === 'inspire' ? '#E5484D' : '#F5A524' }} />
+                <span className="truncate">{boundaryInfo.source === 'inspire' ? 'HMLR INSPIRE title boundary' : boundaryInfo.found ? 'Building footprint — connect INSPIRE for the legal plot' : 'No boundary found here'}</span>
               </div>
             )}
             {view === '2d' && !busy && !drawing && !sel && design.planes.length > 0 && (tool === 'add' || tool === 'remove' || tool === 'rotate' || tool === 'select') && (

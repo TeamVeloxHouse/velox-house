@@ -2,6 +2,7 @@ import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { googleSolarAnalysis, googleSolarAnalysisAt, geocode, solarLayerBytes } from './server/solarProvider.mjs'
 import { mapTileBytes } from './server/mapTilesProvider.mjs'
+import { parcelAt } from './server/parcelProvider.mjs'
 import { pdlSearch } from './server/sourcingProvider.mjs'
 import { staticSatellite } from './server/roofImage.mjs'
 import { placesSearch, placesRadiusScan, placesAutocomplete } from './server/placesProvider.mjs'
@@ -157,6 +158,27 @@ function mapTilesApi(env: Record<string, string>): Plugin {
   }
 }
 
+/** Dev-only land-ownership (parcel) boundary lookup — HM Land Registry INSPIRE Index Polygons.
+ *  Point INSPIRE_PARCELS at a WGS84 GeoJSON file (or a directory of them) exported from a council's
+ *  INSPIRE download to serve real title boundaries; otherwise it reports { configured:false } and the
+ *  client falls back to the (real) building footprint. */
+function parcelApi(env: Record<string, string>): Plugin {
+  const src = env.INSPIRE_PARCELS || process.env.INSPIRE_PARCELS || ''
+  return {
+    name: 'parcel-api',
+    configureServer(server) {
+      server.middlewares.use('/api/parcel', (req, res) => {
+        const u = new URL(req.url || '', 'http://localhost')
+        const lat = Number(u.searchParams.get('lat')), lng = Number(u.searchParams.get('lng'))
+        res.setHeader('Content-Type', 'application/json')
+        if (!isFinite(lat) || !isFinite(lng)) { res.statusCode = 400; return res.end(JSON.stringify({ configured: false, reason: 'bad-point' })) }
+        try { res.end(JSON.stringify(parcelAt(lat, lng, src))) }
+        catch (e) { res.end(JSON.stringify({ configured: false, reason: String((e as Error)?.message || e) })) }
+      })
+    },
+  }
+}
+
 /** Dev-only backend for Google Places discovery — keeps the key server-side.
  *  Set GOOGLE_MAPS_API_KEY (Places API enabled); without it /api/places returns { buildings: [] }
  *  and the Commercial Solar Engine reports "no building source configured". */
@@ -279,7 +301,7 @@ function epcApi(_env: Record<string, string>): Plugin {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   return {
-    plugins: [react(), solarApi(env), solarLayerApi(env), mapTilesApi(env), sourcingApi(env), roofImageApi(env), placesApi(env), autocompleteApi(env), pvgisApi(), geocodeApi(env), epcApi(env), oviApi(env)],
+    plugins: [react(), solarApi(env), solarLayerApi(env), mapTilesApi(env), parcelApi(env), sourcingApi(env), roofImageApi(env), placesApi(env), autocompleteApi(env), pvgisApi(), geocodeApi(env), epcApi(env), oviApi(env)],
     server: { port: 3010 },
   }
 })
