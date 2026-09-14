@@ -564,6 +564,13 @@ export function DesignEditor() {
     commitSnapshot(d.planes.filter((p) => p.id !== pid))
     if (selId === pid) setSelId(null)
   }
+  function clearAllPlanes() {
+    const d = designRef.current; if (!d || !d.planes.length) return
+    const n = d.planes.length
+    commitSnapshot([])
+    setSelId(null); setSelPanelIds([])
+    act.toast(`Cleared all ${n} roof plane${n === 1 ? '' : 's'} — undo with Ctrl+Z`, 'warning')
+  }
   function updatePlane(pid: string, patch: Partial<DesignPlane>, repack = false) {
     const d = designRef.current; if (!d) return
     const planes = d.planes.map((p) => {
@@ -762,7 +769,7 @@ export function DesignEditor() {
             {view === '3d' && canvasVisible && <Design3D design={design} adding={adding} selecting={tool === 'select'} moduleId={moduleId} onCommitPanels={(pid, panels) => commitSnapshot(design.planes.map((p) => (p.id === pid ? { ...p, panels, moduleId: p.moduleId ?? moduleId } : p)))} onSelectPanels={(pid, ids) => { if (pid) setSelId(pid); setSelPanelIds(ids) }} onCapture={() => { setView('2d'); setTimeout(() => selectTool('draw'), 80) }} />}
             {canvasVisible && (
               <div className="absolute top-3 left-3 z-[560] flex flex-col gap-1 bg-white/95 backdrop-blur border border-border rounded-control shadow-modal p-1">
-                {view === '2d' && <ToolBtn on={tool === 'pan'} onClick={() => selectTool('pan')} icon={<HandIcon />} label="Pan (move the map)" />}
+                <ToolBtn on={tool === 'pan'} onClick={() => selectTool('pan')} icon={<HandIcon />} label={view === '3d' ? 'Orbit / move the camera' : 'Pan (move the map)'} />
                 <ToolBtn on={tool === 'select'} onClick={() => selectTool('select')} icon={<CursorIcon />} label={view === '3d' ? 'Select / move a panel' : 'Select / move array'} />
                 <ToolBtn on={tool === 'add'} onClick={() => selectTool('add')} icon={<Grid size={15} />} label="Add panels" />
                 {view === '2d' && <>
@@ -827,7 +834,7 @@ export function DesignEditor() {
           {tab === 'array'
             ? <ArrayInspector design={design} sel={sel} moduleId={moduleId} setModuleId={setModuleId} onSelect={setSelId} onUpdate={updatePlane} onFill={fillPlane} onClear={clearPlane} onDelete={deletePlane}
                 targetKwp={targetKwp} setTargetKwp={setTargetKwp} onGoal={runAutoLayout} kwp={kwp} count={totals.count} />
-            : <DesignInspector design={design} selId={selId} onSelect={setSelId} onUpdate={updatePlane} onFill={fillPlane} onClear={clearPlane} onDelete={deletePlane} moduleId={moduleId} setModuleId={setModuleId} kwp={kwp} totalPanels={totals.count} annualKwh={totals.kwh} roofArea={roofArea} module={module} onHeight={(m) => act.updateDesign(design.id, { eaveHeightM: m, heightSource: 'manual' })} onPatch={(patch) => act.updateDesign(design.id, patch)} onBackToProspect={design.prospectId ? () => nav('/tools/company-search') : undefined} />
+            : <DesignInspector design={design} selId={selId} onSelect={setSelId} onUpdate={updatePlane} onFill={fillPlane} onClear={clearPlane} onDelete={deletePlane} moduleId={moduleId} setModuleId={setModuleId} kwp={kwp} totalPanels={totals.count} annualKwh={totals.kwh} roofArea={roofArea} module={module} onHeight={(m) => act.updateDesign(design.id, { eaveHeightM: m, heightSource: 'manual' })} onPatch={(patch) => act.updateDesign(design.id, patch)} onClearPlanes={clearAllPlanes} onBackToProspect={design.prospectId ? () => nav('/tools/company-search') : undefined} />
           }
         </div>
 
@@ -840,10 +847,10 @@ export function DesignEditor() {
 }
 
 /* ── Design-tab inspector: plane list + quick pitch/azimuth + fill ── */
-function DesignInspector({ design, selId, onSelect, onUpdate, onFill, onClear, onDelete, moduleId, setModuleId, kwp, totalPanels, annualKwh, roofArea, module, onHeight, onPatch, onBackToProspect }: {
+function DesignInspector({ design, selId, onSelect, onUpdate, onFill, onClear, onDelete, moduleId, setModuleId, kwp, totalPanels, annualKwh, roofArea, module, onHeight, onPatch, onClearPlanes, onBackToProspect }: {
   design: Design; selId: string | null; onSelect: (id: string) => void; onUpdate: (id: string, patch: Partial<DesignPlane>, repack?: boolean) => void
   onFill: (id: string) => void; onClear: (id: string) => void; onDelete: (id: string) => void; moduleId: string; setModuleId: (v: string) => void
-  kwp: number; totalPanels: number; annualKwh: number; roofArea: number; module: Module; onHeight: (m: number) => void; onPatch: (patch: Partial<Design>) => void; onBackToProspect?: () => void
+  kwp: number; totalPanels: number; annualKwh: number; roofArea: number; module: Module; onHeight: (m: number) => void; onPatch: (patch: Partial<Design>) => void; onClearPlanes: () => void; onBackToProspect?: () => void
 }) {
   return (
     <div className="w-[330px] shrink-0 rounded-card bg-surface border border-border flex flex-col overflow-hidden">
@@ -860,6 +867,12 @@ function DesignInspector({ design, selId, onSelect, onUpdate, onFill, onClear, o
           </select>
         </label>
       </div>
+      {design.planes.length > 0 && (
+        <div className="px-4 py-2 flex items-center justify-between border-b border-divider">
+          <div className="eyebrow text-muted-3">Roof planes · {design.planes.length}</div>
+          <button onClick={onClearPlanes} className="text-[11.5px] font-semibold text-muted-b hover:text-negative inline-flex items-center gap-1"><span className="text-[13px] leading-none">✕</span> Clear all</button>
+        </div>
+      )}
       <div className="flex-1 overflow-y-auto">
         {design.planes.length === 0 ? (
           <div className="p-4 text-[12.5px] text-muted-b">No planes yet. Detect the roof or draw a plane, then fill it with panels.</div>

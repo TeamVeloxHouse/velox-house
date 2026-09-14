@@ -402,14 +402,6 @@ export function Design3D({ design, onCapture, adding, selecting, moduleId, onCom
         const ring = fp.map((v) => new THREE.Vector3(v.x, heightAt(v.x, v.z) + 0.09, v.z)); ring.push(ring[0])
         const outline = new THREE.Line(new THREE.BufferGeometry().setFromPoints(ring), new THREE.LineBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.9, depthTest: false }))
         outline.renderOrder = 3; scene.add(outline)
-        // Safe-zone / fire setback — the amber line panels must stay inside.
-        const setb = (p.setbackM ?? design.setbackM) || 0.3
-        const inner = insetPolyXZ(fp, setb + 0.05)
-        if (inner.length >= 3) {
-          const iring = inner.map((v) => new THREE.Vector3(v.x, heightAt(v.x, v.z) + 0.1, v.z)); iring.push(iring[0])
-          const iline = new THREE.LineDashedMaterial({ color: 0xffb020, transparent: true, opacity: 0.85, depthTest: false, dashSize: 0.5, gapSize: 0.35 })
-          const iobj = new THREE.Line(new THREE.BufferGeometry().setFromPoints(iring), iline); iobj.computeLineDistances(); iobj.renderOrder = 4; scene.add(iobj)
-        }
       }
 
       // Panels — flat (facet tilt) but resting on the real DSM surface beneath each panel.
@@ -518,7 +510,7 @@ export function Design3D({ design, onCapture, adding, selecting, moduleId, onCom
       return pt ? { lat: origin.lat - pt.z / mPerLat, lng: origin.lng + pt.x / mPerLng } : null
     }
     const planeAtLL = (ll: LL) => designRef.current.planes.find((p) => p.polygon.length >= 3 && pointInRing(p.polygon, ll))
-    const gridFor = (p: DesignPlane) => planeGrid(p.polygon, moduleById(p.moduleId ?? moduleIdRef.current), { orientation: p.orientation ?? 'portrait', setback: p.setbackM ?? designRef.current.setbackM, rowGap: p.rowGapM })
+    const gridFor = (p: DesignPlane) => planeGrid(p.polygon, moduleById(p.moduleId ?? moduleIdRef.current), { orientation: p.orientation ?? 'portrait', setback: 0, rowGap: p.rowGapM })
     const cellQuad = (pid: string, cell: GridCell) => { const g = planeGeo.get(pid); const sc = cell.corners.map((v) => ({ x: X(v), z: Z(v) })); const ys = g ? g.panelY(sc) : sc.map(() => 0); return cell.corners.map((v, i) => new THREE.Vector3(X(v), ys[i] + 0.08, Z(v))) }
     const drawGhost = (pid: string, cells: GridCell[], removing: boolean) => {
       ghostGroup.clear()
