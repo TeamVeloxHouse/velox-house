@@ -42,6 +42,7 @@ import { Delivery, ProjectDetail } from './pages/Delivery'
 import { DnoQueue } from './pages/DnoQueue'
 import { SurveysList, SurveyReport, SurveyCapture } from './pages/SiteSurvey'
 import { EvCalculator } from './pages/EvCalculator'
+import { WholeHome } from './pages/WholeHome'
 import { PeopleFinder } from './pages/PeopleFinder'
 import { BrandDocuments } from './pages/BrandDocuments'
 import { Team } from './pages/Team'
@@ -134,6 +135,7 @@ export const router = createBrowserRouter([
       { path: 'reach/people-finder', element: <PeopleFinder /> },
       // Design Studio — its own lifecycle stage (Find→Engage→Design→Close→Deliver)
       { path: 'design', element: <DesignHome /> },
+      { path: 'design/whole-home', element: <WholeHome /> },
       { path: 'design/:id', element: <DesignEditor /> },
       // TellOvi Studio — design, proposals & analytics
       { path: 'studio', element: <StudioOverview /> },

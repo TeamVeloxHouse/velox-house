@@ -60,6 +60,7 @@ const engageGroups: Group[] = [
 const designGroups: Group[] = [
   { label: 'Design', items: [
     { to: '/design', icon: Sun, label: 'Design Studio', feature: 'studio', end: true },
+    { to: '/design/whole-home', icon: Sparkle, label: 'Whole-home (solar·battery·EV)', feature: 'studio' },
     { to: '/studio/proposals', icon: Layers, label: 'Proposals', feature: 'studio' },
     { to: '/studio/pricing', icon: Dollar, label: 'Pricing & finance', feature: 'studio' },
     { to: '/studio/ev', icon: Bolt, label: 'EV charging', feature: 'studio' },
