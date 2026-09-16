@@ -108,6 +108,7 @@ export function DesignEditor() {
   const panelRenderer = useRef<L.Canvas | null>(null)
   const obstacleLayer = useRef<L.LayerGroup | null>(null)
   const measureLayer = useRef<L.LayerGroup | null>(null)
+  const editMeasureLayer = useRef<L.LayerGroup | null>(null) // live edge/area labels shown while dragging a vertex
   const designRef = useRef(design)
   designRef.current = design
 
@@ -155,11 +156,12 @@ export function DesignEditor() {
     planeLayer.current = L.layerGroup().addTo(m)
     obstacleLayer.current = L.layerGroup().addTo(m)
     measureLayer.current = L.layerGroup().addTo(m)
+    editMeasureLayer.current = L.layerGroup().addTo(m)
     ghostLayer.current = L.layerGroup().addTo(m)
     boundaryLayer.current = L.layerGroup().addTo(m)
     // Dedicated pane for the Google high-res aerial overlay: above the base tiles, below the vectors.
     m.createPane('rgb'); const rp = m.getPane('rgb'); if (rp) { rp.style.zIndex = '250'; rp.style.pointerEvents = 'none' }
-    m.pm.setGlobalOptions({ snappable: true, snapDistance: 12 })
+    m.pm.setGlobalOptions({ snappable: true, snapDistance: 16, allowSelfIntersection: false })
     m.pm.setPathOptions({ color: '#00E5FF', fillColor: '#22E0FF', fillOpacity: 0.24 })
     m.on('pm:create', (e: any) => {
       const ring = (e.layer.getLatLngs()[0] as L.LatLng[]).map((p) => ({ lat: p.lat, lng: p.lng }))
@@ -167,6 +169,32 @@ export function DesignEditor() {
       addManualPlane(ring)
       m.pm.disableDraw(); setTool('select')
     })
+    // ── Live dimensions while editing a roof face — every edge length + the face area follow the vertex
+    //    you're dragging in real time, so you can shape the plane precisely against the imagery. ──
+    const lbl = (lat: number, lng: number, text: string, area = false) => L.marker([lat, lng], {
+      interactive: false, pmIgnore: true, keyboard: false,
+      icon: L.divIcon({ className: '', html: `<div style="transform:translate(-50%,-50%);white-space:nowrap;font:700 11px/1 system-ui;color:#fff;background:${area ? 'rgba(124,58,237,.94)' : 'rgba(10,14,23,.9)'};padding:2px 5px;border-radius:5px;box-shadow:0 1px 3px rgba(0,0,0,.45)">${text}</div>`, iconSize: [0, 0] }),
+    })
+    const drawLiveEdges = (layer: any) => {
+      const el = editMeasureLayer.current; if (!el) return; el.clearLayers()
+      const lls = (layer?.getLatLngs?.()[0] || []) as L.LatLng[]
+      if (lls.length < 2) return
+      const mLat = 110540, mLng = 111320 * Math.cos((lls[0].lat * Math.PI) / 180)
+      for (let i = 0; i < lls.length; i++) {
+        const a = lls[i], b = lls[(i + 1) % lls.length]
+        const len = Math.hypot((b.lng - a.lng) * mLng, (b.lat - a.lat) * mLat)
+        if (len < 0.25) continue
+        lbl((a.lat + b.lat) / 2, (a.lng + b.lng) / 2, `${len.toFixed(2)} m`).addTo(el)
+      }
+      const ring = lls.map((p) => ({ lat: p.lat, lng: p.lng }))
+      const c = ring.reduce((s, v) => ({ lat: s.lat + v.lat / ring.length, lng: s.lng + v.lng / ring.length }), { lat: 0, lng: 0 })
+      lbl(c.lat, c.lng, `${Math.round(polygonAreaM2(ring))} m² plan`, true).addTo(el)
+    }
+    m.on('pm:markerdragstart', (e: any) => drawLiveEdges(e.layer))
+    m.on('pm:markerdrag', (e: any) => drawLiveEdges(e.layer))
+    m.on('pm:markerdragend', () => editMeasureLayer.current?.clearLayers())
+    m.on('pm:vertexadded', (e: any) => drawLiveEdges(e.layer))
+    m.on('pm:vertexremoved', (e: any) => drawLiveEdges(e.layer))
 
     // ── Roof-grid tools: place / remove / move / rotate arrays. Everything snaps to the plane's own
     //    module grid (indexed by row,col) so panels always stay aligned and inside the setback. ──
@@ -582,7 +610,7 @@ export function DesignEditor() {
     const lyr = measureLayer.current
     if (!lyr || !map.current || !mapReady || !design) return
     lyr.clearLayers()
-    if (!measureOn || view !== '2d') return
+    if ((!measureOn && tool !== 'edit') || view !== '2d') return // measurements: on demand, or always while editing a face
     const label = (lat: number, lng: number, text: string, tone: 'edge' | 'area') => {
       const bg = tone === 'area' ? 'rgba(124,58,237,.92)' : 'rgba(10,14,23,.86)'
       L.marker([lat, lng], { interactive: false, pmIgnore: true, keyboard: false, icon: L.divIcon({ className: '', html: `<div style="transform:translate(-50%,-50%);white-space:nowrap;font:700 11px/1 system-ui;color:#fff;background:${bg};padding:2px 5px;border-radius:5px;box-shadow:0 1px 3px rgba(0,0,0,.4)">${text}</div>`, iconSize: [0, 0] }) }).addTo(lyr)
@@ -603,7 +631,7 @@ export function DesignEditor() {
       label(cx, cy, `${Math.round(slopedAreaM2(p.areaM2, p.pitchDeg))} m² · ${effTilt(p)}°`, 'area')
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [design?.planes, measureOn, view, mapReady])
+  }, [design?.planes, measureOn, view, mapReady, tool])
 
   // Delete / Backspace removes the selected panel (ignored while typing in a field).
   useEffect(() => {
@@ -858,7 +886,7 @@ export function DesignEditor() {
     const m = map.current; if (!m) return
     if (drawing) m.pm.disableDraw()
     if (editing) m.pm.disableGlobalEditMode()
-    ghostLayer.current?.clearLayers(); setGhostN(null); setRotDeg(null); m.dragging.enable(); m.getContainer().style.cursor = ''
+    ghostLayer.current?.clearLayers(); editMeasureLayer.current?.clearLayers(); setGhostN(null); setRotDeg(null); m.dragging.enable(); m.getContainer().style.cursor = ''
     const next: Tool = t !== 'select' && tool === t ? 'select' : t
     setTool(next)
     if (next !== 'select') setSelPanelIds([])
@@ -963,6 +991,9 @@ export function DesignEditor() {
             )}
             {view === '2d' && !busy && tool === 'pin' && (
               <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[510] h-9 px-4 rounded-full text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Target size={14} />Click the exact roof to re-centre &amp; detect here</div>
+            )}
+            {view === '2d' && !busy && tool === 'edit' && (
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[510] h-9 px-4 rounded-full text-white text-[12px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Wrench size={13} />Drag a corner to reshape · click an edge to add a point · right-click a point to remove — live dimensions show as you drag</div>
             )}
             {!busy && sel && !(view === '2d' && tool === 'pin') && (
               <div className={`absolute top-3 left-[64px] z-[540] flex pointer-events-none [&>*]:pointer-events-auto overflow-x-auto ${view === '3d' ? 'right-3' : 'right-[232px]'}`}>
