@@ -948,6 +948,8 @@ export interface DesignObstacle {
   id: ID
   kind: DesignObstacleKind
   polygon: { lat: number; lng: number }[]
+  source?: 'auto' | 'manual' // auto = detected from the DSM; manual = the user added/kept it
+  heightM?: number // height proud of the roof (m), when detected
 }
 export type DesignStatus = 'draft' | 'confirmed'
 export interface Design {

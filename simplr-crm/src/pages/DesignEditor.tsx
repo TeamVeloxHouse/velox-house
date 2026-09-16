@@ -18,13 +18,21 @@ import { designIntentFromClaude } from '../lib/oviDesignAI'
 import { Design3D } from '../components/Design3D'
 import { DesignCopilot } from '../components/DesignCopilot'
 import { EnergyPanel } from '../components/EnergyPanel'
-import type { Design, DesignPanel, DesignPlane, PanelOrientation, RackingType } from '../store/types'
+import type { Design, DesignObstacle, DesignObstacleKind, DesignPanel, DesignPlane, PanelOrientation, RackingType } from '../store/types'
 
 type LatLng = { lat: number; lng: number }
 const uid = (p: string) => `${p}${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`
 type StudioTab = 'design' | 'array' | 'production' | 'proposal'
 // Pylon-style 2D tools: select/move arrays · add · remove · rotate array · draw face · edit vertices
 type Tool = 'pan' | 'select' | 'add' | 'remove' | 'rotate' | 'draw' | 'edit' | 'pin'
+
+// Obstruction styling — colour + label per kind (detected or hand-placed keep-outs).
+const OBST: Record<'chimney' | 'skylight' | 'hvac' | 'keepout', { c: string; label: string }> = {
+  chimney: { c: '#F97316', label: 'Chimney' },
+  hvac: { c: '#EF4444', label: 'HVAC / plant' },
+  skylight: { c: '#38BDF8', label: 'Skylight' },
+  keepout: { c: '#F59E0B', label: 'Keep-out' },
+}
 
 // ── Manual array-drawing helpers ──
 function pointInRing(ring: LatLng[], pt: LatLng): boolean {
@@ -98,6 +106,8 @@ export function DesignEditor() {
   const redoRef = useRef<() => void>(() => {})
   const onPinRef = useRef<(ll: LatLng) => void>(() => {})
   const panelRenderer = useRef<L.Canvas | null>(null)
+  const obstacleLayer = useRef<L.LayerGroup | null>(null)
+  const measureLayer = useRef<L.LayerGroup | null>(null)
   const designRef = useRef(design)
   designRef.current = design
 
@@ -106,6 +116,8 @@ export function DesignEditor() {
   const [busy, setBusy] = useState(false)
   const [status, setStatus] = useState('')
   const [selId, setSelId] = useState<string | null>(null)
+  const [selObsId, setSelObsId] = useState<string | null>(null)
+  const selObsRef = useRef<string | null>(null); selObsRef.current = selObsId
   const [selPanelIds, setSelPanelIds] = useState<string[]>([])
   const selPanelRef = useRef<string[]>([]); selPanelRef.current = selPanelIds
   const [tool, setTool] = useState<Tool>('select')
@@ -117,6 +129,7 @@ export function DesignEditor() {
   const [isFs, setIsFs] = useState(false)
   const boundaryLayer = useRef<L.LayerGroup | null>(null)
   const [boundaryOn, setBoundaryOn] = useState(false)
+  const [measureOn, setMeasureOn] = useState(false)
   const [boundaryInfo, setBoundaryInfo] = useState<{ source: 'inspire' | 'footprint'; found: boolean } | null>(null)
   const [, setHistTick] = useState(0) // bump re-renders so undo/redo buttons re-evaluate enablement
   const [moduleId, setModuleId] = useState('m440')
@@ -140,6 +153,8 @@ export function DesignEditor() {
     panelRenderer.current = L.canvas({ padding: 0.5 })
     panelLayer.current = L.layerGroup().addTo(m)
     planeLayer.current = L.layerGroup().addTo(m)
+    obstacleLayer.current = L.layerGroup().addTo(m)
+    measureLayer.current = L.layerGroup().addTo(m)
     ghostLayer.current = L.layerGroup().addTo(m)
     boundaryLayer.current = L.layerGroup().addTo(m)
     // Dedicated pane for the Google high-res aerial overlay: above the base tiles, below the vectors.
@@ -482,7 +497,7 @@ export function DesignEditor() {
       L.polygon(ring, { pmIgnore: true, color: '#0A1B2B', weight: 6, opacity: 0.4, fill: false } as any).addTo(lyr)
       const poly = L.polygon(ring, { color: on ? '#A97BF3' : '#00E5FF', weight: on ? 4 : 2.5, fillColor: on ? '#7C3AED' : '#22E0FF', fillOpacity: p.panels?.length ? 0.06 : (on ? 0.28 : 0.2) })
       ;(poly as any)._planeId = p.id
-      poly.on('click', (e) => { L.DomEvent.stopPropagation(e); if (toolRef.current !== 'pan') setSelId(p.id) })
+      poly.on('click', (e) => { L.DomEvent.stopPropagation(e); if (toolRef.current !== 'pan') { setSelId(p.id); setSelObsId(null) } })
       poly.on('pm:edit', () => syncGeometry(p.id, poly))
       // Empty plane → a permanent label at its top edge; a FILLED plane → hover-only, so it never covers panels.
       const topPt = p.polygon.reduce((a, v) => (v.lat > a.lat ? v : a), p.polygon[0])
@@ -538,6 +553,58 @@ export function DesignEditor() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [design?.planes, selId, selPanelIds, mapReady])
 
+  // ── Redraw obstructions whenever they change — coloured keep-outs with a draggable centroid handle ──
+  useEffect(() => {
+    const lyr = obstacleLayer.current
+    if (!lyr || !map.current || !mapReady || !design) return
+    lyr.clearLayers()
+    ;(design.obstacles ?? []).forEach((o) => {
+      const on = o.id === selObsId, meta = OBST[o.kind]
+      const ring = o.polygon.map((v) => [v.lat, v.lng]) as [number, number][]
+      const poly = L.polygon(ring, { pmIgnore: true, color: meta.c, weight: on ? 3 : 2, fillColor: meta.c, fillOpacity: on ? 0.42 : 0.28, dashArray: on ? undefined : '3 3' } as any)
+      poly.on('click', (e) => { L.DomEvent.stopPropagation(e); setSelObsId(o.id); setSelId(null); setSelPanelIds([]) })
+      poly.bindTooltip(`${meta.label}${o.heightM ? ` · ${o.heightM} m proud` : ''}${o.source === 'auto' ? ' · detected' : ''}`, { direction: 'top', className: 'roof-label' })
+      poly.addTo(lyr)
+      // draggable centroid handle → reposition the whole obstruction onto the real vent/chimney
+      const cx = o.polygon.reduce((s, v) => s + v.lat, 0) / o.polygon.length
+      const cy = o.polygon.reduce((s, v) => s + v.lng, 0) / o.polygon.length
+      const mk = L.marker([cx, cy], { draggable: true, keyboard: false, icon: L.divIcon({ className: '', html: `<div style="width:12px;height:12px;border-radius:50%;background:${meta.c};border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.55)"></div>`, iconSize: [12, 12], iconAnchor: [6, 6] }) })
+      mk.on('dragstart', () => { setSelObsId(o.id) })
+      mk.on('drag', (e: any) => { const ll = e.target.getLatLng(); const dLat = ll.lat - cx, dLng = ll.lng - cy; poly.setLatLngs(o.polygon.map((v) => [v.lat + dLat, v.lng + dLng] as [number, number])) })
+      mk.on('dragend', (e: any) => { const ll = e.target.getLatLng(); moveObstacle(o.id, ll.lat - cx, ll.lng - cy) })
+      mk.addTo(lyr)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [design?.obstacles, selObsId, mapReady])
+
+  // ── Measurements overlay — edge lengths + face area on every roof plane (for sizing / CAD) ──
+  useEffect(() => {
+    const lyr = measureLayer.current
+    if (!lyr || !map.current || !mapReady || !design) return
+    lyr.clearLayers()
+    if (!measureOn || view !== '2d') return
+    const label = (lat: number, lng: number, text: string, tone: 'edge' | 'area') => {
+      const bg = tone === 'area' ? 'rgba(124,58,237,.92)' : 'rgba(10,14,23,.86)'
+      L.marker([lat, lng], { interactive: false, pmIgnore: true, keyboard: false, icon: L.divIcon({ className: '', html: `<div style="transform:translate(-50%,-50%);white-space:nowrap;font:700 11px/1 system-ui;color:#fff;background:${bg};padding:2px 5px;border-radius:5px;box-shadow:0 1px 3px rgba(0,0,0,.4)">${text}</div>`, iconSize: [0, 0] }) }).addTo(lyr)
+    }
+    design.planes.forEach((p) => {
+      const ring = p.polygon
+      const mLat = 110540, mLng = 111320 * Math.cos((ring[0].lat * Math.PI) / 180)
+      for (let i = 0; i < ring.length; i++) {
+        const a = ring[i], b = ring[(i + 1) % ring.length]
+        const dx = (b.lng - a.lng) * mLng, dy = (b.lat - a.lat) * mLat
+        const len = Math.hypot(dx, dy)
+        if (len < 0.5) continue
+        // plan length → true surface length up the slope (sloped edges only): approximate with pitch on
+        // the up-slope component. Kept simple: show plan length, which is what a roofer measures on plan.
+        label((a.lat + b.lat) / 2, (a.lng + b.lng) / 2, `${len.toFixed(1)} m`, 'edge')
+      }
+      const cx = ring.reduce((s, v) => s + v.lat, 0) / ring.length, cy = ring.reduce((s, v) => s + v.lng, 0) / ring.length
+      label(cx, cy, `${Math.round(slopedAreaM2(p.areaM2, p.pitchDeg))} m² · ${effTilt(p)}°`, 'area')
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [design?.planes, measureOn, view, mapReady])
+
   // Delete / Backspace removes the selected panel (ignored while typing in a field).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -547,6 +614,7 @@ export function DesignEditor() {
       if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || e.key === 'Y')) { if (typing) return; e.preventDefault(); redoRef.current(); return }
       if (e.key !== 'Delete' && e.key !== 'Backspace') return
       if (typing) return
+      if (selObsRef.current) { e.preventDefault(); deleteObstacle(selObsRef.current); return }
       if (!selPanelRef.current.length) return
       e.preventDefault()
       const d = designRef.current; if (!d) return
@@ -563,7 +631,7 @@ export function DesignEditor() {
     if (!design || busy) return
     setBusy(true); setStatus('Measuring the roof from satellite…')
     try {
-      const { planes, center: c, measured } = await detectPlanes(design.address, center || design.center)
+      const { planes, obstacles, center: c, measured } = await detectPlanes(design.address, center || design.center)
       if (c && map.current) map.current.setView([c.lat, c.lng], 19)
       if (!measured) {
         // No real measurement available (no Solar key) — don't fabricate giant boxes; ask for a trace.
@@ -571,11 +639,13 @@ export function DesignEditor() {
         act.toast('Can’t measure this roof without a Google Solar key — draw the real roof with “Draw plane”.', 'warning')
         return
       }
-      // Keep hand-drawn planes, REPLACE previously-detected ones so repeated taps don't stack boxes.
+      // Keep hand-drawn planes + user-added obstructions, REPLACE previously-detected ones so repeated
+      // taps don't stack boxes.
       const kept = design.planes.filter((p) => p.source === 'manual')
-      act.updateDesign(design.id, { planes: [...planes, ...kept], center: c || design.center })
+      const keptObs = (design.obstacles ?? []).filter((o) => o.source === 'manual')
+      act.updateDesign(design.id, { planes: [...planes, ...kept], obstacles: [...obstacles, ...keptObs], center: c || design.center })
       if (!planes.length) act.toast('No roof planes found here — draw them by hand instead', 'warning')
-      else act.toast(`${planes.length} plane${planes.length === 1 ? '' : 's'} detected — refine or draw the real roof`)
+      else act.toast(`${planes.length} plane${planes.length === 1 ? '' : 's'}${obstacles.length ? ` · ${obstacles.length} obstruction${obstacles.length === 1 ? '' : 's'}` : ''} detected — refine or draw the real roof`)
     } catch { act.toast('Could not measure this roof', 'warning') } finally { setBusy(false); setStatus('') }
   }
   function addManualPlane(ring: LatLng[]) {
@@ -618,6 +688,33 @@ export function DesignEditor() {
     setSelId(null); setSelPanelIds([])
     act.toast(`Cleared all ${n} roof plane${n === 1 ? '' : 's'} — undo with Ctrl+Z`, 'warning')
   }
+  // Obstruction keep-out rings for the packer — panels flow around chimneys/vents/skylights.
+  const obsRings = (d: { obstacles?: { polygon: LatLng[] }[] }) => (d.obstacles ?? []).map((o) => o.polygon)
+  // ── Obstructions (chimneys / vents / HVAC / skylights) — detected or hand-placed keep-outs ──
+  function setObstacles(next: DesignObstacle[]) { const d = designRef.current; if (!d) return; act.updateDesign(d.id, { obstacles: next }) }
+  function addKeepout() {
+    const d = designRef.current, m = map.current; if (!d || !m) return
+    const c = m.getCenter(), s = 0.8 // ~0.8 m square dropped at the map centre, ready to drag onto the obstruction
+    const dLat = s / 2 / 110540, dLng = s / 2 / (111320 * Math.cos((c.lat * Math.PI) / 180))
+    const polygon = [{ lat: c.lat - dLat, lng: c.lng - dLng }, { lat: c.lat - dLat, lng: c.lng + dLng }, { lat: c.lat + dLat, lng: c.lng + dLng }, { lat: c.lat + dLat, lng: c.lng - dLng }]
+    const ob: DesignObstacle = { id: uid('ob'), kind: 'keepout', polygon, source: 'manual' }
+    setObstacles([...(d.obstacles ?? []), ob]); setSelObsId(ob.id); setSelId(null); setSelPanelIds([])
+    act.toast('Keep-out added — drag it onto the obstruction; panels will avoid it')
+  }
+  function moveObstacle(oid: string, dLat: number, dLng: number) {
+    const d = designRef.current; if (!d) return
+    setObstacles((d.obstacles ?? []).map((o) => (o.id === oid ? { ...o, source: 'manual', polygon: o.polygon.map((v) => ({ lat: v.lat + dLat, lng: v.lng + dLng })) } : o)))
+  }
+  function deleteObstacle(oid: string) {
+    const d = designRef.current; if (!d) return
+    setObstacles((d.obstacles ?? []).filter((o) => o.id !== oid))
+    if (selObsRef.current === oid) setSelObsId(null)
+  }
+  function cycleObstacleKind(oid: string) {
+    const order: DesignObstacleKind[] = ['keepout', 'chimney', 'hvac', 'skylight']
+    const d = designRef.current; if (!d) return
+    setObstacles((d.obstacles ?? []).map((o) => (o.id === oid ? { ...o, kind: order[(order.indexOf(o.kind) + 1) % order.length] } : o)))
+  }
   function updatePlane(pid: string, patch: Partial<DesignPlane>, repack = false) {
     const d = designRef.current; if (!d) return
     const planes = d.planes.map((p) => {
@@ -625,7 +722,7 @@ export function DesignEditor() {
       const next = { ...p, ...patch }
       if (repack && (p.panels?.length || patch.panels === undefined && p.panels?.length)) {
         const mod = moduleById(next.moduleId ?? moduleId)
-        const { panels, orientation } = packWithSettings(next, mod, d.setbackM)
+        const { panels, orientation } = packWithSettings(next, mod, d.setbackM, obsRings(d))
         return { ...next, panels, orientation }
       }
       return next
@@ -638,7 +735,7 @@ export function DesignEditor() {
     const planes = d.planes.map((p) => {
       if (p.id !== pid) return p
       const mod = moduleById(p.moduleId ?? moduleId)
-      const { panels, orientation } = packWithSettings(p, mod, d.setbackM)
+      const { panels, orientation } = packWithSettings(p, mod, d.setbackM, obsRings(d))
       filled = panels.length
       return { ...p, panels, orientation, moduleId: p.moduleId ?? moduleId }
     })
@@ -675,7 +772,7 @@ export function DesignEditor() {
     setBusy(true)
     setStatus(goal.kind === 'max' ? 'Ovi is maximising coverage across every plane…' : goal.kind === 'target-kwp' ? `Ovi is sizing the array to ${goal.kwp} kWp…` : `Ovi is sizing the array to ~${goal.kwh.toLocaleString()} kWh/yr…`)
     setTimeout(() => {
-      const res = autoLayout(d.planes, module, goal, d.setbackM)
+      const res = autoLayout(d.planes, module, goal, d.setbackM, { obstacles: obsRings(d) })
       commitSnapshot(res.planes)
       setBusy(false); setStatus('')
       act.toast(res.count ? `Ovi placed ${res.count} panels — ${res.kwp} kWp across ${res.planes.filter((p) => p.panels?.length).length} plane(s)` : 'No room for panels on these planes', res.count ? 'positive' : 'warning')
@@ -745,7 +842,7 @@ export function DesignEditor() {
     const mod = moduleById(intent.moduleId ?? moduleId)
     const planesIn = intent.moduleId ? d.planes.map((p) => ({ ...p, moduleId: undefined })) : d.planes
     emit('Packing panels on the best-facing planes…'); await delay(650)
-    const res = autoLayout(planesIn, mod, intent.goal, d.setbackM, { restrict })
+    const res = autoLayout(planesIn, mod, intent.goal, d.setbackM, { restrict, obstacles: obsRings(d) })
     commitSnapshot(res.planes)
     const annual = res.planes.reduce((s, p) => { const m = moduleById(p.moduleId ?? mod.id); const n = p.panels?.length ?? 0; return s + (n * m.watts / 1000) * yieldPerKwp * planeYieldFactor(p) }, 0)
     const used = res.planes.filter((p) => p.panels?.length).length
@@ -840,6 +937,8 @@ export function DesignEditor() {
                 <ToolBtn on={tool === 'draw'} onClick={() => selectTool('draw')} icon={<Plus size={15} />} label="Draw roof face" />
                 <ToolBtn on={tool === 'edit'} onClick={() => selectTool('edit')} icon={<Wrench size={14} />} label="Edit vertices" />
                 <ToolBtn on={tool === 'pin'} onClick={() => selectTool('pin')} icon={<Target size={15} />} label="Drop pin & detect here" />
+                <span className="h-px mx-1.5 my-0.5 bg-divider" />
+                <ToolBtn on={false} onClick={addKeepout} icon={<Box size={15} />} label="Add keep-out (vent / chimney / skylight)" />
                 </>}
               </div>
             )}
@@ -848,6 +947,7 @@ export function DesignEditor() {
                 <>
                   {hdReady && <button onClick={() => setHdOn((v) => !v)} title={hdOn ? 'High-res Google aerial — on' : 'Show high-res Google aerial'} className={`h-8 px-2.5 rounded-[8px] text-[12px] font-bold inline-flex items-center gap-1 ${hdOn ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={hdOn ? { background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' } : undefined}><Sun size={12} />HD</button>}
                   <button onClick={() => setBoundaryOn((v) => !v)} title="Land-ownership boundary (HMLR INSPIRE, else building footprint)" className={`h-8 px-2.5 rounded-[8px] text-[12px] font-bold inline-flex items-center gap-1 ${boundaryOn ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={boundaryOn ? { background: '#E5484D' } : undefined}><Target size={12} />Plot</button>
+                  <button onClick={() => setMeasureOn((v) => !v)} title="Show roof measurements — edge lengths & face area" className={`h-8 px-2.5 rounded-[8px] text-[12px] font-bold inline-flex items-center gap-1 ${measureOn ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={measureOn ? { background: '#0A0E17' } : undefined}><Wrench size={12} />Measure</button>
                   <span className="w-px h-5 bg-divider" />
                 </>
               )}
@@ -869,6 +969,18 @@ export function DesignEditor() {
                 <ArrayToolbar sel={sel} moduleId={moduleId} onUpdate={updatePlane} onUndo={undo} onRedo={redo} canUndo={undoStack.current.length > 0} canRedo={redoStack.current.length > 0} onCentre={centreArray} onFill={() => fillPlane(sel.id)} />
               </div>
             )}
+            {view === '2d' && !busy && selObsId && (() => {
+              const o = (design.obstacles ?? []).find((x) => x.id === selObsId); if (!o) return null
+              const meta = OBST[o.kind]
+              return (
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[540] flex items-center gap-1 bg-white/95 backdrop-blur border border-border rounded-control shadow-modal p-1">
+                  <span className="inline-flex items-center gap-1.5 h-8 pl-2.5 pr-2 text-[12.5px] font-bold"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: meta.c }} />{meta.label}{o.heightM ? ` · ${o.heightM} m` : ''}</span>
+                  <button onClick={() => cycleObstacleKind(o.id)} className="h-8 px-2.5 rounded-[8px] text-[12px] font-bold text-ink-3 hover:bg-control">Change type</button>
+                  <span className="w-px h-5 bg-divider" />
+                  <button onClick={() => deleteObstacle(o.id)} className="h-8 px-2.5 rounded-[8px] text-[12px] font-bold hover:bg-control" style={{ color: '#E5484D' }}>Delete</button>
+                </div>
+              )
+            })()}
             {view === '2d' && boundaryOn && boundaryInfo && (
               <div className="absolute bottom-3 left-3 z-[500] h-8 px-3 rounded-full bg-white/95 backdrop-blur border border-border shadow-modal text-[11.5px] font-semibold inline-flex items-center gap-1.5 max-w-[380px]">
                 <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: boundaryInfo.source === 'inspire' ? '#E5484D' : '#F5A524' }} />

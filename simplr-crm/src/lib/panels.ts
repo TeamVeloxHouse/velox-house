@@ -42,6 +42,18 @@ function pointInPoly(pt: XY, poly: XY[]): boolean {
   }
   return inside
 }
+/** Do two simple polygons overlap? A vertex of one inside the other, or any edges crossing. Used to
+ *  keep panels off obstruction keep-outs (chimneys/vents/skylights). */
+function segCross(a: XY, b: XY, c: XY, d: XY): boolean {
+  const o = (p: XY, q: XY, r: XY) => Math.sign((q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x))
+  return o(a, b, c) !== o(a, b, d) && o(c, d, a) !== o(c, d, b)
+}
+function polysOverlap(A: XY[], B: XY[]): boolean {
+  for (const p of A) if (pointInPoly(p, B)) return true
+  for (const p of B) if (pointInPoly(p, A)) return true
+  for (let i = 0; i < A.length; i++) { const a = A[i], b = A[(i + 1) % A.length]; for (let j = 0; j < B.length; j++) { if (segCross(a, b, B[j], B[(j + 1) % B.length])) return true } }
+  return false
+}
 /** Bearing (rad) of the polygon's longest edge — the grid aligns to this so panels follow the roof. */
 function dominantAngle(poly: XY[]): number {
   let best = 0, blen = -1
@@ -76,7 +88,11 @@ function insetXY(poly: XY[], d: number): XY[] {
 }
 
 export type BBox = { minLat: number; maxLat: number; minLng: number; maxLng: number }
-export type PackOpts = { orientation: PanelOrientation; gap?: number; setback?: number; rowGap?: number; bbox?: BBox; angleDeg?: number }
+export type PackOpts = {
+  orientation: PanelOrientation; gap?: number; setback?: number; rowGap?: number; bbox?: BBox; angleDeg?: number
+  obstacles?: LatLng[][] // keep-out rings (obstruction outlines) panels must avoid
+  obstacleClearance?: number // margin kept around each obstruction (m); default 0.15
+}
 
 /** A single valid module position on a plane's roof-aligned grid — indexed by (row, col) so a drag
  *  can select a perfectly aligned rectangular block of cells, never a scattered lat/lng box. */
@@ -102,6 +118,13 @@ export function planeGrid(polygon: LatLng[], module: Module, opts: PackOpts): Gr
   // Enforce the setback from every roof EDGE (not just the bounding box): erode the polygon and keep
   // only modules whose corners fall inside it — so panels never overflow the safe zone.
   const Rin = insetXY(R, setback)
+  // Obstruction keep-outs: project each obstacle ring into the grid frame and grow it by the clearance;
+  // any module cell overlapping one is dropped, so auto-fill flows around vents/skylights/chimneys.
+  const clearance = opts.obstacleClearance ?? 0.15
+  const obs = (opts.obstacles ?? [])
+    .map((o) => o.map((p) => rot(proj.toXY(p), theta)))
+    .map((o) => (clearance > 0 ? insetXY(o, -clearance) : o))
+    .filter((o) => o.length >= 3)
 
   const minX = Math.min(...R.map((p) => p.x)), maxX = Math.max(...R.map((p) => p.x))
   const minY = Math.min(...R.map((p) => p.y)), maxY = Math.max(...R.map((p) => p.y))
@@ -117,6 +140,7 @@ export function planeGrid(polygon: LatLng[], module: Module, opts: PackOpts): Gr
         { x: x + pw - 0.02, y: y + ph - 0.02 }, { x: x + 0.02, y: y + ph - 0.02 },
       ]
       if (!corners.every((c) => pointInPoly(c, Rin))) continue
+      if (obs.length && obs.some((o) => polysOverlap(corners, o))) continue // sits on an obstruction
       const cornersLL = corners.map((c) => proj.toLL(unrot(c, theta)))
       const centerLL = proj.toLL(unrot({ x: x + pw / 2, y: y + ph / 2 }, theta))
       cells.push({ row, col, corners: cornersLL, center: centerLL })
@@ -152,7 +176,10 @@ export type LayoutGoal =
   | { kind: 'max' }
   | { kind: 'target-kwp'; kwp: number }
   | { kind: 'target-kwh'; kwh: number; yieldPerKwp: number } // hit an annual generation target (offset briefs)
-export type LayoutOpts = { restrict?: (p: DesignPlane) => boolean } // only lay out planes passing this
+export type LayoutOpts = {
+  restrict?: (p: DesignPlane) => boolean // only lay out planes passing this
+  obstacles?: LatLng[][] // obstruction keep-out rings the modules must avoid
+}
 export type LayoutResult = { planes: DesignPlane[]; count: number; kwp: number; kwh: number }
 
 /** Orientation/tilt yield factor (0–1) for a plane. Planes store azimuth from NORTH (0=N,180=S);
@@ -165,17 +192,19 @@ export function planeQuality(p: DesignPlane): number {
   return planeSolarFactor(p) * Math.max(1, p.areaM2)
 }
 
-/** Pack one plane using its own settings (falls back to the design defaults passed in). */
-export function packWithSettings(plane: DesignPlane, module: Module, designSetback: number): { panels: DesignPanel[]; orientation: PanelOrientation } {
+/** Pack one plane using its own settings (falls back to the design defaults passed in). Obstacles are
+ *  keep-out rings (obstruction outlines) the modules must avoid. */
+export function packWithSettings(plane: DesignPlane, module: Module, designSetback: number, obstacles?: LatLng[][]): { panels: DesignPanel[]; orientation: PanelOrientation } {
   const setback = plane.setbackM ?? designSetback
   const rowGap = plane.rowGapM
   const gap = plane.panelGapM
   const angleDeg = plane.arrayAngleDeg
+  const base = { setback, rowGap, gap, angleDeg, obstacles }
   if (plane.orientation) {
-    return { panels: packPlane(plane.polygon, module, { orientation: plane.orientation, setback, rowGap, gap, angleDeg }), orientation: plane.orientation }
+    return { panels: packPlane(plane.polygon, module, { orientation: plane.orientation, ...base }), orientation: plane.orientation }
   }
-  const portrait = packPlane(plane.polygon, module, { orientation: 'portrait', setback, rowGap, gap, angleDeg })
-  const landscape = packPlane(plane.polygon, module, { orientation: 'landscape', setback, rowGap, gap, angleDeg })
+  const portrait = packPlane(plane.polygon, module, { orientation: 'portrait', ...base })
+  const landscape = packPlane(plane.polygon, module, { orientation: 'landscape', ...base })
   return landscape.length > portrait.length ? { panels: landscape, orientation: 'landscape' } : { panels: portrait, orientation: 'portrait' }
 }
 
@@ -190,7 +219,7 @@ export function autoLayout(planes: DesignPlane[], module: Module, goal: LayoutGo
     if (placed >= targetCount) break
     if (opts.restrict && !opts.restrict(p)) continue // skip planes the brief excluded
     if (goal.kind === 'target-kwh' && kwh >= goal.kwh) break
-    const packed = packWithSettings(planes[i], module, designSetback)
+    const packed = packWithSettings(planes[i], module, designSetback, opts.obstacles)
     let panels = packed.panels
     if (placed + panels.length > targetCount) panels = panels.slice(0, targetCount - placed) // trim to target kWp
     if (goal.kind === 'target-kwh') {

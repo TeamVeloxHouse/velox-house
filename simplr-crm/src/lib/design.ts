@@ -2,8 +2,8 @@
  * geometry (areas) the canvas needs. Google Solar gives per-plane pitch/azimuth + an axis-aligned
  * bounding box; we seed planes from those (editable), and refine to true shapes in a later phase. */
 import { analyseRoofLive, fetchBuildingFootprint, type LatLng, type RoofAnalysis } from './solar'
-import { fetchBuildingOutline, segmentRoofFacets, segmentRoofFacetsFromPriors } from './dsm'
-import type { DesignPlane } from '../store/types'
+import { fetchBuildingOutline, segmentRoofFacets, segmentRoofFacetsFromPriors, detectObstacles } from './dsm'
+import type { DesignObstacle, DesignPlane } from '../store/types'
 
 const uid = (p: string) => `${p}${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`
 
@@ -102,10 +102,13 @@ export function planesFromAnalysis(a: RoofAnalysis, footprint?: LatLng[] | null)
   return kept
 }
 
-/** Fetch + convert in one call. Returns planes + the building centre for framing. */
-export async function detectPlanes(address: string, center?: LatLng): Promise<{ planes: DesignPlane[]; center?: LatLng; measured: boolean }> {
+/** Fetch + convert in one call. Returns planes + obstructions + the building centre for framing. */
+export async function detectPlanes(address: string, center?: LatLng): Promise<{ planes: DesignPlane[]; obstacles: DesignObstacle[]; center?: LatLng; measured: boolean }> {
   const analysis = await analyseRoofLive(address, center)
   const c = analysis.center || center
+  // Auto-detect roof obstructions (chimneys/vents/HVAC) from the DSM in parallel with the planes.
+  const obstaclesP = c ? detectObstacles(c.lat, c.lng).catch(() => null) : Promise.resolve(null)
+  const toObstacles = async (): Promise<DesignObstacle[]> => ((await obstaclesP) ?? []).map((o) => ({ id: uid('ob'), kind: o.kind, polygon: o.polygon, source: 'auto' as const, heightM: o.heightM }))
   // BEST: segment the roof into true planar facets from the DSM (each real face, correctly tilted) —
   // this is the "usable area" per facet. Use it when it yields a sensible set.
   if (c) {
@@ -117,14 +120,14 @@ export async function detectPlanes(address: string, center?: LatLng): Promise<{ 
     const good = facets?.filter((f) => f.areaM2 >= 6) ?? []
     if (good.length >= 1 && good.length <= 24) {
       const planes: DesignPlane[] = good.map((f) => ({ id: uid('pl'), name: `${compass(f.azimuthDeg)}-facing plane`, polygon: f.polygon, pitchDeg: f.pitchDeg, azimuthDeg: f.azimuthDeg, areaM2: f.areaM2, source: 'google' }))
-      return { planes, center: c, measured: true }
+      return { planes, obstacles: await toObstacles(), center: c, measured: true }
     }
   }
   // Fallback: clip Google's boxes to the building outline (mask, else flaky OSM, else raw box).
   let footprint: LatLng[] | null = null
   if (c) footprint = await fetchBuildingOutline(c.lat, c.lng).catch(() => null)
   if (!footprint && c) footprint = await fetchBuildingFootprint(c).catch(() => null)
-  return { planes: planesFromAnalysis(analysis, footprint), center: c, measured: analysis.source === 'google' }
+  return { planes: planesFromAnalysis(analysis, footprint), obstacles: await toObstacles(), center: c, measured: analysis.source === 'google' }
 }
 
 /** Total sloped roof area across planes (m²). */

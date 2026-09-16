@@ -454,6 +454,80 @@ export async function segmentRoofFacetsFromPriors(
   } catch { return null }
 }
 
+export type DetectedObstacle = { polygon: { lat: number; lng: number }[]; kind: 'chimney' | 'hvac' | 'keepout'; heightM: number }
+
+/** Auto-detect roof OBSTRUCTIONS from the DSM — chimneys, vents, flues and HVAC units read as compact
+ *  raised bumps above the local roof surface. We isolate them with a grayscale morphological opening
+ *  (erode→dilate removes bumps smaller than the structuring element, leaving the bare roof), take the
+ *  residual bump = height − opened, then blob the pixels that stick up past a threshold. Kind is guessed
+ *  from footprint + height. NOTE: flush skylights sit level with the roof and don't bump — those need
+ *  the imagery/vision pass, not the DSM. Free: uses only data we already fetch. */
+export async function detectObstacles(lat: number, lng: number, radius = 40, px = 0.25): Promise<DetectedObstacle[] | null> {
+  try {
+    const q = `lat=${lat}&lng=${lng}&radius=${radius}&px=${px}`
+    const [dsmR, maskR] = await Promise.all([fetch(`/api/solar-layer?kind=dsm&${q}`), fetch(`/api/solar-layer?kind=mask&${q}`)])
+    if (!dsmR.ok || !maskR.ok) return null
+    const dsm = await readBand(await dsmR.arrayBuffer())
+    const mk = await readBand(await maskR.arrayBuffer())
+    if (mk.w !== dsm.w || mk.h !== dsm.h) return null
+    const W = dsm.w, H = dsm.h, res = dsm.res
+    const NA = -1e9
+    const h = new Float32Array(W * H)
+    let minH = Infinity
+    for (let i = 0; i < W * H; i++) { const v = dsm.data[i]; const ok = v > -500 && v < 10000; h[i] = ok ? v : NA; if (ok && v < minH) minH = v }
+    // target building = mask component nearest the centre
+    const comp = new Int32Array(W * H).fill(-1)
+    { let cur = 0; const st: number[] = []
+      for (let s = 0; s < W * H; s++) {
+        if (mk.data[s] <= 0.5 || comp[s] >= 0) continue
+        st.length = 0; st.push(s); comp[s] = cur
+        while (st.length) { const p = st.pop()!; const x = p % W, y = (p / W) | 0; const nb = [x > 0 ? p - 1 : -1, x < W - 1 ? p + 1 : -1, y > 0 ? p - W : -1, y < H - 1 ? p + W : -1]; for (const nq of nb) if (nq >= 0 && mk.data[nq] > 0.5 && comp[nq] < 0) { comp[nq] = cur; st.push(nq) } }
+        cur++
+      } }
+    const cxp = (W / 2) | 0, cyp = (H / 2) | 0
+    let target = -1, bd = Infinity
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const idx = y * W + x; if (mk.data[idx] > 0.5) { const dd = (x - cxp) ** 2 + (y - cyp) ** 2; if (dd < bd) { bd = dd; target = comp[idx] } } }
+    if (target < 0) return null
+    // grayscale opening (erode then dilate) with a ~1.3 m square element → the bare roof surface
+    const rad = Math.max(2, Math.round(1.3 / res))
+    const win = (src: Float32Array, pick: (a: number, b: number) => number, seed: number) => {
+      const tmp = new Float32Array(W * H), out = new Float32Array(W * H)
+      for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) { let m = seed; for (let dc = -rad; dc <= rad; dc++) { const cc = c + dc; if (cc < 0 || cc >= W) continue; const v = src[r * W + cc]; if (v > NA) m = pick(m, v) } tmp[r * W + c] = m } // horizontal
+      for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) { let m = seed; for (let dr = -rad; dr <= rad; dr++) { const rr = r + dr; if (rr < 0 || rr >= H) continue; const v = tmp[rr * W + c]; if (v > NA) m = pick(m, v) } out[r * W + c] = m } // vertical
+      return out
+    }
+    const eroded = win(h, Math.min, Infinity)
+    const opened = win(eroded, Math.max, -Infinity)
+    // residual bump = roof detail sticking up past the opened surface
+    const BUMP = 0.35 // m — a vent/flue is ~0.3–0.6 m proud; chimneys taller
+    const isBump = new Uint8Array(W * H), bump = new Float32Array(W * H)
+    for (let i = 0; i < W * H; i++) {
+      if (comp[i] !== target || h[i] <= NA || opened[i] <= -1e8) continue
+      if (h[i] - minH < 1.0) continue // ground/eave, not roof
+      const b = h[i] - opened[i]
+      if (b >= BUMP) { isBump[i] = 1; bump[i] = b }
+    }
+    // blob the bumps
+    const halfW = (W * res) / 2, halfH = (H * res) / 2, mLat = 110540, mLng = 111320 * Math.cos((lat * Math.PI) / 180)
+    const pxToLL = (c: number, r: number) => { const east = (c + 0.5) * res - halfW, north = halfH - (r + 0.5) * res; return { lat: lat + north / mLat, lng: lng + east / mLng } }
+    const seen = new Uint8Array(W * H), out: DetectedObstacle[] = []
+    for (let s = 0; s < W * H; s++) {
+      if (!isBump[s] || seen[s]) continue
+      const pix: number[] = [s]; seen[s] = 1; let head = 0, peak = 0
+      while (head < pix.length) { const p = pix[head++]; if (bump[p] > peak) peak = bump[p]; const x = p % W, y = (p / W) | 0; const nb = [x > 0 ? p - 1 : -1, x < W - 1 ? p + 1 : -1, y > 0 ? p - W : -1, y < H - 1 ? p + W : -1]; for (const nq of nb) if (nq >= 0 && isBump[nq] && !seen[nq]) { seen[nq] = 1; pix.push(nq) } }
+      const areaM2 = pix.length * res * res
+      if (areaM2 < 0.06 || areaM2 > 8) continue // noise / whole-face artefacts
+      const inBlob = new Uint8Array(W * H); for (const p of pix) inBlob[p] = 1
+      const boundary = mooreTrace((x, y) => x >= 0 && y >= 0 && x < W && y < H && inBlob[y * W + x] === 1, W, H)
+      if (!boundary) continue
+      const simp = dpSimplify(boundary, 1.1); if (simp.length < 3) continue
+      const kind: DetectedObstacle['kind'] = peak >= 0.9 && areaM2 <= 1.2 ? 'chimney' : areaM2 >= 1.2 ? 'hvac' : 'keepout'
+      out.push({ polygon: simp.map(([c, r]) => pxToLL(c, r)), kind, heightM: Math.round(peak * 100) / 100 })
+    }
+    return out.sort((a, b) => b.heightM - a.heightM).slice(0, 40)
+  } catch { return null }
+}
+
 function solve3v(M: number[][], B: number[]): number[] | null {
   const det = (m: number[][]) => m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0])
   const d = det(M); if (Math.abs(d) < 1e-9) return null
