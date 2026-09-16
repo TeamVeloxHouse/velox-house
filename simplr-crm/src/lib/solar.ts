@@ -25,6 +25,16 @@ export type RoofSegment = {
   azimuthDeg?: number // 0 = due south (model convention)
   box?: SegBox // geographic bounding box of the plane (Google only) — enables on-image placement
 }
+/** One roof plane as Google's buildingInsights reports it — reliable orientation, used as a prior to
+ *  steer the DSM roof segmentation (snap pixels to these true planes instead of rediscovering them). */
+export type GooglePlane = {
+  pitchDeg: number // roof slope
+  azimuthDeg: number // degrees from NORTH (0 = N, 180 = S) — the direction the plane faces
+  areaM2: number
+  center?: LatLng // plane centroid
+  heightM?: number // plane height at centre (m)
+  box?: SegBox // axis-aligned lat/lng bounding box
+}
 export type RoofAnalysis = {
   segments: RoofSegment[]
   usableArea: number // m²
@@ -35,6 +45,7 @@ export type RoofAnalysis = {
   region?: string // e.g. "South West England"
   shadeFactor?: number // SF, 0–1 (1 = unshaded)
   center?: LatLng // building centre — used to fetch satellite imagery
+  planes?: GooglePlane[] // ALL Google roof planes (un-sliced) — priors for DSM segmentation
 }
 // Physical panel dimensions (m) for on-roof placement — a standard 440W module.
 export const PANEL_DIM = { w: 1.13, h: 1.72 }

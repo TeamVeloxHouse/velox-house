@@ -2,7 +2,7 @@
  * geometry (areas) the canvas needs. Google Solar gives per-plane pitch/azimuth + an axis-aligned
  * bounding box; we seed planes from those (editable), and refine to true shapes in a later phase. */
 import { analyseRoofLive, fetchBuildingFootprint, type LatLng, type RoofAnalysis } from './solar'
-import { fetchBuildingOutline, segmentRoofFacets } from './dsm'
+import { fetchBuildingOutline, segmentRoofFacets, segmentRoofFacetsFromPriors } from './dsm'
 import type { DesignPlane } from '../store/types'
 
 const uid = (p: string) => `${p}${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`
@@ -109,7 +109,11 @@ export async function detectPlanes(address: string, center?: LatLng): Promise<{ 
   // BEST: segment the roof into true planar facets from the DSM (each real face, correctly tilted) —
   // this is the "usable area" per facet. Use it when it yields a sensible set.
   if (c) {
-    const facets = await segmentRoofFacets(c.lat, c.lng).catch(() => null)
+    // v2: steer the DSM segmentation with Google's true per-plane orientations (sharp, accurate faces);
+    // fall back to the unsupervised DSM segmentation only when Google gives us no plane priors.
+    const priors = analysis.planes?.length ? analysis.planes.map((p) => ({ pitchDeg: p.pitchDeg, azimuthDeg: p.azimuthDeg })) : null
+    const facets = (priors ? await segmentRoofFacetsFromPriors(c.lat, c.lng, priors).catch(() => null) : null)
+      ?? await segmentRoofFacets(c.lat, c.lng).catch(() => null)
     const good = facets?.filter((f) => f.areaM2 >= 6) ?? []
     if (good.length >= 1 && good.length <= 24) {
       const planes: DesignPlane[] = good.map((f) => ({ id: uid('pl'), name: `${compass(f.azimuthDeg)}-facing plane`, polygon: f.polygon, pitchDeg: f.pitchDeg, azimuthDeg: f.azimuthDeg, areaM2: f.areaM2, source: 'google' }))

@@ -315,6 +315,145 @@ export async function segmentRoofFacets(lat: number, lng: number, radius = 40, p
     return out.length ? out.sort((p, q) => q.areaM2 - p.areaM2) : null
   } catch { return null }
 }
+/* ── Auto-detect v2: Google-anchored roof segmentation ────────────────────────
+ * The pure-DSM segmentation above rediscovers roof planes from noisy normals, which on lower-quality
+ * imagery gives the wrong count, wobbly pitch/azimuth and ragged outlines. Google's buildingInsights
+ * already reports each roof face's TRUE pitch and azimuth — so instead of guessing, we snap each DSM
+ * roof pixel to the Google plane it best matches, split detached faces of the same orientation, and
+ * regularize the traced outline into a crisp rectilinear polygon. Result: sharp, accurate faces. */
+
+type MXY = { x: number; y: number } // metric east(+x)/north(+y) offset from the DSM centre
+
+/** Snap a roof-facet outline to a crisp rectilinear polygon aligned to its own dominant axis — turns
+ *  the DSM's ragged pixel trace into straight, parallel / right-angled edges. Only applied when the
+ *  ring is already mostly rectilinear (≥70% of its perimeter within ~18° of the two axes) so hip and
+ *  diagonal faces are left untouched. Returns the input unchanged when it can't confidently regularize. */
+function regularizeRingMetric(pts: MXY[]): MXY[] {
+  const n = pts.length
+  if (n < 4) return pts
+  // dominant axis U = direction of the longest edge; V is perpendicular
+  let bx = 1, by = 0, bl = -1
+  for (let i = 0; i < n; i++) { const a = pts[i], b = pts[(i + 1) % n]; const dx = b.x - a.x, dy = b.y - a.y; const l = Math.hypot(dx, dy); if (l > bl) { bl = l; bx = dx / (l || 1); by = dy / (l || 1) } }
+  const U = { x: bx, y: by }, V = { x: -by, y: bx }
+  let recti = 0, total = 0
+  const edges = pts.map((a, i) => {
+    const b = pts[(i + 1) % n]; const dx = b.x - a.x, dy = b.y - a.y; const len = Math.hypot(dx, dy)
+    const du = Math.abs(dx * U.x + dy * U.y), dv = Math.abs(dx * V.x + dy * V.y)
+    const axis = du >= dv ? 0 : 1
+    total += len; if ((axis === 0 ? du : dv) / (len || 1) > Math.cos((18 * Math.PI) / 180)) recti += len
+    return { a, b, len, axis }
+  })
+  if (total <= 0 || recti / total < 0.7) return pts // hip / complex face — don't force it square
+  // collapse runs of same-axis edges into one line; offset = length-weighted mean perpendicular coord
+  type Ln = { axis: number; off: number; w: number }
+  const merged: Ln[] = []
+  for (const e of edges) {
+    const off = e.axis === 0
+      ? (e.a.x * V.x + e.a.y * V.y + e.b.x * V.x + e.b.y * V.y) / 2 // U-edge → fixed V coordinate
+      : (e.a.x * U.x + e.a.y * U.y + e.b.x * U.x + e.b.y * U.y) / 2 // V-edge → fixed U coordinate
+    const last = merged[merged.length - 1]
+    if (last && last.axis === e.axis) { last.off = (last.off * last.w + off * e.len) / (last.w + e.len); last.w += e.len }
+    else merged.push({ axis: e.axis, off, w: e.len })
+  }
+  if (merged.length > 1 && merged[0].axis === merged[merged.length - 1].axis) {
+    const first = merged[0], last = merged.pop()!
+    first.off = (first.off * first.w + last.off * last.w) / (first.w + last.w); first.w += last.w
+  }
+  if (merged.length < 4 || merged.length % 2 !== 0) return pts // must alternate U/V into a closed ring
+  const out: MXY[] = []
+  for (let i = 0; i < merged.length; i++) {
+    const L1 = merged[(i - 1 + merged.length) % merged.length], L2 = merged[i]
+    if (L1.axis === L2.axis) return pts
+    const uOff = L1.axis === 1 ? L1.off : L2.off // the V-line's U coordinate
+    const vOff = L1.axis === 0 ? L1.off : L2.off // the U-line's V coordinate
+    out.push({ x: uOff * U.x + vOff * V.x, y: uOff * U.y + vOff * V.y })
+  }
+  return out
+}
+
+/** BEST auto-detect. Segment the roof using Google's true plane orientations as priors: each roof
+ *  pixel is snapped to the Google plane whose normal it best matches, detached faces of the same
+ *  orientation are split, and each face's outline is traced + regularized. Pitch/azimuth come from
+ *  Google (reliable); the DSM only decides each face's shape. Falls back (null) if data is missing. */
+export async function segmentRoofFacetsFromPriors(
+  lat: number, lng: number,
+  priors: { pitchDeg: number; azimuthDeg: number }[],
+  radius = 40, px = 0.25,
+): Promise<RoofFacet[] | null> {
+  if (!priors?.length) return null
+  try {
+    const q = `lat=${lat}&lng=${lng}&radius=${radius}&px=${px}`
+    const [dsmR, maskR] = await Promise.all([fetch(`/api/solar-layer?kind=dsm&${q}`), fetch(`/api/solar-layer?kind=mask&${q}`)])
+    if (!dsmR.ok || !maskR.ok) return null
+    const dsm = await readBand(await dsmR.arrayBuffer())
+    const mk = await readBand(await maskR.arrayBuffer())
+    if (mk.w !== dsm.w || mk.h !== dsm.h) return null
+    const W = dsm.w, H = dsm.h, res = dsm.res
+    // smooth heights (3×3) to tame normal noise
+    const hs = new Float32Array(W * H); let minH = Infinity
+    for (let i = 0; i < W * H; i++) { const v = dsm.data[i]; if (v > -500 && v < 10000 && v < minH) minH = v }
+    for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) {
+      let s = 0, nn = 0
+      for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) { const rr = r + dr, cc = c + dc; if (rr >= 0 && rr < H && cc >= 0 && cc < W) { const v = dsm.data[rr * W + cc]; if (v > -500 && v < 10000) { s += v; nn++ } } }
+      hs[r * W + c] = nn ? s / nn : minH
+    }
+    // restrict to the target building = the mask component containing the query centre
+    const comp = new Int32Array(W * H).fill(-1)
+    { let cur = 0; const st: number[] = []
+      for (let s = 0; s < W * H; s++) {
+        if (mk.data[s] <= 0.5 || comp[s] >= 0) continue
+        st.length = 0; st.push(s); comp[s] = cur
+        while (st.length) { const p = st.pop()!; const x = p % W, y = (p / W) | 0; const nb = [x > 0 ? p - 1 : -1, x < W - 1 ? p + 1 : -1, y > 0 ? p - W : -1, y < H - 1 ? p + W : -1]; for (const nq of nb) if (nq >= 0 && mk.data[nq] > 0.5 && comp[nq] < 0) { comp[nq] = cur; st.push(nq) } }
+        cur++
+      } }
+    const cxp = (W / 2) | 0, cyp = (H / 2) | 0
+    let target = -1, bd = Infinity
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const idx = y * W + x; if (mk.data[idx] > 0.5) { const dd = (x - cxp) ** 2 + (y - cyp) ** 2; if (dd < bd) { bd = dd; target = comp[idx] } } }
+    if (target < 0) return null
+    // prior normals in (east, up, north): n = (sinθ·sin a, cosθ, sinθ·cos a), a = azimuth from north
+    const pn = priors.map((p) => { const t = (p.pitchDeg * Math.PI) / 180, a = (p.azimuthDeg * Math.PI) / 180; return { x: Math.sin(t) * Math.sin(a), y: Math.cos(t), z: Math.sin(t) * Math.cos(a) } })
+    // assign each roof pixel to the best-matching prior orientation
+    const label = new Int32Array(W * H).fill(-1)
+    const COS = Math.cos((24 * Math.PI) / 180)
+    for (let r = 1; r < H - 1; r++) for (let c = 1; c < W - 1; c++) {
+      const idx = r * W + c
+      if (comp[idx] !== target || hs[idx] - minH < 1.0) continue
+      const a = (hs[idx + 1] - hs[idx - 1]) / (2 * res)
+      const b = (hs[(r - 1) * W + c] - hs[(r + 1) * W + c]) / (2 * res)
+      const inv = 1 / Math.sqrt(a * a + b * b + 1)
+      const nx = -a * inv, ny = inv, nz = -b * inv
+      if (ny < 0.3) continue // slope > ~72° → wall/edge, not a roof face
+      let best = -1, bestDot = COS
+      for (let k = 0; k < pn.length; k++) { const d = nx * pn[k].x + ny * pn[k].y + nz * pn[k].z; if (d > bestDot) { bestDot = d; best = k } }
+      if (best >= 0) label[idx] = best
+    }
+    // geometry helpers
+    const halfW = (W * res) / 2, halfH = (H * res) / 2, mLat = 110540, mLng = 111320 * Math.cos((lat * Math.PI) / 180)
+    const pxToXY = (c: number, r: number): MXY => ({ x: (c + 0.5) * res - halfW, y: halfH - (r + 0.5) * res })
+    const xyToLL = (p: MXY) => ({ lat: lat + p.y / mLat, lng: lng + p.x / mLng })
+    // split each prior label into spatially-connected faces; trace + regularize each
+    const out: RoofFacet[] = []
+    const seen = new Uint8Array(W * H)
+    for (let s = 0; s < W * H; s++) {
+      if (label[s] < 0 || seen[s]) continue
+      const pk = label[s]; const pixels: number[] = []; const st = [s]; seen[s] = 1
+      while (st.length) { const p = st.pop()!; pixels.push(p); const x = p % W, y = (p / W) | 0; const nb = [x > 0 ? p - 1 : -1, x < W - 1 ? p + 1 : -1, y > 0 ? p - W : -1, y < H - 1 ? p + W : -1]; for (const nq of nb) if (nq >= 0 && label[nq] === pk && !seen[nq]) { seen[nq] = 1; st.push(nq) } }
+      if (pixels.length < 40) continue
+      const inFace = new Uint8Array(W * H); for (const p of pixels) inFace[p] = 1
+      const boundary = mooreTrace((x, y) => x >= 0 && y >= 0 && x < W && y < H && inFace[y * W + x] === 1, W, H)
+      if (!boundary) continue
+      const simp = dpSimplify(boundary, 1.3); if (simp.length < 3) continue
+      const ring = regularizeRingMetric(simp.map(([c, r]) => pxToXY(c, r)))
+      if (ring.length < 3) continue
+      const pitch = priors[pk].pitchDeg
+      const areaM2 = Math.round((pixels.length * res * res) / Math.max(0.2, Math.cos((pitch * Math.PI) / 180)))
+      if (areaM2 < 6) continue
+      out.push({ polygon: ring.map(xyToLL), pitchDeg: Math.max(0, Math.min(60, pitch)), azimuthDeg: Math.round(((priors[pk].azimuthDeg % 360) + 360) % 360), areaM2 })
+    }
+    return out.length ? out.sort((p, q) => q.areaM2 - p.areaM2) : null
+  } catch { return null }
+}
+
 function solve3v(M: number[][], B: number[]): number[] | null {
   const det = (m: number[][]) => m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0])
   const d = det(M); if (Math.abs(d) < 1e-9) return null

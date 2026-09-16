@@ -133,7 +133,27 @@ function mapAnalysis(sp, lat, lng) {
   if (segments.length && assigned !== maxPanels) segments[0].maxPanels += maxPanels - assigned
   if (!segments.length) throw new Error('no usable segments')
 
+  // ALL roof segments with Google's reliable per-plane geometry (pitch, azimuth-from-north, centre,
+  // plane height, box) — un-sliced. The design studio uses these as priors so the DSM segmentation
+  // snaps pixels to Google's true plane orientations instead of rediscovering them from noise.
+  const planes = rs
+    .map((s) => {
+      const bb = s.boundingBox
+      const box = bb && bb.sw && bb.ne
+        ? { sw: { lat: bb.sw.latitude, lng: bb.sw.longitude }, ne: { lat: bb.ne.latitude, lng: bb.ne.longitude } }
+        : undefined
+      return {
+        pitchDeg: Math.round(s.pitchDegrees || 30),
+        azimuthDeg: Math.round((((s.azimuthDegrees ?? 180) % 360) + 360) % 360), // from NORTH (0=N,180=S)
+        areaM2: Math.round(s.stats?.areaMeters2 || 0),
+        center: s.center ? { lat: s.center.latitude, lng: s.center.longitude } : undefined,
+        heightM: typeof s.planeHeightAtCenterMeters === 'number' ? s.planeHeightAtCenterMeters : undefined,
+        box,
+      }
+    })
+    .filter((p) => p.areaM2 > 2)
+
   const usableArea = Math.round(sp.maxArrayAreaMeters2 || totalArea)
   const center = sp.center ? { lat: sp.center.latitude, lng: sp.center.longitude } : { lat, lng }
-  return { segments, usableArea, specificYield, maxPanels, panelWatts, source: 'google', center }
+  return { segments, usableArea, specificYield, maxPanels, panelWatts, source: 'google', center, planes }
 }
