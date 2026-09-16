@@ -454,7 +454,7 @@ export async function segmentRoofFacetsFromPriors(
   } catch { return null }
 }
 
-export type DetectedObstacle = { polygon: { lat: number; lng: number }[]; kind: 'chimney' | 'hvac' | 'keepout'; heightM: number }
+export type DetectedObstacle = { polygon: { lat: number; lng: number }[]; kind: 'chimney' | 'hvac' | 'keepout' | 'skylight'; heightM: number }
 
 /** Auto-detect roof OBSTRUCTIONS from the DSM — chimneys, vents, flues and HVAC units read as compact
  *  raised bumps above the local roof surface. We isolate them with a grayscale morphological opening

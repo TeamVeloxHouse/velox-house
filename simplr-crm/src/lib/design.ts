@@ -2,8 +2,26 @@
  * geometry (areas) the canvas needs. Google Solar gives per-plane pitch/azimuth + an axis-aligned
  * bounding box; we seed planes from those (editable), and refine to true shapes in a later phase. */
 import { analyseRoofLive, fetchBuildingFootprint, type LatLng, type RoofAnalysis } from './solar'
-import { fetchBuildingOutline, segmentRoofFacets, segmentRoofFacetsFromPriors, detectObstacles } from './dsm'
+import { fetchBuildingOutline, segmentRoofFacets, segmentRoofFacetsFromPriors, detectObstacles, type DetectedObstacle } from './dsm'
+import { detectObstaclesVision } from './roofVision'
 import type { DesignObstacle, DesignPlane } from '../store/types'
+
+/** Detect roof obstructions: Claude vision (classifies + catches flush skylights) as the lead, unioned
+ *  with the DSM bump detector (catches any raised object vision missed). Both degrade to nothing safely. */
+async function detectRoofObstacles(lat: number, lng: number): Promise<DetectedObstacle[]> {
+  const [vision, dsm] = await Promise.all([
+    detectObstaclesVision(lat, lng).catch(() => null),
+    detectObstacles(lat, lng).catch(() => null),
+  ])
+  const centroid = (poly: LatLng[]) => poly.reduce((a, p) => ({ lat: a.lat + p.lat / poly.length, lng: a.lng + p.lng / poly.length }), { lat: 0, lng: 0 })
+  const merged: DetectedObstacle[] = [...(vision ?? [])]
+  for (const d of dsm ?? []) {
+    const dc = centroid(d.polygon)
+    const dup = merged.some((v) => { const vc = centroid(v.polygon); const dy = (vc.lat - dc.lat) * 110540, dx = (vc.lng - dc.lng) * 111320 * Math.cos((dc.lat * Math.PI) / 180); return Math.hypot(dx, dy) < 1.5 })
+    if (!dup) merged.push(d)
+  }
+  return merged
+}
 
 const uid = (p: string) => `${p}${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`
 
@@ -106,9 +124,9 @@ export function planesFromAnalysis(a: RoofAnalysis, footprint?: LatLng[] | null)
 export async function detectPlanes(address: string, center?: LatLng): Promise<{ planes: DesignPlane[]; obstacles: DesignObstacle[]; center?: LatLng; measured: boolean }> {
   const analysis = await analyseRoofLive(address, center)
   const c = analysis.center || center
-  // Auto-detect roof obstructions (chimneys/vents/HVAC) from the DSM in parallel with the planes.
-  const obstaclesP = c ? detectObstacles(c.lat, c.lng).catch(() => null) : Promise.resolve(null)
-  const toObstacles = async (): Promise<DesignObstacle[]> => ((await obstaclesP) ?? []).map((o) => ({ id: uid('ob'), kind: o.kind, polygon: o.polygon, source: 'auto' as const, heightM: o.heightM }))
+  // Auto-detect roof obstructions (Claude vision + DSM bumps) in parallel with the planes.
+  const obstaclesP = c ? detectRoofObstacles(c.lat, c.lng).catch(() => [] as DetectedObstacle[]) : Promise.resolve([] as DetectedObstacle[])
+  const toObstacles = async (): Promise<DesignObstacle[]> => (await obstaclesP).map((o) => ({ id: uid('ob'), kind: o.kind, polygon: o.polygon, source: 'auto' as const, heightM: o.heightM }))
   // BEST: segment the roof into true planar facets from the DSM (each real face, correctly tilted) —
   // this is the "usable area" per facet. Use it when it yields a sensible set.
   if (c) {
