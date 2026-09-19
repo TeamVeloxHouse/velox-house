@@ -664,11 +664,11 @@ export function useActions() {
     },
     sendPortalInvite: (portal: import('./types').CustomerPortal) => {
       dispatch({ type: 'UPDATE_PORTAL', id: portal.id, patch: { invitedAt: Date.now() } })
-      const link = `https://portal.tellovi.io/welcome/${portal.id}`
+      const link = `https://portal.thesolarhouse.co.uk/welcome/${portal.id}`
       const email: EmailMsg = {
-        id: uid('em'), folder: 'sent', from: 'TellOvi', fromEmail: 'hello@tellovi.io', to: portal.email || portal.customer,
+        id: uid('em'), folder: 'sent', from: 'The Solar House', fromEmail: 'hello@thesolarhouse.co.uk', to: portal.email || portal.customer,
         subject: 'Your solar portal is ready',
-        body: `Hi ${portal.customer.split(' ')[0]},\n\nYour personal solar portal is live. It's where you'll find your system, live savings, all your documents, and help whenever you need it.\n\nLog in here: ${link}\n\n— The TellOvi team`,
+        body: `Hi ${portal.customer.split(' ')[0]},\n\nYour personal solar portal is live. It's where you'll find your system, live savings, all your documents, and help whenever you need it.\n\nLog in here: ${link}\n\n— The Solar House team`,
         replyToId: undefined, time: 'Just now', createdAt: Date.now(),
       }
       dispatch({ type: 'SEND_EMAIL', email })
@@ -719,9 +719,9 @@ export function useActions() {
       dispatch({ type: 'ADD_PORTAL_EVENT', event: { id: uid('pe'), portalId: portal.id, section: 'Progress', label: `${step?.label ?? 'Step'} — marked done`, kind: 'click', at: Date.now() } })
       // Notify the customer by email (lands in the in-app Inbox in this demo).
       const note: EmailMsg = {
-        id: uid('em'), folder: 'sent', from: 'TellOvi', fromEmail: 'hello@tellovi.io', to: portal.email || portal.customer,
+        id: uid('em'), folder: 'sent', from: 'The Solar House', fromEmail: 'hello@thesolarhouse.co.uk', to: portal.email || portal.customer,
         subject: `Update on your solar install — ${step?.label ?? 'progress'}`,
-        body: `Hi ${portal.customer.split(' ')[0]},\n\nGood news — ${step?.label?.toLowerCase() ?? 'the next step'} is done. ${step?.blurb ?? ''}\n\nYou can follow every step in your portal.\n\n— The TellOvi team`,
+        body: `Hi ${portal.customer.split(' ')[0]},\n\nGood news — ${step?.label?.toLowerCase() ?? 'the next step'} is done. ${step?.blurb ?? ''}\n\nYou can follow every step in your portal.\n\n— The Solar House team`,
         time: 'Just now', createdAt: Date.now(), dealId: portal.dealId,
       }
       dispatch({ type: 'SEND_EMAIL', email: note })
