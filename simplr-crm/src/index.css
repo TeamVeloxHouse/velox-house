@@ -62,6 +62,13 @@ body {
     letter-spacing: 0.08em;
     font-weight: 600;
   }
+  /* horizontal tab strips (SectionNav) scroll without a visible bar */
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /* ── Map Explorer (Leaflet) ─────────────────────────────────────────────── */
