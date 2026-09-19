@@ -5,7 +5,7 @@ import { PageBody } from '../components/Page'
 import { Button, Kpi, Chip, Avatar } from '../components/ui'
 import { Table, Row, Cell } from '../components/Table'
 import { Modal, Field, Input, Select, Textarea } from '../components/overlays'
-import { Plus, Sparkle, Sun, File as FileIcon, Play, Bolt, Check, Send, MapPin, Clock, Download, Robot, Building, Wrench, Dollar, Bell, Flow, Link, ArrowUpRight, Star, Users, Megaphone } from '../components/icons'
+import { Plus, Sparkle, Sun, File as FileIcon, Play, Bolt, Check, Send, MapPin, Clock, Download, Robot, Building, Wrench, Dollar, Bell, Flow, Link, ArrowUpRight, Star, Users, Megaphone, Grid, ChevronRight } from '../components/icons'
 import { useState_, useActions } from '../store/store'
 import { customerAnswer, portalStarters, type PortalBlock } from '../lib/portalAi'
 import type { CustomerPortal as Portal, PortalResource, PortalEvent, PortalMilestone, PortalOffer } from '../store/types'
@@ -154,57 +154,119 @@ const TABS: { id: Tab; icon: any }[] = [
   { id: 'Account', icon: Building }, { id: 'Overview', icon: Sun }, { id: 'Progress', icon: Flow }, { id: 'Energy', icon: Bolt }, { id: 'Savings', icon: Dollar }, { id: 'Documents', icon: FileIcon }, { id: 'Support', icon: Wrench }, { id: 'Community', icon: Users }, { id: 'Refer a friend', icon: Sparkle }, { id: 'Resources', icon: Play }, { id: 'Analytics', icon: Sparkle },
 ]
 
+const CUST_TABS: Tab[] = ['Overview', 'Progress', 'Energy', 'Savings', 'Documents', 'Community', 'Support', 'Resources', 'Refer a friend']
+const DOCK_TABS: Tab[] = ['Overview', 'Energy', 'Progress', 'Savings']
+const ICON: Record<Tab, any> = Object.fromEntries(TABS.map((t) => [t.id, t.icon])) as Record<Tab, any>
+
 export function CustomerPortal() {
   const { id } = useParams()
   const nav = useNavigate()
   const { portals } = useState_()
-  const act = useActions()
   const portal = portals.find((p) => p.id === id)
-  const [tab, setTab] = useState<Tab>('Account')
+  const [tab, setTab] = useState<Tab>('Overview')
+  const [clientView, setClientView] = useState(false)
+  const [chatOpen, setChatOpen] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
   if (!portal) return (<><TopBar title="Customer portals" /><PageBody><div className="text-muted-b">Portal not found. <button onClick={() => nav('/customers')} className="text-accent font-semibold">Back</button>.</div></PageBody></>)
+  const go = (t: Tab) => { setTab(t); setMoreOpen(false) }
+  const first = portal.customer.split(' ')[0]
 
   return (
-    <>
-      <TopBar title={portal.customer} crumbs={['Customers']} actions={<>
-        <Chip tone={portal.status === 'active' ? 'positive' : 'warning'} dot>{portal.status === 'active' ? 'Active' : 'Invited'}</Chip>
-        <Button icon={<Send size={15} />} onClick={() => act.sendPortalInvite(portal)}>{portal.status === 'invited' ? 'Send invite' : 'Resend invite'}</Button>
-        <Button onClick={() => nav(`/customers/${portal.id}/welcome`)}>Preview login</Button>
-        <Button onClick={() => nav('/customers')}>All customers</Button>
-      </>} />
-      {/* preview banner — only on the customer-facing tabs */}
-      {!TEAM_TABS.includes(tab) && (
-        <div className="shrink-0 px-7 py-2 text-[12px] font-medium flex items-center gap-2" style={{ background: SH.scrim, color: SH.mint, fontFamily: SH_FONT }}>
-          <Sun size={14} /> Customer portal preview — this is what {portal.customer.split(' ')[0]} sees when they log in.
+    <div className={classNames('sh-portal flex flex-col min-w-0', clientView ? 'fixed inset-0 z-[70] h-[100dvh]' : 'flex-1 min-h-0')}>
+      {/* ---- glass top bar ---- */}
+      <header className="shrink-0 sticky top-0 z-30">
+        <div className="glass-soft border-b border-white/40 px-4 sm:px-6 h-[62px] flex items-center gap-3">
+          <button onClick={() => setTab('Overview')} className="shrink-0"><SolarHouseMark size={30} /></button>
+          <nav className="hidden md:flex items-center gap-1 overflow-x-auto no-sb ml-2 flex-1">
+            {CUST_TABS.map((t) => { const Ic = ICON[t]; const on = tab === t; return (
+              <button key={t} onClick={() => go(t)} className={classNames('shrink-0 inline-flex items-center gap-1.5 px-3 h-9 rounded-full text-[13px] font-semibold transition-colors', on ? 'text-white shadow-primary' : 'text-[#2b5045] hover:bg-white/50')} style={on ? { background: CUSTOMER_ACCENT } : undefined}><Ic size={15} />{t}</button>
+            ) })}
+          </nav>
+          <div className="flex-1 md:hidden" />
+          <div className="flex items-center gap-2 shrink-0">
+            <button onClick={() => setChatOpen(true)} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full text-[13px] font-semibold text-white" style={{ background: SH.scrim }}><Robot size={15} /><span className="hidden sm:inline">Ask Ovi</span></button>
+            {!clientView && (<>
+              <button onClick={() => setClientView(true)} className="hidden sm:inline-flex items-center gap-1.5 h-9 px-3 rounded-full text-[13px] font-semibold glass text-[#0a5a4a]"><Play size={13} /> Client view</button>
+              <button onClick={() => nav('/customers')} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full text-[12.5px] font-semibold text-[#3D4757] hover:text-ink" title="Back to the CRM"><ChevronRight size={14} className="rotate-180" /><span className="hidden lg:inline">Return to TellOvi</span></button>
+            </>)}
+          </div>
         </div>
-      )}
-      <div className="flex-1 flex min-h-0" style={{ fontFamily: SH_FONT }}>
-        {/* tab rail */}
-        <aside className="w-[200px] shrink-0 bg-surface border-r border-border p-3 flex flex-col gap-1">
-          <div className="px-2 pt-1 pb-3 mb-1 border-b border-border"><SolarHouseMark size={30} /></div>
-          {TABS.map((t) => (
-            <button key={t.id} onClick={() => setTab(t.id)} className={classNames('flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] text-left transition-colors', tab === t.id ? 'font-semibold' : 'text-ink-3 hover:bg-control')} style={tab === t.id ? { background: SH.wash, color: CUSTOMER_ACCENT } : undefined}>
-              <t.icon size={16} /> {t.id}{TEAM_TABS.includes(t.id) && <span className="ml-auto text-[9px] font-bold uppercase tracking-wide text-muted-3">Team</span>}
-            </button>
-          ))}
-        </aside>
-        {/* content */}
-        <main className="flex-1 overflow-y-auto p-6 min-w-0">
-          {tab === 'Account' && <AccountTab portal={portal} />}
-          {tab === 'Overview' && <OverviewTab portal={portal} onGo={setTab} />}
-          {tab === 'Progress' && <ProgressTab portal={portal} />}
-          {tab === 'Energy' && <EnergyTab portal={portal} />}
-          {tab === 'Savings' && <SavingsTab portal={portal} />}
-          {tab === 'Documents' && <DocumentsTab portal={portal} />}
-          {tab === 'Support' && <SupportTab portal={portal} />}
-          {tab === 'Community' && <CommunityTab portal={portal} />}
-          {tab === 'Refer a friend' && <ReferTab portal={portal} />}
-          {tab === 'Resources' && <ResourcesTab portal={portal} />}
-          {tab === 'Analytics' && <AnalyticsTab portal={portal} />}
-        </main>
-        {/* scoped Ask Ovi */}
-        <PortalChat portal={portal} />
+        {!clientView && (
+          <div className="px-4 sm:px-6 py-1.5 text-[11px] font-medium text-white flex items-center gap-2" style={{ background: SH.scrim }}>
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: SH.mint }} /> Team preview of {first}'s portal ·
+            <button onClick={() => setTab('Account')} className={classNames('underline-offset-2 hover:underline', tab === 'Account' && 'underline')} style={{ color: SH.mint }}>Account</button> &amp;
+            <button onClick={() => setTab('Analytics')} className={classNames('underline-offset-2 hover:underline', tab === 'Analytics' && 'underline')} style={{ color: SH.mint }}>Analytics</button> are team-only.
+          </div>
+        )}
+      </header>
+
+      {/* ---- content ---- */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="mx-auto w-full max-w-[1180px] px-4 sm:px-6 pt-5 pb-28 md:pb-10">
+          <div key={tab} className="rise">
+            {tab === 'Account' && <AccountTab portal={portal} />}
+            {tab === 'Overview' && <OverviewTab portal={portal} onGo={setTab} />}
+            {tab === 'Progress' && <ProgressTab portal={portal} />}
+            {tab === 'Energy' && <EnergyTab portal={portal} />}
+            {tab === 'Savings' && <SavingsTab portal={portal} />}
+            {tab === 'Documents' && <DocumentsTab portal={portal} />}
+            {tab === 'Support' && <SupportTab portal={portal} />}
+            {tab === 'Community' && <CommunityTab portal={portal} />}
+            {tab === 'Refer a friend' && <ReferTab portal={portal} />}
+            {tab === 'Resources' && <ResourcesTab portal={portal} />}
+            {tab === 'Analytics' && <AnalyticsTab portal={portal} />}
+          </div>
+        </div>
       </div>
-    </>
+
+      {/* ---- mobile bottom dock ---- */}
+      <div className="md:hidden fixed bottom-0 inset-x-0 z-40 px-3 pb-3 pointer-events-none">
+        <div className="glass rounded-2xl px-2 py-1.5 flex items-center justify-around pointer-events-auto">
+          {DOCK_TABS.map((t) => { const Ic = ICON[t]; const on = tab === t; return (
+            <button key={t} onClick={() => go(t)} className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl" style={on ? { color: CUSTOMER_ACCENT } : { color: '#5b6f68' }}><Ic size={20} /><span className="text-[9.5px] font-semibold">{t}</span></button>
+          ) })}
+          <button onClick={() => setMoreOpen(true)} className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl" style={{ color: '#5b6f68' }}><Grid size={20} /><span className="text-[9.5px] font-semibold">More</span></button>
+        </div>
+      </div>
+
+      {moreOpen && <MoreSheet tab={tab} onGo={go} onClose={() => setMoreOpen(false)} clientView={clientView} onChat={() => { setMoreOpen(false); setChatOpen(true) }} />}
+
+      {clientView && (
+        <button onClick={() => setClientView(false)} className="fixed z-[80] bottom-24 right-4 md:bottom-auto md:top-3 inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full text-[12.5px] font-semibold glass-dark text-white"><ChevronRight size={13} className="rotate-180" /> Exit client view</button>
+      )}
+
+      {chatOpen && <PortalChat portal={portal} onClose={() => setChatOpen(false)} />}
+    </div>
+  )
+}
+
+/* ---- mobile 'more' navigation sheet ---- */
+function MoreSheet({ tab, onGo, onClose, clientView, onChat }: { tab: Tab; onGo: (t: Tab) => void; onClose: () => void; clientView: boolean; onChat: () => void }) {
+  const rest = CUST_TABS.filter((t) => !DOCK_TABS.includes(t))
+  const team = clientView ? [] : (TEAM_TABS as Tab[])
+  return (
+    <div className="md:hidden fixed inset-0 z-[75] flex flex-col justify-end" onClick={onClose}>
+      <div className="absolute inset-0 bg-[#0a1f19]/40 backdrop-blur-[2px]" />
+      <div className="relative glass rounded-t-3xl p-4 pb-8 rise" onClick={(e) => e.stopPropagation()}>
+        <div className="w-10 h-1 rounded-full bg-black/15 mx-auto mb-3" />
+        <div className="grid grid-cols-3 gap-2.5">
+          {rest.map((t) => { const Ic = ICON[t]; const on = tab === t; return (
+            <button key={t} onClick={() => onGo(t)} className={classNames('flex flex-col items-center gap-1.5 py-3 rounded-2xl text-[12px] font-semibold', on ? 'text-white' : 'text-[#2b5045] glass-soft')} style={on ? { background: CUSTOMER_ACCENT } : undefined}><Ic size={20} />{t}</button>
+          ) })}
+          <button onClick={onChat} className="flex flex-col items-center gap-1.5 py-3 rounded-2xl text-[12px] font-semibold text-white" style={{ background: SH.scrim }}><Robot size={20} />Ask Ovi</button>
+        </div>
+        {team.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-white/40">
+            <div className="text-[10px] font-bold uppercase tracking-wide text-[#5b6f68] mb-2">Team only</div>
+            <div className="grid grid-cols-3 gap-2.5">
+              {team.map((t) => { const Ic = ICON[t]; return (
+                <button key={t} onClick={() => onGo(t)} className="flex flex-col items-center gap-1.5 py-3 rounded-2xl text-[12px] font-semibold text-[#2b5045] glass-soft"><Ic size={20} />{t}</button>
+              ) })}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -446,6 +508,70 @@ function ReportProblemModal({ open, onClose, portal }: { open: boolean; onClose:
   )
 }
 
+/* ============================ Glass experience primitives ============================ */
+function GlassStat({ icon: Ic, label, value, sub, tone = CUSTOMER_ACCENT }: { icon?: any; label: string; value: string; sub?: string; tone?: string }) {
+  return (
+    <div className="glass glass-hover rounded-2xl p-4">
+      {Ic && <span className="inline-flex w-8 h-8 rounded-xl items-center justify-center mb-2" style={{ background: tone + '26', color: tone }}><Ic size={16} /></span>}
+      <div className="text-[10.5px] font-bold uppercase tracking-wide text-[#5b6f68]">{label}</div>
+      <div className="text-[22px] font-extrabold leading-tight" style={{ color: '#12271f' }}>{value}</div>
+      {sub && <div className="text-[11.5px] text-[#5b6f68] mt-0.5">{sub}</div>}
+    </div>
+  )
+}
+
+// A node chip positioned in the flow diagram's coordinate space (viewBox 340×240).
+function FlowNode({ x, y, icon: Ic, label, value, color }: { x: number; y: number; icon: any; label: string; value: string; color: string }) {
+  return (
+    <div className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${(x / 340) * 100}%`, top: `${(y / 240) * 100}%` }}>
+      <div className="flex items-center gap-1.5 rounded-xl px-2.5 py-1.5" style={{ background: 'rgba(255,255,255,0.09)', border: '1px solid rgba(255,255,255,0.18)', backdropFilter: 'blur(4px)' }}>
+        <span className="inline-flex w-6 h-6 rounded-lg items-center justify-center shrink-0" style={{ background: color + '2e', color }}><Ic size={13} /></span>
+        <div className="leading-none"><div className="text-[8.5px] uppercase tracking-wide text-white/55 font-bold">{label}</div><div className="text-[13px] font-extrabold" style={{ color }}>{value}</div></div>
+      </div>
+    </div>
+  )
+}
+
+// Live energy-flow diagram — the signature "experience" element (à la a premium inverter app).
+function EnergyFlowHero({ portal }: { portal: Portal }) {
+  const e = useMemo(() => portalEnergy(portal), [portal])
+  const importing = e.exporting <= 0
+  const gridVal = importing ? e.fromGrid : e.exporting
+  const gridColor = importing ? '#E0A93B' : SH.mint
+  const now = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+  const P = ({ d, color, on, slow }: { d: string; color: string; on: boolean; slow?: boolean }) => (
+    <g>
+      <path d={d} fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth={3} strokeLinecap="round" />
+      {on && <path d={d} fill="none" stroke={color} strokeWidth={3} strokeLinecap="round" className={classNames('flow-line', slow && 'flow-slow')} opacity={0.95} />}
+    </g>
+  )
+  return (
+    <div className="glass-dark rounded-3xl p-4 sm:p-5 text-white overflow-hidden">
+      <div className="flex items-center gap-2 mb-1">
+        <Sun size={16} style={{ color: SH.mint }} />
+        <span className="text-[13px] font-extrabold tracking-wide">SOLAR STATUS</span>
+        <span className="ml-1 inline-flex items-center gap-1 text-[11px] font-bold" style={{ color: SH.mint }}><span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" /> Normal</span>
+        <span className="ml-auto text-[12px] text-white/55">Live · {now}</span>
+      </div>
+      <div className="relative w-full mx-auto" style={{ aspectRatio: '340 / 240', maxWidth: 600 }}>
+        <svg viewBox="0 0 340 240" className="absolute inset-0 w-full h-full" preserveAspectRatio="xMidYMid meet">
+          {/* connectors radiating from the house to each source/sink */}
+          <P d="M158,108 C120,82 86,58 64,46" color={SH.mint} on={e.solar > 0} />
+          <P d="M182,108 C220,82 254,58 276,46" color="#5FC7C0" on={e.home > 0} />
+          {portal.hasBattery && <P d="M182,150 C220,176 254,196 276,200" color="#38C7A8" on slow />}
+          <P d="M158,150 C120,176 86,196 64,200" color={gridColor} on slow />
+        </svg>
+        {/* the customer's own home, background removed */}
+        <img src="/brand/portal-hero-cutout.webp" alt="Your home" className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none" style={{ width: '58%', maxHeight: '86%', objectFit: 'contain', filter: 'drop-shadow(0 14px 22px rgba(0,0,0,0.45))' }} />
+        <FlowNode x={60} y={40} icon={Sun} label="Solar" value={`${e.solar} kW`} color={SH.mint} />
+        <FlowNode x={280} y={40} icon={Building} label="Home" value={`${e.home} kW`} color="#5FC7C0" />
+        {portal.hasBattery && <FlowNode x={282} y={204} icon={Bolt} label={`Battery ${e.batteryPct}%`} value={e.toBattery > 0 ? `+${e.toBattery.toFixed(1)} kW` : 'idle'} color="#38C7A8" />}
+        <FlowNode x={58} y={204} icon={Bolt} label={importing ? 'From grid' : 'Exporting'} value={`${gridVal.toFixed(1)} kW`} color={gridColor} />
+      </div>
+    </div>
+  )
+}
+
 function OverviewTab({ portal, onGo }: { portal: Portal; onGo: (t: Tab) => void }) {
   const { portalOffers } = useState_()
   const payback = portal.annualSavings ? Math.round((portal.systemCost / portal.annualSavings) * 10) / 10 : 0
@@ -453,69 +579,67 @@ function OverviewTab({ portal, onGo }: { portal: Portal; onGo: (t: Tab) => void 
   const j = useMemo(() => journeyProgress(portal), [portal])
   const offers = useMemo(() => offersFor(portal, portalOffers), [portal, portalOffers])
   const lastDone = [...j.steps].reverse().find((m) => m.done && m.at)
-  const kit = [portal.systemKwp ? 'Panels' : '', portal.hasBattery ? 'battery' : '', portal.hasEv ? 'EV charger' : ''].filter(Boolean).join(' + ')
   const updates = [
     ...(lastDone ? [{ icon: Check, title: `${lastDone.label} ✓`, body: lastDone.blurb, tone: '#0E7A66' }] : []),
     { icon: Bolt, title: 'Great generation yesterday', body: `Your system made ${Math.round(portal.systemKwp * 5.1)} kWh — one of your best days this month.`, tone: '#0E7A66' },
     { icon: Sun, title: 'Tip: shift your washing to midday', body: 'You’re generating most between 11am–3pm — run appliances then to use free solar.', tone: '#C79A3A' },
   ]
+  const first = portal.customer.split(' ')[0]
   return (
-    <div className="max-w-[760px] flex flex-col gap-4">
-      <div className="rounded-card p-6 text-white relative overflow-hidden" style={{ background: SH_HERO, fontFamily: SH_FONT }}>
-        <div className="absolute -top-16 -right-10 w-56 h-56 rounded-full opacity-25" style={{ background: `radial-gradient(circle, ${SH.mint} 0%, transparent 70%)` }} />
-        <div className="relative"><div className="flex items-center gap-1.5 text-[12px] font-semibold" style={{ color: SH.mint }}><Sun size={14} /> YOUR SOLAR SYSTEM</div>
-        <div className="text-[26px] font-bold mt-1.5">{portal.systemKwp} kWp · saving £{portal.annualSavings.toLocaleString()}/yr</div>
-        <div className="text-[13px] mt-1" style={{ color: '#C7EFE4' }}>{portal.address}{portal.installDate ? ` · installed ${fmtDate(portal.installDate)}` : ''}</div>
+    <div className="flex flex-col gap-4">
+      <div className="pt-1">
+        <div className="text-[12px] font-extrabold uppercase tracking-wide" style={{ color: CUSTOMER_ACCENT }}>The Solar House</div>
+        <h1 className="text-[26px] sm:text-[34px] font-extrabold leading-[1.05] mt-0.5" style={{ color: '#12271f' }}>Welcome to your solar portal, {first} <span className="inline-block">👋</span></h1>
+        <p className="text-[13.5px] text-[#4a5a54] mt-1">{portal.systemKwp} kWp{portal.hasBattery ? ' + battery' : ''}{portal.hasEv ? ' + EV' : ''} · {portal.address}</p>
+      </div>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.6fr_1fr] items-start">
+        <EnergyFlowHero portal={portal} />
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+          <GlassStat icon={Bolt} label="System" value={`${portal.systemKwp} kWp`} sub={portal.hasBattery ? 'with battery' : 'solar'} />
+          <GlassStat icon={Dollar} label="Saving / yr" value={money(portal.annualSavings, { compact: true })} sub="projected" tone="#0E9A82" />
+          <GlassStat icon={Clock} label="Payback" value={`${payback} yrs`} sub="then free energy" tone="#159C86" />
+          <GlassStat icon={Sun} label="Self-powered" value={`${portalSavings(portal).selfSufficiency}%`} sub="your own solar" tone="#1FAE94" />
         </div>
       </div>
-      {/* install journey strip — while there's still a journey to run */}
+      {/* install journey strip */}
       {j.steps.length > 0 && !j.complete && (
-        <button onClick={() => onGo('Progress')} className="text-left rounded-card p-4 border transition-colors hover:border-[#8FD3C2]" style={{ background: '#F1FAF7', borderColor: '#B9E0D4' }}>
-          <div className="flex items-center gap-2"><Flow size={15} style={{ color: CUSTOMER_ACCENT }} /><span className="text-[13.5px] font-semibold text-ink">{j.countdownDays !== undefined ? (j.countdownDays === 0 ? 'Installation is today!' : `${j.countdownDays} days to installation`) : (j.current?.label ?? 'Your install is underway')}</span><span className="ml-auto text-[12px] font-semibold" style={{ color: CUSTOMER_ACCENT }}>Track your install →</span></div>
-          <div className="mt-2 h-1.5 rounded-full bg-white overflow-hidden"><div className="h-full rounded-full" style={{ width: `${j.pct}%`, background: CUSTOMER_ACCENT }} /></div>
-          <div className="text-[11.5px] text-muted-2 mt-1.5">{j.doneCount} of {j.steps.length} steps done{j.current ? ` · next: ${j.current.label.toLowerCase()}` : ''}</div>
+        <button onClick={() => onGo('Progress')} className="glass glass-hover text-left rounded-2xl p-4">
+          <div className="flex items-center gap-2"><Flow size={15} style={{ color: CUSTOMER_ACCENT }} /><span className="text-[13.5px] font-bold text-[#12271f]">{j.countdownDays !== undefined ? (j.countdownDays === 0 ? 'Installation is today!' : `${j.countdownDays} days to installation`) : (j.current?.label ?? 'Your install is underway')}</span><span className="ml-auto text-[12px] font-bold" style={{ color: CUSTOMER_ACCENT }}>Track it →</span></div>
+          <div className="mt-2 h-1.5 rounded-full bg-black/10 overflow-hidden"><div className="h-full rounded-full" style={{ width: `${j.pct}%`, background: CUSTOMER_ACCENT }} /></div>
+          <div className="text-[11.5px] text-[#5b6f68] mt-1.5">{j.doneCount} of {j.steps.length} steps done{j.current ? ` · next: ${j.current.label.toLowerCase()}` : ''}</div>
         </button>
       )}
-      <div className="grid grid-cols-3 gap-4">
-        <Kpi label="System size" value={`${portal.systemKwp} kWp`} delta={kit || 'Solar'} deltaTone="muted" />
-        <Kpi variant="blue" label="Yearly saving" value={money(portal.annualSavings)} delta="Projected" />
-        <Kpi label="Payback" value={`${payback} yrs`} delta="Then it's free energy" deltaTone="muted" />
-      </div>
-      {/* what's new */}
-      <div className="bg-surface border border-border rounded-card p-5">
-        <div className="flex items-center gap-2 mb-3"><Bell size={15} className="text-accent" /><span className="text-[14px] font-semibold text-ink">What's new</span></div>
-        <div className="flex flex-col gap-3">
-          {updates.map((u) => (
-            <div key={u.title} className="flex gap-3">
-              <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: u.tone + '18', color: u.tone }}><u.icon size={15} /></span>
-              <div><div className="text-[13px] font-semibold text-ink-2">{u.title}</div><div className="text-[12.5px] text-muted-2 leading-snug">{u.body}</div></div>
-            </div>
-          ))}
+      {/* what's new + cover */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 items-start">
+        <div className="glass rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-3"><Bell size={15} style={{ color: CUSTOMER_ACCENT }} /><span className="text-[14px] font-bold text-[#12271f]">What's new</span></div>
+          <div className="flex flex-col gap-3">
+            {updates.map((u) => (
+              <div key={u.title} className="flex gap-3">
+                <span className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: u.tone + '20', color: u.tone }}><u.icon size={15} /></span>
+                <div><div className="text-[13px] font-bold text-[#12271f]">{u.title}</div><div className="text-[12.5px] text-[#4a5a54] leading-snug">{u.body}</div></div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="glass rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-3"><Check size={15} style={{ color: '#0E7A66' }} /><span className="text-[14px] font-bold text-[#12271f]">Your cover</span><button onClick={() => onGo('Documents')} className="ml-auto text-[12px] font-bold" style={{ color: CUSTOMER_ACCENT }}>Warranties →</button></div>
+          <div className="grid gap-2.5" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(110px,1fr))' }}>
+            {w.map((c) => (
+              <div key={c.part} className="rounded-xl glass-soft p-3"><div className="text-[11.5px] text-[#5b6f68]">{c.part}</div><div className="text-[16px] font-extrabold text-[#12271f] mt-0.5">{c.years} yrs</div><div className="text-[10.5px] font-semibold" style={{ color: '#0E7A66' }}>to {c.until}</div></div>
+            ))}
+          </div>
         </div>
       </div>
-      {/* warranty summary */}
-      <div className="bg-surface border border-border rounded-card p-5">
-        <div className="flex items-center gap-2 mb-3"><Check size={15} className="text-positive" /><span className="text-[14px] font-semibold text-ink">Your cover</span><button onClick={() => onGo('Documents')} className="ml-auto text-[12px] font-semibold text-accent">View warranties →</button></div>
-        <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(130px,1fr))' }}>
-          {w.map((c) => (
-            <div key={c.part} className="rounded-lg border border-border p-3"><div className="text-[12px] text-muted-2">{c.part}</div><div className="text-[15px] font-bold text-ink mt-0.5">{c.years} yrs</div><div className="text-[11px] text-positive">Covered to {c.until}</div></div>
-          ))}
-        </div>
-      </div>
-      {/* offers for you — targeted upsell + team-pushed */}
+      {/* offers */}
       {offers.length > 0 && (
         <div>
-          <div className="flex items-center gap-2 mb-2"><Sparkle size={14} style={{ color: CUSTOMER_ACCENT }} /><span className="text-[14px] font-semibold text-ink">Offers for you</span></div>
-          <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill,minmax(240px,1fr))' }}>
+          <div className="flex items-center gap-2 mb-2"><Sparkle size={14} style={{ color: CUSTOMER_ACCENT }} /><span className="text-[14px] font-bold text-[#12271f]">Offers for you</span></div>
+          <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill,minmax(230px,1fr))' }}>
             {offers.slice(0, 4).map((o) => <OfferCard key={o.id} portal={portal} offer={o} />)}
           </div>
         </div>
       )}
-      {/* quick links */}
-      <div className="grid grid-cols-2 gap-3">
-        <button onClick={() => onGo('Savings')} className="bg-surface border border-border rounded-card p-4 text-left hover:border-[#8FD3C2] transition-colors flex items-center gap-3"><span className="w-9 h-9 rounded-lg flex items-center justify-center text-white shrink-0" style={{ background: CUSTOMER_ACCENT }}><Dollar size={17} /></span><div><div className="text-[13.5px] font-semibold text-ink-2">See your savings</div><div className="text-[12px] text-muted-2">Trends &amp; impact</div></div></button>
-        <button onClick={() => onGo('Refer a friend')} className="bg-surface border border-border rounded-card p-4 text-left hover:border-[#8FD3C2] transition-colors flex items-center gap-3"><span className="w-9 h-9 rounded-lg bg-accent-wash text-accent flex items-center justify-center shrink-0"><Sparkle size={17} /></span><div><div className="text-[13.5px] font-semibold text-ink-2">Refer a friend</div><div className="text-[12px] text-muted-2">You both get £150</div></div></button>
-      </div>
     </div>
   )
 }
@@ -793,48 +917,34 @@ function EnergyTab({ portal }: { portal: Portal }) {
   const e = useMemo(() => portalEnergy(portal), [portal])
   const maxH = Math.max(1, ...e.hours.map((h) => Math.max(h.gen, h.use)))
   const act = useActions()
-  const flow = [
-    { label: 'Solar now', value: `${e.solar} kW`, color: '#0E7A66' },
-    { label: 'Home use', value: `${e.home} kW`, color: '#13927B' },
-    { label: e.exporting > 0 ? 'Exporting' : 'From grid', value: `${(e.exporting > 0 ? e.exporting : e.fromGrid).toFixed(1)} kW`, color: e.exporting > 0 ? '#0E7A66' : '#C2410C' },
-    ...(portal.hasBattery ? [{ label: 'Battery', value: `${e.batteryPct}%`, color: '#159C86' }] : []),
-    ...(portal.hasEv ? [{ label: 'EV charging', value: `${(e.exporting > 0 ? 1.4 : 0).toFixed(1)} kW`, color: '#0EA5A0' }] : []),
-  ]
   const openMonitoring = () => { act.logPortalEvent(portal.id, 'Energy', `Opened ${portal.monitoringPlatform ?? 'monitoring'}`, 'click'); if (portal.monitoringUrl) window.open(portal.monitoringUrl, '_blank', 'noopener') }
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="w-2 h-2 rounded-full bg-positive animate-pulse" /><span className="text-[12px] text-muted-2">Live · updates every few seconds</span>
-        {portal.monitoringPlatform && (
-          <button onClick={openMonitoring} disabled={!portal.monitoringUrl} className="ml-auto inline-flex items-center gap-1.5 text-[12.5px] font-semibold rounded-full px-3 py-1.5 border border-[#B9E0D4] text-[#0a5a4a] disabled:opacity-60" style={{ background: '#DDF6EF' }}>
-            <Link size={13} /> Open my {portal.monitoringPlatform} app <ArrowUpRight size={13} />
-          </button>
-        )}
+      <EnergyFlowHero portal={portal} />
+      {portal.monitoringPlatform && (
+        <button onClick={openMonitoring} disabled={!portal.monitoringUrl} className="glass glass-hover self-start inline-flex items-center gap-2 text-[13px] font-bold rounded-full px-4 py-2.5 text-[#0a5a4a] disabled:opacity-60">
+          <Link size={14} /> Open my {portal.monitoringPlatform} app <ArrowUpRight size={14} />
+        </button>
+      )}
+      <div className="grid grid-cols-3 gap-3 sm:gap-4">
+        <GlassStat icon={Sun} label="Generated today" value={`${e.todayGen} kWh`} sub="from solar" />
+        <GlassStat icon={Building} label="Used today" value={`${e.todayUse} kWh`} sub="your home" tone="#5FC7C0" />
+        <GlassStat icon={Dollar} label="Saved today" value={money(e.todaySaving)} sub="vs. all-grid" tone="#0E9A82" />
       </div>
-      <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(120px,1fr))' }}>
-        {flow.map((f) => (
-          <div key={f.label} className="bg-surface border border-border rounded-card p-4"><div className="text-[11.5px] text-muted-2">{f.label}</div><div className="text-[22px] font-bold mt-0.5" style={{ color: f.color }}>{f.value}</div></div>
-        ))}
-      </div>
-      <div className="text-[11.5px] text-muted-3 -mt-1">These live figures are an estimate from your system. Your {portal.monitoringPlatform ?? 'monitoring'} app has the exact, meter-accurate numbers.</div>
-      <div className="grid grid-cols-3 gap-3">
-        <Kpi variant="deep" label="Generated today" value={`${e.todayGen} kWh`} delta="Solar" />
-        <Kpi label="Used today" value={`${e.todayUse} kWh`} delta="Home" deltaTone="muted" />
-        <Kpi variant="blue" label="Saved today" value={money(e.todaySaving)} delta="vs. all-grid" />
-      </div>
-      <div className="bg-surface border border-border rounded-card p-5">
-        <div className="text-[14px] font-semibold text-ink mb-4">Today — generation vs. use</div>
+      <div className="glass rounded-2xl p-5">
+        <div className="flex items-center gap-2 mb-4"><Bolt size={15} style={{ color: CUSTOMER_ACCENT }} /><span className="text-[14px] font-bold text-[#12271f]">Today — generation vs. use</span></div>
         <div className="flex items-end gap-[3px] h-[160px]">
           {e.hours.map((h) => (
-            <div key={h.h} className="flex-1 flex flex-col justify-end gap-0.5 relative group">
-              <div className="w-full rounded-t" style={{ height: `${(h.gen / maxH) * 130}px`, background: '#0E7A66' }} />
-              <div className="w-full" style={{ height: `${(h.use / maxH) * 130}px`, background: '#BFE9DF' }} />
-              {h.h % 6 === 0 && <div className="text-[9px] text-muted-3 text-center absolute -bottom-4 left-0 right-0">{h.h}:00</div>}
+            <div key={h.h} className="flex-1 flex flex-col justify-end gap-0.5 relative">
+              <div className="w-full rounded-t" style={{ height: `${(h.gen / maxH) * 130}px`, background: 'linear-gradient(180deg,#1FAE94,#0E7A66)' }} />
+              <div className="w-full rounded-b" style={{ height: `${(h.use / maxH) * 130}px`, background: '#BFE9DF' }} />
+              {h.h % 6 === 0 && <div className="text-[9px] text-[#5b6f68] text-center absolute -bottom-4 left-0 right-0">{h.h}:00</div>}
             </div>
           ))}
         </div>
-        <div className="flex items-center gap-4 mt-6 text-[11.5px] text-muted-2"><span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: '#0E7A66' }} />Solar generated</span><span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: '#BFE9DF' }} />Home used</span></div>
+        <div className="flex items-center gap-4 mt-6 text-[11.5px] text-[#4a5a54]"><span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: '#0E7A66' }} />Solar generated</span><span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: '#BFE9DF' }} />Home used</span></div>
       </div>
+      <div className="text-[11.5px] text-[#5b6f68]">These live figures are an estimate from your system. Your {portal.monitoringPlatform ?? 'monitoring'} app has the exact, meter-accurate numbers.</div>
     </div>
   )
 }
@@ -970,7 +1080,7 @@ function EventRow({ e }: { e: PortalEvent }) {
 
 /* ---- scoped customer chat ---- */
 type Turn = { role: 'you' | 'ovi'; text: string; blocks?: PortalBlock[]; source?: string }
-function PortalChat({ portal }: { portal: Portal }) {
+function PortalChat({ portal, onClose }: { portal: Portal; onClose: () => void }) {
   const { portalResources } = useState_()
   const act = useActions()
   const resources = portalResources.filter((r) => r.global || r.portalId === portal.id)
@@ -1004,10 +1114,13 @@ function PortalChat({ portal }: { portal: Portal }) {
   }, [portal.id, resources.length])
 
   return (
-    <aside className="w-[350px] shrink-0 border-l border-border bg-canvas flex flex-col">
-      <div className="h-14 shrink-0 flex items-center gap-2.5 px-4 border-b border-border" style={{ background: '#DDF6EF' }}>
+    <div className="fixed inset-0 z-[85] flex justify-end" onClick={onClose}>
+      <div className="absolute inset-0 bg-[#0a1f19]/40 backdrop-blur-[2px]" />
+      <aside onClick={(e) => e.stopPropagation()} className="relative w-full sm:w-[380px] sm:m-3 sm:rounded-3xl glass flex flex-col overflow-hidden rise" style={{ fontFamily: SH_FONT, maxHeight: '100%' }}>
+      <div className="h-14 shrink-0 flex items-center gap-2.5 px-4 border-b border-white/40" style={{ background: 'rgba(221,246,239,0.7)' }}>
         <span className="w-8 h-8 rounded-lg text-white flex items-center justify-center shrink-0" style={{ background: CUSTOMER_ACCENT }}><Robot size={16} /></span>
-        <div className="min-w-0"><div className="text-[13.5px] font-bold text-ink">Ask Ovi</div><div className="text-[11px] text-muted-2">The Solar House assistant · only sees your system</div></div>
+        <div className="min-w-0 flex-1"><div className="text-[13.5px] font-bold text-ink">Ask Ovi</div><div className="text-[11px] text-muted-2">The Solar House assistant · only sees your system</div></div>
+        <button onClick={onClose} className="w-8 h-8 rounded-lg text-muted-2 hover:bg-black/5 text-[18px] leading-none flex items-center justify-center">×</button>
       </div>
       <div ref={scroller} className="flex-1 overflow-y-auto p-3.5 flex flex-col gap-3">
         {turns.length === 0 && (
@@ -1033,7 +1146,8 @@ function PortalChat({ portal }: { portal: Portal }) {
         <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') ask(draft) }} placeholder="Ask about your system…" className="flex-1 h-9 px-3 rounded-full border border-input-border bg-white text-[13px] outline-none focus:border-[#0E7A66]" />
         <button onClick={() => ask(draft)} className="w-9 h-9 rounded-full text-white flex items-center justify-center shrink-0" style={{ background: CUSTOMER_ACCENT }}><Send size={15} /></button>
       </div>
-    </aside>
+      </aside>
+    </div>
   )
 }
 
