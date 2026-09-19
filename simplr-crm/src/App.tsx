@@ -24,6 +24,7 @@ import { Meetings } from './pages/Meetings'
 import { LiveMeeting } from './pages/LiveMeeting'
 import { Calendar } from './pages/Calendar'
 import { CustomerPortals, CustomerPortal, SupportRequests, ResourceLibrary, PortalWelcome } from './pages/CustomerPortal'
+import { ShowroomHome, ShowroomExperience } from './pages/Showroom'
 import { Agents } from './pages/Agents'
 import { Prospector } from './pages/Prospector'
 import { LinkedInInbox } from './pages/LinkedInInbox'
@@ -150,7 +151,9 @@ export const router = createBrowserRouter([
       { path: 'studio/dno', element: <DnoQueue /> },
       { path: 'studio/surveys', element: <SurveysList /> },
       { path: 'studio/surveys/:id', element: <SurveyReport /> },
-      // TellOvi Customers — the post-sale suite (portals & aftercare)
+      // TellOvi Customers — showroom, portals & aftercare
+      { path: 'showroom', element: <ShowroomHome /> },
+      { path: 'showroom/:id', element: <ShowroomExperience /> },
       { path: 'customers', element: <CustomerPortals /> },
       { path: 'customers/support', element: <SupportRequests /> },
       { path: 'customers/resources', element: <ResourceLibrary /> },

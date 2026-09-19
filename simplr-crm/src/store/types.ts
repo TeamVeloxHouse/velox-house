@@ -866,6 +866,39 @@ export interface PortalResource {
   portalId?: ID
 }
 
+// ── Showroom experience — a guided, in-person proposal-builder presentation ──
+// One live session per walk-in: their details + bill, the design we build WITH them,
+// and where it lands (a won deal + a provisioned portal).
+export interface ShowroomDesign {
+  systemKwp: number
+  panels: number
+  hasBattery: boolean
+  batteryKwh: number // usable kWh
+  hasEv: boolean // they have / want an EV
+  addEvCharger: boolean
+}
+export interface ShowroomSession {
+  id: ID
+  createdAt: number
+  name: string
+  email: string
+  phone?: string
+  address: string
+  postcode?: string
+  // their current energy picture (from the bill they bring in)
+  monthlySpend: number // £/month on electricity
+  annualKwh: number // annual consumption
+  tariffPence: number // import unit rate, p/kWh
+  occupancy: 'home_all_day' | 'in_half_day' | 'out_all_day'
+  evMilesPerYear?: number
+  // the proposal being built live with them
+  design: ShowroomDesign
+  status: 'draft' | 'presented' | 'won' | 'lost'
+  dealId?: ID
+  portalId?: ID
+  presenter?: string
+}
+
 // ── Commercial Solar Finder ────────────────────────────────────────────────
 // A saved area/pin scan (a "campaign") and the scored building prospects it produced. Prospects move
 // through a pipeline from first scan all the way to a won deal (which hands off to a CRM deal/project).
@@ -1071,6 +1104,7 @@ export interface State {
   portalEvents: PortalEvent[]
   portalResources: PortalResource[]
   portalOffers: PortalOffer[]
+  showroom: ShowroomSession[]
   people: Person[]
   orgs: Org[]
   leads: Lead[]

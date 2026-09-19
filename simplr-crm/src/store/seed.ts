@@ -774,6 +774,13 @@ export function buildSeed(): State {
     { id: 'po3', portalId: 'cp2', kind: 'battery', title: 'Add a battery to your system', blurb: 'You’re exporting cheap solar by day and buying it back at night. A battery could store it — most of our customers add one within a year.', cta: 'Get a battery quote', savingHint: 'Save ~£320/yr more', createdAt: days(2), status: 'active' },
   ]
 
+  // ── A live showroom session (a walk-in we're building a proposal with) ──
+  const showroom: import('./types').ShowroomSession[] = [
+    { id: 'show1', createdAt: hrs(1), name: 'Marcus & Jo Bell', email: 'marcus.bell@gmail.com', phone: '07700 900321', address: '22 Hazel Grove, Cheltenham', postcode: 'GL52 3AB',
+      monthlySpend: 185, annualKwh: 4600, tariffPence: 28, occupancy: 'in_half_day', evMilesPerYear: 8000,
+      design: { systemKwp: 4.8, panels: 10, hasBattery: false, batteryKwh: 5, hasEv: false, addEvCharger: false }, status: 'draft', presenter: 'Jordan Miles' },
+  ]
+
   const dashboardWidgets: import('./types').DashboardWidget[] = [
     { id: 'w1', title: 'Open value by stage', metric: 'open', groupBy: 'stage', chart: 'bar' },
     { id: 'w2', title: 'Weighted value by owner', metric: 'weighted', groupBy: 'owner', chart: 'bar' },
@@ -818,5 +825,5 @@ export function buildSeed(): State {
     },
   ]
 
-  return { deals, pipelines, activePipelineId, dashboardWidgets, portals, portalEvents, portalResources, portalOffers, people, orgs, leads, activities, emails, inboxAutoReply: 'off' as const, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, linkedinThreads, enrolments, reachCampaigns, scheduledTasks, studioConfig, projects, playbooks, brandKit, docTemplates, brandDocs, products: mProducts, documents, emailCampaigns, customFields, activeTrade, features, onboarded: true, engineers, jobs, currentRole: 'owner', teamMembers, teamChannels, teamMessages, announcements, employees, leaveRequests, policies, certifications, expenses, stock, reviews, brandAssets, messaging, mediaAssets, contentItems, mktRequests, mktConnectors, solarCampaigns: [], solarProspects: [], designs: [], surveys, toasts: [], railExpanded: true }
+  return { deals, pipelines, activePipelineId, dashboardWidgets, portals, portalEvents, portalResources, portalOffers, showroom, people, orgs, leads, activities, emails, inboxAutoReply: 'off' as const, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, linkedinThreads, enrolments, reachCampaigns, scheduledTasks, studioConfig, projects, playbooks, brandKit, docTemplates, brandDocs, products: mProducts, documents, emailCampaigns, customFields, activeTrade, features, onboarded: true, engineers, jobs, currentRole: 'owner', teamMembers, teamChannels, teamMessages, announcements, employees, leaveRequests, policies, certifications, expenses, stock, reviews, brandAssets, messaging, mediaAssets, contentItems, mktRequests, mktConnectors, solarCampaigns: [], solarProspects: [], designs: [], surveys, toasts: [], railExpanded: true }
 }

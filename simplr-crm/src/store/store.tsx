@@ -8,7 +8,7 @@ import { surveyRef, photoSlotsFor, surveyToDnoSite, surveyFlags, completeness } 
 import { AI_MEMBER_ID, YOU_MEMBER_ID } from './types'
 import type { StageName } from '../data/mock'
 
-const KEY = 'simplr.state.v21'
+const KEY = 'simplr.state.v22'
 let idc = 1000
 export const uid = (p = 'x') => `${p}${Date.now().toString(36)}${idc++}`
 
@@ -32,6 +32,9 @@ type Action =
   | { type: 'REMOVE_RESOURCE'; id: ID }
   | { type: 'ADD_PORTAL_OFFER'; offer: import('./types').PortalOffer }
   | { type: 'UPDATE_PORTAL_OFFER'; id: ID; patch: Partial<import('./types').PortalOffer> }
+  | { type: 'ADD_SHOWROOM'; session: import('./types').ShowroomSession }
+  | { type: 'UPDATE_SHOWROOM'; id: ID; patch: Partial<import('./types').ShowroomSession> }
+  | { type: 'REMOVE_SHOWROOM'; id: ID }
   | { type: 'ADD_WIDGET'; widget: import('./types').DashboardWidget }
   | { type: 'REMOVE_WIDGET'; id: ID }
   | { type: 'REORDER_WIDGETS'; widgets: import('./types').DashboardWidget[] }
@@ -187,6 +190,12 @@ function reducer(state: State, action: Action): State {
       return { ...state, portalOffers: [action.offer, ...state.portalOffers] }
     case 'UPDATE_PORTAL_OFFER':
       return { ...state, portalOffers: state.portalOffers.map((o) => (o.id === action.id ? { ...o, ...action.patch } : o)) }
+    case 'ADD_SHOWROOM':
+      return { ...state, showroom: [action.session, ...state.showroom] }
+    case 'UPDATE_SHOWROOM':
+      return { ...state, showroom: state.showroom.map((s) => (s.id === action.id ? { ...s, ...action.patch } : s)) }
+    case 'REMOVE_SHOWROOM':
+      return { ...state, showroom: state.showroom.filter((s) => s.id !== action.id) }
     case 'ADD_WIDGET':
       return { ...state, dashboardWidgets: [...state.dashboardWidgets, action.widget] }
     case 'REMOVE_WIDGET':
@@ -736,6 +745,53 @@ export function useActions() {
       return offer
     },
     dismissPortalOffer: (id: ID) => dispatch({ type: 'UPDATE_PORTAL_OFFER', id, patch: { status: 'dismissed' } }),
+    // ── Showroom experience (guided in-person proposal builder) ──
+    createShowroom: (s: Omit<import('./types').ShowroomSession, 'id' | 'createdAt' | 'status'> & { status?: import('./types').ShowroomSession['status'] }) => {
+      const session: import('./types').ShowroomSession = { id: uid('show'), createdAt: Date.now(), status: s.status ?? 'draft', ...s }
+      dispatch({ type: 'ADD_SHOWROOM', session })
+      toast(`Showroom session started for ${session.name}`)
+      return session
+    },
+    updateShowroom: (id: ID, patch: Partial<import('./types').ShowroomSession>) => dispatch({ type: 'UPDATE_SHOWROOM', id, patch }),
+    updateShowroomDesign: (id: ID, patch: Partial<import('./types').ShowroomDesign>) => {
+      const s = live.state?.showroom.find((x) => x.id === id); if (!s) return
+      dispatch({ type: 'UPDATE_SHOWROOM', id, patch: { design: { ...s.design, ...patch } } })
+    },
+    removeShowroom: (id: ID) => dispatch({ type: 'REMOVE_SHOWROOM', id }),
+    /** Close the sale in the room: create a won deal and provision the customer's portal. */
+    winShowroom: (session: import('./types').ShowroomSession, price: number, annualSaving: number) => {
+      const d = session.design
+      const label = `${d.systemKwp} kWp${d.hasBattery ? ' + battery' : ''}`
+      const deal: Deal = {
+        id: uid('d'), name: `${session.name} — ${label}`, org: session.address, subtitle: 'Showroom sale',
+        value: price, stage: 'Negotiations Started', closeDate: 'This month', owner: 'Jordan Miles', health: 'Healthy',
+        chips: [{ label: 'Showroom', tone: 'positive' }], personIds: [], probability: 100, won: true, quoted: true,
+        pipelineId: live.state?.activePipelineId,
+      }
+      dispatch({ type: 'ADD_DEAL', deal })
+      const journey: import('./types').PortalMilestone[] = [
+        { key: 'accepted', label: 'Proposal accepted', blurb: 'You signed off your system in the showroom.', done: true, at: Date.now() },
+        { key: 'survey', label: 'Technical survey', blurb: 'We’ll book a surveyor to confirm the details.', done: false },
+        { key: 'design', label: 'System design signed off', blurb: 'Final layout confirmed after the survey.', done: false },
+        { key: 'dno-submitted', label: 'Grid (DNO) application submitted', blurb: 'We apply to your network operator.', done: false },
+        { key: 'dno-approved', label: 'Grid application approved', blurb: 'Awaiting your network operator.', done: false },
+        { key: 'scheduled', label: 'Installation booked', blurb: 'We’ll confirm your install date.', done: false },
+        { key: 'installed', label: 'Installation complete', blurb: 'Panels and battery fitted.', done: false },
+        { key: 'commissioned', label: 'System switched on', blurb: 'Commissioned and app set up.', done: false },
+        { key: 'handover', label: 'Handover & warranty pack', blurb: 'Certificates and warranties issued.', done: false },
+      ]
+      const portal: import('./types').CustomerPortal = {
+        id: uid('cp'), invitedAt: Date.now(), status: 'invited', dealId: deal.id,
+        customer: session.name, email: session.email, address: session.address,
+        systemKwp: d.systemKwp, systemCost: price, annualSavings: annualSaving,
+        hasBattery: d.hasBattery, hasEv: d.hasEv, journey,
+      }
+      dispatch({ type: 'ADD_PORTAL', portal })
+      dispatch({ type: 'UPDATE_SHOWROOM', id: session.id, patch: { status: 'won', dealId: deal.id, portalId: portal.id } })
+      dispatch({ type: 'ADD_ACTIVITY', activity: { id: uid('act'), type: 'change', subject: `Won in the showroom — ${session.name} 🎉`, body: `${label} · £${price.toLocaleString()}`, dealId: deal.id, done: true, who: 'Jordan Miles', createdAt: Date.now(), source: 'manual' } })
+      toast(`Sale won — ${session.name}'s portal is ready 🎉`, 'positive')
+      return { dealId: deal.id, portalId: portal.id }
+    },
     /** Customer taps "I'm interested" on an offer → a real warm lead for the team + logged. */
     portalOfferInterest: (portal: import('./types').CustomerPortal, offer: import('./types').PortalOffer) => {
       dispatch({ type: 'UPDATE_PORTAL_OFFER', id: offer.id, patch: { status: 'interested' } })

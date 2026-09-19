@@ -136,8 +136,17 @@ export const STAGES: Stage[] = [
         { to: '/products', icon: Box, label: 'Products' },
         { to: '/documents', icon: File, label: 'Documents' },
       ] },
-      { label: 'Customers', items: [
-        { to: '/customers', icon: Users, label: 'All customers', end: true },
+    ],
+  },
+  {
+    id: 'customers', name: 'Customers', desc: 'Showroom, portals & aftercare', icon: Users, to: '/showroom',
+    accent: '#0FA98F', wash: '#E8FAF5',
+    groups: [
+      { label: 'Sell & onboard', items: [
+        { to: '/showroom', icon: Sun, label: 'Showroom', end: true },
+        { to: '/customers', icon: Users, label: 'Customer portals' },
+      ] },
+      { label: 'Aftercare', items: [
         { to: '/customers/support', icon: Wrench, label: 'Support requests' },
         { to: '/customers/resources', icon: File, label: 'Resources & manuals' },
       ] },
