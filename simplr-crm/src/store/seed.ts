@@ -186,7 +186,7 @@ export function buildSeed(): State {
     mk('in12', 'Gmail', 'Email & calendar', 'Send & sync from Google Workspace', '#EA4335', 'google.com', true, true),
     mk('in13', 'Outlook', 'Email & calendar', 'Send & sync from Microsoft 365', '#0078D4', 'outlook.com', true, true),
     mk('in14', 'Nylas', 'Email & calendar', 'Unified email/calendar for any provider', '#0068FF', 'nylas.com', true),
-    mk('in15', 'Unipile', 'Email & calendar', 'Email, calendar & LinkedIn in one API', '#1D4ED8', 'unipile.com'),
+    mk('in15', 'Unipile', 'Email & calendar', 'Email, calendar & LinkedIn in one API', '#13927B', 'unipile.com'),
     mk('in16', 'Calendly', 'Email & calendar', 'Meeting scheduling links', '#006BFF', 'calendly.com', false, true),
     mk('in17', 'Google Calendar', 'Email & calendar', 'Two-way calendar sync', '#4285F4', 'calendar.google.com'),
     // Meetings & calls
@@ -430,7 +430,7 @@ export function buildSeed(): State {
   ]
 
   const brandKit: import('./types').BrandKit = {
-    company: 'TellOvi Solar', primary: '#1D4ED8', accent: '#F5A623', font: 'Inter',
+    company: 'TellOvi Solar', primary: '#13927B', accent: '#F5A623', font: 'Inter',
     tone: 'Confident, warm and plain-English. Lead with the customer’s goal, show savings before cost, never pushy.',
     logoName: 'logo-simplr-solar.svg',
   }
@@ -460,10 +460,10 @@ export function buildSeed(): State {
 
   // ── Field operations: crew + a working-week schedule ──
   const engineers: Engineer[] = [
-    { id: 'eng1', name: 'Ryan Cole', skills: 'Lead installer · MCS', color: '#1D4ED8', initials: 'RC' },
+    { id: 'eng1', name: 'Ryan Cole', skills: 'Lead installer · MCS', color: '#13927B', initials: 'RC' },
     { id: 'eng2', name: 'Dev Sharma', skills: 'Electrician · Part P', color: '#0E9F6E', initials: 'DS' },
     { id: 'eng3', name: 'Marek Nowak', skills: 'Installer · roofing', color: '#E8721A', initials: 'MN' },
-    { id: 'eng4', name: 'Chloe Adams', skills: 'Surveyor', color: '#7C5CFF', initials: 'CA' },
+    { id: 'eng4', name: 'Chloe Adams', skills: 'Surveyor', color: '#159C86', initials: 'CA' },
   ]
   const mkJob = (id: string, ref: string, kind: Job['kind'], title: string, customer: string, address: string, crew: string[], weekday: number, start: string, mins: number, status: Job['status'], extra: Partial<Job> = {}): Job => ({
     id, ref, kind, title, customer, address, crew, date: isoDay(monOff(weekday)), start, durationMins: mins, status, createdAt: now, ...extra,
@@ -483,13 +483,13 @@ export function buildSeed(): State {
 
   // ── Team space — one internal chat + announcements board across every workspace ──
   const teamMembers: TeamMember[] = [
-    { id: YOU_MEMBER_ID, name: 'Jordan Miles', role: 'Account Executive', color: '#1D4ED8', status: 'online', you: true, voiceEnrolled: true },
+    { id: YOU_MEMBER_ID, name: 'Jordan Miles', role: 'Account Executive', color: '#13927B', status: 'online', you: true, voiceEnrolled: true },
     { id: 'tm-dana', name: 'Dana Okafor', role: 'CEO & Founder', color: '#B01B4F', status: 'online', boss: true, voiceEnrolled: true },
     { id: 'tm-priya', name: 'Priya Nair', role: 'Account Executive', color: '#0E9F6E', status: 'online', voiceEnrolled: true },
     { id: 'tm-marcus', name: 'Marcus Webb', role: 'Sales Lead', color: '#E8721A', status: 'away' },
-    { id: 'tm-sofia', name: 'Sofia Reyes', role: 'Marketing', color: '#7C5CFF', status: 'dnd' },
+    { id: 'tm-sofia', name: 'Sofia Reyes', role: 'Marketing', color: '#159C86', status: 'dnd' },
     { id: 'tm-ryan', name: 'Ryan Cole', role: 'Lead Installer', color: '#0891B2', status: 'offline' },
-    { id: AI_MEMBER_ID, name: 'TellOvi AI', role: 'Works across every app', color: '#3B6BF5', status: 'online', bot: true },
+    { id: AI_MEMBER_ID, name: 'TellOvi AI', role: 'Works across every app', color: '#1FAE94', status: 'online', bot: true },
   ]
   const everyone = teamMembers.map((m) => m.id)
 
@@ -562,16 +562,16 @@ export function buildSeed(): State {
   const isoIn = (d: number) => new Date(now + d * 86_400_000).toISOString().slice(0, 10)
 
   const employees: Employee[] = [
-    { id: 'emp-jordan', name: 'Jordan Miles', role: 'Account Executive', dept: 'sales', startDate: isoAgo(720), status: 'active', managerId: 'emp-dana', color: '#1D4ED8' },
+    { id: 'emp-jordan', name: 'Jordan Miles', role: 'Account Executive', dept: 'sales', startDate: isoAgo(720), status: 'active', managerId: 'emp-dana', color: '#13927B' },
     { id: 'emp-dana', name: 'Dana Okafor', role: 'CEO & Founder', dept: 'operations', startDate: isoAgo(1600), status: 'active', color: '#B01B4F' },
     { id: 'emp-priya', name: 'Priya Nair', role: 'Account Executive', dept: 'sales', startDate: isoAgo(400), status: 'active', managerId: 'emp-dana', color: '#0E9F6E' },
     { id: 'emp-marcus', name: 'Marcus Webb', role: 'Sales Lead', dept: 'sales', startDate: isoAgo(900), status: 'active', managerId: 'emp-dana', color: '#E8721A' },
-    { id: 'emp-sofia', name: 'Sofia Reyes', role: 'Marketing Manager', dept: 'marketing', startDate: isoAgo(300), status: 'active', managerId: 'emp-dana', color: '#7C5CFF' },
+    { id: 'emp-sofia', name: 'Sofia Reyes', role: 'Marketing Manager', dept: 'marketing', startDate: isoAgo(300), status: 'active', managerId: 'emp-dana', color: '#159C86' },
     { id: 'emp-nia', name: 'Nia Bennett', role: 'Finance Manager', dept: 'finance', startDate: isoAgo(540), status: 'active', managerId: 'emp-dana', color: '#0891B2' },
     { id: 'emp-ryan', name: 'Ryan Cole', role: 'Lead Installer', dept: 'delivery', startDate: isoAgo(650), status: 'active', managerId: 'emp-dana', color: '#0E9F6E' },
-    { id: 'emp-dev', name: 'Dev Sharma', role: 'Electrician (Part P)', dept: 'delivery', startDate: isoAgo(210), status: 'active', managerId: 'emp-ryan', color: '#1D4ED8' },
+    { id: 'emp-dev', name: 'Dev Sharma', role: 'Electrician (Part P)', dept: 'delivery', startDate: isoAgo(210), status: 'active', managerId: 'emp-ryan', color: '#13927B' },
     { id: 'emp-marek', name: 'Marek Nowak', role: 'Installer / Roofer', dept: 'delivery', startDate: isoAgo(140), status: 'probation', managerId: 'emp-ryan', color: '#E8721A' },
-    { id: 'emp-chloe', name: 'Chloe Adams', role: 'Surveyor', dept: 'delivery', startDate: isoAgo(95), status: 'active', managerId: 'emp-ryan', color: '#7C5CFF' },
+    { id: 'emp-chloe', name: 'Chloe Adams', role: 'Surveyor', dept: 'delivery', startDate: isoAgo(95), status: 'active', managerId: 'emp-ryan', color: '#159C86' },
   ]
 
   const leaveRequests: LeaveRequest[] = [

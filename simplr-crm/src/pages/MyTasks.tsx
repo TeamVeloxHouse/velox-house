@@ -13,8 +13,8 @@ import { isTask, bucketOf, isYesterday, effectiveDueDate, BUCKET_META, fmtMins, 
 import { classNames } from '../lib/format'
 
 const typeIcon: Record<string, any> = { call: Phone, meeting: Meeting, task: TaskIcon, email: Envelope }
-const typeColor: Record<string, string> = { call: '#1D4ED8', meeting: '#0E7C66', task: '#C2410C', email: '#3A67E4' }
-const typeWash: Record<string, string> = { call: '#EEF2FB', meeting: '#E9F5F1', task: '#FDF1E7', email: '#EEF2FB' }
+const typeColor: Record<string, string> = { call: '#13927B', meeting: '#0E7C66', task: '#C2410C', email: '#13927B' }
+const typeWash: Record<string, string> = { call: '#EAF6F2', meeting: '#E9F5F1', task: '#FDF1E7', email: '#EAF6F2' }
 const prioTone: Record<string, 'negative' | 'warning' | 'neutral'> = { High: 'negative', Medium: 'warning', Low: 'neutral' }
 const ORDER: Bucket[] = ['overdue', 'today', 'tomorrow', 'upcoming', 'none']
 

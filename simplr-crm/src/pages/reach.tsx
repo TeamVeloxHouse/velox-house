@@ -28,7 +28,7 @@ export function OutreachOperator() {
   return (
     <div className="rounded-card border border-[#D8D0FF] bg-gradient-to-br from-[#F6F3FF] to-white overflow-hidden">
       <div className="px-5 py-3.5 flex items-center gap-2.5 border-b border-[#EAE4FF]">
-        <span className="w-8 h-8 rounded-[9px] text-white flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(180deg,#7C5CFF 0%,#5B29CC 100%)' }}><Sparkle size={17} /></span>
+        <span className="w-8 h-8 rounded-[9px] text-white flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(180deg,#159C86 0%,#13927B 100%)' }}><Sparkle size={17} /></span>
         <div className="flex-1">
           <div className="text-[14px] font-bold text-ink flex items-center gap-2">TellOvi AI · Outreach operator <Chip tone="positive" dot>Live</Chip></div>
           <div className="text-[12px] text-muted-b">Tell it what to do in plain English — it prospects, writes, and runs the campaign for you.</div>
@@ -45,7 +45,7 @@ export function OutreachOperator() {
         {!running && (
           <div className="flex flex-wrap gap-2 mb-3">
             {operatorPrompts.map((p) => (
-              <button key={p} onClick={() => ask(p)} className="text-left text-[12.5px] text-[#5B29CC] bg-white border border-[#E0D8FF] rounded-lg px-3 py-2 hover:border-[#7C5CFF] transition-colors flex items-center gap-2"><Sparkle size={13} />{p}</button>
+              <button key={p} onClick={() => ask(p)} className="text-left text-[12.5px] text-[#13927B] bg-white border border-[#E0D8FF] rounded-lg px-3 py-2 hover:border-[#159C86] transition-colors flex items-center gap-2"><Sparkle size={13} />{p}</button>
             ))}
           </div>
         )}
@@ -57,11 +57,11 @@ export function OutreachOperator() {
 
 /* ============================ Overview ============================ */
 const funnel = [
-  { stage: 'Found', n: 4820, color: '#8FB0FF' },
-  { stage: 'Contacted', n: 1640, color: '#5B85F0' },
-  { stage: 'Opened / viewed', n: 980, color: '#3A67E4' },
-  { stage: 'Replied', n: 312, color: '#1D4ED8' },
-  { stage: 'Meeting booked', n: 96, color: '#5B29CC' },
+  { stage: 'Found', n: 4820, color: '#57C9B4' },
+  { stage: 'Contacted', n: 1640, color: '#57C9B4' },
+  { stage: 'Opened / viewed', n: 980, color: '#13927B' },
+  { stage: 'Replied', n: 312, color: '#13927B' },
+  { stage: 'Meeting booked', n: 96, color: '#13927B' },
   { stage: 'Handed to CRM', n: 58, color: '#0E7C66' },
 ]
 
@@ -96,7 +96,7 @@ export function ReachOverview() {
           </div>
           <div className="bg-surface border border-border rounded-card p-5">
             <div className="text-[15px] font-semibold text-ink mb-4">By channel</div>
-            {[['Email', 62, '#1D4ED8'], ['LinkedIn', 31, '#0A66C2'], ['Calls', 7, '#0E7C66']].map(([l, v, c]) => (
+            {[['Email', 62, '#13927B'], ['LinkedIn', 31, '#0A66C2'], ['Calls', 7, '#0E7C66']].map(([l, v, c]) => (
               <div key={l as string} className="mb-3">
                 <div className="flex justify-between text-[12px] mb-1"><span className="text-ink-3">{l}</span><span className="font-semibold text-ink-2">{v}%</span></div>
                 <Progress value={v as number} color={c as string} />
@@ -113,9 +113,9 @@ export function ReachOverview() {
 /* ============================ Finders hub ============================ */
 const finders = [
   { id: 'solar', name: 'Solar roof finder', desc: 'Scan an area, measure every roof’s solar potential, and prospect the best sites.', to: '/reach/solar', icon: Sun, color: '#F59E0B', live: true, found: '1,240 roofs' },
-  { id: 'people', name: 'People finder', desc: '400M+ contacts via People Data Labs. Filter by role, industry & size — each match scored and researched before it reaches your CRM.', to: '/reach/people-finder', icon: Person, color: '#1D4ED8', live: true, found: 'People Data Labs' },
+  { id: 'people', name: 'People finder', desc: '400M+ contacts via People Data Labs. Filter by role, industry & size — each match scored and researched before it reaches your CRM.', to: '/reach/people-finder', icon: Person, color: '#13927B', live: true, found: 'People Data Labs' },
   { id: 'local', name: 'Local business finder', desc: 'Map-based discovery of businesses by type and area (Places + enrichment).', to: '/reach/finders', icon: Building, color: '#0E7C66', live: false, found: 'Coming soon' },
-  { id: 'intent', name: 'Buyer-intent signals', desc: 'Surface companies showing hiring, funding or tech-change signals.', to: '/reach/finders', icon: Bolt, color: '#5B29CC', live: false, found: 'Coming soon' },
+  { id: 'intent', name: 'Buyer-intent signals', desc: 'Surface companies showing hiring, funding or tech-change signals.', to: '/reach/finders', icon: Bolt, color: '#13927B', live: false, found: 'Coming soon' },
 ]
 
 export function Finders() {
@@ -241,12 +241,12 @@ export function SolarFinder() {
 }
 
 /* ============================ Outreach (multichannel cockpit) ============================ */
-const chColor: Record<string, string> = { Email: '#1D4ED8', LinkedIn: '#0A66C2' }
+const chColor: Record<string, string> = { Email: '#13927B', LinkedIn: '#0A66C2' }
 const statusTone: Record<ChannelStatus, { fg: string; bg: string; label: string }> = {
   pending: { fg: '#7A8494', bg: '#F1F3F7', label: 'Pending' },
   due: { fg: '#C2410C', bg: '#FDF1E7', label: 'Due now' },
-  sent: { fg: '#1D4ED8', bg: '#EEF2FB', label: 'Sent' },
-  opened: { fg: '#3A67E4', bg: '#EEF2FB', label: 'Opened' },
+  sent: { fg: '#13927B', bg: '#EAF6F2', label: 'Sent' },
+  opened: { fg: '#13927B', bg: '#EAF6F2', label: 'Opened' },
   replied: { fg: '#0E7C66', bg: '#E9F5F1', label: 'Replied' },
   connected: { fg: '#0A66C2', bg: '#E7EFFA', label: 'Connected' },
   bounced: { fg: '#B01B4F', bg: '#FDECEF', label: 'Bounced' },
@@ -389,7 +389,7 @@ export function ReachAnalytics() {
             {[['Email', 'Reply 16%', 62], ['LinkedIn', 'Reply 24%', 31], ['Calls', 'Connect 12%', 7]].map(([l, s, v]) => (
               <div key={l as string} className="mb-3.5">
                 <div className="flex justify-between text-[12px] mb-1"><span className="text-ink-3 font-medium">{l}</span><span className="text-muted-2">{s}</span></div>
-                <Progress value={v as number} color={l === 'LinkedIn' ? '#0A66C2' : l === 'Calls' ? '#0E7C66' : '#1D4ED8'} />
+                <Progress value={v as number} color={l === 'LinkedIn' ? '#0A66C2' : l === 'Calls' ? '#0E7C66' : '#13927B'} />
               </div>
             ))}
             <div className="mt-4 rounded-[10px] bg-accent-wash-3 border border-[#D3E0FA] p-3 text-[12px] text-accent-700 leading-relaxed"><Sparkle size={12} className="inline mr-1" />LinkedIn replies convert 1.6× better — the AI is shifting budget toward it.</div>
@@ -423,7 +423,7 @@ export function ReachCampaigns() {
           {reachCampaigns.map((c) => (
             <div key={c.id} className="bg-surface border border-border rounded-card p-5">
               <div className="flex items-center gap-3">
-                <span className="w-9 h-9 rounded-[10px] bg-[#F1ECFF] text-[#5B29CC] flex items-center justify-center shrink-0"><Megaphone size={18} /></span>
+                <span className="w-9 h-9 rounded-[10px] bg-[#F1ECFF] text-[#13927B] flex items-center justify-center shrink-0"><Megaphone size={18} /></span>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2"><span className="text-[15px] font-semibold text-ink">{c.name}</span>{c.createdBy === 'AI' && <Chip tone="accent" dot>AI-built</Chip>}</div>
                   <div className="text-[12px] text-muted-2">{c.vertical} · {c.audience} prospects · {c.sequence} · {c.channels.join(' + ')}</div>
@@ -452,19 +452,19 @@ export function ReachSchedules() {
       <TopBar title="Scheduled tasks" crumbs={['Reach', 'Automate']} actions={<Button variant="primary" icon={<Plus size={16} />} onClick={() => act.addScheduledTask('Find 20 new prospects matching my ICP and email them', 'Weekly · Mon 08:00')}>New scheduled task</Button>} />
       <PageBody>
         <div className="rounded-card bg-gradient-to-br from-[#F6F3FF] to-white border border-[#E0D8FF] p-4 flex items-start gap-3">
-          <span className="w-9 h-9 rounded-[10px] text-white flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(180deg,#7C5CFF 0%,#5B29CC 100%)' }}><Clock size={18} /></span>
+          <span className="w-9 h-9 rounded-[10px] text-white flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(180deg,#159C86 0%,#13927B 100%)' }}><Clock size={18} /></span>
           <div><div className="text-[13px] font-semibold text-ink-2">Set-and-forget outreach</div><div className="text-[12.5px] text-muted-b mt-0.5">Schedule any AI operator command to run on a cadence — TellOvi prospects, writes and sends, then reports the result back to you each time.</div></div>
         </div>
         <div className="bg-surface border border-border rounded-card divide-y divide-divider">
           {scheduledTasks.map((t) => (
             <div key={t.id} className="flex items-start gap-3 px-5 py-4">
-              <span className={classNames('w-8 h-8 rounded-lg flex items-center justify-center shrink-0', t.active ? 'bg-[#F1ECFF] text-[#5B29CC]' : 'bg-control text-muted-2')}><Clock size={15} /></span>
+              <span className={classNames('w-8 h-8 rounded-lg flex items-center justify-center shrink-0', t.active ? 'bg-[#F1ECFF] text-[#13927B]' : 'bg-control text-muted-2')}><Clock size={15} /></span>
               <div className="min-w-0 flex-1">
                 <div className="text-[13.5px] font-semibold text-ink-2">{t.prompt}</div>
                 <div className="text-[12px] text-muted-2 mt-0.5">{t.cadence} · next run {t.nextRun}{t.lastResult ? ` · last: ${t.lastResult}` : ''}</div>
               </div>
               <Chip tone={t.active ? 'positive' : 'neutral'} dot>{t.active ? 'Active' : 'Paused'}</Chip>
-              <button onClick={() => act.toggleScheduled(t.id, t.active)} className={classNames('w-11 h-6 rounded-full flex items-center px-0.5 transition-colors shrink-0', t.active ? 'bg-[#7C5CFF] justify-end' : 'bg-input-border justify-start')}><span className="w-5 h-5 rounded-full bg-white shadow" /></button>
+              <button onClick={() => act.toggleScheduled(t.id, t.active)} className={classNames('w-11 h-6 rounded-full flex items-center px-0.5 transition-colors shrink-0', t.active ? 'bg-[#159C86] justify-end' : 'bg-input-border justify-start')}><span className="w-5 h-5 rounded-full bg-white shadow" /></button>
               <button onClick={() => act.removeScheduled(t.id)} className="text-[12px] text-negative font-medium hover:underline shrink-0">Remove</button>
             </div>
           ))}
@@ -497,7 +497,7 @@ export function ReachAI() {
           {empty ? (
             <div className="max-w-[760px] mx-auto px-7 py-12 flex flex-col gap-8">
               <div className="flex flex-col items-center text-center gap-3">
-                <div className="w-14 h-14 rounded-2xl text-white flex items-center justify-center shadow-primary" style={{ background: 'linear-gradient(180deg,#7C5CFF 0%,#5B29CC 100%)' }}><Sparkle size={28} /></div>
+                <div className="w-14 h-14 rounded-2xl text-white flex items-center justify-center shadow-primary" style={{ background: 'linear-gradient(180deg,#159C86 0%,#13927B 100%)' }}><Sparkle size={28} /></div>
                 <div>
                   <div className="text-[24px] font-bold text-ink tracking-[-0.02em]">Your outreach, on autopilot</div>
                   <div className="text-[14px] text-muted-b mt-1">Tell me who to reach and I’ll find them, write to them, and run it — you watch it happen. Attach a list or ICP to work from your own data.</div>
@@ -506,7 +506,7 @@ export function ReachAI() {
               <div className="grid grid-cols-2 gap-3">
                 {caps.map((c) => (
                   <div key={c.title} className="bg-surface border border-border rounded-card p-4 flex items-start gap-3">
-                    <span className="w-9 h-9 rounded-[10px] bg-[#F1ECFF] text-[#5B29CC] flex items-center justify-center shrink-0"><c.icon size={18} /></span>
+                    <span className="w-9 h-9 rounded-[10px] bg-[#F1ECFF] text-[#13927B] flex items-center justify-center shrink-0"><c.icon size={18} /></span>
                     <div><div className="text-[13.5px] font-semibold text-ink-2">{c.title}</div><div className="text-[12.5px] text-muted-2 mt-0.5">{c.sub}</div></div>
                   </div>
                 ))}
@@ -515,7 +515,7 @@ export function ReachAI() {
                 <div className="eyebrow text-muted-3 mb-2.5">Try asking</div>
                 <div className="flex flex-col gap-2">
                   {operatorPrompts.map((p) => (
-                    <button key={p} onClick={() => ask(p)} className="text-left bg-surface border border-border rounded-xl px-4 py-3 text-[13.5px] text-ink-3 hover:border-[#C9BCFF] hover:bg-[#FAF8FF] transition-colors flex items-center gap-2.5"><Sparkle size={15} className="text-[#5B29CC] shrink-0" />{p}</button>
+                    <button key={p} onClick={() => ask(p)} className="text-left bg-surface border border-border rounded-xl px-4 py-3 text-[13.5px] text-ink-3 hover:border-[#C9BCFF] hover:bg-[#FAF8FF] transition-colors flex items-center gap-2.5"><Sparkle size={15} className="text-[#13927B] shrink-0" />{p}</button>
                   ))}
                 </div>
               </div>

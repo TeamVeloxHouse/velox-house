@@ -17,7 +17,7 @@ const QUOTA = 1_100_000
 type Cat = 'Closed' | 'Commit' | 'Best case' | 'Pipeline'
 const CATS: Cat[] = ['Closed', 'Commit', 'Best case', 'Pipeline']
 const catTone: Record<Cat, ChipTone> = { Closed: 'positive', Commit: 'positive', 'Best case': 'accent', Pipeline: 'warning' }
-const catBar: Record<Cat, string> = { Closed: '#0E7C66', Commit: '#1D4ED8', 'Best case': '#5B85F0', Pipeline: '#C79A3A' }
+const catBar: Record<Cat, string> = { Closed: '#0E7C66', Commit: '#13927B', 'Best case': '#57C9B4', Pipeline: '#C79A3A' }
 
 const proposalIdx = stages.indexOf('Proposal Made')
 // A deal is "quoted" once a proposal has gone out (Proposal Made or later).
@@ -142,7 +142,7 @@ export function Forecast() {
             <div className="bg-surface border border-border rounded-card p-5">
               <div className="text-[15px] font-semibold text-ink mb-1">Quota coverage</div>
               <div className="text-[12px] text-muted-2 mb-3">Closed + Commit against £{(QUOTA / 1e6).toFixed(1)}M</div>
-              <div className="h-2.5 rounded-full bg-control overflow-hidden"><div className="h-full rounded-full" style={{ width: `${Math.min(100, coverage)}%`, background: coverage >= 100 ? '#0E7C66' : '#1D4ED8' }} /></div>
+              <div className="h-2.5 rounded-full bg-control overflow-hidden"><div className="h-full rounded-full" style={{ width: `${Math.min(100, coverage)}%`, background: coverage >= 100 ? '#0E7C66' : '#13927B' }} /></div>
               <div className="flex items-center justify-between mt-2 text-[12.5px]"><span className="text-muted-b">{coverage}% covered</span><span className="font-semibold text-ink-2">{money(committed, { compact: true })} / {money(QUOTA, { compact: true })}</span></div>
             </div>
 

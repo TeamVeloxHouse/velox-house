@@ -79,7 +79,7 @@ export function Projects() {
                         <div key={p.name} className="bg-surface border border-border rounded-rail p-3.5">
                           <div className="text-[13px] font-semibold text-ink-2">{p.name}</div>
                           <div className="text-[12px] text-muted-2">{p.client} · {p.due}</div>
-                          <div className="mt-3"><Progress value={p.progress} height={5} color={p.progress === 100 ? '#0E7C66' : '#1D4ED8'} track="#EDF0F4" /></div>
+                          <div className="mt-3"><Progress value={p.progress} height={5} color={p.progress === 100 ? '#0E7C66' : '#13927B'} track="#EDF0F4" /></div>
                           <div className="flex items-center justify-between mt-2.5">
                             <div className="flex -space-x-1.5">
                               {p.team.map((t) => (
@@ -115,7 +115,7 @@ export function Projects() {
                     <Cell muted>{p.client}</Cell>
                     <Cell>
                       <div className="flex items-center gap-2">
-                        <div className="flex-1 max-w-[120px]"><Progress value={p.progress} height={5} color={p.progress === 100 ? '#0E7C66' : '#1D4ED8'} track="#EDF0F4" /></div>
+                        <div className="flex-1 max-w-[120px]"><Progress value={p.progress} height={5} color={p.progress === 100 ? '#0E7C66' : '#13927B'} track="#EDF0F4" /></div>
                         <span className="text-[12px] text-muted-2">{p.progress}%</span>
                       </div>
                     </Cell>

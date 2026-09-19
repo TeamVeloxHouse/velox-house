@@ -66,8 +66,8 @@ export function Automation() {
                   <div key={s.id}>
                     {showGroup && <div className="eyebrow text-muted-3 mb-2.5 mt-4 first:mt-0">{groupOf[s.kind]}</div>}
                     {i > 0 && <div className="w-0.5 h-5 bg-[#D6DCE6] ml-[26px]" />}
-                    <div className="group w-[440px] max-w-full rounded-card p-4 flex items-center gap-3.5 border" style={{ borderColor: trigger ? '#1D4ED8' : '#E4E8EE', boxShadow: trigger ? '0 6px 18px rgba(29,78,216,0.13)' : undefined }}>
-                      <span className="w-[34px] h-[34px] rounded-[9px] flex items-center justify-center shrink-0" style={{ background: trigger ? '#1D4ED8' : '#EEF2FB', color: trigger ? '#fff' : '#1D4ED8' }}><Icon size={17} /></span>
+                    <div className="group w-[440px] max-w-full rounded-card p-4 flex items-center gap-3.5 border" style={{ borderColor: trigger ? '#13927B' : '#E4E8EE', boxShadow: trigger ? '0 6px 18px rgba(29,78,216,0.13)' : undefined }}>
+                      <span className="w-[34px] h-[34px] rounded-[9px] flex items-center justify-center shrink-0" style={{ background: trigger ? '#13927B' : '#EAF6F2', color: trigger ? '#fff' : '#13927B' }}><Icon size={17} /></span>
                       <div className="min-w-0 flex-1">
                         <div className="text-[14px] font-semibold text-ink">{s.title}</div>
                         <div className="text-[12px] text-muted-2 mt-0.5">{s.subtitle}</div>

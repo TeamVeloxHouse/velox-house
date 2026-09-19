@@ -268,7 +268,7 @@ function MarketplacePanel() {
         <span className="w-9 h-9 rounded-[10px] bg-white/10 text-white flex items-center justify-center shrink-0"><Sparkle size={18} /></span>
         <div className="flex-1">
           <div className="text-[13px] font-semibold text-white">Don’t see your tool? Connect anything.</div>
-          <div className="text-[12.5px] mt-1 leading-relaxed" style={{ color: '#C7D3F2' }}>A full REST API, webhooks, and native Zapier + Make connectors mean the long tail of apps connects without a bespoke build.</div>
+          <div className="text-[12.5px] mt-1 leading-relaxed" style={{ color: '#A7E6DA' }}>A full REST API, webhooks, and native Zapier + Make connectors mean the long tail of apps connects without a bespoke build.</div>
         </div>
       </div>
 
@@ -392,7 +392,7 @@ function PlaybooksPanel() {
         <span className="w-9 h-9 rounded-[10px] bg-white/10 text-white flex items-center justify-center shrink-0"><Robot size={18} /></span>
         <div className="flex-1">
           <div className="text-[13px] font-semibold text-white">{activeCount} active {activeCount === 1 ? 'playbook' : 'playbooks'} guiding your agents</div>
-          <div className="text-[12.5px] mt-1 leading-relaxed" style={{ color: '#C7D3F2' }}>Each playbook is scoped to a task. When an agent runs that task it applies the active playbooks for that scope — the same idea as giving a new hire your process docs on day one.</div>
+          <div className="text-[12.5px] mt-1 leading-relaxed" style={{ color: '#A7E6DA' }}>Each playbook is scoped to a task. When an agent runs that task it applies the active playbooks for that scope — the same idea as giving a new hire your process docs on day one.</div>
         </div>
       </div>
 
@@ -658,7 +658,7 @@ function TradeModulesPanel() {
   const profile = tradeByKey(activeTrade)
   return (
     <>
-      <div className="rounded-card p-5 text-white relative overflow-hidden" style={{ background: 'linear-gradient(150deg,#1c3a72,#0c1b38)' }}>
+      <div className="rounded-card p-5 text-white relative overflow-hidden" style={{ background: 'linear-gradient(150deg,#15223B,#0A3B33)' }}>
         <div className="flex items-center gap-4">
           <span className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center text-[26px] shrink-0">{profile.emoji}</span>
           <div className="flex-1">

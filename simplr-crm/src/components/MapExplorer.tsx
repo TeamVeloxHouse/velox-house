@@ -123,7 +123,7 @@ export function MapExplorer({ onOpenProspect }: { onOpenProspect?: (id: string) 
       let n = 0
       for (const b of (j.buildings || [])) {
         if (!b.center) continue
-        const m = L.marker([b.center.lat, b.center.lng], { icon: L.divIcon({ className: '', html: '<div style="width:8px;height:8px;border-radius:9999px;background:#fff;border:2px solid #3B6BF5;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>', iconSize: [8, 8], iconAnchor: [4, 4] }) }).addTo(bizLayer.current)
+        const m = L.marker([b.center.lat, b.center.lng], { icon: L.divIcon({ className: '', html: '<div style="width:8px;height:8px;border-radius:9999px;background:#fff;border:2px solid #1FAE94;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>', iconSize: [8, 8], iconAnchor: [4, 4] }) }).addTo(bizLayer.current)
         m.bindTooltip(b.name, { permanent: true, direction: 'top', offset: [0, -4], className: 'roof-label biz-label' })
         m.on('click', (e) => { L.DomEvent.stopPropagation(e); onPick.current({ lat: b.center.lat, lng: b.center.lng }) })
         n++
@@ -190,7 +190,7 @@ export function MapExplorer({ onOpenProspect }: { onOpenProspect?: (id: string) 
           <input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && flyToQuery()}
             placeholder="Fly to a place — town, postcode, address…" className="h-10 w-[300px] pl-8 pr-3 rounded-control border border-border bg-white/95 backdrop-blur shadow-modal text-[13px] outline-none focus:border-accent" />
         </div>
-        <button onClick={flyToQuery} className="h-10 px-3.5 rounded-control text-white text-[13px] font-semibold shadow-modal" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}>Go</button>
+        <button onClick={flyToQuery} className="h-10 px-3.5 rounded-control text-white text-[13px] font-semibold shadow-modal" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}>Go</button>
         <button onClick={labelNearby} title="Label the businesses around this view" className="h-10 px-3.5 rounded-control bg-white/95 backdrop-blur border border-border shadow-modal text-[13px] font-semibold text-ink-2 hover:bg-white flex items-center gap-1.5"><Building size={14} className="text-accent" />Label</button>
       </div>
 
@@ -209,12 +209,12 @@ export function MapExplorer({ onOpenProspect }: { onOpenProspect?: (id: string) 
           <div className="relative aspect-[16/9] bg-control shrink-0">
             {sel.imageUrl && <img src={sel.imageUrl} alt="" className="w-full h-full object-cover" />}
             <button onClick={() => setSelId(null)} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/55 text-white flex items-center justify-center hover:bg-black/75">✕</button>
-            <span className="absolute top-2 left-2 text-[11px] font-bold text-white px-2 py-0.5 rounded-full" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}>Score {scoreFrom(sel.systemKwp ?? 0, sel.paybackYears ?? 0)}</span>
+            <span className="absolute top-2 left-2 text-[11px] font-bold text-white px-2 py-0.5 rounded-full" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}>Score {scoreFrom(sel.systemKwp ?? 0, sel.paybackYears ?? 0)}</span>
             {sel.roofMeasured && <span className="absolute bottom-2 left-2 text-[10px] font-bold text-white bg-black/55 px-2 py-1 rounded backdrop-blur-sm">◆ MEASURED</span>}
           </div>
           <div className="p-3.5 flex flex-col gap-3 overflow-y-auto">
             <div className="flex items-start gap-2.5">
-              <span className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold shrink-0" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}>{sel.company.charAt(0)}</span>
+              <span className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold shrink-0" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}>{sel.company.charAt(0)}</span>
               <div className="min-w-0">
                 <div className="font-bold text-[14.5px] leading-tight text-ink truncate">{sel.company}</div>
                 <div className="text-[11.5px] text-muted-2 truncate">{sel.address}</div>
@@ -238,7 +238,7 @@ export function MapExplorer({ onOpenProspect }: { onOpenProspect?: (id: string) 
             ) : null}
           </div>
           <div className="mt-auto p-3 border-t border-divider flex flex-col gap-2 shrink-0">
-            <button onClick={() => addToPipeline(sel)} className="h-9 rounded-control text-white text-[13px] font-semibold flex items-center justify-center gap-2" style={{ background: sel.added ? '#0E9F6E' : 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}>
+            <button onClick={() => addToPipeline(sel)} className="h-9 rounded-control text-white text-[13px] font-semibold flex items-center justify-center gap-2" style={{ background: sel.added ? '#0E9F6E' : 'linear-gradient(135deg,#1FAE94,#159C86)' }}>
               {sel.added ? <><Check size={15} />Added — open in pipeline</> : <><Bolt size={15} />Add to pipeline</>}
             </button>
             <button onClick={() => findPeople(sel)} disabled={revealing} className="h-9 rounded-control border border-border text-[13px] font-semibold text-ink-3 hover:bg-control flex items-center justify-center gap-2 disabled:opacity-60">

@@ -51,9 +51,9 @@ export function BrandDocuments() {
       <input ref={fileRef} type="file" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f.name); e.currentTarget.value = '' }} />
       <PageBody>
         {busy && (
-          <div className="rounded-card p-4 flex items-center gap-3 text-white" style={{ background: 'linear-gradient(150deg,#1c3a72,#0c1b38)' }}>
+          <div className="rounded-card p-4 flex items-center gap-3 text-white" style={{ background: 'linear-gradient(150deg,#15223B,#0A3B33)' }}>
             <span className="w-6 h-6 rounded-full border-2 border-white/70 border-t-transparent animate-spin shrink-0" />
-            <div className="flex-1"><div className="text-[13px] font-semibold">{busy.title}</div><div className="text-[12px]" style={{ color: '#8FB0FF' }}>{busy.stage}</div></div>
+            <div className="flex-1"><div className="text-[13px] font-semibold">{busy.title}</div><div className="text-[12px]" style={{ color: '#57C9B4' }}>{busy.stage}</div></div>
           </div>
         )}
 

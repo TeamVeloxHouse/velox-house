@@ -47,7 +47,7 @@ export function Rail() {
         {/* active accent tick on the far left when expanded */}
         <span
           className={classNames('absolute -left-3 w-[3px] rounded-full transition-all duration-200', expanded ? 'block' : 'hidden')}
-          style={{ height: on ? 20 : 0, background: isOvi ? '#7C3AED' : s.accent }}
+          style={{ height: on ? 20 : 0, background: isOvi ? '#159C86' : s.accent }}
         />
         <span className="relative shrink-0 flex items-center justify-center">
           <s.icon size={20} />

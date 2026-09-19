@@ -12,9 +12,9 @@ import { classNames, money } from '../lib/format'
 import { useNavigate } from 'react-router-dom'
 
 export const LEAD_STATUS_META: Record<LeadStatus, { label: string; tone: string; dot: string }> = {
-  new: { label: 'New', tone: 'text-accent-700 bg-accent-wash-2', dot: '#1D4ED8' },
+  new: { label: 'New', tone: 'text-accent-700 bg-accent-wash-2', dot: '#13927B' },
   working: { label: 'Working', tone: 'text-[#8A5A00] bg-[#FBF0DF]', dot: '#B45309' },
-  nurturing: { label: 'Nurturing', tone: 'text-[#6D28D9] bg-[#F1EBFE]', dot: '#7C3AED' },
+  nurturing: { label: 'Nurturing', tone: 'text-[#6D28D9] bg-[#F1EBFE]', dot: '#159C86' },
   qualified: { label: 'Qualified', tone: 'text-positive bg-[#E6F4EF]', dot: '#0E7C66' },
   unqualified: { label: 'Unqualified', tone: 'text-muted-2 bg-control', dot: '#8A93A3' },
 }
@@ -237,9 +237,9 @@ function LeadDrawer({ leadId, onClose }: { leadId: string | null; onClose: () =>
 
           {/* Ovi recommendation */}
           <div className="rounded-card bg-deep-panel p-4">
-            <div className="flex items-center gap-1.5 text-[12px] font-semibold" style={{ color: '#8FB0FF' }}><Sparkle size={14} /> OVI RECOMMENDS</div>
+            <div className="flex items-center gap-1.5 text-[12px] font-semibold" style={{ color: '#57C9B4' }}><Sparkle size={14} /> OVI RECOMMENDS</div>
             <div className="text-[14px] font-bold text-white mt-1.5">{nba.title}</div>
-            <div className="text-[12.5px] leading-relaxed mt-1" style={{ color: '#C7D3F2' }}>{nba.rationale}</div>
+            <div className="text-[12.5px] leading-relaxed mt-1" style={{ color: '#A7E6DA' }}>{nba.rationale}</div>
             <button onClick={runNba} className="mt-3 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-white bg-accent-gradient shadow-primary rounded-lg px-3 py-1.5"><NbaIcon size={14} /> {nba.kind === 'convert' ? 'Convert now' : nba.kind === 'archive' ? 'Archive lead' : 'Do it'}</button>
           </div>
 
@@ -305,7 +305,7 @@ function Detail({ label, value, node }: { label: string; value?: string; node?: 
 
 export function Checkbox({ checked, onClick }: { checked: boolean; onClick: () => void }) {
   return (
-    <button onClick={(e) => { e.stopPropagation(); onClick() }} className="w-[18px] h-[18px] rounded-[5px] border flex items-center justify-center transition-colors" style={{ borderColor: checked ? '#1D4ED8' : '#C3CBD8', background: checked ? '#1D4ED8' : 'transparent' }}>
+    <button onClick={(e) => { e.stopPropagation(); onClick() }} className="w-[18px] h-[18px] rounded-[5px] border flex items-center justify-center transition-colors" style={{ borderColor: checked ? '#13927B' : '#C3CBD8', background: checked ? '#13927B' : 'transparent' }}>
       {checked && <Check size={12} className="text-white" strokeWidth={2.4} />}
     </button>
   )

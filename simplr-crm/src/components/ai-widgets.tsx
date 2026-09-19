@@ -91,7 +91,7 @@ export function NextBestAction({ action, dealId, personId }: { action: Action; d
 
 /** Data completeness meter for a record header. */
 export function CompletenessMeter({ pct, missing }: { pct: number; missing: string[] }) {
-  const color = pct >= 80 ? '#0E7C66' : pct >= 50 ? '#1D4ED8' : '#C2410C'
+  const color = pct >= 80 ? '#0E7C66' : pct >= 50 ? '#13927B' : '#C2410C'
   return (
     <span className="relative group inline-flex items-center gap-2">
       <span className="w-16 h-1.5 rounded-full bg-control overflow-hidden inline-block"><span className="block h-full rounded-full" style={{ width: `${pct}%`, background: color }} /></span>
@@ -122,8 +122,8 @@ export function ConversationIntel({ coaching, onOpenMeetings }: { coaching: Coac
           <span className="font-semibold text-ink-2 tabular-nums">{coaching.talkRatio}% / {100 - coaching.talkRatio}%</span>
         </div>
         <div className="h-2 rounded-full overflow-hidden flex bg-control">
-          <div style={{ width: `${coaching.talkRatio}%`, background: coaching.talkRatio > 55 ? '#C2410C' : '#1D4ED8' }} />
-          <div style={{ width: `${100 - coaching.talkRatio}%`, background: '#C7D3F2' }} />
+          <div style={{ width: `${coaching.talkRatio}%`, background: coaching.talkRatio > 55 ? '#C2410C' : '#13927B' }} />
+          <div style={{ width: `${100 - coaching.talkRatio}%`, background: '#A7E6DA' }} />
         </div>
       </div>
       <div className="flex items-center gap-2 mb-3">

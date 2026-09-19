@@ -31,7 +31,7 @@ function MemberAvatar({ m, size = 32, ring }: { m?: TeamMember; size?: number; r
   return (
     <span className="relative inline-flex shrink-0" style={{ width: size, height: size }}>
       {m.bot ? (
-        <span className="inline-flex items-center justify-center rounded-[9px] text-white shadow-primary" style={{ width: size, height: size, background: 'linear-gradient(180deg,#3B6BF5 0%,#1D4ED8 100%)' }}>
+        <span className="inline-flex items-center justify-center rounded-[9px] text-white shadow-primary" style={{ width: size, height: size, background: 'linear-gradient(180deg,#1FAE94 0%,#13927B 100%)' }}>
           <Sparkle size={Math.round(size * 0.52)} />
         </span>
       ) : (
@@ -81,7 +81,7 @@ function AiBlock({ b }: { b: TeamAiBlock }) {
     )
   if (b.type === 'bars') {
     const max = Math.max(1, ...b.items.map((x) => x.value))
-    const barColor = (t?: string) => (t === 'warning' ? '#E8721A' : t === 'positive' ? '#0E9F6E' : '#3B6BF5')
+    const barColor = (t?: string) => (t === 'warning' ? '#E8721A' : t === 'positive' ? '#0E9F6E' : '#1FAE94')
     return (
       <div className="bg-surface border border-border rounded-card p-3.5">
         {b.title && <div className="text-[12px] font-semibold text-ink-2 mb-2.5">{b.title}</div>}
@@ -235,7 +235,7 @@ function Composer({ placeholder, onSend, disabled }: { placeholder: string; onSe
 function Working({ steps, i }: { steps: string[]; i: number }) {
   return (
     <div className="flex gap-2.5 px-1">
-      <MemberAvatar m={{ id: AI_MEMBER_ID, name: 'TellOvi AI', role: '', color: '#3B6BF5', status: 'online', bot: true }} size={34} />
+      <MemberAvatar m={{ id: AI_MEMBER_ID, name: 'TellOvi AI', role: '', color: '#1FAE94', status: 'online', bot: true }} size={34} />
       <div className="rounded-card border border-border bg-surface-tint overflow-hidden py-1 min-w-[260px]">
         {steps.map((s, si) => (
           <div key={si} className="flex items-center gap-2.5 px-3.5 py-1.5">

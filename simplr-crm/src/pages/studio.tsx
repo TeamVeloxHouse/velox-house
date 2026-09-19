@@ -11,7 +11,7 @@ import { gbp, designFor, monthlyPayment } from '../lib/solar'
 import type { Deal, FinanceProduct } from '../store/types'
 
 const AMBER = '#E8721A'
-const amberGrad = 'linear-gradient(135deg,#3B6BF5 0%,#7C3AED 100%)' // unified blue→purple highlight
+const amberGrad = 'linear-gradient(135deg,#1FAE94 0%,#159C86 100%)' // unified blue→purple highlight
 
 type PStatus = 'Draft' | 'Sent' | 'Viewed' | 'Won' | 'Lost'
 function statusOf(d: Deal): PStatus {
@@ -43,7 +43,7 @@ export function StudioOverview() {
     <>
       <TopBar title="TellOvi Studio" crumbs={['Overview']} actions={<Button variant="primary" icon={<Sun size={16} />} onClick={() => nav('/studio/design')}>New design</Button>} />
       <PageBody>
-        <div className="rounded-card p-6 text-white relative overflow-hidden" style={{ background: 'linear-gradient(150deg,#1c3a72,#0c1b38)' }}>
+        <div className="rounded-card p-6 text-white relative overflow-hidden" style={{ background: 'linear-gradient(150deg,#15223B,#0A3B33)' }}>
           <div className="absolute inset-0" style={{ background: 'radial-gradient(80% 100% at 90% -10%, rgba(124,58,237,0.28), transparent 55%)' }} />
           <div className="relative">
             <div className="flex items-center gap-2 text-[12px] font-semibold" style={{ color: '#F5B85C' }}><Sun size={14} /> DESIGN · QUOTE · CLOSE</div>

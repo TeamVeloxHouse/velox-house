@@ -1,7 +1,7 @@
 import type { Pipeline, PipelineStage, Features, ID } from '../store/types'
 
 /** A ramp from a light entry blue through the brand blue to a closing green. */
-const RAMP = ['#9DB8FF', '#6E93F6', '#4A73EC', '#2A57DE', '#1D4ED8', '#0E7C66']
+const RAMP = ['#A7E6DA', '#6FD3BE', '#1FAE94', '#13927B', '#0E8C79', '#0A5F52']
 export function stageColor(i: number, n: number): string {
   if (n <= 1) return RAMP[RAMP.length - 1]
   const t = i / (n - 1)

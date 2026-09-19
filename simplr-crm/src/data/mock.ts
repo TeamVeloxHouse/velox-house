@@ -7,7 +7,7 @@ export type Health = 'Healthy' | 'At risk' | 'Stalled' | 'No next step'
 export type StageName = string
 
 export const stages: StageName[] = ['Qualified', 'Contact Made', 'Demo Scheduled', 'Proposal Made', 'Negotiations Started']
-export const stageColors = ['#8FB0FF', '#5B85F0', '#3A67E4', '#1D4ED8', '#0E7C66']
+export const stageColors = ['#57C9B4', '#57C9B4', '#13927B', '#13927B', '#0E7C66']
 
 export type Deal = {
   id: string

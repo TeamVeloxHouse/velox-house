@@ -7,7 +7,7 @@ import { useActions, useState_ } from '../store/store'
 import type { Deal, DashboardWidget, WidgetMetric, WidgetGroup, WidgetChart } from '../store/types'
 import { money } from '../lib/format'
 
-const PALETTE = ['#1D4ED8', '#3A67E4', '#5B85F0', '#8FB0FF', '#0E7C66', '#7C3AED', '#C79A3A', '#B01B4F']
+const PALETTE = ['#13927B', '#13927B', '#57C9B4', '#57C9B4', '#0E7C66', '#159C86', '#C79A3A', '#B01B4F']
 const METRIC_LABEL: Record<WidgetMetric, string> = { open: 'Open value', weighted: 'Weighted value', won: 'Won value', count: 'Deal count' }
 const GROUP_LABEL: Record<WidgetGroup, string> = { stage: 'Stage', owner: 'Owner', health: 'Health' }
 

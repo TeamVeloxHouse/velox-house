@@ -63,9 +63,9 @@ export function PeopleFinder() {
       />
       <PageBody>
         {/* search panel */}
-        <div className="rounded-card p-5" style={{ background: 'linear-gradient(150deg,#EEF2FB,#FFFFFF 70%)', border: '1px solid #D8E2F6' }}>
+        <div className="rounded-card p-5" style={{ background: 'linear-gradient(150deg,#EAF6F2,#FFFFFF 70%)', border: '1px solid #D8E2F6' }}>
           <div className="flex items-center gap-3 mb-3.5">
-            <span className="w-11 h-11 rounded-[12px] flex items-center justify-center text-white shrink-0" style={{ background: 'linear-gradient(180deg,#3B6BF5,#1D4ED8)' }}><Search size={22} /></span>
+            <span className="w-11 h-11 rounded-[12px] flex items-center justify-center text-white shrink-0" style={{ background: 'linear-gradient(180deg,#1FAE94,#13927B)' }}><Search size={22} /></span>
             <div className="flex-1">
               <div className="text-[16px] font-bold text-ink">Source people from 400M+ contacts</div>
               <div className="text-[13px] text-muted-b mt-0.5">Describe your ideal customer. TellOvi searches People Data Labs, then scores and researches each match before anything reaches your CRM.</div>

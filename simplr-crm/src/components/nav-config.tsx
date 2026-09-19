@@ -35,12 +35,12 @@ export type Stage = {
   groups: NavGroup[]
 }
 
-export const BRAND_GRAD = 'linear-gradient(135deg,#3B6BF5 0%,#7C3AED 100%)'
+export const BRAND_GRAD = 'linear-gradient(135deg,#1FAE94 0%,#159C86 100%)'
 
 export const STAGES: Stage[] = [
   {
     id: 'ovi', name: 'Ovi', desc: 'Your AI operator', icon: Sparkle, to: '/ai',
-    accent: '#6D4AEE', wash: '#F1EDFE',
+    accent: '#159C86', wash: '#E8FAF5',
     groups: [
       { label: 'Operator', items: [
         { to: '/reach/ai', icon: Sparkle, label: 'Ovi operator', feature: 'reach' },
@@ -56,7 +56,7 @@ export const STAGES: Stage[] = [
   },
   {
     id: 'find', name: 'Find', desc: 'Prospecting & discovery', icon: Radar, to: '/tools',
-    accent: '#2563EB', wash: '#EAF1FE', feature: 'reach',
+    accent: '#1FAE94', wash: '#E6F8F2', feature: 'reach',
     groups: [
       { label: 'Prospect', items: [
         { to: '/tools', icon: Grid, label: 'Tools', feature: 'reach', end: true },
@@ -71,7 +71,7 @@ export const STAGES: Stage[] = [
   },
   {
     id: 'engage', name: 'Engage', desc: 'Outreach & follow-up', icon: Send, to: '/reach/outreach',
-    accent: '#6366F1', wash: '#EEEEFE',
+    accent: '#13927B', wash: '#E3F4EF',
     groups: [
       { label: 'Outreach', items: [
         { to: '/reach/outreach', icon: Send, label: 'Outreach', feature: 'reach' },
@@ -90,7 +90,7 @@ export const STAGES: Stage[] = [
   },
   {
     id: 'design', name: 'Design', desc: 'Solar design & proposals', icon: Sun, to: '/design',
-    accent: '#7C3AED', wash: '#F3EDFE',
+    accent: '#0E9A82', wash: '#E7F7F2',
     groups: [
       { label: 'Design', items: [
         { to: '/design', icon: Sun, label: 'Design Studio', feature: 'studio', end: true },
@@ -120,7 +120,7 @@ export const STAGES: Stage[] = [
   },
   {
     id: 'deliver', name: 'Deliver', desc: 'Install & customer care', icon: Wrench, to: '/studio/delivery',
-    accent: '#D97706', wash: '#FCF3E7',
+    accent: '#0A8F79', wash: '#E6F5F0',
     groups: [
       { label: 'Install & handover', items: [
         { to: '/studio/delivery', icon: Flow, label: 'Delivery' },

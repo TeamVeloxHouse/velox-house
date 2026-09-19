@@ -183,7 +183,7 @@ export function personCompleteness(person: Person, customFields: { id: string; e
 
 export const bandColor: Record<Band, { fg: string; bg: string }> = {
   Hot: { fg: '#0E7C66', bg: '#E9F5F1' },
-  Warm: { fg: '#1D4ED8', bg: '#EEF2FB' },
+  Warm: { fg: '#13927B', bg: '#EAF6F2' },
   Cool: { fg: '#C2410C', bg: '#FDF1E7' },
   Cold: { fg: '#7A8494', bg: '#F1F3F7' },
 }

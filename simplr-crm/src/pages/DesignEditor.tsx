@@ -77,7 +77,7 @@ const anyCornerInside = (p: LatLng[], q: LatLng[]) => p.some((c) => pointInRing(
 const quadsOverlap = (a: LatLng[], b: LatLng[]) => anyCornerInside(a, b) || anyCornerInside(b, a)
 // A circular-arrow "rotate" cursor shown when hovering a selection's corner node / rotate handle.
 const ROTATE_CURSOR = (() => {
-  try { const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v5h-5"/></svg>`; return `url("data:image/svg+xml;base64,${btoa(svg)}") 13 13, auto` } catch { return 'grab' }
+  try { const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#159C86" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v5h-5"/></svg>`; return `url("data:image/svg+xml;base64,${btoa(svg)}") 13 13, auto` } catch { return 'grab' }
 })()
 
 /** Effective generating tilt — tilt-racking on a flat roof beats the flat pitch. */
@@ -211,7 +211,7 @@ export function DesignEditor() {
     // Ghost styling — draw intended modules as real panels (dark glass + a thin intent-coloured frame)
     // so the preview reads exactly like what will land. Purple = place, teal = move, red = clear.
     const GH: Record<string, { frame: string; glass: string; fill: number; weight: number }> = {
-      add: { frame: '#7C3AED', glass: '#0A0E17', fill: 0.82, weight: 1.6 },
+      add: { frame: '#159C86', glass: '#0A0E17', fill: 0.82, weight: 1.6 },
       move: { frame: '#17B890', glass: '#0A0E17', fill: 0.82, weight: 1.6 },
       remove: { frame: '#FF5A5A', glass: '#FF6B6B', fill: 0.34, weight: 1.6 },
       bad: { frame: '#FF5A5A', glass: '#FF6B6B', fill: 0.14, weight: 1.4 },
@@ -349,7 +349,7 @@ export function DesignEditor() {
       if (t === 'select' && marqStart) { // marquee rectangle
         const a = marqStart, b = e.latlng
         const g = ghostLayer.current!; g.clearLayers()
-        L.polygon([[a.lat, a.lng], [a.lat, b.lng], [b.lat, b.lng], [b.lat, a.lng]] as [number, number][], { renderer: panelRenderer.current!, pmIgnore: true, interactive: false, color: '#7C3AED', weight: 1.4, dashArray: '5 3', fillColor: '#7C3AED', fillOpacity: 0.08 } as any).addTo(g)
+        L.polygon([[a.lat, a.lng], [a.lat, b.lng], [b.lat, b.lng], [b.lat, a.lng]] as [number, number][], { renderer: panelRenderer.current!, pmIgnore: true, interactive: false, color: '#159C86', weight: 1.4, dashArray: '5 3', fillColor: '#159C86', fillOpacity: 0.08 } as any).addTo(g)
         return
       }
       if (t === 'select' && !grpMode && !marqStart) { // idle hover → show a rotate cursor over nodes/handle, move cursor over the selection/panels
@@ -523,7 +523,7 @@ export function DesignEditor() {
       const on = p.id === selId
       const ring = p.polygon.map((v) => [v.lat, v.lng]) as [number, number][]
       L.polygon(ring, { pmIgnore: true, color: '#0A1B2B', weight: 6, opacity: 0.4, fill: false } as any).addTo(lyr)
-      const poly = L.polygon(ring, { color: on ? '#A97BF3' : '#00E5FF', weight: on ? 4 : 2.5, fillColor: on ? '#7C3AED' : '#22E0FF', fillOpacity: p.panels?.length ? 0.06 : (on ? 0.28 : 0.2) })
+      const poly = L.polygon(ring, { color: on ? '#A97BF3' : '#00E5FF', weight: on ? 4 : 2.5, fillColor: on ? '#159C86' : '#22E0FF', fillOpacity: p.panels?.length ? 0.06 : (on ? 0.28 : 0.2) })
       ;(poly as any)._planeId = p.id
       poly.on('click', (e) => { L.DomEvent.stopPropagation(e); if (toolRef.current !== 'pan') { setSelId(p.id); setSelObsId(null) } })
       poly.on('pm:edit', () => syncGeometry(p.id, poly))
@@ -562,14 +562,14 @@ export function DesignEditor() {
       for (const pn of selItems) for (const v of pn.corners) { const ex = (v.lng - c0.lng) * mLng, ny = (v.lat - c0.lat) * mLat; const rx = ex * ca + ny * sa, ry = -ex * sa + ny * ca; minX = Math.min(minX, rx); maxX = Math.max(maxX, rx); minY = Math.min(minY, ry); maxY = Math.max(maxY, ry) }
       const back = (rx: number, ry: number) => ({ lat: c0.lat + (rx * sa + ry * ca) / mLat, lng: c0.lng + (rx * ca - ry * sa) / mLng })
       const corners = [back(minX, minY), back(maxX, minY), back(maxX, maxY), back(minX, maxY)]
-      L.polygon(corners.map((v) => [v.lat, v.lng]) as [number, number][], { pmIgnore: true, interactive: false, color: '#7C3AED', weight: 2, fill: false, dashArray: '4 3' } as any).addTo(pl)
-      corners.forEach((v) => L.circleMarker([v.lat, v.lng], { radius: 5, color: '#7C3AED', weight: 2, fillColor: '#fff', fillOpacity: 1, pmIgnore: true, interactive: false } as any).addTo(pl))
+      L.polygon(corners.map((v) => [v.lat, v.lng]) as [number, number][], { pmIgnore: true, interactive: false, color: '#159C86', weight: 2, fill: false, dashArray: '4 3' } as any).addTo(pl)
+      corners.forEach((v) => L.circleMarker([v.lat, v.lng], { radius: 5, color: '#159C86', weight: 2, fillColor: '#fff', fillOpacity: 1, pmIgnore: true, interactive: false } as any).addTo(pl))
       // rotate handle — top-centre of the screen bounding box, offset up (matches the hit-test)
       const pts = corners.map((v) => mp.latLngToContainerPoint([v.lat, v.lng]))
       const minx = Math.min(...pts.map((p) => p.x)), maxx = Math.max(...pts.map((p) => p.x)), miny = Math.min(...pts.map((p) => p.y))
       const anchor = mp.containerPointToLatLng(L.point((minx + maxx) / 2, miny)), hp = mp.containerPointToLatLng(L.point((minx + maxx) / 2, miny - 24))
-      L.polyline([[anchor.lat, anchor.lng], [hp.lat, hp.lng]], { color: '#7C3AED', weight: 1.6, opacity: 0.9, pmIgnore: true, interactive: false } as any).addTo(pl)
-      L.circleMarker([hp.lat, hp.lng], { radius: 6, color: '#7C3AED', weight: 2, fillColor: '#fff', fillOpacity: 1, pmIgnore: true, interactive: false } as any).addTo(pl)
+      L.polyline([[anchor.lat, anchor.lng], [hp.lat, hp.lng]], { color: '#159C86', weight: 1.6, opacity: 0.9, pmIgnore: true, interactive: false } as any).addTo(pl)
+      L.circleMarker([hp.lat, hp.lng], { radius: 6, color: '#159C86', weight: 2, fillColor: '#fff', fillOpacity: 1, pmIgnore: true, interactive: false } as any).addTo(pl)
     }
     // Frame the roof only when the structure changes (detect/draw) — never on a panel edit, or the map would jump mid-drag.
     const fitKey = `${design.id}:${design.planes.length}`
@@ -931,12 +931,12 @@ export function DesignEditor() {
           return (
             <button key={t.id} onClick={() => setTab(t.id)} className={`relative h-11 px-3.5 text-[13.5px] font-semibold inline-flex items-center gap-2 transition-colors ${on ? 'text-accent' : 'text-muted-b hover:text-ink-3'}`}>
               <t.icon size={15} />{t.label}
-              {on && <span className="absolute left-2 right-2 -bottom-px h-[2.5px] rounded-full" style={{ background: 'linear-gradient(90deg,#3B6BF5,#7C3AED)' }} />}
+              {on && <span className="absolute left-2 right-2 -bottom-px h-[2.5px] rounded-full" style={{ background: 'linear-gradient(90deg,#1FAE94,#159C86)' }} />}
             </button>
           )
         })}
         <div className="ml-auto flex items-center gap-3">
-          <button onClick={() => setOviOpen(true)} className="h-8 px-3 rounded-full text-white text-[12.5px] font-semibold inline-flex items-center gap-1.5 shadow-primary" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Sparkle size={13} />Design with Ovi</button>
+          <button onClick={() => setOviOpen(true)} className="h-8 px-3 rounded-full text-white text-[12.5px] font-semibold inline-flex items-center gap-1.5 shadow-primary" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Sparkle size={13} />Design with Ovi</button>
           <div className="flex items-center gap-2 text-[12px] text-muted-b">
             <span className="font-bold text-ink tabular-nums">{kwp || '—'}</span> kWp
             <span className="w-px h-4 bg-divider" />
@@ -973,27 +973,27 @@ export function DesignEditor() {
             <div className={`absolute z-[550] flex items-center gap-1 bg-white/95 backdrop-blur border border-border rounded-control shadow-modal p-1 ${view === '3d' ? 'bottom-3 right-3' : 'top-3 right-3'}`}>
               {view === '2d' && (
                 <>
-                  {hdReady && <button onClick={() => setHdOn((v) => !v)} title={hdOn ? 'High-res Google aerial — on' : 'Show high-res Google aerial'} className={`h-8 px-2.5 rounded-[8px] text-[12px] font-bold inline-flex items-center gap-1 ${hdOn ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={hdOn ? { background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' } : undefined}><Sun size={12} />HD</button>}
+                  {hdReady && <button onClick={() => setHdOn((v) => !v)} title={hdOn ? 'High-res Google aerial — on' : 'Show high-res Google aerial'} className={`h-8 px-2.5 rounded-[8px] text-[12px] font-bold inline-flex items-center gap-1 ${hdOn ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={hdOn ? { background: 'linear-gradient(135deg,#1FAE94,#159C86)' } : undefined}><Sun size={12} />HD</button>}
                   <button onClick={() => setBoundaryOn((v) => !v)} title="Land-ownership boundary (HMLR INSPIRE, else building footprint)" className={`h-8 px-2.5 rounded-[8px] text-[12px] font-bold inline-flex items-center gap-1 ${boundaryOn ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={boundaryOn ? { background: '#E5484D' } : undefined}><Target size={12} />Plot</button>
                   <button onClick={() => setMeasureOn((v) => !v)} title="Show roof measurements — edge lengths & face area" className={`h-8 px-2.5 rounded-[8px] text-[12px] font-bold inline-flex items-center gap-1 ${measureOn ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={measureOn ? { background: '#0A0E17' } : undefined}><Wrench size={12} />Measure</button>
                   <span className="w-px h-5 bg-divider" />
                 </>
               )}
               {(['2d', '3d'] as const).map((v) => (
-                <button key={v} onClick={() => setView(v)} className={`h-8 px-3 rounded-[8px] text-[12.5px] font-bold ${view === v ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={view === v ? { background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' } : undefined}>{v.toUpperCase()}</button>
+                <button key={v} onClick={() => setView(v)} className={`h-8 px-3 rounded-[8px] text-[12.5px] font-bold ${view === v ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={view === v ? { background: 'linear-gradient(135deg,#1FAE94,#159C86)' } : undefined}>{v.toUpperCase()}</button>
               ))}
             </div>
             {busy && (
               <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[500] h-9 px-4 rounded-full bg-black/75 text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal"><span className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />{status}</div>
             )}
             {drawing && !busy && (
-              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[500] h-9 px-4 rounded-full text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Target size={14} />Click each corner of the roof, then click the first point to close</div>
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[500] h-9 px-4 rounded-full text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Target size={14} />Click each corner of the roof, then click the first point to close</div>
             )}
             {view === '2d' && !busy && tool === 'pin' && (
-              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[510] h-9 px-4 rounded-full text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Target size={14} />Click the exact roof to re-centre &amp; detect here</div>
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[510] h-9 px-4 rounded-full text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Target size={14} />Click the exact roof to re-centre &amp; detect here</div>
             )}
             {view === '2d' && !busy && tool === 'edit' && (
-              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[510] h-9 px-4 rounded-full text-white text-[12px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Wrench size={13} />Drag a corner to reshape · click an edge to add a point · right-click a point to remove — live dimensions show as you drag</div>
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[510] h-9 px-4 rounded-full text-white text-[12px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Wrench size={13} />Drag a corner to reshape · click an edge to add a point · right-click a point to remove — live dimensions show as you drag</div>
             )}
             {!busy && sel && !(view === '2d' && tool === 'pin') && (
               <div className={`absolute top-3 left-[64px] z-[540] flex pointer-events-none [&>*]:pointer-events-auto overflow-x-auto ${view === '3d' ? 'right-3' : 'right-[232px]'}`}>
@@ -1019,7 +1019,7 @@ export function DesignEditor() {
               </div>
             )}
             {view === '2d' && !busy && !drawing && !sel && design.planes.length > 0 && (tool === 'add' || tool === 'remove' || tool === 'rotate' || tool === 'select') && (
-              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[500] h-9 px-4 rounded-full text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}>
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[500] h-9 px-4 rounded-full text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}>
                 {tool === 'add' && <><Grid size={14} />Click to place a module · drag for a block{ghostN != null ? ` · ${ghostN}` : ''}</>}
                 {tool === 'remove' && <><EraseIcon />Click a panel to remove · drag to clear a block{ghostN != null ? ` · ${ghostN}` : ''}</>}
                 {tool === 'rotate' && <><RotateIcon />Drag around the array to spin the grid{rotDeg != null ? ` · ${rotDeg}°` : ''}</>}
@@ -1029,11 +1029,11 @@ export function DesignEditor() {
             {design.planes.length === 0 && !busy && !drawing && (
               <div className="absolute inset-0 z-[400] flex items-center justify-center pointer-events-none">
                 <div className="bg-surface/95 backdrop-blur border border-border rounded-card px-6 py-5 text-center shadow-modal max-w-[380px] pointer-events-auto">
-                  <span className="w-12 h-12 mx-auto rounded-2xl flex items-center justify-center text-white mb-3" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Sun size={22} /></span>
+                  <span className="w-12 h-12 mx-auto rounded-2xl flex items-center justify-center text-white mb-3" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Sun size={22} /></span>
                   <div className="text-[15px] font-bold text-ink">Capture the roof</div>
                   <div className="text-[12.5px] text-muted-b mt-1"><b>Trace building</b> pulls the real outline from OpenStreetMap (most reliable), <b>Detect</b> tries Google's read, or <b>Draw</b> by hand. Then split into faces and <b>Ovi auto-layout</b>.</div>
                   <div className="flex items-center gap-2 justify-center mt-3 flex-wrap">
-                    <button onClick={traceBuilding} className="h-9 px-3.5 rounded-control text-white text-[13px] font-semibold inline-flex items-center gap-1.5" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Layers size={14} />Trace building</button>
+                    <button onClick={traceBuilding} className="h-9 px-3.5 rounded-control text-white text-[13px] font-semibold inline-flex items-center gap-1.5" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Layers size={14} />Trace building</button>
                     <button onClick={() => runDetect()} className="h-9 px-3.5 rounded-control border border-border text-[13px] font-semibold text-ink-3 hover:bg-control inline-flex items-center gap-1.5"><Radar size={14} />Detect</button>
                     <button onClick={() => selectTool('draw')} className="h-9 px-3.5 rounded-control border border-border text-[13px] font-semibold text-ink-3 hover:bg-control inline-flex items-center gap-1.5"><Plus size={14} />Draw</button>
                   </div>
@@ -1091,7 +1091,7 @@ function DesignInspector({ design, selId, onSelect, onUpdate, onFill, onClear, o
         ) : design.planes.map((p) => (
           <div key={p.id} className={`px-4 py-3 border-b border-divider cursor-pointer ${p.id === selId ? 'bg-accent-wash' : 'hover:bg-control/40'}`} onClick={() => onSelect(p.id)}>
             <div className="flex items-center justify-between gap-2">
-              <div className="font-semibold text-[13px] text-ink-2 flex items-center gap-1.5 min-w-0"><span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: p.id === selId ? '#7C3AED' : '#00E5FF' }} /><span className="truncate">{p.name}</span></div>
+              <div className="font-semibold text-[13px] text-ink-2 flex items-center gap-1.5 min-w-0"><span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: p.id === selId ? '#159C86' : '#00E5FF' }} /><span className="truncate">{p.name}</span></div>
               <button onClick={(e) => { e.stopPropagation(); onDelete(p.id) }} className="text-muted-2 hover:text-negative text-[15px] leading-none shrink-0">✕</button>
             </div>
             <div className="grid grid-cols-4 gap-1.5 mt-2 text-center">
@@ -1106,7 +1106,7 @@ function DesignInspector({ design, selId, onSelect, onUpdate, onFill, onClear, o
                 <Slider label="Azimuth" value={p.azimuthDeg} min={0} max={359} suffix="°" onChange={(v) => onUpdate(p.id, { azimuthDeg: v })} />
                 <Slider label="Array angle" value={Math.round(p.arrayAngleDeg ?? 0)} min={0} max={179} suffix="°" onChange={(v) => onUpdate(p.id, { arrayAngleDeg: v }, true)} />
                 <div className="flex items-center gap-2">
-                  <button onClick={(e) => { e.stopPropagation(); onFill(p.id) }} className="flex-1 h-8 rounded-control text-white text-[12px] font-semibold inline-flex items-center justify-center gap-1.5" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Grid size={13} />Fill panels</button>
+                  <button onClick={(e) => { e.stopPropagation(); onFill(p.id) }} className="flex-1 h-8 rounded-control text-white text-[12px] font-semibold inline-flex items-center justify-center gap-1.5" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Grid size={13} />Fill panels</button>
                   {p.panels?.length ? <button onClick={(e) => { e.stopPropagation(); onClear(p.id) }} className="h-8 px-3 rounded-control border border-border text-[12px] font-semibold text-muted-b hover:bg-control">Clear</button> : null}
                 </div>
               </div>
@@ -1137,7 +1137,7 @@ function ArrayInspector({ design, sel, moduleId, setModuleId, onSelect, onUpdate
       {/* Goal-driven auto-layout */}
       <div className="p-3.5 border-b border-divider">
         <div className="eyebrow text-muted-3 mb-2">Ovi auto-layout</div>
-        <button onClick={() => onGoal({ kind: 'max' })} className="w-full h-9 rounded-control text-white text-[13px] font-semibold inline-flex items-center justify-center gap-2 mb-2" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Sparkle size={14} />Maximum coverage</button>
+        <button onClick={() => onGoal({ kind: 'max' })} className="w-full h-9 rounded-control text-white text-[13px] font-semibold inline-flex items-center justify-center gap-2 mb-2" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Sparkle size={14} />Maximum coverage</button>
         <div className="flex items-center gap-2">
           <input value={targetKwp} onChange={(e) => setTargetKwp(e.target.value.replace(/[^0-9.]/g, ''))} placeholder="Target kWp" className="flex-1 h-9 px-3 rounded-control border border-input-border bg-white text-[13px] outline-none focus:border-accent" />
           <button onClick={() => { const v = parseFloat(targetKwp); if (v > 0) onGoal({ kind: 'target-kwp', kwp: v }) }} className="h-9 px-3.5 rounded-control border border-border text-[12.5px] font-semibold text-ink-3 hover:bg-control inline-flex items-center gap-1.5"><Bolt size={13} />Size it</button>
@@ -1152,7 +1152,7 @@ function ArrayInspector({ design, sel, moduleId, setModuleId, onSelect, onUpdate
       <div className="px-2 flex flex-col gap-1 max-h-[26%] overflow-y-auto">
         {design.planes.map((p) => (
           <button key={p.id} onClick={() => onSelect(p.id)} className={`w-full text-left px-2.5 py-2 rounded-lg flex items-center gap-2 ${p.id === sel?.id ? 'bg-accent-wash-2 text-accent-700' : 'hover:bg-control text-ink-3'}`}>
-            <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: p.id === sel?.id ? '#7C3AED' : '#00E5FF' }} />
+            <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: p.id === sel?.id ? '#159C86' : '#00E5FF' }} />
             <span className="flex-1 truncate text-[12.5px] font-medium">{p.name}</span>
             <span className="text-[11px] tabular-nums text-muted-2">{p.panels?.length ?? 0}</span>
           </button>
@@ -1187,7 +1187,7 @@ function ArrayInspector({ design, sel, moduleId, setModuleId, onSelect, onUpdate
               <div className="grid grid-cols-3 gap-1.5">
                 {rackingOpts.map((r) => {
                   const on = (sel.racking ?? 'flush') === r.id
-                  return <button key={r.id} onClick={() => onUpdate(sel.id, { racking: r.id }, true)} className={`h-8 rounded-control text-[12px] font-semibold ${on ? 'text-white' : 'border border-border text-ink-3 hover:bg-control'}`} style={on ? { background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' } : undefined}>{r.label}</button>
+                  return <button key={r.id} onClick={() => onUpdate(sel.id, { racking: r.id }, true)} className={`h-8 rounded-control text-[12px] font-semibold ${on ? 'text-white' : 'border border-border text-ink-3 hover:bg-control'}`} style={on ? { background: 'linear-gradient(135deg,#1FAE94,#159C86)' } : undefined}>{r.label}</button>
                 })}
               </div>
             </Field>
@@ -1198,7 +1198,7 @@ function ArrayInspector({ design, sel, moduleId, setModuleId, onSelect, onUpdate
                 {([['auto', 'Auto'], ['portrait', 'Portrait'], ['landscape', 'Landscape']] as const).map(([id, label]) => {
                   const cur = sel.orientation ?? 'auto'
                   const on = cur === id
-                  return <button key={id} onClick={() => onUpdate(sel.id, { orientation: id === 'auto' ? undefined : (id as PanelOrientation) }, true)} className={`h-8 rounded-control text-[12px] font-semibold ${on ? 'text-white' : 'border border-border text-ink-3 hover:bg-control'}`} style={on ? { background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' } : undefined}>{label}</button>
+                  return <button key={id} onClick={() => onUpdate(sel.id, { orientation: id === 'auto' ? undefined : (id as PanelOrientation) }, true)} className={`h-8 rounded-control text-[12px] font-semibold ${on ? 'text-white' : 'border border-border text-ink-3 hover:bg-control'}`} style={on ? { background: 'linear-gradient(135deg,#1FAE94,#159C86)' } : undefined}>{label}</button>
                 })}
               </div>
             </Field>
@@ -1216,7 +1216,7 @@ function ArrayInspector({ design, sel, moduleId, setModuleId, onSelect, onUpdate
             </label>
 
             <div className="flex items-center gap-2 pt-1">
-              <button onClick={() => onFill(sel.id)} className="flex-1 h-9 rounded-control text-white text-[12.5px] font-semibold inline-flex items-center justify-center gap-1.5" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Grid size={13} />Fill this group</button>
+              <button onClick={() => onFill(sel.id)} className="flex-1 h-9 rounded-control text-white text-[12.5px] font-semibold inline-flex items-center justify-center gap-1.5" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Grid size={13} />Fill this group</button>
               {sel.panels?.length ? <button onClick={() => onClear(sel.id)} className="h-9 px-3 rounded-control border border-border text-[12.5px] font-semibold text-muted-b hover:bg-control">Clear</button> : null}
             </div>
           </div>
@@ -1252,7 +1252,7 @@ function ProductionPane({ design, moduleId, kwp, count, annualKwh }: { design: D
                 return (
                   <div key={p.id} className="flex items-center gap-3">
                     <div className="w-40 shrink-0 text-[12.5px] font-medium text-ink-2 truncate">{p.name} <span className="text-muted-2">· {compass(p.azimuthDeg)} {effTilt(p)}°</span></div>
-                    <div className="flex-1 h-6 rounded-md bg-control overflow-hidden"><div className="h-full rounded-md flex items-center px-2 text-[10.5px] font-bold text-white" style={{ width: `${Math.max(pct, 6)}%`, background: 'linear-gradient(90deg,#3B6BF5,#7C3AED)' }}>{pct}%</div></div>
+                    <div className="flex-1 h-6 rounded-md bg-control overflow-hidden"><div className="h-full rounded-md flex items-center px-2 text-[10.5px] font-bold text-white" style={{ width: `${Math.max(pct, 6)}%`, background: 'linear-gradient(90deg,#1FAE94,#159C86)' }}>{pct}%</div></div>
                     <div className="w-32 shrink-0 text-right text-[12.5px] tabular-nums text-ink-2"><b>{pkwh.toLocaleString()}</b> kWh · {n}×</div>
                   </div>
                 )
@@ -1281,7 +1281,7 @@ function ProposalPane({ design, kwp, count, annualKwh, onOpen, onConfirm }: { de
             <BigStat v={annualKwh ? annualKwh.toLocaleString() : '—'} u="kWh / yr" />
           </div>
           <div className="flex items-center gap-2 mt-4">
-            <button onClick={onConfirm} className="h-10 px-4 rounded-control text-white text-[13px] font-semibold inline-flex items-center gap-2" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Check size={15} />Confirm design {design.status === 'confirmed' && '✓'}</button>
+            <button onClick={onConfirm} className="h-10 px-4 rounded-control text-white text-[13px] font-semibold inline-flex items-center gap-2" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Check size={15} />Confirm design {design.status === 'confirmed' && '✓'}</button>
             <button onClick={onOpen} className="h-10 px-4 rounded-control border border-border text-[13px] font-semibold text-ink-3 hover:bg-control inline-flex items-center gap-2"><File size={15} />Open proposals</button>
           </div>
         </div>
@@ -1299,7 +1299,7 @@ function BigStat({ v, u }: { v: string; u: string }) {
 }
 function ToolBtn({ on, onClick, icon, label }: { on: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
   return (
-    <button onClick={onClick} aria-label={label} className={`group relative h-9 w-9 rounded-[8px] flex items-center justify-center ${on ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={on ? { background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' } : undefined}>
+    <button onClick={onClick} aria-label={label} className={`group relative h-9 w-9 rounded-[8px] flex items-center justify-center ${on ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={on ? { background: 'linear-gradient(135deg,#1FAE94,#159C86)' } : undefined}>
       {icon}
       <span className="pointer-events-none absolute left-[calc(100%+10px)] top-1/2 -translate-y-1/2 whitespace-nowrap rounded-md bg-[#0A1B2B] text-white text-[11.5px] font-semibold px-2.5 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-modal z-[20]">{label}</span>
     </button>
@@ -1325,14 +1325,14 @@ function ArrayToolbar({ sel, moduleId, onUpdate, onUndo, onRedo, canUndo, canRed
       <ToolSep />
       <div className="flex items-center rounded-[7px] border border-border overflow-hidden">
         {([['portrait', '▯'], ['landscape', '▭']] as const).map(([o, g]) => (
-          <button key={o} title={o} onClick={() => onUpdate(sel.id, { orientation: o as PanelOrientation }, true)} className={`h-7 px-2 text-[12px] font-semibold ${orient === o ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={orient === o ? { background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' } : undefined}>{g}</button>
+          <button key={o} title={o} onClick={() => onUpdate(sel.id, { orientation: o as PanelOrientation }, true)} className={`h-7 px-2 text-[12px] font-semibold ${orient === o ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={orient === o ? { background: 'linear-gradient(135deg,#1FAE94,#159C86)' } : undefined}>{g}</button>
         ))}
       </div>
       <ToolSep />
       <NumField icon={<span className="text-[11px] font-bold">⇕</span>} label="Row gap" value={Math.round((sel.rowGapM ?? 0.02) * 1000)} suffix="mm" min={0} max={800} step={5} onChange={(v) => onUpdate(sel.id, { rowGapM: v / 1000 }, true)} />
       <NumField icon={<span className="text-[11px] font-bold">⇔</span>} label="Panel gap" value={Math.round((sel.panelGapM ?? 0.02) * 1000)} suffix="mm" min={0} max={800} step={5} onChange={(v) => onUpdate(sel.id, { panelGapM: v / 1000 }, true)} />
       <ToolSep />
-      <button onClick={onFill} title="Fill this face with panels" className="h-7 px-2.5 rounded-[7px] text-white text-[12px] font-semibold inline-flex items-center gap-1" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Grid size={12} />Fill</button>
+      <button onClick={onFill} title="Fill this face with panels" className="h-7 px-2.5 rounded-[7px] text-white text-[12px] font-semibold inline-flex items-center gap-1" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Grid size={12} />Fill</button>
       <button onClick={onCentre} disabled={!n} title="Centre the array on this face" className={`h-7 px-2.5 rounded-[7px] text-[12px] font-semibold inline-flex items-center gap-1 border border-border ${n ? 'text-ink-3 hover:bg-control' : 'text-muted-2/40 cursor-default'}`}><CentreIcon />Centre</button>
       <ToolSep />
       <div className="px-1.5 text-[11.5px] text-muted-b whitespace-nowrap"><b className="text-ink tabular-nums">{n}</b> · <b className="text-ink tabular-nums">{kwpOf(n, mod.watts)}</b> kWp</div>

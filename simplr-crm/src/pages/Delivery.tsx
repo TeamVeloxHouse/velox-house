@@ -14,7 +14,7 @@ import type { StudioProject, ProjectOrder, ProjectInvoice, OrderItem, InvoiceKin
 import { gbp } from '../lib/solar'
 import { classNames } from '../lib/format'
 
-const milestoneColor = ['#8FB0FF', '#7AA0F5', '#5B85F0', '#3A67E4', '#2E5AD8', '#1D4ED8', '#1740B8', '#0E7C66']
+const milestoneColor = ['#57C9B4', '#7AA0F5', '#57C9B4', '#13927B', '#2E5AD8', '#13927B', '#1740B8', '#0E7C66']
 
 export function Delivery() {
   const nav = useNavigate()

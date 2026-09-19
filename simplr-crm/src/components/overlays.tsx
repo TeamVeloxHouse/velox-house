@@ -91,7 +91,7 @@ export function Toaster() {
         >
           <span
             className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
-            style={{ background: t.tone === 'warning' ? '#C2410C' : t.tone === 'accent' ? '#1D4ED8' : '#0E7C66' }}
+            style={{ background: t.tone === 'warning' ? '#C2410C' : t.tone === 'accent' ? '#13927B' : '#0E7C66' }}
           >
             {t.tone === 'accent' ? <Sparkle size={12} /> : <Check size={12} strokeWidth={2.6} />}
           </span>

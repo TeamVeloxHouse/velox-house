@@ -128,7 +128,7 @@ function NumField({ label, value, onChange, step = 1, prefix, suffix }: { label:
   )
 }
 
-function SliderRow({ label, value, onChange, min, max, suffix, accent = '#1D4ED8' }: { label: string; value: number; onChange: (v: number) => void; min: number; max: number; suffix?: string; accent?: string }) {
+function SliderRow({ label, value, onChange, min, max, suffix, accent = '#13927B' }: { label: string; value: number; onChange: (v: number) => void; min: number; max: number; suffix?: string; accent?: string }) {
   return (
     <div className={label ? 'mt-1' : 'mt-2'}>
       {label && <FieldLabel>{label}</FieldLabel>}

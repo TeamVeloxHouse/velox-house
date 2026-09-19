@@ -11,7 +11,7 @@ import { designFrom, analyseRoof, analyseRoofLive, gbp, PANEL_DIM, type SolarDes
 type DMsg = { role: 'user' | 'ai'; text: string; steps?: { label: string; done: boolean }[] }
 
 const IMG_W = 640, IMG_H = 400, ZOOM = 20
-const aspectColor = (irr: number) => (irr >= 0.92 ? '#1D4ED8' : irr >= 0.82 ? '#2E5AD8' : '#5B7FE0')
+const aspectColor = (irr: number) => (irr >= 0.92 ? '#13927B' : irr >= 0.82 ? '#2E5AD8' : '#5B7FE0')
 
 /** Split the design's panels across roof planes, best aspect first (mirrors designFrom). */
 function allocate(design: SolarDesign): { seg: RoofSegment; count: number }[] {
@@ -275,7 +275,7 @@ export function DesignStudio() {
                 </div>
                 <div className="flex items-center gap-3">
                   <button onClick={() => setPanels(Math.max(4, design.panels - 1))} className="w-9 h-9 rounded-lg border border-border text-ink-3 hover:bg-control text-[18px] leading-none">−</button>
-                  <input type="range" min={4} max={design.maxPanels} value={design.panels} onChange={(e) => setPanels(Number(e.target.value))} className="flex-1 accent-[#1D4ED8]" />
+                  <input type="range" min={4} max={design.maxPanels} value={design.panels} onChange={(e) => setPanels(Number(e.target.value))} className="flex-1 accent-[#13927B]" />
                   <button onClick={() => setPanels(Math.min(design.maxPanels, design.panels + 1))} className="w-9 h-9 rounded-lg border border-border text-ink-3 hover:bg-control text-[18px] leading-none">+</button>
                   <div className="text-[15px] font-bold text-ink-2 w-20 text-right">{design.systemKwp} kWp</div>
                 </div>
@@ -295,10 +295,10 @@ export function DesignStudio() {
             </div>
 
             <div className="flex flex-col gap-4">
-              <div className="rounded-card p-5 text-white" style={{ background: 'linear-gradient(155deg,#1c3a72,#0c1b38)' }}>
+              <div className="rounded-card p-5 text-white" style={{ background: 'linear-gradient(155deg,#15223B,#0A3B33)' }}>
                 <div className="text-[12px]" style={{ color: '#93A0B4' }}>Estimated annual savings</div>
-                <div className="text-[34px] font-bold mt-1">{gbp(design.annualSavings)}<span className="text-[16px] font-medium" style={{ color: '#8FB0FF' }}>/yr</span></div>
-                <div className="text-[12.5px] mt-1" style={{ color: '#8FB0FF' }}>{design.billOffsetPct}% of a typical electricity bill offset</div>
+                <div className="text-[34px] font-bold mt-1">{gbp(design.annualSavings)}<span className="text-[16px] font-medium" style={{ color: '#57C9B4' }}>/yr</span></div>
+                <div className="text-[12.5px] mt-1" style={{ color: '#57C9B4' }}>{design.billOffsetPct}% of a typical electricity bill offset</div>
                 <div className="h-2 rounded-full bg-white/15 overflow-hidden mt-3"><div className="h-full rounded-full" style={{ width: `${design.billOffsetPct}%`, background: 'linear-gradient(90deg,#F5A623,#E8721A)' }} /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">

@@ -104,10 +104,10 @@ export function LiveMeeting() {
       <PageBody>
         {phase === 'setup' && (
           <div className="max-w-[720px] mx-auto w-full flex flex-col gap-5">
-            <div className="rounded-card p-6 text-white" style={{ background: 'linear-gradient(150deg,#1c3a72,#0c1b38)' }}>
-              <div className="flex items-center gap-1.5 text-[12px] font-semibold" style={{ color: '#8FB0FF' }}><Mic size={14} /> IN-THE-ROOM RECORDER</div>
+            <div className="rounded-card p-6 text-white" style={{ background: 'linear-gradient(150deg,#15223B,#0A3B33)' }}>
+              <div className="flex items-center gap-1.5 text-[12px] font-semibold" style={{ color: '#57C9B4' }}><Mic size={14} /> IN-THE-ROOM RECORDER</div>
               <div className="text-[22px] font-bold mt-1.5">Record the meeting. Ovi does the rest.</div>
-              <div className="text-[13.5px] mt-1.5 leading-relaxed" style={{ color: '#C7D3F2' }}>Ovi listens, recognises who’s speaking, then at the end writes the summary and sends each person their own action items — straight to their task list.</div>
+              <div className="text-[13.5px] mt-1.5 leading-relaxed" style={{ color: '#A7E6DA' }}>Ovi listens, recognises who’s speaking, then at the end writes the summary and sends each person their own action items — straight to their task list.</div>
             </div>
 
             <label className="flex flex-col gap-1.5">
@@ -122,7 +122,7 @@ export function LiveMeeting() {
                   const on = present.includes(m.id)
                   return (
                     <div key={m.id} className={classNames('flex items-center gap-3 px-3 py-2 rounded-lg border transition-colors', on ? 'border-border-blue bg-accent-wash-4' : 'border-border')}>
-                      <button onClick={() => setPresent((p) => (on ? p.filter((x) => x !== m.id) : [...p, m.id]))} className="w-[18px] h-[18px] rounded-[5px] border flex items-center justify-center shrink-0" style={{ borderColor: on ? '#1D4ED8' : '#C3CBD8', background: on ? '#1D4ED8' : 'transparent' }}>{on && <Check size={12} className="text-white" strokeWidth={2.6} />}</button>
+                      <button onClick={() => setPresent((p) => (on ? p.filter((x) => x !== m.id) : [...p, m.id]))} className="w-[18px] h-[18px] rounded-[5px] border flex items-center justify-center shrink-0" style={{ borderColor: on ? '#13927B' : '#C3CBD8', background: on ? '#13927B' : 'transparent' }}>{on && <Check size={12} className="text-white" strokeWidth={2.6} />}</button>
                       <span className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[11px] font-bold shrink-0" style={{ background: m.color }}>{m.name.split(' ').map((w) => w[0]).slice(0, 2).join('')}</span>
                       <div className="min-w-0 flex-1"><div className="text-[13px] font-semibold text-ink-2">{m.name}{m.you ? ' (you)' : ''}</div><div className="text-[12px] text-muted-2">{m.role}</div></div>
                       {m.voiceEnrolled ? (
@@ -183,8 +183,8 @@ export function LiveMeeting() {
         {phase === 'review' && (
           <div className="max-w-[820px] mx-auto w-full flex flex-col gap-4">
             <div className="rounded-card bg-deep-panel p-5">
-              <div className="flex items-center gap-2 text-white font-semibold text-[14px]"><Sparkle size={16} style={{ color: '#8FB0FF' }} /> Ovi’s summary — {title}</div>
-              <div className="text-[13px] leading-relaxed mt-2" style={{ color: '#C7D3F2' }}>
+              <div className="flex items-center gap-2 text-white font-semibold text-[14px]"><Sparkle size={16} style={{ color: '#57C9B4' }} /> Ovi’s summary — {title}</div>
+              <div className="text-[13px] leading-relaxed mt-2" style={{ color: '#A7E6DA' }}>
                 Covered Cirrus (legal redlines are the last blocker), Ashford (quote overdue), Fenwick (deck due) and Q3 renewals planning. Extracted <strong className="text-white">{items.length} action items</strong> across <strong className="text-white">{new Set(items.map((i) => i.to)).size} people</strong>. Review and send — each lands on that person’s task list.
               </div>
             </div>
@@ -197,7 +197,7 @@ export function LiveMeeting() {
                   const verified = m?.voiceEnrolled
                   return (
                     <div key={i.id} className={classNames('flex items-start gap-3 px-4 py-3', !i.include && 'opacity-50')}>
-                      <button onClick={() => setItems((cur) => cur.map((x) => (x.id === i.id ? { ...x, include: !x.include } : x)))} className="mt-0.5 w-[18px] h-[18px] rounded-[5px] border flex items-center justify-center shrink-0" style={{ borderColor: i.include ? '#1D4ED8' : '#C3CBD8', background: i.include ? '#1D4ED8' : 'transparent' }}>{i.include && <Check size={12} className="text-white" strokeWidth={2.6} />}</button>
+                      <button onClick={() => setItems((cur) => cur.map((x) => (x.id === i.id ? { ...x, include: !x.include } : x)))} className="mt-0.5 w-[18px] h-[18px] rounded-[5px] border flex items-center justify-center shrink-0" style={{ borderColor: i.include ? '#13927B' : '#C3CBD8', background: i.include ? '#13927B' : 'transparent' }}>{i.include && <Check size={12} className="text-white" strokeWidth={2.6} />}</button>
                       <div className="min-w-0 flex-1">
                         <div className="text-[13.5px] font-medium text-ink-2">{i.subject}</div>
                         <div className="flex items-center gap-2 mt-1.5 flex-wrap text-[11.5px]">

@@ -117,8 +117,8 @@ export function Meetings() {
 
               <div className="flex flex-col gap-4">
                 <div className="rounded-card bg-deep-panel p-4">
-                  <div className="flex items-center gap-2 text-white font-semibold text-[13px]"><Sparkle size={15} style={{ color: '#8FB0FF' }} /> AI summary</div>
-                  <div className="flex flex-col gap-2.5 mt-3">{aiNotes.map((n, i) => (<div key={i} className="text-[12.5px] leading-relaxed" style={{ color: '#C7D3F2' }}>• {n}</div>))}</div>
+                  <div className="flex items-center gap-2 text-white font-semibold text-[13px]"><Sparkle size={15} style={{ color: '#57C9B4' }} /> AI summary</div>
+                  <div className="flex flex-col gap-2.5 mt-3">{aiNotes.map((n, i) => (<div key={i} className="text-[12.5px] leading-relaxed" style={{ color: '#A7E6DA' }}>• {n}</div>))}</div>
                 </div>
                 <div className="bg-surface border border-border rounded-card p-4">
                   <div className="flex items-center gap-2 text-[13px] font-semibold text-ink mb-3"><Note size={15} className="text-accent" /> Action items</div>

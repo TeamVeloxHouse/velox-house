@@ -27,8 +27,8 @@ export function ToolsHub() {
       <TopBar title="Tools" crumbs={['Find']}
         actions={<button onClick={() => nav('/tools/database')} className="h-9 px-3.5 rounded-control bg-surface border border-border text-[13px] font-semibold text-ink-3 hover:bg-control flex items-center gap-2"><Layers size={15} />All prospects</button>} />
       <PageBody>
-        <div className="rounded-card p-6 flex items-center gap-4" style={{ background: 'linear-gradient(135deg,#EEF2FB,#F5F0FF 70%)', border: '1px solid #E3E8F5' }}>
-          <span className="w-14 h-14 rounded-2xl flex items-center justify-center text-white shrink-0" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Radar size={28} /></span>
+        <div className="rounded-card p-6 flex items-center gap-4" style={{ background: 'linear-gradient(135deg,#EAF6F2,#F5F0FF 70%)', border: '1px solid #E3E8F5' }}>
+          <span className="w-14 h-14 rounded-2xl flex items-center justify-center text-white shrink-0" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Radar size={28} /></span>
           <div className="flex-1"><div className="text-[18px] font-bold text-ink">Prospecting tools</div><div className="text-[13.5px] text-muted-b mt-0.5">Each tool finds and qualifies leads its own way, with its own chat, scanned results and database — all flowing into one prospects pipeline.</div></div>
         </div>
 
@@ -39,7 +39,7 @@ export function ToolsHub() {
               <button key={t.id} disabled={!t.live} onClick={() => t.to && nav(t.to)}
                 className={classNames('text-left rounded-card bg-surface border border-border p-5 flex flex-col gap-3 transition-shadow', t.live ? 'hover:shadow-modal cursor-pointer' : 'opacity-60 cursor-default')}>
                 <div className="flex items-center justify-between">
-                  <span className="w-12 h-12 rounded-2xl flex items-center justify-center text-white" style={{ background: t.live ? 'linear-gradient(135deg,#3B6BF5,#7C3AED)' : '#94A3B8' }}><t.icon size={24} /></span>
+                  <span className="w-12 h-12 rounded-2xl flex items-center justify-center text-white" style={{ background: t.live ? 'linear-gradient(135deg,#1FAE94,#159C86)' : '#94A3B8' }}><t.icon size={24} /></span>
                   {t.live ? (n > 0 ? <Chip tone="accent">{n} prospects</Chip> : <Chip tone="positive" dot>Live</Chip>) : <Chip tone="neutral">Coming soon</Chip>}
                 </div>
                 <div><div className="text-[15px] font-bold text-ink">{t.name}</div><div className="text-[12.5px] text-muted-b mt-1 leading-snug">{t.desc}</div></div>

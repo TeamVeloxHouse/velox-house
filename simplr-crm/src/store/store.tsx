@@ -8,7 +8,7 @@ import { surveyRef, photoSlotsFor, surveyToDnoSite, surveyFlags, completeness } 
 import { AI_MEMBER_ID, YOU_MEMBER_ID } from './types'
 import type { StageName } from '../data/mock'
 
-const KEY = 'simplr.state.v20'
+const KEY = 'simplr.state.v21'
 let idc = 1000
 export const uid = (p = 'x') => `${p}${Date.now().toString(36)}${idc++}`
 
@@ -1262,7 +1262,7 @@ export function useActions() {
       toast(`Enriched ${name} — firmographics + stakeholders added`)
     },
     connectEmail: (provider: string, account: string, protocol: 'oauth' | 'imap') => {
-      dispatch({ type: 'ADD_CONNECTION', conn: { id: uid('cn'), kind: 'email', provider, account, connected: true, color: '#1D4ED8', protocol } })
+      dispatch({ type: 'ADD_CONNECTION', conn: { id: uid('cn'), kind: 'email', provider, account, connected: true, color: '#13927B', protocol } })
       toast(`${account} connected — you can now send from this address`)
     },
     addWebhook: (url: string, events: string[]) => {

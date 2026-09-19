@@ -280,7 +280,7 @@ export function DealsBoard() {
               <div className="text-[12px]" style={{ color: '#93A0B4' }}>Total weighted forecast · this quarter</div>
               <div className="text-[28px] font-bold text-white mt-1">{money(weighted)}</div>
             </div>
-            <div className="text-[13px]" style={{ color: '#8FB0FF' }}>Quota £1.1M · {Math.round((weighted / 1100000) * 100)}% covered</div>
+            <div className="text-[13px]" style={{ color: '#57C9B4' }}>Quota £1.1M · {Math.round((weighted / 1100000) * 100)}% covered</div>
           </div>
         </main>
       )}

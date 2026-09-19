@@ -42,7 +42,7 @@ export function DesignCopilot({ open, onClose, onExecute }: {
         <style>{`@keyframes slideIn{from{transform:translateX(24px);opacity:.4}to{transform:none;opacity:1}}`}</style>
         {/* header */}
         <div className="px-4 py-3.5 border-b border-divider flex items-center gap-2.5">
-          <span className="w-8 h-8 rounded-xl flex items-center justify-center text-white shrink-0" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Sparkle size={16} /></span>
+          <span className="w-8 h-8 rounded-xl flex items-center justify-center text-white shrink-0" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Sparkle size={16} /></span>
           <div className="flex-1 min-w-0"><div className="font-bold text-[14px] text-ink">Design with Ovi</div><div className="text-[11.5px] text-muted-b">Describe the outcome — Ovi lays it out</div></div>
           <button onClick={onClose} className="text-muted-2 hover:text-ink text-[18px] leading-none">✕</button>
         </div>
@@ -60,7 +60,7 @@ export function DesignCopilot({ open, onClose, onExecute }: {
             </div>
           )}
           {msgs.map((m, i) => m.role === 'user' ? (
-            <div key={i} className="self-end max-w-[85%] rounded-2xl rounded-br-sm px-3.5 py-2 text-[13px] text-white" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}>{m.text}</div>
+            <div key={i} className="self-end max-w-[85%] rounded-2xl rounded-br-sm px-3.5 py-2 text-[13px] text-white" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}>{m.text}</div>
           ) : (
             <div key={i} className="self-start max-w-[92%] rounded-2xl rounded-bl-sm bg-control px-3.5 py-2.5">
               <div className="flex flex-col gap-1.5">
@@ -85,7 +85,7 @@ export function DesignCopilot({ open, onClose, onExecute }: {
           <div className="flex items-end gap-2">
             <textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); run(input) } }}
               rows={1} placeholder="Design for 100% offset of a 12,000 kWh bill…" className="flex-1 resize-none max-h-24 px-3 py-2 rounded-control border border-input-border bg-white text-[13px] outline-none focus:border-accent" />
-            <button onClick={() => run(input)} disabled={running || !input.trim()} className="h-9 w-9 shrink-0 rounded-control text-white flex items-center justify-center disabled:opacity-40" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Sparkle size={16} /></button>
+            <button onClick={() => run(input)} disabled={running || !input.trim()} className="h-9 w-9 shrink-0 rounded-control text-white flex items-center justify-center disabled:opacity-40" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Sparkle size={16} /></button>
           </div>
         </div>
       </div>

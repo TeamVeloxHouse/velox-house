@@ -178,13 +178,13 @@ function ChatTab({ mode, setMode, params, set, chat, draft, setDraft, sendChat, 
   return (
     <div className="grid grid-cols-[minmax(360px,420px)_1fr] gap-5 flex-1 min-h-0">
       <div className="flex flex-col rounded-card bg-surface border border-border overflow-hidden min-h-0">
-        <div className="px-4 py-3 border-b border-divider flex items-center gap-2.5" style={{ background: 'linear-gradient(135deg,#3B6BF5 0%,#7C3AED 100%)' }}>
+        <div className="px-4 py-3 border-b border-divider flex items-center gap-2.5" style={{ background: 'linear-gradient(135deg,#1FAE94 0%,#159C86 100%)' }}>
           <span className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white"><Sparkle size={17} /></span>
           <div><div className="text-white font-bold text-[14px] leading-tight">Ovi finds companies + people</div><div className="text-white/70 text-[11.5px]">Describe who you want to reach</div></div>
         </div>
         <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 min-h-0">
           {chat.map((m: ChatMsg, i: number) => (
-            <div key={i} className={classNames('max-w-[92%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-snug', m.role === 'ovi' ? 'bg-control text-ink-2 self-start rounded-tl-sm' : 'text-white self-end rounded-tr-sm')} style={m.role === 'you' ? { background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' } : undefined}>{renderText(m.text)}</div>
+            <div key={i} className={classNames('max-w-[92%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-snug', m.role === 'ovi' ? 'bg-control text-ink-2 self-start rounded-tl-sm' : 'text-white self-end rounded-tr-sm')} style={m.role === 'you' ? { background: 'linear-gradient(135deg,#1FAE94,#159C86)' } : undefined}>{renderText(m.text)}</div>
           ))}
           {chat.length === 1 && (
             <div className="flex flex-col gap-2 mt-1">
@@ -196,7 +196,7 @@ function ChatTab({ mode, setMode, params, set, chat, draft, setDraft, sendChat, 
         </div>
         <div className="p-3 border-t border-divider flex items-center gap-2">
           <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && sendChat(draft)} placeholder="e.g. cold storage firms near Manchester…" className="flex-1 h-10 px-3 rounded-control border border-input-border bg-white text-[13.5px] outline-none focus:border-accent" />
-          <button onClick={() => sendChat(draft)} className="w-10 h-10 rounded-control text-white flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Send size={16} /></button>
+          <button onClick={() => sendChat(draft)} className="w-10 h-10 rounded-control text-white flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Send size={16} /></button>
         </div>
       </div>
 
@@ -230,7 +230,7 @@ function HowItWorks() {
     <div className="rounded-card bg-surface border border-border p-4 grid grid-cols-4 gap-3">
       {steps.map((s, i) => (
         <div key={i} className="flex flex-col gap-1.5">
-          <span className="w-9 h-9 rounded-xl flex items-center justify-center text-white" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><s.icon size={17} /></span>
+          <span className="w-9 h-9 rounded-xl flex items-center justify-center text-white" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><s.icon size={17} /></span>
           <div className="text-[13px] font-bold text-ink mt-1">{i + 1}. {s.t}</div>
           <div className="text-[11.5px] text-muted-b leading-snug">{s.d}</div>
         </div>
@@ -313,7 +313,7 @@ function CompaniesTab({ prospects, running, progress, campaigns, campaignId, set
 function EmptyState() {
   return (
     <div className="flex-1 flex flex-col items-center justify-center text-center gap-3 py-16 rounded-card border border-dashed border-border">
-      <span className="w-14 h-14 rounded-2xl flex items-center justify-center text-white" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Building size={28} /></span>
+      <span className="w-14 h-14 rounded-2xl flex items-center justify-center text-white" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Building size={28} /></span>
       <div className="text-[16px] font-bold text-ink">No companies yet</div>
       <div className="text-[13px] text-muted-b max-w-[460px]">Head to the <b>Chat</b> tab and describe who you want to reach — Ovi finds the companies fast, and you reveal the people or measure a roof whenever you like.</div>
     </div>
@@ -380,7 +380,7 @@ function CompanyCard({ p, onOpen, jobTitles }: { p: SolarProspect; onOpen: () =>
             </div>
           ) : <div className="text-[12px] text-muted-2 flex items-center gap-1.5"><Person size={13} />No contacts found</div>
         ) : (
-          <button onClick={reveal} disabled={revealing} className="h-9 rounded-lg text-white text-[12.5px] font-semibold flex items-center justify-center gap-2 disabled:opacity-60" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}>
+          <button onClick={reveal} disabled={revealing} className="h-9 rounded-lg text-white text-[12.5px] font-semibold flex items-center justify-center gap-2 disabled:opacity-60" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}>
             {revealing ? <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" /> : <Person size={14} />}{revealing ? 'Finding people…' : 'Reveal people (1 credit)'}
           </button>
         )}

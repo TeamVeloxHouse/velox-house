@@ -15,7 +15,7 @@ import type { SiteSurvey, SurveyProductKey, RoofFace, SurveyPhoto } from '../sto
 
 const statusTone: Record<SiteSurvey['status'], 'neutral' | 'accent' | 'positive'> = { draft: 'neutral', submitted: 'accent', reviewed: 'positive' }
 const statusLabel: Record<SiteSurvey['status'], string> = { draft: 'In progress', submitted: 'Submitted', reviewed: 'Reviewed' }
-const GRAD = 'linear-gradient(135deg,#3B6BF5 0%,#7C3AED 100%)'
+const GRAD = 'linear-gradient(135deg,#1FAE94 0%,#159C86 100%)'
 
 /** Recompute the photo tray to match the products in scope, keeping any already-captured slots. */
 function reconcilePhotos(products: SurveyProductKey[], existing: SurveyPhoto[]): SurveyPhoto[] {
@@ -105,7 +105,7 @@ export function SurveysList() {
                         </div>
                         <div className="w-32 shrink-0">
                           <div className="flex items-center justify-between text-[12px] mb-1"><span className="text-muted-3">Complete</span><span className="font-semibold text-ink">{c.pct}%</span></div>
-                          <Progress value={c.pct} color={c.pct === 100 ? '#0E7C66' : '#3B6BF5'} />
+                          <Progress value={c.pct} color={c.pct === 100 ? '#0E7C66' : '#1FAE94'} />
                         </div>
                         <ChevronRight size={16} className="text-muted-3 shrink-0" />
                       </div>
@@ -233,7 +233,7 @@ export function SurveyReport() {
  * ════════════════════════════════════════════════════════════════════════ */
 function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
   return (
-    <button onClick={() => onChange(!on)} className={classNames('w-12 h-7 rounded-full p-0.5 transition-colors shrink-0', on ? 'bg-[#7C3AED]' : 'bg-[#D4D9E2]')}>
+    <button onClick={() => onChange(!on)} className={classNames('w-12 h-7 rounded-full p-0.5 transition-colors shrink-0', on ? 'bg-[#159C86]' : 'bg-[#D4D9E2]')}>
       <span className={classNames('block w-6 h-6 rounded-full bg-white shadow transition-transform', on && 'translate-x-5')} />
     </button>
   )
@@ -396,10 +396,10 @@ export function SurveyCapture() {
               {SURVEY_PRODUCTS.map((p) => {
                 const on = s.products.includes(p.key)
                 return (
-                  <button key={p.key} onClick={() => toggleProduct(p.key)} className={classNames('flex items-center gap-3 rounded-card border-2 p-3.5 text-left transition-colors', on ? 'border-[#7C3AED] bg-[#F5F0FE]' : 'border-border bg-surface')}>
+                  <button key={p.key} onClick={() => toggleProduct(p.key)} className={classNames('flex items-center gap-3 rounded-card border-2 p-3.5 text-left transition-colors', on ? 'border-[#159C86] bg-[#F5F0FE]' : 'border-border bg-surface')}>
                     <span className="text-2xl">{p.emoji}</span>
                     <span className="flex-1 font-semibold text-ink text-[15px]">{p.label}</span>
-                    <span className={classNames('w-6 h-6 rounded-full flex items-center justify-center', on ? 'bg-[#7C3AED] text-white' : 'border-2 border-border')}>{on && <Check size={14} />}</span>
+                    <span className={classNames('w-6 h-6 rounded-full flex items-center justify-center', on ? 'bg-[#159C86] text-white' : 'border-2 border-border')}>{on && <Check size={14} />}</span>
                   </button>
                 )
               })}
@@ -428,7 +428,7 @@ export function SurveyCapture() {
             <p className="text-[13px] text-muted-2 mb-4">Everything required must be filled before this survey can be submitted.</p>
             <Card className="mb-3">
               <div className="flex items-center justify-between mb-1.5"><span className="text-[13px] font-semibold text-ink">Completeness</span><span className="font-bold text-ink">{c.pct}%</span></div>
-              <Progress value={c.pct} color={c.pct === 100 ? '#0E7C66' : '#3B6BF5'} height={10} />
+              <Progress value={c.pct} color={c.pct === 100 ? '#0E7C66' : '#1FAE94'} height={10} />
               <div className="text-[12px] text-muted-2 mt-1.5">{c.done} of {c.total} required items done</div>
             </Card>
             {c.missing.length > 0 ? (

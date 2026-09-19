@@ -101,7 +101,7 @@ export function BrandHub() {
   const [q, setQ] = useState('')
   const filtered = brandAssets.filter((a) => !q || a.name.toLowerCase().includes(q.toLowerCase()) || a.tags.some((t) => t.includes(q.toLowerCase())))
   const tokens: { label: string; value: string; hex: string }[] = [
-    { label: 'Accent (royal blue)', value: '#1D4ED8', hex: '#1D4ED8' },
+    { label: 'Accent (royal blue)', value: '#13927B', hex: '#13927B' },
     { label: 'Primary', value: brandKit.primary, hex: brandKit.primary },
     { label: 'Highlight', value: brandKit.accent, hex: brandKit.accent },
     { label: 'Ink', value: '#0B1220', hex: '#0B1220' },
@@ -127,8 +127,8 @@ export function BrandHub() {
 
       {/* brand identity header */}
       <div className="rounded-card border border-border bg-surface overflow-hidden">
-        <div className="p-5 flex items-center gap-4" style={{ background: 'linear-gradient(135deg,#EEF2FB 0%,#FBFCFF 100%)' }}>
-          <span className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-[22px] shadow-primary" style={{ background: 'linear-gradient(180deg,#3B6BF5 0%,#1D4ED8 100%)' }}>T</span>
+        <div className="p-5 flex items-center gap-4" style={{ background: 'linear-gradient(135deg,#EAF6F2 0%,#FBFCFF 100%)' }}>
+          <span className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-[22px] shadow-primary" style={{ background: 'linear-gradient(180deg,#1FAE94 0%,#13927B 100%)' }}>T</span>
           <div className="flex-1 min-w-0">
             <div className="text-[17px] font-bold text-ink">{brandKit.company}</div>
             <div className="text-[13px] text-muted-b">Brand font: <span className="font-semibold text-ink-3">{brandKit.font}</span> · Instrument Sans (display)</div>

@@ -29,7 +29,7 @@ function Bars({ data, height = 150 }: { data: { m: string; v: number }[]; height
       {data.map((d, i) => (
         <div key={d.m} className="flex-1 flex flex-col items-center gap-1.5">
           <div className="text-[10.5px] font-semibold text-ink-3 tabular-nums">{money(d.v, { compact: true })}</div>
-          <div className="w-full rounded-t" style={{ height: `${(d.v / max) * (height - 40)}px`, background: i === data.length - 1 ? '#8FB0FF' : '#1D4ED8', minHeight: 3 }} />
+          <div className="w-full rounded-t" style={{ height: `${(d.v / max) * (height - 40)}px`, background: i === data.length - 1 ? '#57C9B4' : '#13927B', minHeight: 3 }} />
           <div className="text-[11px] text-muted-2b">{d.m}</div>
         </div>
       ))}
@@ -37,7 +37,7 @@ function Bars({ data, height = 150 }: { data: { m: string; v: number }[]; height
   )
 }
 
-function SourceBar({ label, count, total, color = '#1D4ED8' }: { label: string; count: number; total: number; color?: string }) {
+function SourceBar({ label, count, total, color = '#13927B' }: { label: string; count: number; total: number; color?: string }) {
   return (
     <div className="flex items-center gap-3">
       <span className="text-[12.5px] text-ink-3 w-32 truncate shrink-0">{label}</span>
@@ -191,7 +191,7 @@ function MarketingDash() {
   const replies = reachCampaigns.reduce((s, c) => s + c.replies, 0)
   const sent = reachCampaigns.reduce((s, c) => s + c.sent, 0)
   const live = emailCampaigns.filter((c) => c.status === 'Live' || c.status === 'Sending').length
-  const palette = ['#7C5CFF', '#1D4ED8', '#0E9F6E', '#E8721A', '#B01B4F', '#2FA4B5']
+  const palette = ['#159C86', '#13927B', '#0E9F6E', '#E8721A', '#B01B4F', '#2FA4B5']
   return (
     <>
       <div className="grid grid-cols-4 gap-4">
@@ -295,7 +295,7 @@ function SalesDash() {
           <div className="flex flex-col gap-1">
             {tasks.map((t) => (
               <button key={t.id} onClick={() => act.toggleActivity(t.id)} className="flex items-start gap-3 py-1.5 text-left">
-                <span className="mt-0.5 w-[18px] h-[18px] rounded-[5px] border shrink-0 flex items-center justify-center" style={{ borderColor: t.done ? '#1D4ED8' : '#C3CBD8', background: t.done ? '#1D4ED8' : 'transparent' }}>{t.done && <Check size={12} className="text-white" strokeWidth={2.4} />}</span>
+                <span className="mt-0.5 w-[18px] h-[18px] rounded-[5px] border shrink-0 flex items-center justify-center" style={{ borderColor: t.done ? '#13927B' : '#C3CBD8', background: t.done ? '#13927B' : 'transparent' }}>{t.done && <Check size={12} className="text-white" strokeWidth={2.4} />}</span>
                 <span className="min-w-0"><span className={classNames('block text-[13px] font-medium', t.done ? 'text-muted-3 line-through' : 'text-ink-2')}>{t.subject}</span><span className="block text-[12px] text-muted-2">{t.due ?? 'No due date'}</span></span>
               </button>
             ))}
@@ -331,10 +331,10 @@ function OwnerDash() {
   const week = weekIsoSet()
   const jobsWeek = jobs.filter((j) => j.date && week.includes(j.date)).length
   const tiles: { label: string; icon: (p: { size?: number; className?: string }) => JSX.Element; to: string; sub: string; accent: string }[] = [
-    { label: 'Sales pipeline', icon: ArrowUpRight, to: '/deals', sub: `${open.length} open · ${money(openValue, { compact: true })}`, accent: '#3B6BF5' },
+    { label: 'Sales pipeline', icon: ArrowUpRight, to: '/deals', sub: `${open.length} open · ${money(openValue, { compact: true })}`, accent: '#1FAE94' },
     { label: 'Operations', icon: Wrench, to: '/jobs', sub: `${jobsWeek} jobs this week`, accent: '#E8721A' },
     { label: 'Finance', icon: Dollar, to: '/documents', sub: `${money(outstanding, { compact: true })} outstanding`, accent: '#0E9F6E' },
-    { label: 'Marketing', icon: Megaphone, to: '/campaigns', sub: `${leads.filter((l) => !l.archived).length} open leads`, accent: '#7C5CFF' },
+    { label: 'Marketing', icon: Megaphone, to: '/campaigns', sub: `${leads.filter((l) => !l.archived).length} open leads`, accent: '#159C86' },
   ]
   return (
     <>

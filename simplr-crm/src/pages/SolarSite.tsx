@@ -14,7 +14,7 @@ import { fetchPvgisHourly } from '../lib/pvgisClient'
 import { buildHourlyLoad, monthlyBuckets, MONTH_LABELS } from '../lib/loadProfiles'
 import { UK } from '../lib/energy'
 
-const GRAD_FROM = '#3B6BF5', GRAD_TO = '#7C3AED'
+const GRAD_FROM = '#1FAE94', GRAD_TO = '#159C86'
 
 export function SolarSiteDetail() {
   const { id } = useParams()
@@ -68,7 +68,7 @@ export function SolarSiteDetail() {
             <RoofOverlay center={p.center} segments={p.roofSegments} footprint={p.roofFootprint} zoom={p.roofZoom} w={900} h={420} />
             <div className="absolute top-3 left-3 flex gap-2">
               <span className="text-[12px] font-bold text-white px-2.5 py-1 rounded-full shadow" style={{ background: scoreTone(p.score) }}>Score {p.score}</span>
-              {accurate && <span className="text-[11px] font-bold text-white px-2.5 py-1 rounded-full" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}>◆ PVGIS accurate</span>}
+              {accurate && <span className="text-[11px] font-bold text-white px-2.5 py-1 rounded-full" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}>◆ PVGIS accurate</span>}
               {p.roofAreaM2 && <span className="text-[11px] font-semibold text-white bg-black/55 px-2 py-1 rounded backdrop-blur-sm self-center">{p.roofAreaM2.toLocaleString()} m² measured</span>}
             </div>
           </div>

@@ -151,8 +151,8 @@ export const tradeByKey = (key: TradeKey): TradeProfile =>
   TRADE_PROFILES.find((t) => t.key === key) ?? TRADE_PROFILES[TRADE_PROFILES.length - 1]
 
 export const jobKindMeta: Record<JobKind, { label: string; color: string; bg: string }> = {
-  survey: { label: 'Survey', color: '#1D4ED8', bg: '#EAF1FE' },
-  showroom: { label: 'Appointment', color: '#7C5CFF', bg: '#F0ECFF' },
+  survey: { label: 'Survey', color: '#13927B', bg: '#EAF1FE' },
+  showroom: { label: 'Appointment', color: '#159C86', bg: '#F0ECFF' },
   install: { label: 'Install', color: '#E8721A', bg: '#FDEEDF' },
   service: { label: 'Service', color: '#0E9F6E', bg: '#E4F6EE' },
   remedial: { label: 'Callback', color: '#B01B4F', bg: '#FCE7EF' },

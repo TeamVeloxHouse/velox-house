@@ -66,8 +66,8 @@ export const ESTIMATES = [
 
 export const BUCKET_META: Record<Bucket, { label: string; tone: string }> = {
   overdue: { label: 'Overdue', tone: '#C2410C' },
-  today: { label: 'Today', tone: '#1D4ED8' },
-  tomorrow: { label: 'Tomorrow', tone: '#7C5CFF' },
+  today: { label: 'Today', tone: '#13927B' },
+  tomorrow: { label: 'Tomorrow', tone: '#159C86' },
   upcoming: { label: 'Upcoming', tone: '#5B6577' },
   none: { label: 'No date', tone: '#8A93A3' },
   done: { label: 'Done', tone: '#0E7C66' },

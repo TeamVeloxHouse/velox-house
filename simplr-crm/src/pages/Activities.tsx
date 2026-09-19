@@ -11,8 +11,8 @@ import { CalendarView } from './Calendar'
 import { bucketOf, effectiveDueDate, BUCKET_META } from '../lib/tasks'
 import type { Activity, ActivityType } from '../store/types'
 
-const typeColor: Record<string, string> = { call: '#1D4ED8', meeting: '#0E7C66', task: '#C2410C', email: '#3A67E4', note: '#7A8494' }
-const typeWash: Record<string, string> = { call: '#EEF2FB', meeting: '#E9F5F1', task: '#FDF1E7', email: '#EEF2FB', note: '#F1F3F7' }
+const typeColor: Record<string, string> = { call: '#13927B', meeting: '#0E7C66', task: '#C2410C', email: '#13927B', note: '#7A8494' }
+const typeWash: Record<string, string> = { call: '#EAF6F2', meeting: '#E9F5F1', task: '#FDF1E7', email: '#EAF6F2', note: '#F1F3F7' }
 const typeIcon: Record<string, any> = { call: Phone, meeting: Meeting, task: Task, email: Envelope, note: Note }
 const prioTone: Record<string, 'negative' | 'warning' | 'neutral'> = { High: 'negative', Medium: 'warning', Low: 'neutral' }
 

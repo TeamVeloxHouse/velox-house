@@ -38,9 +38,9 @@ function SavingsChart({ annual, cost, payback }: { annual: number; cost: number;
       <line x1={pad} y1={costY} x2={W - pad} y2={costY} stroke="#C2410C" strokeWidth="1" strokeDasharray="4 3" />
       <text x={W - pad} y={costY - 4} textAnchor="end" fontSize="9" fill="#C2410C" fontWeight="600">System cost {gbp(cost)}</text>
       {/* payback marker */}
-      <line x1={pbX} y1={pad} x2={pbX} y2={H - pad} stroke="#1D4ED8" strokeWidth="1" strokeDasharray="2 2" opacity="0.5" />
-      <circle cx={pbX} cy={costY} r="3.5" fill="#1D4ED8" />
-      <text x={pbX + 5} y={pad + 12} fontSize="9" fill="#1D4ED8" fontWeight="600">Break-even ≈ yr {Math.round(payback)}</text>
+      <line x1={pbX} y1={pad} x2={pbX} y2={H - pad} stroke="#13927B" strokeWidth="1" strokeDasharray="2 2" opacity="0.5" />
+      <circle cx={pbX} cy={costY} r="3.5" fill="#13927B" />
+      <text x={pbX + 5} y={pad + 12} fontSize="9" fill="#13927B" fontWeight="600">Break-even ≈ yr {Math.round(payback)}</text>
     </svg>
   )
 }
@@ -88,7 +88,7 @@ export function Proposal() {
       />
       <PageBody>
         {/* hero */}
-        <div className="rounded-card p-6 text-white relative overflow-hidden" style={{ background: 'linear-gradient(150deg,#1c3a72,#0c1b38)' }}>
+        <div className="rounded-card p-6 text-white relative overflow-hidden" style={{ background: 'linear-gradient(150deg,#15223B,#0A3B33)' }}>
           <div className="absolute inset-0" style={{ background: 'radial-gradient(80% 100% at 90% -10%, rgba(245,166,35,0.22), transparent 55%)' }} />
           <div className="relative flex items-end justify-between flex-wrap gap-4">
             <div>
@@ -113,7 +113,7 @@ export function Proposal() {
               </div>
               <div className="flex items-center gap-3">
                 <button onClick={() => persist(Math.max(4, design.panels - 1))} className="w-9 h-9 rounded-lg border border-border text-ink-3 hover:bg-control text-[18px] leading-none">−</button>
-                <input type="range" min={4} max={design.maxPanels} value={design.panels} onChange={(e) => persist(Number(e.target.value))} className="flex-1 accent-[#1D4ED8]" />
+                <input type="range" min={4} max={design.maxPanels} value={design.panels} onChange={(e) => persist(Number(e.target.value))} className="flex-1 accent-[#13927B]" />
                 <button onClick={() => persist(Math.min(design.maxPanels, design.panels + 1))} className="w-9 h-9 rounded-lg border border-border text-ink-3 hover:bg-control text-[18px] leading-none">+</button>
                 <div className="text-[15px] font-bold text-ink-2 w-20 text-right">{design.systemKwp} kWp</div>
               </div>

@@ -97,9 +97,9 @@ export function WholeHome() {
       <TopBar title="Whole-home design" crumbs={['Design', 'Whole-home']} />
       <PageBody>
         {/* Scope picker */}
-        <div className="rounded-card p-6" style={{ background: 'linear-gradient(135deg,#EEF2FB,#F5F0FF 70%)', border: '1px solid #E3E8F5' }}>
+        <div className="rounded-card p-6" style={{ background: 'linear-gradient(135deg,#EAF6F2,#F5F0FF 70%)', border: '1px solid #E3E8F5' }}>
           <div className="flex items-center gap-3">
-            <span className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shrink-0" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Sparkle size={22} /></span>
+            <span className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shrink-0" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Sparkle size={22} /></span>
             <div className="flex-1">
               <div className="text-[17px] font-bold text-ink">What are we designing today?</div>
               <div className="text-[13px] text-muted-b mt-0.5">Tick the products in play. They're modelled together on one energy system — so the battery is sized against the solar, and the EV re-shapes both. Untick a product you already have and enter it below.</div>
@@ -107,7 +107,7 @@ export function WholeHome() {
           </div>
           <div className="grid grid-cols-3 gap-3 mt-4">
             <ScopeTile on={scope.solar} onClick={() => toggle('solar')} icon={<Sun size={20} />} label="Solar" tint="#E8721A" sub="Generate" />
-            <ScopeTile on={scope.battery} onClick={() => toggle('battery')} icon={<Layers size={20} />} label="Battery" tint="#7C3AED" sub="Store & shift" />
+            <ScopeTile on={scope.battery} onClick={() => toggle('battery')} icon={<Layers size={20} />} label="Battery" tint="#159C86" sub="Store & shift" />
             <ScopeTile on={scope.ev} onClick={() => toggle('ev')} icon={<Bolt size={20} />} label="EV charging" tint="#0E9F6E" sub="Drive on sunshine" />
           </div>
         </div>
@@ -119,7 +119,7 @@ export function WholeHome() {
             {/* ── Inputs ─────────────────────────────────────────── */}
             <div className="flex flex-col gap-4">
               {/* Household */}
-              <Card title="The household" tint="#3B6BF5">
+              <Card title="The household" tint="#1FAE94">
                 <div className="grid grid-cols-2 gap-3">
                   <NumField label="Annual electricity use" value={demand} onChange={setDemand} step={250} suffix="kWh" />
                   <div className="flex flex-col gap-1.5">
@@ -148,8 +148,8 @@ export function WholeHome() {
 
               {/* Battery */}
               {scope.battery && (
-                <Card title="Battery storage" tint="#7C3AED" icon={<Layers size={16} />}>
-                  <SliderRow accent="#7C3AED" label="Usable capacity" value={batteryKwh} onChange={setBatteryKwh} min={0} max={30} suffix={`${batteryKwh} kWh usable · ~${sim.batteryCycles} cycles/yr`} />
+                <Card title="Battery storage" tint="#159C86" icon={<Layers size={16} />}>
+                  <SliderRow accent="#159C86" label="Usable capacity" value={batteryKwh} onChange={setBatteryKwh} min={0} max={30} suffix={`${batteryKwh} kWh usable · ~${sim.batteryCycles} cycles/yr`} />
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     {(Object.keys(CHEMISTRY) as (keyof typeof CHEMISTRY)[]).map((c) => (
                       <button key={c} onClick={() => setChem(c)} className={`text-[12px] px-2.5 py-1.5 rounded-lg border transition-colors ${chem === c ? 'border-accent bg-accent-wash-3 text-accent-700 font-semibold' : 'border-border text-ink-3 hover:bg-control'}`}>
@@ -158,7 +158,7 @@ export function WholeHome() {
                     ))}
                   </div>
                   <label className="flex items-center gap-2 mt-3 text-[12.5px] text-ink-3 cursor-pointer">
-                    <input type="checkbox" checked={gridCharge} onChange={(e) => setGridCharge(e.target.checked)} className="accent-[#7C3AED]" />
+                    <input type="checkbox" checked={gridCharge} onChange={(e) => setGridCharge(e.target.checked)} className="accent-[#159C86]" />
                     Charge from cheap off-peak grid too (Octopus Flux / Go — arbitrage)
                   </label>
                 </Card>
@@ -230,9 +230,9 @@ export function WholeHome() {
                       const sel = x.kwh === batteryKwh
                       return (
                         <button key={x.kwh} onClick={() => setBatteryKwh(x.kwh)} className="flex-1 flex flex-col items-center justify-end gap-1 group" style={{ height: '100%' }}>
-                          <span className="text-[10px] font-semibold tabular-nums" style={{ color: sel ? '#7C3AED' : '#94A3B8' }}>{money(x.bill)}</span>
-                          <div className="w-full rounded-t-md transition-all" style={{ height: `${Math.max(6, h)}%`, background: sel ? 'linear-gradient(180deg,#8B5CF6,#7C3AED)' : '#E2E1F3' }} />
-                          <span className="text-[10px] tabular-nums" style={{ color: sel ? '#7C3AED' : '#94A3B8' }}>{x.kwh}k</span>
+                          <span className="text-[10px] font-semibold tabular-nums" style={{ color: sel ? '#159C86' : '#94A3B8' }}>{money(x.bill)}</span>
+                          <div className="w-full rounded-t-md transition-all" style={{ height: `${Math.max(6, h)}%`, background: sel ? 'linear-gradient(180deg,#57C9B4,#159C86)' : '#E2E1F3' }} />
+                          <span className="text-[10px] tabular-nums" style={{ color: sel ? '#159C86' : '#94A3B8' }}>{x.kwh}k</span>
                         </button>
                       )
                     })}
@@ -307,7 +307,7 @@ function NumField({ label, value, onChange, step = 1, prefix, suffix }: { label:
   )
 }
 
-function SliderRow({ label, value, onChange, min, max, suffix, accent = '#1D4ED8' }: { label: string; value: number; onChange: (v: number) => void; min: number; max: number; suffix?: string; accent?: string }) {
+function SliderRow({ label, value, onChange, min, max, suffix, accent = '#13927B' }: { label: string; value: number; onChange: (v: number) => void; min: number; max: number; suffix?: string; accent?: string }) {
   return (
     <div className={label ? 'mt-1' : 'mt-2'}>
       {label && <FieldLabel>{label}</FieldLabel>}

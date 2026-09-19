@@ -42,7 +42,7 @@ export function MultiSelect({
       <div className={classNames(base, 'flex flex-wrap items-center gap-1.5 px-2 py-1.5 min-h-[38px]')} onClick={() => setOpen(true)}>
         {Icon && <Icon size={15} className="text-muted-2 ml-1 shrink-0" />}
         {values.map((v) => (
-          <span key={v} className="inline-flex items-center gap-1 h-6 pl-2 pr-1 rounded-full text-[12px] font-medium text-white" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}>
+          <span key={v} className="inline-flex items-center gap-1 h-6 pl-2 pr-1 rounded-full text-[12px] font-medium text-white" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}>
             {v}<button onClick={(e) => { e.stopPropagation(); remove(v) }} className="w-4 h-4 rounded-full hover:bg-white/25 flex items-center justify-center text-[11px]">✕</button>
           </span>
         ))}

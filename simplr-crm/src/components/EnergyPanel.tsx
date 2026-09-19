@@ -52,7 +52,7 @@ export function EnergyPanel({ design, annualKwh, onUpdate }: { design: Design; a
           <div className="text-[11.5px] text-muted-b">Solar covers your usage</div>
           <div className="text-[20px] font-bold text-ink leading-none tabular-nums">{offsetPct}<span className="text-[12px] text-muted-b font-semibold">%</span></div>
         </div>
-        <div className="h-2.5 rounded-full bg-control overflow-hidden"><div className="h-full rounded-full" style={{ width: `${offsetPct}%`, background: 'linear-gradient(90deg,#3B6BF5,#7C3AED)' }} /></div>
+        <div className="h-2.5 rounded-full bg-control overflow-hidden"><div className="h-full rounded-full" style={{ width: `${offsetPct}%`, background: 'linear-gradient(90deg,#1FAE94,#159C86)' }} /></div>
         <div className="text-[10.5px] text-muted-2 mt-1">Generates {genOffsetPct}% of your annual demand · {scRate ? Math.round(scRate * 100) : 0}% used on-site</div>
       </div>
 
@@ -78,9 +78,9 @@ export function EnergyPanel({ design, annualKwh, onUpdate }: { design: Design; a
 
       {/* Stat grid */}
       <div className="grid grid-cols-2 gap-1.5">
-        <EStat v={gen} u="kWh generated" c="#7C3AED" />
+        <EStat v={gen} u="kWh generated" c="#159C86" />
         <EStat v={selfUsed} u="used on-site" c="#17B890" />
-        <EStat v={exported} u="exported" c="#3B6BF5" />
+        <EStat v={exported} u="exported" c="#1FAE94" />
         <EStat v={gridImport} u="from grid" c="#94A3B8" />
       </div>
 
@@ -89,7 +89,7 @@ export function EnergyPanel({ design, annualKwh, onUpdate }: { design: Design; a
         <div className="flex items-center justify-between mb-1.5">
           <div className="eyebrow text-muted-3">Monthly</div>
           <div className="flex items-center gap-2.5 text-[9.5px] text-muted-b">
-            <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-sm" style={{ background: '#7C3AED' }} />solar</span>
+            <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-sm" style={{ background: '#159C86' }} />solar</span>
             <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-sm" style={{ background: '#CBD5E1' }} />usage</span>
           </div>
         </div>
@@ -127,7 +127,7 @@ function MonthlyBars({ gen, cons }: { gen: number[]; cons: number[] }) {
         return (
           <g key={i}>
             <rect x={x + bw * 0.14} y={H - ch} width={w} height={ch} rx={1.5} fill="#CBD5E1" />
-            <rect x={x + bw * 0.5} y={H - gh} width={w} height={gh} rx={1.5} fill="#7C3AED" />
+            <rect x={x + bw * 0.5} y={H - gh} width={w} height={gh} rx={1.5} fill="#159C86" />
             <text x={x + bw / 2} y={H + 9} textAnchor="middle" fontSize="7.5" fill="#94A3B8">{MONTHS[i]}</text>
           </g>
         )
@@ -146,7 +146,7 @@ function DayCurve({ gen, load }: { gen: number[]; load: number[] }) {
   return (
     <svg viewBox={`0 0 ${W} ${H + 12}`} className="w-full" style={{ height: 'auto' }}>
       <path d={areaPath} fill="#17B890" opacity={0.28} />
-      <polyline points={pts(gen)} fill="none" stroke="#7C3AED" strokeWidth="2" strokeLinejoin="round" />
+      <polyline points={pts(gen)} fill="none" stroke="#159C86" strokeWidth="2" strokeLinejoin="round" />
       <polyline points={pts(load)} fill="none" stroke="#64748B" strokeWidth="1.6" strokeDasharray="4 3" strokeLinejoin="round" />
       {[6, 12, 18].map((h) => <text key={h} x={pad + (h / 23) * (W - pad * 2)} y={H + 9} textAnchor="middle" fontSize="7.5" fill="#94A3B8">{h}:00</text>)}
     </svg>
@@ -156,4 +156,4 @@ function DayCurve({ gen, load }: { gen: number[]; load: number[] }) {
 function EStat({ v, u, c }: { v: number; u: string; c: string }) {
   return <div className="rounded-lg bg-control px-2 py-1.5"><div className="text-[14px] font-bold text-ink leading-none tabular-nums" style={{ color: c }}>{v.toLocaleString()}</div><div className="text-[9px] text-muted-2 mt-0.5 uppercase tracking-wide">{u}</div></div>
 }
-function BoltMini() { return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z" /></svg> }
+function BoltMini() { return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#159C86" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z" /></svg> }

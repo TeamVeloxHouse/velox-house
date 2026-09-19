@@ -33,7 +33,7 @@ export function StudioPricing() {
       <TopBar title="Pricing & finance" crumbs={['Studio', 'Your calculator']} actions={<Button icon={<Sparkle size={16} />} onClick={() => fileRef.current?.click()}>Build with AI</Button>} />
       <input ref={fileRef} type="file" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) act.aiBuildCalculator(f.name); e.currentTarget.value = '' }} />
       <PageBody>
-        <div className="rounded-card p-5 text-white relative overflow-hidden" style={{ background: 'linear-gradient(150deg,#1c3a72,#0c1b38)' }}>
+        <div className="rounded-card p-5 text-white relative overflow-hidden" style={{ background: 'linear-gradient(150deg,#15223B,#0A3B33)' }}>
           <div className="absolute inset-0" style={{ background: 'radial-gradient(80% 100% at 90% -10%, rgba(245,166,35,0.22), transparent 55%)' }} />
           <div className="relative flex items-center gap-4">
             <span className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center shrink-0"><Sparkle size={22} /></span>
@@ -87,10 +87,10 @@ export function StudioPricing() {
           </div>
 
           <div className="flex flex-col gap-4">
-            <div className="rounded-card p-5 text-white" style={{ background: 'linear-gradient(155deg,#1c3a72,#0c1b38)' }}>
+            <div className="rounded-card p-5 text-white" style={{ background: 'linear-gradient(155deg,#15223B,#0A3B33)' }}>
               <div className="text-[12px]" style={{ color: '#93A0B4' }}>Example · {example.systemKwp} kWp system</div>
               <div className="text-[30px] font-bold mt-1">{gbp(example.systemCost)}</div>
-              <div className="text-[12.5px] mt-0.5" style={{ color: '#8FB0FF' }}>Built from your pricing above · updates live</div>
+              <div className="text-[12.5px] mt-0.5" style={{ color: '#57C9B4' }}>Built from your pricing above · updates live</div>
               <div className="h-px bg-white/10 my-3" />
               <div className="flex flex-col gap-1.5 text-[12.5px]">
                 <div className="flex justify-between"><span style={{ color: '#c3ccdb' }}>Base ({example.systemKwp} kWp)</span><span>{gbp(example.systemKwp * cfg.costPerKwp + cfg.baseCost)}</span></div>

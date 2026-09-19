@@ -78,7 +78,7 @@ const chipStyles: Record<string, { bg: string; fg: string; border?: string }> = 
   positive: { bg: '#E9F5F1', fg: '#0E7C66', border: '#D3E9E2' },
   warning: { bg: '#FDF1E7', fg: '#C2410C' },
   negative: { bg: '#FDECEF', fg: '#B01B4F' },
-  accent: { bg: '#EEF2FB', fg: '#1D4ED8' },
+  accent: { bg: '#EAF6F2', fg: '#13927B' },
   neutral: { bg: '#F1F3F7', fg: '#5D6878' },
 }
 export type ChipTone = keyof typeof chipStyles
@@ -107,8 +107,8 @@ export function Avatar({
   variant?: 'accent' | 'neutral'
   square?: boolean
 }) {
-  const bg = variant === 'accent' ? '#EEF2FB' : '#F1F3F7'
-  const fg = variant === 'accent' ? '#1D4ED8' : '#5D6878'
+  const bg = variant === 'accent' ? '#EAF6F2' : '#F1F3F7'
+  const fg = variant === 'accent' ? '#13927B' : '#5D6878'
   return (
     <span
       className="inline-flex items-center justify-center font-bold shrink-0"
@@ -148,7 +148,7 @@ export function Kpi({
   variant?: 'plain' | 'blue' | 'deep'
 }) {
   const isDeep = variant === 'deep'
-  const deltaColor = isDeep ? '#8FB0FF' : deltaTone === 'positive' ? '#0E7C66' : deltaTone === 'negative' ? '#B01B4F' : '#7A8494'
+  const deltaColor = isDeep ? '#57C9B4' : deltaTone === 'positive' ? '#0E7C66' : deltaTone === 'negative' ? '#B01B4F' : '#7A8494'
   return (
     <div
       className={classNames(
@@ -179,7 +179,7 @@ export function Eyebrow({ children }: { children: ReactNode }) {
 }
 
 /* ---------- Progress bar ---------- */
-export function Progress({ value, color = '#1D4ED8', height = 8, track = '#EEF0F4' }: { value: number; color?: string; height?: number; track?: string }) {
+export function Progress({ value, color = '#13927B', height = 8, track = '#EEF0F4' }: { value: number; color?: string; height?: number; track?: string }) {
   return (
     <div className="w-full rounded-full overflow-hidden" style={{ height, background: track }}>
       <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.max(0, value))}%`, background: color }} />

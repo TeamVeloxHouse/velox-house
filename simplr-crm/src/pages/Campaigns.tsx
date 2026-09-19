@@ -10,7 +10,7 @@ import type { SeqStepType } from '../store/types'
 import { classNames } from '../lib/format'
 
 const seqStepIcon: Record<SeqStepType, any> = { email: Envelope, wait: Clock, call: Phone, task: Task, linkedin: Person }
-const seqStepColor: Record<SeqStepType, string> = { email: '#1D4ED8', wait: '#7A8494', call: '#0E7C66', task: '#C2410C', linkedin: '#0A66C2' }
+const seqStepColor: Record<SeqStepType, string> = { email: '#13927B', wait: '#7A8494', call: '#0E7C66', task: '#C2410C', linkedin: '#0A66C2' }
 
 type Status = 'Sending' | 'Live' | 'Complete' | 'Draft'
 const statusTone: Record<Status, ChipTone> = { Sending: 'accent', Live: 'positive', Complete: 'neutral', Draft: 'warning' }

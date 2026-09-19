@@ -9,7 +9,7 @@ const INSTALLER_COMPANY = 'Simplr Solar Ltd'
 const MCS_NO = 'MCS-1029384'
 const INK = '#12161C'
 const MUTE = '#6A7686'
-const ACCENT = '#1D4ED8'
+const ACCENT = '#13927B'
 const LINE = '#C7CFDA'
 
 type Ctx = { doc: jsPDF; y: number; readonly M: number; readonly W: number }

@@ -89,7 +89,7 @@ export function Onboarding() {
                 )
               })}
             </div>
-            <div className="rounded-card p-5 text-white h-fit" style={{ background: 'linear-gradient(155deg,#1c3a72,#0c1b38)' }}>
+            <div className="rounded-card p-5 text-white h-fit" style={{ background: 'linear-gradient(155deg,#15223B,#0A3B33)' }}>
               <div className="text-[12px]" style={{ color: '#93A0B4' }}>We’ll pre-load</div>
               <div className="text-[16px] font-bold mt-0.5">{profile?.name}</div>
               <div className="h-px bg-white/10 my-3" />
@@ -117,7 +117,7 @@ function Detail({ label, items, more }: { label: string; items: string[]; more?:
   if (items.length === 0) return null
   return (
     <div className="mb-3">
-      <div className="text-[11px] font-semibold mb-1" style={{ color: '#8FB0FF' }}>{label}</div>
+      <div className="text-[11px] font-semibold mb-1" style={{ color: '#57C9B4' }}>{label}</div>
       <div className="flex flex-wrap gap-1">
         {items.map((i) => (<span key={i} className="text-[11px] bg-white/10 rounded-md px-1.5 py-0.5">{i}</span>))}
         {more != null && more > 0 && <span className="text-[11px] text-white/50 px-1 py-0.5">+{more} more</span>}

@@ -661,7 +661,7 @@ function offersFor(portal: Portal, offers: PortalOffer[]): PortalOffer[] {
   return [...synth, ...stored.filter((o) => o.kind !== 'referral')]
 }
 const OFFER_META: Record<string, { icon: any; color: string }> = {
-  battery: { icon: Bolt, color: '#7C3AED' }, ev: { icon: Bolt, color: '#1D4ED8' }, upgrade: { icon: Sun, color: '#0E7A66' }, service: { icon: Wrench, color: '#C79A3A' }, referral: { icon: Sparkle, color: '#0E7A66' }, general: { icon: Megaphone, color: '#B01B4F' },
+  battery: { icon: Bolt, color: '#159C86' }, ev: { icon: Bolt, color: '#13927B' }, upgrade: { icon: Sun, color: '#0E7A66' }, service: { icon: Wrench, color: '#C79A3A' }, referral: { icon: Sparkle, color: '#0E7A66' }, general: { icon: Megaphone, color: '#B01B4F' },
 }
 function OfferCard({ portal, offer }: { portal: Portal; offer: PortalOffer }) {
   const act = useActions()
@@ -748,7 +748,7 @@ function CommunityTab({ portal }: { portal: Portal }) {
   const updates = [
     { icon: Sun, title: 'New: winter battery scheduling', body: 'A free firmware update helps your system pre-charge on cheap overnight rates. Roll-out this month.', tone: '#0E7A66' },
     { icon: Megaphone, title: 'Solar House hits 500 homes', body: 'You’re part of a growing community generating clean power across the North West.', tone: '#B01B4F' },
-    { icon: Bolt, title: 'Tariff tip: Octopus Flux', body: 'Battery owners are saving more by switching to an export-friendly tariff. Ask Ovi if it suits you.', tone: '#1D4ED8' },
+    { icon: Bolt, title: 'Tariff tip: Octopus Flux', body: 'Battery owners are saving more by switching to an export-friendly tariff. Ask Ovi if it suits you.', tone: '#13927B' },
   ]
   return (
     <div className="max-w-[760px] flex flex-col gap-5">
@@ -795,9 +795,9 @@ function EnergyTab({ portal }: { portal: Portal }) {
   const act = useActions()
   const flow = [
     { label: 'Solar now', value: `${e.solar} kW`, color: '#0E7A66' },
-    { label: 'Home use', value: `${e.home} kW`, color: '#1D4ED8' },
+    { label: 'Home use', value: `${e.home} kW`, color: '#13927B' },
     { label: e.exporting > 0 ? 'Exporting' : 'From grid', value: `${(e.exporting > 0 ? e.exporting : e.fromGrid).toFixed(1)} kW`, color: e.exporting > 0 ? '#0E7A66' : '#C2410C' },
-    ...(portal.hasBattery ? [{ label: 'Battery', value: `${e.batteryPct}%`, color: '#7C3AED' }] : []),
+    ...(portal.hasBattery ? [{ label: 'Battery', value: `${e.batteryPct}%`, color: '#159C86' }] : []),
     ...(portal.hasEv ? [{ label: 'EV charging', value: `${(e.exporting > 0 ? 1.4 : 0).toFixed(1)} kW`, color: '#0EA5A0' }] : []),
   ]
   const openMonitoring = () => { act.logPortalEvent(portal.id, 'Energy', `Opened ${portal.monitoringPlatform ?? 'monitoring'}`, 'click'); if (portal.monitoringUrl) window.open(portal.monitoringUrl, '_blank', 'noopener') }
@@ -828,12 +828,12 @@ function EnergyTab({ portal }: { portal: Portal }) {
           {e.hours.map((h) => (
             <div key={h.h} className="flex-1 flex flex-col justify-end gap-0.5 relative group">
               <div className="w-full rounded-t" style={{ height: `${(h.gen / maxH) * 130}px`, background: '#0E7A66' }} />
-              <div className="w-full" style={{ height: `${(h.use / maxH) * 130}px`, background: '#BFD3F5' }} />
+              <div className="w-full" style={{ height: `${(h.use / maxH) * 130}px`, background: '#BFE9DF' }} />
               {h.h % 6 === 0 && <div className="text-[9px] text-muted-3 text-center absolute -bottom-4 left-0 right-0">{h.h}:00</div>}
             </div>
           ))}
         </div>
-        <div className="flex items-center gap-4 mt-6 text-[11.5px] text-muted-2"><span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: '#0E7A66' }} />Solar generated</span><span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: '#BFD3F5' }} />Home used</span></div>
+        <div className="flex items-center gap-4 mt-6 text-[11.5px] text-muted-2"><span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: '#0E7A66' }} />Solar generated</span><span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: '#BFE9DF' }} />Home used</span></div>
       </div>
     </div>
   )
@@ -863,7 +863,7 @@ function DocumentsTab({ portal }: { portal: Portal }) {
 }
 
 const RES_META: Record<string, { icon: any; label: string; color: string }> = {
-  video: { icon: Play, label: 'Video', color: '#B01B4F' }, manual: { icon: FileIcon, label: 'Manual', color: '#1D4ED8' }, 'case-study': { icon: Sparkle, label: 'Case study', color: '#0E7A66' }, guide: { icon: FileIcon, label: 'Guide', color: '#7C3AED' },
+  video: { icon: Play, label: 'Video', color: '#B01B4F' }, manual: { icon: FileIcon, label: 'Manual', color: '#13927B' }, 'case-study': { icon: Sparkle, label: 'Case study', color: '#0E7A66' }, guide: { icon: FileIcon, label: 'Guide', color: '#159C86' },
 }
 function ResourcesTab({ portal }: { portal: Portal }) {
   const { portalResources } = useState_()
@@ -956,7 +956,7 @@ function AnalyticsTab({ portal }: { portal: Portal }) {
   )
 }
 function EventRow({ e }: { e: PortalEvent }) {
-  const tone: Record<string, string> = { view: '#1D4ED8', click: '#7C3AED', download: '#0E7A66', chat: '#B01B4F', video: '#C2410C', login: '#5B6577' }
+  const tone: Record<string, string> = { view: '#13927B', click: '#159C86', download: '#0E7A66', chat: '#B01B4F', video: '#C2410C', login: '#5B6577' }
   return (
     <div className="flex items-center gap-3 text-[12.5px]">
       <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: tone[e.kind] }} />

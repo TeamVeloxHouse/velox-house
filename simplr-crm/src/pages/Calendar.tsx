@@ -14,8 +14,8 @@ type CalEvent = { id: string; date: string; start?: string; title: string; sub: 
 
 const EV: Record<EvType, { color: string; wash: string; icon: any; label: string }> = {
   task: { color: '#C2410C', wash: '#FDF1E7', icon: TaskIcon, label: 'Task' },
-  call: { color: '#1D4ED8', wash: '#EEF2FB', icon: Phone, label: 'Call' },
-  email: { color: '#3A67E4', wash: '#EEF2FB', icon: Envelope, label: 'Email' },
+  call: { color: '#13927B', wash: '#EAF6F2', icon: Phone, label: 'Call' },
+  email: { color: '#13927B', wash: '#EAF6F2', icon: Envelope, label: 'Email' },
   meeting: { color: '#0E7C66', wash: '#E9F5F1', icon: MeetingIcon, label: 'Meeting' },
   job: { color: '#0891B2', wash: '#E6F5F9', icon: Wrench, label: 'Job' },
   note: { color: '#7A8494', wash: '#F1F3F7', icon: Note, label: 'Note' },

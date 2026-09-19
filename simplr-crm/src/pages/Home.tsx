@@ -58,7 +58,7 @@ export function Home() {
           <span className="w-9 h-9 rounded-[10px] bg-white/10 text-white flex items-center justify-center shrink-0"><Sparkle size={18} /></span>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2"><span className="text-[13px] font-semibold text-white">Your morning brief</span><span className="eyebrow text-[9px] bg-white/15 text-white rounded px-1.5 py-0.5">AI</span></div>
-            <div className="text-[13px] leading-relaxed mt-1" style={{ color: '#C7D3F2' }}>{brief[currentRole]}</div>
+            <div className="text-[13px] leading-relaxed mt-1" style={{ color: '#A7E6DA' }}>{brief[currentRole]}</div>
           </div>
           <button onClick={() => nav('/ai')} className="shrink-0 h-8 px-3 rounded-lg bg-white/10 hover:bg-white/15 text-white text-[12.5px] font-semibold flex items-center gap-1.5 transition-colors"><Sparkle size={14} /> Open TellOvi AI</button>
         </div>

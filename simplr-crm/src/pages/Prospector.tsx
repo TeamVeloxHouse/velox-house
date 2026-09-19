@@ -129,7 +129,7 @@ export function Prospector() {
           <div className="rounded-card bg-deep-panel p-3.5 mt-auto">
             <div className="text-[12px]" style={{ color: '#93A0B4' }}>Database</div>
             <div className="text-[18px] font-bold text-white mt-1">400M+ profiles</div>
-            <div className="text-[11px] mt-1 leading-snug" style={{ color: '#8FB0FF' }}>Powered by your data provider — verified emails &amp; direct dials on reveal.</div>
+            <div className="text-[11px] mt-1 leading-snug" style={{ color: '#57C9B4' }}>Powered by your data provider — verified emails &amp; direct dials on reveal.</div>
           </div>
         </aside>
 
@@ -170,7 +170,7 @@ export function Prospector() {
                       <button onClick={() => reveal(p)} className="text-[12.5px] text-accent font-semibold flex items-center gap-1 hover:underline"><span className="blur-[3px] select-none">hidden@email.com</span></button>
                     )}
                   </Cell>
-                  <Cell align="right"><span className="font-bold" style={{ color: p.score >= 75 ? '#0E7C66' : p.score >= 60 ? '#1D4ED8' : '#7A8494' }}>{p.score}</span></Cell>
+                  <Cell align="right"><span className="font-bold" style={{ color: p.score >= 75 ? '#0E7C66' : p.score >= 60 ? '#13927B' : '#7A8494' }}>{p.score}</span></Cell>
                   <Cell align="right">
                     {isAdded ? (
                       <span className="text-[12px] text-positive font-semibold flex items-center gap-1 justify-end"><Check size={13} /> Added</span>

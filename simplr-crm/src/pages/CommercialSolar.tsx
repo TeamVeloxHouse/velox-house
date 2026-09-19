@@ -31,12 +31,12 @@ const STARTERS = [
 ]
 
 export const STATUS_META: Record<SolarProspectStatus, { label: string; tone: string }> = {
-  prospected: { label: 'Prospected', tone: '#64748B' }, researched: { label: 'Researched', tone: '#7C3AED' },
-  contacted: { label: 'Contacted', tone: '#3B6BF5' }, replied: { label: 'Replied', tone: '#0EA5E9' },
-  meeting: { label: 'Meeting', tone: '#F59E0B' }, proposal: { label: 'Proposal', tone: '#8B5CF6' },
+  prospected: { label: 'Prospected', tone: '#64748B' }, researched: { label: 'Researched', tone: '#159C86' },
+  contacted: { label: 'Contacted', tone: '#1FAE94' }, replied: { label: 'Replied', tone: '#0EA5E9' },
+  meeting: { label: 'Meeting', tone: '#F59E0B' }, proposal: { label: 'Proposal', tone: '#57C9B4' },
   won: { label: 'Won', tone: '#0E9F6E' }, lost: { label: 'Lost', tone: '#B01B4F' },
 }
-export const scoreTone = (s: number) => (s >= 80 ? '#0E9F6E' : s >= 65 ? '#3B6BF5' : '#F59E0B')
+export const scoreTone = (s: number) => (s >= 80 ? '#0E9F6E' : s >= 65 ? '#1FAE94' : '#F59E0B')
 
 /* ══════════════════════ The Commercial Solar Tool (tabbed) ══════════════════════ */
 export function CommercialSolarTool() {
@@ -187,13 +187,13 @@ function ChatTab({ mode, setMode, params, set, chat, draft, setDraft, sendChat, 
   return (
     <div className="grid grid-cols-[minmax(360px,420px)_1fr] gap-5 flex-1 min-h-0">
       <div className="flex flex-col rounded-card bg-surface border border-border overflow-hidden min-h-0">
-        <div className="px-4 py-3 border-b border-divider flex items-center gap-2.5" style={{ background: 'linear-gradient(135deg,#3B6BF5 0%,#7C3AED 100%)' }}>
+        <div className="px-4 py-3 border-b border-divider flex items-center gap-2.5" style={{ background: 'linear-gradient(135deg,#1FAE94 0%,#159C86 100%)' }}>
           <span className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white"><Sparkle size={17} /></span>
           <div><div className="text-white font-bold text-[14px] leading-tight">Ovi finds your leads</div><div className="text-white/70 text-[11.5px]">Describe your ideal customer</div></div>
         </div>
         <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 min-h-0">
           {chat.map((m: ChatMsg, i: number) => (
-            <div key={i} className={classNames('max-w-[92%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-snug', m.role === 'ovi' ? 'bg-control text-ink-2 self-start rounded-tl-sm' : 'text-white self-end rounded-tr-sm')} style={m.role === 'you' ? { background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' } : undefined}>{renderText(m.text)}</div>
+            <div key={i} className={classNames('max-w-[92%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-snug', m.role === 'ovi' ? 'bg-control text-ink-2 self-start rounded-tl-sm' : 'text-white self-end rounded-tr-sm')} style={m.role === 'you' ? { background: 'linear-gradient(135deg,#1FAE94,#159C86)' } : undefined}>{renderText(m.text)}</div>
           ))}
           {chat.length === 1 && (
             <div className="flex flex-col gap-2 mt-1">
@@ -205,7 +205,7 @@ function ChatTab({ mode, setMode, params, set, chat, draft, setDraft, sendChat, 
         </div>
         <div className="p-3 border-t border-divider flex items-center gap-2">
           <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && sendChat(draft)} placeholder="Describe your ideal customer…" className="flex-1 h-10 px-3 rounded-control border border-input-border bg-white text-[13.5px] outline-none focus:border-accent" />
-          <button onClick={() => sendChat(draft)} className="w-10 h-10 rounded-control text-white flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Send size={16} /></button>
+          <button onClick={() => sendChat(draft)} className="w-10 h-10 rounded-control text-white flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Send size={16} /></button>
         </div>
       </div>
 
@@ -239,7 +239,7 @@ function HowItWorks() {
     <div className="rounded-card bg-surface border border-border p-4 grid grid-cols-4 gap-3">
       {steps.map((s, i) => (
         <div key={i} className="flex flex-col gap-1.5">
-          <span className="w-9 h-9 rounded-xl flex items-center justify-center text-white" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><s.icon size={17} /></span>
+          <span className="w-9 h-9 rounded-xl flex items-center justify-center text-white" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><s.icon size={17} /></span>
           <div className="text-[13px] font-bold text-ink mt-1">{i + 1}. {s.t}</div>
           <div className="text-[11.5px] text-muted-b leading-snug">{s.d}</div>
         </div>
@@ -324,7 +324,7 @@ function RoofsTab({ prospects, running, progress, campaigns, campaignId, setCamp
 function EmptyState() {
   return (
     <div className="flex-1 flex flex-col items-center justify-center text-center gap-3 py-16 rounded-card border border-dashed border-border">
-      <span className="w-14 h-14 rounded-2xl flex items-center justify-center text-white" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Sun size={28} /></span>
+      <span className="w-14 h-14 rounded-2xl flex items-center justify-center text-white" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Sun size={28} /></span>
       <div className="text-[16px] font-bold text-ink">No roofs scanned yet</div>
       <div className="text-[13px] text-muted-b max-w-[460px]">Head to the <b>Chat</b> tab and describe your ideal customer — Ovi scans the area, measures every roof from satellite, and the buildings appear here.</div>
     </div>
@@ -377,7 +377,7 @@ export function BigRoofCard({ p, onOpen }: { p: SolarProspect; onOpen: () => voi
 export function CompanyLogo({ domain, name, size = 40 }: { domain?: string; name: string; size?: number }) {
   const [failed, setFailed] = useState(false)
   if (domain && !failed) return <img src={`https://logo.clearbit.com/${domain}`} onError={() => setFailed(true)} alt="" className="rounded-lg object-contain bg-white border border-border shrink-0" style={{ width: size, height: size }} />
-  return <span className="rounded-lg flex items-center justify-center text-white font-bold shrink-0" style={{ width: size, height: size, fontSize: size * 0.4, background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}>{name.charAt(0).toUpperCase()}</span>
+  return <span className="rounded-lg flex items-center justify-center text-white font-bold shrink-0" style={{ width: size, height: size, fontSize: size * 0.4, background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}>{name.charAt(0).toUpperCase()}</span>
 }
 function Stat({ v, u }: { v: string; u: string }) {
   return <div className="rounded-lg bg-control py-1.5"><div className="text-[15px] font-bold text-ink leading-none">{v}</div><div className="text-[9.5px] text-muted-2 mt-1 uppercase tracking-wide">{u}</div></div>
@@ -420,7 +420,7 @@ function PeoplePanel({ p, jobTitles }: { p: SolarProspect; jobTitles?: string[] 
         <Person size={26} className="text-muted-2" />
         <div className="text-[14px] font-bold text-ink">Find the decision-makers at {p.company}</div>
         <div className="text-[12.5px] text-muted-b max-w-[440px]">One People Data Labs lookup pulls everyone we can find — names, titles, seniority and emails — then it's cached free. Browse, filter and add the right people to your list.</div>
-        <button onClick={reveal} disabled={revealing} className="mt-1 h-9 px-4 rounded-control text-white text-[13px] font-semibold flex items-center gap-2 disabled:opacity-50" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}>
+        <button onClick={reveal} disabled={revealing} className="mt-1 h-9 px-4 rounded-control text-white text-[13px] font-semibold flex items-center gap-2 disabled:opacity-50" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}>
           {revealing ? <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" /> : <Person size={15} />}{revealing ? 'Searching…' : 'Reveal people (1 credit)'}
         </button>
       </div>
@@ -435,7 +435,7 @@ function PeoplePanel({ p, jobTitles }: { p: SolarProspect; jobTitles?: string[] 
         <div className="relative flex-1 min-w-[160px]"><Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-2" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name or title…" className="h-8 w-full pl-8 pr-2 rounded-control border border-input-border bg-white text-[12.5px] outline-none focus:border-accent" /></div>
         <select value={sen} onChange={(e) => setSen(e.target.value)} className="h-8 px-2 rounded-control border border-input-border bg-white text-[12px] outline-none focus:border-accent">{seniorities.map((s) => <option key={s} value={s}>{s === 'all' ? 'All seniority' : s}</option>)}</select>
         <select value={dept} onChange={(e) => setDept(e.target.value)} className="h-8 px-2 rounded-control border border-input-border bg-white text-[12px] outline-none focus:border-accent">{depts.map((d) => <option key={d} value={d}>{d === 'all' ? 'All departments' : d}</option>)}</select>
-        <button onClick={addToList} disabled={!sel.size} className="h-8 px-3 rounded-control text-white text-[12.5px] font-semibold disabled:opacity-40 flex items-center gap-1.5" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Check size={13} />Add {sel.size || ''} to list</button>
+        <button onClick={addToList} disabled={!sel.size} className="h-8 px-3 rounded-control text-white text-[12.5px] font-semibold disabled:opacity-40 flex items-center gap-1.5" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Check size={13} />Add {sel.size || ''} to list</button>
       </div>
       <div className="max-h-[280px] overflow-y-auto">
         {filtered.map((c) => (
@@ -480,10 +480,10 @@ function MeasureRoofPanel({ p }: { p: SolarProspect }) {
   }
   return (
     <div className="rounded-card border border-dashed border-border p-6 flex flex-col items-center text-center gap-2">
-      <span className="w-12 h-12 rounded-2xl flex items-center justify-center text-white" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}><Sun size={24} /></span>
+      <span className="w-12 h-12 rounded-2xl flex items-center justify-center text-white" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Sun size={24} /></span>
       <div className="text-[15px] font-bold text-ink">Roof not measured yet</div>
       <div className="text-[12.5px] text-muted-b max-w-[460px]">This company came through people-first — no roof spend yet. Measure it from satellite to size the system, cost it, and score the solar opportunity.</div>
-      <button onClick={run} disabled={measuring} className="mt-1 h-9 px-4 rounded-control text-white text-[13px] font-semibold flex items-center gap-2 disabled:opacity-50" style={{ background: 'linear-gradient(135deg,#3B6BF5,#7C3AED)' }}>
+      <button onClick={run} disabled={measuring} className="mt-1 h-9 px-4 rounded-control text-white text-[13px] font-semibold flex items-center gap-2 disabled:opacity-50" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}>
         {measuring ? <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" /> : <Sun size={15} />}{measuring ? 'Measuring…' : 'Measure roof'}
       </button>
     </div>
