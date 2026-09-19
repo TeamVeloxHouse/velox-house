@@ -33,7 +33,7 @@ export function Button({ children, variant = 'secondary', onClick, icon, classNa
   return (
     <button
       onClick={onClick}
-      className={classNames(base, 'bg-surface-tint border border-border-blue text-ink-3 font-medium hover:bg-[#F3F6FC]', className)}
+      className={classNames(base, 'bg-card-sheen border border-border-blue text-ink-3 font-medium shadow-[0_1px_1.5px_rgba(16,24,40,0.05)] hover:bg-[#F3F6FC] hover:shadow-[0_2px_5px_rgba(16,24,40,0.08)]', className)}
       style={color ? { color, borderColor: color } : undefined}
     >
       {icon}
@@ -153,9 +153,9 @@ export function Kpi({
     <div
       className={classNames(
         'rounded-card p-[18px]',
-        variant === 'blue' && 'bg-kpi-blue border border-border-blue',
+        variant === 'blue' && 'bg-kpi-blue border border-border-blue shadow-card',
         variant === 'plain' && 'bg-surface border border-border',
-        isDeep && 'bg-deep-panel',
+        isDeep && 'bg-deep-panel shadow-lift',
       )}
     >
       <div className="text-[12px] font-medium" style={{ color: isDeep ? '#93A0B4' : variant === 'blue' ? '#5D7091' : '#7A8494' }}>

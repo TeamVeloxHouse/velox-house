@@ -31,7 +31,7 @@ export function Layout() {
   return (
     <div className="h-full flex bg-canvas overflow-hidden">
       <Rail />
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 bg-canvas-fade">
         {showSectionNav && <SectionNav />}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           <Outlet context={{ openPalette: () => setPaletteOpen(true) }} />

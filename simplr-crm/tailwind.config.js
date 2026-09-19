@@ -55,15 +55,22 @@ export default {
         overlay: '16px',
       },
       boxShadow: {
-        card: '0 2px 8px rgba(20,24,40,0.05)',
-        primary: '0 1px 2px rgba(11,18,32,0.18), 0 6px 16px rgba(29,78,216,0.22)',
-        'board-selected': '0 6px 18px rgba(29,78,216,0.13)',
+        // Layered, modern elevation — two stacked shadows give soft, natural lift.
+        card: '0 1px 2px -1px rgba(16,24,40,0.06), 0 3px 8px -2px rgba(16,24,40,0.06)',
+        lift: '0 2px 6px -2px rgba(16,24,40,0.08), 0 12px 28px -8px rgba(16,24,40,0.12)',
+        chrome: '0 1px 0 rgba(16,24,40,0.03), 0 6px 16px -10px rgba(16,24,40,0.14)',
+        primary: '0 1px 2px rgba(11,18,32,0.18), 0 8px 20px -4px rgba(29,78,216,0.30)',
+        'board-selected': '0 8px 22px -6px rgba(29,78,216,0.16)',
         modal: '0 30px 70px rgba(11,18,32,0.35)',
       },
       backgroundImage: {
         'accent-gradient': 'linear-gradient(135deg,#3B6BF5 0%,#7C3AED 100%)',
         'deep-panel': 'linear-gradient(158deg,#1C3A72 0%,#0C1B38 100%)',
-        'kpi-blue': 'linear-gradient(180deg,#F4F8FF 0%,#FFFFFF 60%)',
+        'kpi-blue': 'linear-gradient(165deg,#F1F6FF 0%,#FFFFFF 62%)',
+        // Barely-there top sheen so surfaces read as lit, not flat.
+        'card-sheen': 'linear-gradient(180deg,#FFFFFF 0%,#FBFCFE 100%)',
+        // Layered canvas so cards lift off a living ground, not dead grey.
+        'canvas-fade': 'linear-gradient(180deg,#F1F4F9 0%,#F6F7FA 34%,#F5F6F9 100%)',
       },
     },
   },

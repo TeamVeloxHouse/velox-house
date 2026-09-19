@@ -55,6 +55,27 @@ body {
   }
 }
 
+@layer components {
+  /* Modernise every card at once: the standard flat card pattern used across
+     the app gains soft layered elevation + a barely-there top sheen, so the
+     whole product reads as lit and dimensional without touching each page. */
+  .bg-surface.border.border-border.rounded-card,
+  .bg-white.border.border-border.rounded-card {
+    box-shadow: 0 1px 2px -1px rgba(16, 24, 40, 0.06), 0 3px 8px -2px rgba(16, 24, 40, 0.06);
+    background-image: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+    border-color: #e9edf3;
+  }
+  /* Depth hierarchy: a card nested inside another card sits flat and inset,
+     so only the top-level surface lifts — no floaty "cards inside cards". */
+  .bg-surface.border.border-border.rounded-card .bg-surface.border.border-border.rounded-card,
+  .bg-surface.border.border-border.rounded-card .bg-white.border.border-border.rounded-card,
+  .bg-white.border.border-border.rounded-card .bg-surface.border.border-border.rounded-card,
+  .bg-white.border.border-border.rounded-card .bg-white.border.border-border.rounded-card {
+    box-shadow: none;
+    background-image: none;
+  }
+}
+
 @layer utilities {
   .eyebrow {
     font-size: 11px;

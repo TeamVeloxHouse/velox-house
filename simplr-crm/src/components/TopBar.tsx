@@ -18,7 +18,7 @@ export function TopBar({
   const loc = useLocation()
   const canBack = loc.key !== 'default' // false only on a cold-loaded first page
   return (
-    <header className="h-[68px] shrink-0 bg-surface border-b border-border flex items-center gap-3.5 px-7">
+    <header className="h-[68px] shrink-0 bg-card-sheen border-b border-border shadow-chrome relative z-10 flex items-center gap-3.5 px-7">
       <button
         onClick={() => (canBack ? nav(-1) : nav('/'))}
         title="Back"

@@ -25,7 +25,7 @@ export function SectionNav() {
     .filter((g) => g.items.length > 0)
 
   return (
-    <div className="h-[52px] shrink-0 bg-surface border-b border-border flex items-stretch px-5 gap-1 relative">
+    <div className="h-[52px] shrink-0 bg-card-sheen border-b border-border flex items-stretch px-5 gap-1 relative z-20">
       {/* area identity */}
       <div className="flex items-center gap-2.5 pr-4 mr-1 shrink-0">
         <span

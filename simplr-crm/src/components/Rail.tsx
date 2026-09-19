@@ -67,7 +67,7 @@ export function Rail() {
   }
 
   return (
-    <nav className={classNames('shrink-0 bg-rail flex flex-col py-4 transition-[width] duration-200 ease-out overflow-visible', expanded ? 'w-[224px] px-3.5' : 'w-[76px] px-0 items-center')}>
+    <nav className={classNames('shrink-0 flex flex-col py-4 transition-[width] duration-200 ease-out overflow-visible', expanded ? 'w-[224px] px-3.5' : 'w-[76px] px-0 items-center')} style={{ background: 'linear-gradient(178deg,#0D1526 0%,#090E1A 100%)' }}>
       {/* brand + collapse */}
       <div className={classNames('flex items-center mb-5', expanded ? 'gap-2.5 px-1' : 'flex-col')}>
         <span className="w-[36px] h-[36px] rounded-[11px] flex items-center justify-center text-white font-bold text-[16px] shrink-0" style={{ background: BRAND_GRAD }}>S</span>
