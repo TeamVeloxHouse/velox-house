@@ -5,10 +5,10 @@ import { PageBody } from '../components/Page'
 import { Button, Kpi, Chip, Avatar } from '../components/ui'
 import { Table, Row, Cell } from '../components/Table'
 import { Modal, Field, Input, Select, Textarea } from '../components/overlays'
-import { Plus, Sparkle, Sun, File as FileIcon, Play, Bolt, Check, Send, MapPin, Clock, Download, Robot, Building, Wrench, Dollar, Bell } from '../components/icons'
+import { Plus, Sparkle, Sun, File as FileIcon, Play, Bolt, Check, Send, MapPin, Clock, Download, Robot, Building, Wrench, Dollar, Bell, Flow, Link, ArrowUpRight, Star, Users, Megaphone } from '../components/icons'
 import { useState_, useActions } from '../store/store'
 import { customerAnswer, portalStarters, type PortalBlock } from '../lib/portalAi'
-import type { CustomerPortal as Portal, PortalResource, PortalEvent } from '../store/types'
+import type { CustomerPortal as Portal, PortalResource, PortalEvent, PortalMilestone, PortalOffer } from '../store/types'
 import { money, classNames } from '../lib/format'
 
 const CUSTOMER_ACCENT = '#0E7C66' // portal is green — signals "customer-facing", distinct from CRM blue
@@ -23,7 +23,7 @@ export function CustomerPortals() {
   const wonNoPortal = deals.filter((d) => d.won && !portals.some((p) => p.dealId === d.id))
   const setupPortal = (d: (typeof deals)[number]) => {
     const c = people.find((p) => d.personIds.includes(p.id))
-    const portal = act.createPortal({ dealId: d.id, customer: c?.name || d.org, email: c?.email || '', address: d.org, systemKwp: d.solar?.systemKwp ?? 6, systemCost: Math.round(d.solar?.systemCost ?? d.value), annualSavings: Math.round((d.solar?.annualSavings ?? d.value * 0.12)) })
+    const portal = act.createPortal({ dealId: d.id, customer: c?.name || d.org, email: c?.email || '', address: d.org, systemKwp: d.solar?.systemKwp ?? 6, systemCost: Math.round(d.solar?.systemCost ?? d.value), annualSavings: Math.round((d.solar?.annualSavings ?? d.value * 0.12)), hasBattery: true, journey: starterJourney() })
     nav(`/customers/${portal.id}`)
   }
 
@@ -94,6 +94,9 @@ function NewPortalModal({ open, onClose, onCreated }: { open: boolean; onClose: 
   const [email, setEmail] = useState('')
   const [kwp, setKwp] = useState('6')
   const [cost, setCost] = useState('9000')
+  const [platform, setPlatform] = useState('')
+  const [hasBattery, setHasBattery] = useState(true)
+  const [hasEv, setHasEv] = useState(false)
   const pickDeal = (id: string) => {
     setDealId(id)
     const d = deals.find((x) => x.id === id); if (!d) return
@@ -101,9 +104,16 @@ function NewPortalModal({ open, onClose, onCreated }: { open: boolean; onClose: 
     setCustomer(c?.name || d.org); setEmail(c?.email || '')
     if (d.solar) { setKwp(String(d.solar.systemKwp)); setCost(String(Math.round(d.solar.systemCost))) }
   }
+  const PLATFORMS = ['Tesla', 'SolarEdge', 'Enphase', 'GivEnergy', 'SolisCloud', 'FoxESS', 'GrowattShine', 'SunSynk']
+  const MON_URL: Record<string, string> = { Tesla: 'https://www.tesla.com/energy', SolarEdge: 'https://monitoring.solaredge.com', Enphase: 'https://enlighten.enphaseenergy.com', GivEnergy: 'https://www.givenergy.cloud', SolisCloud: 'https://www.soliscloud.com', FoxESS: 'https://www.foxesscloud.com', GrowattShine: 'https://server.growatt.com', SunSynk: 'https://www.sunsynk.net' }
+  const create = () => {
+    if (!customer.trim()) return
+    const p = act.createPortal({ dealId: dealId || undefined, customer: customer.trim(), email, address: deals.find((d) => d.id === dealId)?.org ?? '', systemKwp: Number(kwp) || 0, systemCost: Number(cost) || 0, annualSavings: Math.round((Number(cost) || 0) * 0.12), hasBattery, hasEv, monitoringPlatform: platform || undefined, monitoringUrl: platform ? MON_URL[platform] : undefined, journey: starterJourney() })
+    onCreated(p.id)
+  }
   return (
     <Modal open={open} onClose={onClose} title="New customer portal" subtitle="Give a customer their own login after a proposal"
-      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" onClick={() => { if (customer.trim()) { const p = act.createPortal({ dealId: dealId || undefined, customer: customer.trim(), email, address: deals.find((d) => d.id === dealId)?.org ?? '', systemKwp: Number(kwp) || 0, systemCost: Number(cost) || 0, annualSavings: Math.round((Number(cost) || 0) * 0.12) }); onCreated(p.id) } }}>Create &amp; invite</Button></>}>
+      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" onClick={create}>Create &amp; invite</Button></>}>
       <Field label="From a deal (optional)"><Select value={dealId} onChange={(e) => pickDeal(e.target.value)}><option value="">Start blank</option>{deals.filter((d) => !d.lost).map((d) => (<option key={d.id} value={d.id}>{d.name} · {d.org}</option>))}</Select></Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Customer"><Input value={customer} onChange={(e) => setCustomer(e.target.value)} placeholder="Full name" autoFocus /></Field>
@@ -113,15 +123,20 @@ function NewPortalModal({ open, onClose, onCreated }: { open: boolean; onClose: 
         <Field label="System (kWp)"><Input type="number" value={kwp} onChange={(e) => setKwp(e.target.value)} /></Field>
         <Field label="System cost (£)"><Input type="number" value={cost} onChange={(e) => setCost(e.target.value)} /></Field>
       </div>
+      <Field label="Monitoring platform"><Select value={platform} onChange={(e) => setPlatform(e.target.value)}><option value="">None / add later</option>{PLATFORMS.map((p) => (<option key={p} value={p}>{p}</option>))}</Select></Field>
+      <div className="flex items-center gap-4 pt-1">
+        <label className="flex items-center gap-2 text-[13px] text-ink-2 cursor-pointer"><input type="checkbox" checked={hasBattery} onChange={(e) => setHasBattery(e.target.checked)} /> Has a battery</label>
+        <label className="flex items-center gap-2 text-[13px] text-ink-2 cursor-pointer"><input type="checkbox" checked={hasEv} onChange={(e) => setHasEv(e.target.checked)} /> Has an EV charger</label>
+      </div>
     </Modal>
   )
 }
 
 /* ============================ The portal itself ============================ */
-type Tab = 'Account' | 'Overview' | 'Energy' | 'Savings' | 'Documents' | 'Support' | 'Refer a friend' | 'Resources' | 'Analytics'
+type Tab = 'Account' | 'Overview' | 'Progress' | 'Energy' | 'Savings' | 'Documents' | 'Support' | 'Community' | 'Refer a friend' | 'Resources' | 'Analytics'
 const TEAM_TABS: Tab[] = ['Account', 'Analytics']
 const TABS: { id: Tab; icon: any }[] = [
-  { id: 'Account', icon: Building }, { id: 'Overview', icon: Sun }, { id: 'Energy', icon: Bolt }, { id: 'Savings', icon: Dollar }, { id: 'Documents', icon: FileIcon }, { id: 'Support', icon: Wrench }, { id: 'Refer a friend', icon: Sparkle }, { id: 'Resources', icon: Play }, { id: 'Analytics', icon: Sparkle },
+  { id: 'Account', icon: Building }, { id: 'Overview', icon: Sun }, { id: 'Progress', icon: Flow }, { id: 'Energy', icon: Bolt }, { id: 'Savings', icon: Dollar }, { id: 'Documents', icon: FileIcon }, { id: 'Support', icon: Wrench }, { id: 'Community', icon: Users }, { id: 'Refer a friend', icon: Sparkle }, { id: 'Resources', icon: Play }, { id: 'Analytics', icon: Sparkle },
 ]
 
 export function CustomerPortal() {
@@ -160,10 +175,12 @@ export function CustomerPortal() {
         <main className="flex-1 overflow-y-auto p-6 min-w-0">
           {tab === 'Account' && <AccountTab portal={portal} />}
           {tab === 'Overview' && <OverviewTab portal={portal} onGo={setTab} />}
+          {tab === 'Progress' && <ProgressTab portal={portal} />}
           {tab === 'Energy' && <EnergyTab portal={portal} />}
           {tab === 'Savings' && <SavingsTab portal={portal} />}
           {tab === 'Documents' && <DocumentsTab portal={portal} />}
           {tab === 'Support' && <SupportTab portal={portal} />}
+          {tab === 'Community' && <CommunityTab portal={portal} />}
           {tab === 'Refer a friend' && <ReferTab portal={portal} />}
           {tab === 'Resources' && <ResourcesTab portal={portal} />}
           {tab === 'Analytics' && <AnalyticsTab portal={portal} />}
@@ -265,12 +282,16 @@ function AccountTab({ portal }: { portal: Portal }) {
           {deal ? (
             <button onClick={() => nav(`/deals/${deal.id}`)} className="flex items-center justify-between w-full mb-3 text-left"><span className="text-[13.5px] font-semibold text-accent">{deal.name}</span><Chip tone={deal.won ? 'positive' : 'accent'}>{deal.won ? 'Won' : deal.stage}</Chip></button>
           ) : <div className="text-[13px] text-muted-2 mb-3">No linked deal</div>}
-          <Detail label="System" value={`${portal.systemKwp} kWp`} />
+          <Detail label="System" value={`${portal.systemKwp} kWp${portal.hasBattery ? ' + battery' : ''}${portal.hasEv ? ' + EV' : ''}`} />
           <Detail label="Value" value={money(portal.systemCost)} />
           <Detail label="Annual saving" value={money(portal.annualSavings)} />
-          {portal.installDate && <Detail label="Installed" value={portal.installDate} />}
+          <Detail label="Monitoring" value={portal.monitoringPlatform || '—'} />
+          {portal.installDate && <Detail label="Installed" value={fmtDate(portal.installDate) ?? portal.installDate} />}
         </div>
       </div>
+
+      {/* team control: advance the install journey → notifies the customer */}
+      <JourneyControl portal={portal} />
 
       {/* jobs / service */}
       <div className="bg-surface border border-border rounded-card p-5">
@@ -301,6 +322,61 @@ function AccountTab({ portal }: { portal: Portal }) {
         )}
       </div>
     </div>
+  )
+}
+
+/* ---- team control: move a customer along their install journey ---- */
+function JourneyControl({ portal }: { portal: Portal }) {
+  const act = useActions()
+  const j = journeyProgress(portal)
+  const [offerOpen, setOfferOpen] = useState(false)
+  if (j.steps.length === 0) return null
+  return (
+    <div className="bg-surface border border-border rounded-card p-5">
+      <div className="flex items-center gap-2 mb-3">
+        <Flow size={15} className="text-accent" /><span className="text-[14px] font-semibold text-ink">Install journey</span>
+        <span className="text-[12px] text-muted-2">{j.doneCount}/{j.steps.length} · {j.pct}%</span>
+        <div className="ml-auto flex items-center gap-2">
+          <Button icon={<Megaphone size={14} />} onClick={() => setOfferOpen(true)}>Push offer</Button>
+          {j.current && <Button variant="primary" icon={<Check size={14} />} onClick={() => act.advancePortalJourney(portal, j.current!.key)}>Mark “{j.current.label}” done</Button>}
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {j.steps.map((m, i) => (
+          <span key={m.key} className={classNames('text-[11px] px-2 py-1 rounded-full border', m.done ? 'text-white border-transparent' : i === j.currentIdx ? 'border-[#C79A3A] text-[#8A5A00] bg-[#FBF6EC]' : 'border-border text-muted-2')} style={m.done ? { background: CUSTOMER_ACCENT } : undefined}>
+            {m.done ? '✓ ' : i === j.currentIdx ? '● ' : ''}{m.label}
+          </span>
+        ))}
+      </div>
+      {j.complete && <div className="text-[12px] text-positive mt-2 flex items-center gap-1.5"><Check size={13} /> Journey complete — system live.</div>}
+      <PushOfferModal open={offerOpen} onClose={() => setOfferOpen(false)} portal={portal} />
+    </div>
+  )
+}
+
+function PushOfferModal({ open, onClose, portal }: { open: boolean; onClose: () => void; portal: Portal }) {
+  const act = useActions()
+  const [kind, setKind] = useState<PortalOffer['kind']>('upgrade')
+  const [title, setTitle] = useState('')
+  const [blurb, setBlurb] = useState('')
+  const [cta, setCta] = useState('I’m interested')
+  const [hint, setHint] = useState('')
+  const submit = () => {
+    if (!title.trim()) return
+    act.addPortalOffer({ portalId: portal.id, kind, title: title.trim(), blurb: blurb.trim(), cta: cta.trim() || 'I’m interested', savingHint: hint.trim() || undefined })
+    setTitle(''); setBlurb(''); setHint(''); onClose()
+  }
+  return (
+    <Modal open={open} onClose={onClose} title={`Push an offer to ${portal.customer.split(' ')[0]}`} subtitle="Appears in their portal Overview — “I’m interested” creates a warm lead for you"
+      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" icon={<Megaphone size={15} />} onClick={submit}>Add to portal</Button></>}>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Type"><Select value={kind} onChange={(e) => setKind(e.target.value as PortalOffer['kind'])}>{['battery', 'ev', 'upgrade', 'service', 'general'].map((k) => (<option key={k} value={k}>{k}</option>))}</Select></Field>
+        <Field label="Saving hint (optional)"><Input value={hint} onChange={(e) => setHint(e.target.value)} placeholder="Save ~£320/yr" /></Field>
+      </div>
+      <Field label="Title"><Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Add a second battery for winter" autoFocus /></Field>
+      <Field label="Message"><Textarea rows={3} value={blurb} onChange={(e) => setBlurb(e.target.value)} placeholder="A short, friendly explanation of the offer…" /></Field>
+      <Field label="Button label"><Input value={cta} onChange={(e) => setCta(e.target.value)} /></Field>
+    </Modal>
   )
 }
 
@@ -354,11 +430,16 @@ function ReportProblemModal({ open, onClose, portal }: { open: boolean; onClose:
 }
 
 function OverviewTab({ portal, onGo }: { portal: Portal; onGo: (t: Tab) => void }) {
+  const { portalOffers } = useState_()
   const payback = portal.annualSavings ? Math.round((portal.systemCost / portal.annualSavings) * 10) / 10 : 0
   const w = warranties(portal)
+  const j = useMemo(() => journeyProgress(portal), [portal])
+  const offers = useMemo(() => offersFor(portal, portalOffers), [portal, portalOffers])
+  const lastDone = [...j.steps].reverse().find((m) => m.done && m.at)
+  const kit = [portal.systemKwp ? 'Panels' : '', portal.hasBattery ? 'battery' : '', portal.hasEv ? 'EV charger' : ''].filter(Boolean).join(' + ')
   const updates = [
+    ...(lastDone ? [{ icon: Check, title: `${lastDone.label} ✓`, body: lastDone.blurb, tone: '#0E7C66' }] : []),
     { icon: Bolt, title: 'Great generation yesterday', body: `Your system made ${Math.round(portal.systemKwp * 5.1)} kWh — one of your best days this month.`, tone: '#0E7C66' },
-    { icon: Bell, title: 'Firmware update available', body: 'A free update for your inverter improves battery scheduling. Tap to apply.', tone: '#1D4ED8' },
     { icon: Sun, title: 'Tip: shift your washing to midday', body: 'You’re generating most between 11am–3pm — run appliances then to use free solar.', tone: '#C79A3A' },
   ]
   return (
@@ -366,10 +447,18 @@ function OverviewTab({ portal, onGo }: { portal: Portal; onGo: (t: Tab) => void 
       <div className="rounded-card p-6 text-white" style={{ background: 'linear-gradient(150deg,#0E7C66,#0a5a4a)' }}>
         <div className="flex items-center gap-1.5 text-[12px] font-semibold" style={{ color: '#9BE8D4' }}><Sun size={14} /> YOUR SOLAR SYSTEM</div>
         <div className="text-[26px] font-bold mt-1.5">{portal.systemKwp} kWp · saving £{portal.annualSavings.toLocaleString()}/yr</div>
-        <div className="text-[13px] mt-1" style={{ color: '#C7EFE4' }}>{portal.address}{portal.installDate ? ` · installed ${portal.installDate}` : ''}</div>
+        <div className="text-[13px] mt-1" style={{ color: '#C7EFE4' }}>{portal.address}{portal.installDate ? ` · installed ${fmtDate(portal.installDate)}` : ''}</div>
       </div>
+      {/* install journey strip — while there's still a journey to run */}
+      {j.steps.length > 0 && !j.complete && (
+        <button onClick={() => onGo('Progress')} className="text-left rounded-card p-4 border transition-colors hover:border-[#8FD3C2]" style={{ background: '#F1FAF7', borderColor: '#B9E0D4' }}>
+          <div className="flex items-center gap-2"><Flow size={15} style={{ color: CUSTOMER_ACCENT }} /><span className="text-[13.5px] font-semibold text-ink">{j.countdownDays !== undefined ? (j.countdownDays === 0 ? 'Installation is today!' : `${j.countdownDays} days to installation`) : (j.current?.label ?? 'Your install is underway')}</span><span className="ml-auto text-[12px] font-semibold" style={{ color: CUSTOMER_ACCENT }}>Track your install →</span></div>
+          <div className="mt-2 h-1.5 rounded-full bg-white overflow-hidden"><div className="h-full rounded-full" style={{ width: `${j.pct}%`, background: CUSTOMER_ACCENT }} /></div>
+          <div className="text-[11.5px] text-muted-2 mt-1.5">{j.doneCount} of {j.steps.length} steps done{j.current ? ` · next: ${j.current.label.toLowerCase()}` : ''}</div>
+        </button>
+      )}
       <div className="grid grid-cols-3 gap-4">
-        <Kpi label="System size" value={`${portal.systemKwp} kWp`} delta="Panels + battery" deltaTone="muted" />
+        <Kpi label="System size" value={`${portal.systemKwp} kWp`} delta={kit || 'Solar'} deltaTone="muted" />
         <Kpi variant="blue" label="Yearly saving" value={money(portal.annualSavings)} delta="Projected" />
         <Kpi label="Payback" value={`${payback} yrs`} delta="Then it's free energy" deltaTone="muted" />
       </div>
@@ -388,12 +477,21 @@ function OverviewTab({ portal, onGo }: { portal: Portal; onGo: (t: Tab) => void 
       {/* warranty summary */}
       <div className="bg-surface border border-border rounded-card p-5">
         <div className="flex items-center gap-2 mb-3"><Check size={15} className="text-positive" /><span className="text-[14px] font-semibold text-ink">Your cover</span><button onClick={() => onGo('Documents')} className="ml-auto text-[12px] font-semibold text-accent">View warranties →</button></div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(130px,1fr))' }}>
           {w.map((c) => (
             <div key={c.part} className="rounded-lg border border-border p-3"><div className="text-[12px] text-muted-2">{c.part}</div><div className="text-[15px] font-bold text-ink mt-0.5">{c.years} yrs</div><div className="text-[11px] text-positive">Covered to {c.until}</div></div>
           ))}
         </div>
       </div>
+      {/* offers for you — targeted upsell + team-pushed */}
+      {offers.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-2"><Sparkle size={14} style={{ color: CUSTOMER_ACCENT }} /><span className="text-[14px] font-semibold text-ink">Offers for you</span></div>
+          <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill,minmax(240px,1fr))' }}>
+            {offers.slice(0, 4).map((o) => <OfferCard key={o.id} portal={portal} offer={o} />)}
+          </div>
+        </div>
+      )}
       {/* quick links */}
       <div className="grid grid-cols-2 gap-3">
         <button onClick={() => onGo('Savings')} className="bg-surface border border-border rounded-card p-4 text-left hover:border-[#8FD3C2] transition-colors flex items-center gap-3"><span className="w-9 h-9 rounded-lg flex items-center justify-center text-white shrink-0" style={{ background: CUSTOMER_ACCENT }}><Dollar size={17} /></span><div><div className="text-[13.5px] font-semibold text-ink-2">See your savings</div><div className="text-[12px] text-muted-2">Trends &amp; impact</div></div></button>
@@ -407,7 +505,12 @@ function OverviewTab({ portal, onGo }: { portal: Portal; onGo: (t: Tab) => void 
 function warranties(p: Portal) {
   const base = p.installDate ? new Date(p.installDate) : new Date()
   const until = (yrs: number) => { const d = new Date(base); d.setFullYear(d.getFullYear() + yrs); return d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }) }
-  return [{ part: 'Panels', years: 25, until: until(25) }, { part: 'Inverter', years: 12, until: until(12) }, { part: 'Battery', years: 10, until: until(10) }]
+  return [
+    { part: 'Panels', years: 25, until: until(25) },
+    { part: 'Inverter', years: 12, until: until(12) },
+    ...(p.hasBattery ? [{ part: 'Battery', years: 10, until: until(10) }] : []),
+    ...(p.hasEv ? [{ part: 'EV charger', years: 3, until: until(3) }] : []),
+  ]
 }
 function portalSavings(p: Portal) {
   const monthly = p.annualSavings / 12
@@ -495,23 +598,206 @@ function ReferTab({ portal }: { portal: Portal }) {
   )
 }
 
+/* ---- install journey model ---- */
+function journeyProgress(p: Portal) {
+  const steps = p.journey ?? []
+  const doneCount = steps.filter((m) => m.done).length
+  const currentIdx = steps.findIndex((m) => !m.done)
+  const current = currentIdx === -1 ? undefined : steps[currentIdx]
+  const complete = steps.length > 0 && currentIdx === -1
+  const scheduled = steps.find((m) => m.key === 'scheduled')
+  const installed = steps.find((m) => m.key === 'installed')
+  const installDateStr = p.installDate || scheduled?.date
+  let countdownDays: number | undefined
+  if (installDateStr && !installed?.done) {
+    const d = Math.ceil((Date.parse(installDateStr) - Date.now()) / 86_400_000)
+    if (d >= 0) countdownDays = d
+  }
+  const pct = steps.length ? Math.round((doneCount / steps.length) * 100) : 0
+  return { steps, doneCount, current, currentIdx, complete, pct, countdownDays, installDateStr }
+}
+function fmtDate(iso?: string) { return iso ? new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : undefined }
+// A fresh journey for a newly-created portal — accepted done, the rest ahead.
+function starterJourney(): PortalMilestone[] {
+  return [
+    { key: 'accepted', label: 'Proposal accepted', blurb: 'You signed off your system design and pricing.', done: true, at: Date.now() },
+    { key: 'survey', label: 'Technical survey', blurb: 'We’ll book a surveyor to check your roof, loft and consumer unit.', done: false },
+    { key: 'design', label: 'System design signed off', blurb: 'Final panel layout confirmed after the survey.', done: false },
+    { key: 'dno-submitted', label: 'Grid (DNO) application submitted', blurb: 'We apply to your network operator to connect your system.', done: false },
+    { key: 'dno-approved', label: 'Grid application approved', blurb: 'Awaiting your network operator — usually 10 working days.', done: false },
+    { key: 'scheduled', label: 'Installation booked', blurb: 'We’ll confirm your install date with our crew.', done: false },
+    { key: 'installed', label: 'Installation complete', blurb: 'Panels, inverter and battery fitted — usually a single day.', done: false },
+    { key: 'commissioned', label: 'System switched on', blurb: 'We commission the system and set up your app.', done: false },
+    { key: 'handover', label: 'Handover & warranty pack', blurb: 'MCS certificate, DNO sign-off and all warranties issued.', done: false },
+  ]
+}
+
+/* ---- offers surfaced to the customer: stored + auto-suggested from missing kit ---- */
+function offersFor(portal: Portal, offers: PortalOffer[]): PortalOffer[] {
+  const stored = offers.filter((o) => o.status !== 'dismissed' && (o.global || o.portalId === portal.id))
+  const has = (k: string) => stored.some((o) => o.kind === k)
+  const synth: PortalOffer[] = []
+  if (!portal.hasBattery && !has('battery')) synth.push({ id: `syn-batt-${portal.id}`, portalId: portal.id, kind: 'battery', title: 'Add a battery and store your solar', blurb: 'You don’t have a battery yet — right now you export cheap daytime solar and buy it back at night. A battery keeps it for the evening.', cta: 'Get a battery quote', savingHint: 'Save ~£300/yr more', createdAt: Date.now(), status: 'active' })
+  if (!portal.hasEv && !has('ev')) synth.push({ id: `syn-ev-${portal.id}`, portalId: portal.id, kind: 'ev', title: 'Charge an EV from your own solar', blurb: 'A smart charger tops your car up from spare solar and cheap overnight rates — free daytime miles.', cta: 'See EV chargers', savingHint: 'Free daytime miles', createdAt: Date.now(), status: 'active' })
+  return [...synth, ...stored.filter((o) => o.kind !== 'referral')]
+}
+const OFFER_META: Record<string, { icon: any; color: string }> = {
+  battery: { icon: Bolt, color: '#7C3AED' }, ev: { icon: Bolt, color: '#1D4ED8' }, upgrade: { icon: Sun, color: '#0E7C66' }, service: { icon: Wrench, color: '#C79A3A' }, referral: { icon: Sparkle, color: '#0E7C66' }, general: { icon: Megaphone, color: '#B01B4F' },
+}
+function OfferCard({ portal, offer }: { portal: Portal; offer: PortalOffer }) {
+  const act = useActions()
+  const m = OFFER_META[offer.kind] ?? OFFER_META.general
+  const synthetic = offer.id.startsWith('syn-')
+  const done = offer.status === 'interested'
+  return (
+    <div className="bg-surface border border-border rounded-card p-4 flex flex-col gap-2 relative">
+      {!synthetic && !done && <button onClick={() => act.dismissPortalOffer(offer.id)} className="absolute top-2.5 right-2.5 w-6 h-6 rounded-lg text-muted-3 hover:text-negative hover:bg-negative-wash text-[15px] leading-none">×</button>}
+      <div className="flex items-center gap-2"><span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: m.color + '18', color: m.color }}><m.icon size={15} /></span>{offer.savingHint && <span className="text-[10.5px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ background: m.color + '18', color: m.color }}>{offer.savingHint}</span>}</div>
+      <div className="text-[13.5px] font-semibold text-ink-2 leading-snug">{offer.title}</div>
+      <div className="text-[12.5px] text-muted-2 leading-snug flex-1">{offer.blurb}</div>
+      {done ? (
+        <div className="text-[12px] font-semibold flex items-center gap-1.5" style={{ color: CUSTOMER_ACCENT }}><Check size={13} /> Thanks — we’ll be in touch</div>
+      ) : (
+        <button onClick={() => act.portalOfferInterest(portal, offer)} className="self-start text-[12.5px] font-semibold inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-white" style={{ background: CUSTOMER_ACCENT }}>{offer.cta} <ArrowUpRight size={13} /></button>
+      )}
+    </div>
+  )
+}
+
+/* ---- customer-facing install journey with countdown ---- */
+function ProgressTab({ portal }: { portal: Portal }) {
+  const j = useMemo(() => journeyProgress(portal), [portal])
+  if (j.steps.length === 0) return <div className="text-[13px] text-muted-2 bg-surface border border-border rounded-card p-5 max-w-[640px]">Your install journey will appear here once your proposal is accepted.</div>
+  return (
+    <div className="max-w-[720px] flex flex-col gap-4">
+      {/* hero: countdown / status */}
+      <div className="rounded-card p-6 text-white" style={{ background: 'linear-gradient(150deg,#0E7C66,#0a5a4a)' }}>
+        <div className="flex items-center gap-1.5 text-[12px] font-semibold" style={{ color: '#9BE8D4' }}><Flow size={14} /> YOUR INSTALL JOURNEY</div>
+        {j.complete ? (
+          <><div className="text-[26px] font-bold mt-1.5">Your system is live 🎉</div><div className="text-[13px] mt-1" style={{ color: '#C7EFE4' }}>Every step is done — you’re now generating your own clean energy.</div></>
+        ) : j.countdownDays !== undefined ? (
+          <><div className="text-[30px] font-bold mt-1.5">{j.countdownDays === 0 ? 'Installation is today!' : `${j.countdownDays} day${j.countdownDays === 1 ? '' : 's'} to installation`}</div><div className="text-[13px] mt-1" style={{ color: '#C7EFE4' }}>{fmtDate(j.installDateStr) ? `Booked for ${fmtDate(j.installDateStr)}. ` : ''}{j.current ? `Right now: ${j.current.label.toLowerCase()}.` : ''}</div></>
+        ) : (
+          <><div className="text-[24px] font-bold mt-1.5">{j.current?.label ?? 'In progress'}</div><div className="text-[13px] mt-1" style={{ color: '#C7EFE4' }}>{j.current?.blurb ?? 'We’ll keep you posted at every step.'}</div></>
+        )}
+        <div className="mt-4 h-2 rounded-full bg-white/20 overflow-hidden"><div className="h-full rounded-full bg-white" style={{ width: `${j.pct}%` }} /></div>
+        <div className="text-[11.5px] mt-1.5" style={{ color: '#C7EFE4' }}>{j.doneCount} of {j.steps.length} steps complete</div>
+      </div>
+      {/* timeline */}
+      <div className="bg-surface border border-border rounded-card p-5">
+        <div className="flex flex-col">
+          {j.steps.map((m, i) => {
+            const isCurrent = !m.done && i === j.currentIdx
+            const isDno = m.key === 'dno-submitted' || m.key === 'dno-approved'
+            const last = i === j.steps.length - 1
+            return (
+              <div key={m.key} className="flex gap-3.5">
+                <div className="flex flex-col items-center">
+                  <span className={classNames('w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-white', isCurrent && 'animate-pulse')} style={{ background: m.done ? CUSTOMER_ACCENT : isCurrent ? '#C79A3A' : '#D6DEE3' }}>
+                    {m.done ? <Check size={14} /> : isCurrent ? <Clock size={13} /> : <span className="text-[11px] font-bold text-muted-2">{i + 1}</span>}
+                  </span>
+                  {!last && <span className="w-0.5 flex-1 my-1" style={{ background: m.done ? CUSTOMER_ACCENT : '#E3E9ED', minHeight: 22 }} />}
+                </div>
+                <div className={classNames('pb-4 min-w-0', last && 'pb-0')}>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={classNames('text-[13.5px] font-semibold', m.done ? 'text-ink-2' : isCurrent ? 'text-ink' : 'text-muted-2')}>{m.label}</span>
+                    {isCurrent && <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded text-white" style={{ background: '#C79A3A' }}>Happening now</span>}
+                    {isDno && !m.done && <span className="text-[10px] font-semibold text-muted-3">grid connection</span>}
+                    {(m.at || m.date) && <span className="ml-auto text-[11px] text-muted-3 shrink-0">{m.done ? (m.at ? rel(m.at) : '') : m.date ? fmtDate(m.date) : ''}</span>}
+                  </div>
+                  <div className="text-[12px] text-muted-2 leading-snug mt-0.5">{m.blurb}</div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+      <div className="text-[12px] text-muted-3">We’ll email you and update this page every time something moves. Questions about a step? Ask Ovi on the right.</div>
+    </div>
+  )
+}
+
+/* ---- community, reviews & product updates ---- */
+function CommunityTab({ portal }: { portal: Portal }) {
+  const { portalOffers } = useState_()
+  const act = useActions()
+  const globalOffers = portalOffers.filter((o) => o.global && o.status !== 'dismissed')
+  const reviews = [
+    { name: 'Trustpilot', url: 'https://www.trustpilot.com', blurb: 'Rate your experience' },
+    { name: 'Google', url: 'https://www.google.com', blurb: 'Leave a Google review' },
+  ]
+  const updates = [
+    { icon: Sun, title: 'New: winter battery scheduling', body: 'A free firmware update helps your system pre-charge on cheap overnight rates. Roll-out this month.', tone: '#0E7C66' },
+    { icon: Megaphone, title: 'Solar House hits 500 homes', body: 'You’re part of a growing community generating clean power across the North West.', tone: '#B01B4F' },
+    { icon: Bolt, title: 'Tariff tip: Octopus Flux', body: 'Battery owners are saving more by switching to an export-friendly tariff. Ask Ovi if it suits you.', tone: '#1D4ED8' },
+  ]
+  return (
+    <div className="max-w-[760px] flex flex-col gap-5">
+      {/* reviews */}
+      <div className="rounded-card p-5" style={{ background: '#E9F5F1', border: '1px solid #B9E0D4' }}>
+        <div className="flex items-center gap-2 mb-1"><Star size={16} style={{ color: '#C79A3A' }} /><span className="text-[15px] font-bold text-ink">Enjoying your solar?</span></div>
+        <div className="text-[13px] text-muted-b mb-3">A quick review genuinely helps other homeowners take the leap — and helps us keep prices down.</div>
+        <div className="flex gap-2.5 flex-wrap">
+          {reviews.map((r) => (
+            <button key={r.name} onClick={() => { act.logPortalEvent(portal.id, 'Community', `Review CTA — ${r.name}`, 'click'); window.open(r.url, '_blank', 'noopener') }} className="bg-white border border-border rounded-control px-4 py-2.5 flex items-center gap-2 hover:border-[#8FD3C2] transition-colors">
+              <Star size={15} style={{ color: '#C79A3A' }} /><span className="text-[13px] font-semibold text-ink-2">{r.blurb}</span><ArrowUpRight size={14} className="text-muted-3" />
+            </button>
+          ))}
+        </div>
+      </div>
+      {/* community updates */}
+      <div>
+        <div className="eyebrow text-muted-3 mb-2">From the Solar House community</div>
+        <div className="flex flex-col gap-2.5">
+          {updates.map((u) => (
+            <div key={u.title} className="bg-surface border border-border rounded-card p-4 flex gap-3">
+              <span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: u.tone + '18', color: u.tone }}><u.icon size={16} /></span>
+              <div><div className="text-[13.5px] font-semibold text-ink-2">{u.title}</div><div className="text-[12.5px] text-muted-2 leading-snug">{u.body}</div></div>
+            </div>
+          ))}
+        </div>
+      </div>
+      {/* offers/promotions pushed to everyone */}
+      {globalOffers.length > 0 && (
+        <div>
+          <div className="eyebrow text-muted-3 mb-2">Member offers</div>
+          <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill,minmax(240px,1fr))' }}>
+            {globalOffers.map((o) => <OfferCard key={o.id} portal={portal} offer={o} />)}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function EnergyTab({ portal }: { portal: Portal }) {
   const e = useMemo(() => portalEnergy(portal), [portal])
   const maxH = Math.max(1, ...e.hours.map((h) => Math.max(h.gen, h.use)))
+  const act = useActions()
   const flow = [
     { label: 'Solar now', value: `${e.solar} kW`, color: '#0E7C66' },
     { label: 'Home use', value: `${e.home} kW`, color: '#1D4ED8' },
     { label: e.exporting > 0 ? 'Exporting' : 'From grid', value: `${(e.exporting > 0 ? e.exporting : e.fromGrid).toFixed(1)} kW`, color: e.exporting > 0 ? '#0E7C66' : '#C2410C' },
-    { label: 'Battery', value: `${e.batteryPct}%`, color: '#7C3AED' },
+    ...(portal.hasBattery ? [{ label: 'Battery', value: `${e.batteryPct}%`, color: '#7C3AED' }] : []),
+    ...(portal.hasEv ? [{ label: 'EV charging', value: `${(e.exporting > 0 ? 1.4 : 0).toFixed(1)} kW`, color: '#0EA5A0' }] : []),
   ]
+  const openMonitoring = () => { act.logPortalEvent(portal.id, 'Energy', `Opened ${portal.monitoringPlatform ?? 'monitoring'}`, 'click'); if (portal.monitoringUrl) window.open(portal.monitoringUrl, '_blank', 'noopener') }
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-positive animate-pulse" /><span className="text-[12px] text-muted-2">Live · updates every few seconds</span></div>
-      <div className="grid grid-cols-4 gap-3">
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="w-2 h-2 rounded-full bg-positive animate-pulse" /><span className="text-[12px] text-muted-2">Live · updates every few seconds</span>
+        {portal.monitoringPlatform && (
+          <button onClick={openMonitoring} disabled={!portal.monitoringUrl} className="ml-auto inline-flex items-center gap-1.5 text-[12.5px] font-semibold rounded-full px-3 py-1.5 border border-[#B9E0D4] text-[#0a5a4a] disabled:opacity-60" style={{ background: '#E9F5F1' }}>
+            <Link size={13} /> Open my {portal.monitoringPlatform} app <ArrowUpRight size={13} />
+          </button>
+        )}
+      </div>
+      <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(120px,1fr))' }}>
         {flow.map((f) => (
           <div key={f.label} className="bg-surface border border-border rounded-card p-4"><div className="text-[11.5px] text-muted-2">{f.label}</div><div className="text-[22px] font-bold mt-0.5" style={{ color: f.color }}>{f.value}</div></div>
         ))}
       </div>
+      <div className="text-[11.5px] text-muted-3 -mt-1">These live figures are an estimate from your system. Your {portal.monitoringPlatform ?? 'monitoring'} app has the exact, meter-accurate numbers.</div>
       <div className="grid grid-cols-3 gap-3">
         <Kpi variant="deep" label="Generated today" value={`${e.todayGen} kWh`} delta="Solar" />
         <Kpi label="Used today" value={`${e.todayUse} kWh`} delta="Home" deltaTone="muted" />
@@ -627,7 +913,7 @@ function AnalyticsTab({ portal }: { portal: Portal }) {
       <div className="rounded-card bg-[#FBF6EC] border border-[#EAD9B0] px-4 py-2 text-[12px] text-[#8A5A00] flex items-center gap-2"><Sparkle size={13} /> Team-only — the customer never sees this. Full behavioural analytics for {portal.customer}.</div>
       <div className="grid grid-cols-3 gap-3">
         <Kpi variant="deep" label="Total time in portal" value={`${Math.round(totalDwell / 60000)}m`} delta={`${events.length} events`} />
-        <Kpi label="Sections viewed" value={String(bySection.length)} delta="of 5" deltaTone="muted" />
+        <Kpi label="Sections viewed" value={String(bySection.length)} delta="Distinct areas" deltaTone="muted" />
         <Kpi variant="blue" label="Last seen" value={portal.lastActiveAt ? rel(portal.lastActiveAt) : '—'} delta={portal.status} />
       </div>
       <div className="bg-surface border border-border rounded-card p-5">

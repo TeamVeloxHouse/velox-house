@@ -8,7 +8,7 @@ import { surveyRef, photoSlotsFor, surveyToDnoSite, surveyFlags, completeness } 
 import { AI_MEMBER_ID, YOU_MEMBER_ID } from './types'
 import type { StageName } from '../data/mock'
 
-const KEY = 'simplr.state.v19'
+const KEY = 'simplr.state.v20'
 let idc = 1000
 export const uid = (p = 'x') => `${p}${Date.now().toString(36)}${idc++}`
 
@@ -30,6 +30,8 @@ type Action =
   | { type: 'ADD_PORTAL_EVENT'; event: import('./types').PortalEvent }
   | { type: 'ADD_RESOURCE'; resource: import('./types').PortalResource }
   | { type: 'REMOVE_RESOURCE'; id: ID }
+  | { type: 'ADD_PORTAL_OFFER'; offer: import('./types').PortalOffer }
+  | { type: 'UPDATE_PORTAL_OFFER'; id: ID; patch: Partial<import('./types').PortalOffer> }
   | { type: 'ADD_WIDGET'; widget: import('./types').DashboardWidget }
   | { type: 'REMOVE_WIDGET'; id: ID }
   | { type: 'REORDER_WIDGETS'; widgets: import('./types').DashboardWidget[] }
@@ -181,6 +183,10 @@ function reducer(state: State, action: Action): State {
       return { ...state, portalResources: [action.resource, ...state.portalResources] }
     case 'REMOVE_RESOURCE':
       return { ...state, portalResources: state.portalResources.filter((r) => r.id !== action.id) }
+    case 'ADD_PORTAL_OFFER':
+      return { ...state, portalOffers: [action.offer, ...state.portalOffers] }
+    case 'UPDATE_PORTAL_OFFER':
+      return { ...state, portalOffers: state.portalOffers.map((o) => (o.id === action.id ? { ...o, ...action.patch } : o)) }
     case 'ADD_WIDGET':
       return { ...state, dashboardWidgets: [...state.dashboardWidgets, action.widget] }
     case 'REMOVE_WIDGET':
@@ -704,6 +710,41 @@ export function useActions() {
       toast(`“${r.title}” added to the resource library`)
     },
     removeResource: (id: ID) => dispatch({ type: 'REMOVE_RESOURCE', id }),
+
+    /** Mark the next step of a customer's install journey done — the customer sees it update + gets notified. */
+    advancePortalJourney: (portal: import('./types').CustomerPortal, key: import('./types').PortalMilestoneKey) => {
+      const journey = (portal.journey ?? []).map((m) => (m.key === key ? { ...m, done: true, at: Date.now() } : m))
+      const step = journey.find((m) => m.key === key)
+      dispatch({ type: 'UPDATE_PORTAL', id: portal.id, patch: { journey } })
+      dispatch({ type: 'ADD_PORTAL_EVENT', event: { id: uid('pe'), portalId: portal.id, section: 'Progress', label: `${step?.label ?? 'Step'} — marked done`, kind: 'click', at: Date.now() } })
+      // Notify the customer by email (lands in the in-app Inbox in this demo).
+      const note: EmailMsg = {
+        id: uid('em'), folder: 'sent', from: 'TellOvi', fromEmail: 'hello@tellovi.io', to: portal.email || portal.customer,
+        subject: `Update on your solar install — ${step?.label ?? 'progress'}`,
+        body: `Hi ${portal.customer.split(' ')[0]},\n\nGood news — ${step?.label?.toLowerCase() ?? 'the next step'} is done. ${step?.blurb ?? ''}\n\nYou can follow every step in your portal.\n\n— The TellOvi team`,
+        time: 'Just now', createdAt: Date.now(), dealId: portal.dealId,
+      }
+      dispatch({ type: 'SEND_EMAIL', email: note })
+      toast(`${portal.customer} notified — ${step?.label ?? 'step'} ✓`, 'accent')
+    },
+
+    // ── Portal offers (targeted upsell surfaced inside a customer's portal) ──
+    addPortalOffer: (o: Omit<import('./types').PortalOffer, 'id' | 'createdAt' | 'status'> & { status?: import('./types').PortalOffer['status'] }) => {
+      const offer: import('./types').PortalOffer = { id: uid('po'), createdAt: Date.now(), status: o.status ?? 'active', ...o }
+      dispatch({ type: 'ADD_PORTAL_OFFER', offer })
+      toast('Offer added to the portal')
+      return offer
+    },
+    dismissPortalOffer: (id: ID) => dispatch({ type: 'UPDATE_PORTAL_OFFER', id, patch: { status: 'dismissed' } }),
+    /** Customer taps "I'm interested" on an offer → a real warm lead for the team + logged. */
+    portalOfferInterest: (portal: import('./types').CustomerPortal, offer: import('./types').PortalOffer) => {
+      dispatch({ type: 'UPDATE_PORTAL_OFFER', id: offer.id, patch: { status: 'interested' } })
+      const lead: Lead = { id: uid('l'), name: portal.customer, role: 'Existing customer', company: portal.address, source: `Portal offer — ${offer.title}`, owner: 'Jordan Miles', created: 'Just now', createdAt: Date.now(), score: 88, status: 'new' }
+      dispatch({ type: 'ADD_LEAD', lead })
+      dispatch({ type: 'ADD_PORTAL_EVENT', event: { id: uid('pe'), portalId: portal.id, section: 'Offers', label: `Interested: ${offer.title}`, kind: 'click', at: Date.now() } })
+      dispatch({ type: 'UPDATE_PORTAL', id: portal.id, patch: { lastActiveAt: Date.now() } })
+      toast(`${portal.customer} is interested — added as a warm lead`, 'accent')
+    },
 
     // ── Editable dashboard widgets ──
     addWidget: (w: Omit<import('./types').DashboardWidget, 'id'>) => {

@@ -695,10 +695,48 @@ export function buildSeed(): State {
   const activePipelineId = 'pipe-default'
 
   // ── Customer portals + analytics + resource library ──
+  // Build a customer install journey from a list of [key,label,blurb] + how far along they are.
+  const mile = (key: import('./types').PortalMilestoneKey, label: string, blurb: string, done: boolean, at?: number, date?: string): import('./types').PortalMilestone => ({ key, label, blurb, done, at, date })
   const portals: import('./types').CustomerPortal[] = [
-    { id: 'cp1', dealId: 'd3', customer: 'Dana Kirk', email: 'dana@brightleaf.com', address: '14 Brightleaf Way, Manchester', systemKwp: 8.2, systemCost: 11480, annualSavings: 1420, installDate: isoDay(-40), status: 'active', invitedAt: days(45), lastActiveAt: hrs(3) },
-    { id: 'cp2', dealId: 'd1', customer: 'Elena Voss', email: 'elena@meridianpower.com', address: '8 Meridian Road, Leeds', systemKwp: 6.4, systemCost: 9200, annualSavings: 1090, status: 'active', invitedAt: days(9), lastActiveAt: hrs(26) },
-    { id: 'cp3', dealId: 'd9', customer: 'Callum Reed', email: 'callum@cirrus.io', address: 'Cirrus DC, Warrington', systemKwp: 24, systemCost: 31200, annualSavings: 4180, status: 'invited', invitedAt: hrs(20) },
+    { id: 'cp1', dealId: 'd3', customer: 'Dana Kirk', email: 'dana@brightleaf.com', address: '14 Brightleaf Way, Manchester', systemKwp: 8.2, systemCost: 11480, annualSavings: 1420, installDate: isoDay(-40), status: 'active', invitedAt: days(45), lastActiveAt: hrs(3),
+      hasBattery: true, hasEv: false, monitoringPlatform: 'Tesla', monitoringUrl: 'https://www.tesla.com/energy',
+      journey: [
+        mile('accepted', 'Proposal accepted', 'You signed off your system design and pricing.', true, days(52)),
+        mile('survey', 'Technical survey', 'Our surveyor checked your roof, loft and consumer unit.', true, days(50)),
+        mile('design', 'System design signed off', 'Final panel layout and battery position confirmed.', true, days(48)),
+        mile('dno-submitted', 'Grid (DNO) application submitted', 'We applied to your network operator to connect your system.', true, days(47)),
+        mile('dno-approved', 'Grid application approved', 'Your DNO gave the go-ahead to install and export.', true, days(43)),
+        mile('scheduled', 'Installation booked', 'Your install date was confirmed with our crew.', true, days(42), isoDay(-40)),
+        mile('installed', 'Installation complete', 'Panels, inverter and battery fitted in a single day.', true, days(40)),
+        mile('commissioned', 'System switched on', 'We commissioned the system and set up your app.', true, days(40)),
+        mile('handover', 'Handover & warranty pack', 'MCS certificate, DNO sign-off and all warranties issued.', true, days(38)),
+      ] },
+    { id: 'cp2', dealId: 'd1', customer: 'Elena Voss', email: 'elena@meridianpower.com', address: '8 Meridian Road, Leeds', systemKwp: 6.4, systemCost: 9200, annualSavings: 1090, status: 'active', invitedAt: days(9), lastActiveAt: hrs(26),
+      hasBattery: false, hasEv: true, monitoringPlatform: 'SolarEdge', monitoringUrl: 'https://monitoring.solaredge.com',
+      journey: [
+        mile('accepted', 'Proposal accepted', 'You signed off your system design and pricing.', true, days(9)),
+        mile('survey', 'Technical survey', 'Our surveyor checked your roof, loft and consumer unit.', true, days(7)),
+        mile('design', 'System design signed off', 'Final panel layout confirmed.', true, days(5)),
+        mile('dno-submitted', 'Grid (DNO) application submitted', 'We applied to your network operator to connect your system.', true, days(4)),
+        mile('dno-approved', 'Grid application approved', 'Waiting on your network operator — usually 10 working days.', false, undefined),
+        mile('scheduled', 'Installation booked', 'We’ll confirm your install date as soon as the grid’s approved.', false, undefined, isoDay(18)),
+        mile('installed', 'Installation complete', 'Panels and inverter fitted — usually a single day.', false),
+        mile('commissioned', 'System switched on', 'We commission the system and set up your app.', false),
+        mile('handover', 'Handover & warranty pack', 'MCS certificate, DNO sign-off and all warranties.', false),
+      ] },
+    { id: 'cp3', dealId: 'd9', customer: 'Callum Reed', email: 'callum@cirrus.io', address: 'Cirrus DC, Warrington', systemKwp: 24, systemCost: 31200, annualSavings: 4180, status: 'invited', invitedAt: hrs(20),
+      hasBattery: true, hasEv: false, monitoringPlatform: 'SolisCloud', monitoringUrl: 'https://www.soliscloud.com',
+      journey: [
+        mile('accepted', 'Proposal accepted', 'You signed off your system design and pricing.', true, hrs(22)),
+        mile('survey', 'Technical survey', 'We’ll book a surveyor to visit the site.', false),
+        mile('design', 'System design signed off', 'Final layout confirmed after survey.', false),
+        mile('dno-submitted', 'Grid (DNO) application submitted', 'Larger systems need a formal connection application.', false),
+        mile('dno-approved', 'Grid application approved', 'Awaiting network operator approval.', false),
+        mile('scheduled', 'Installation booked', 'Install date confirmed with our crew.', false),
+        mile('installed', 'Installation complete', 'System fitted and tidied.', false),
+        mile('commissioned', 'System switched on', 'Commissioned and app set up.', false),
+        mile('handover', 'Handover & warranty pack', 'Certificates and warranties issued.', false),
+      ] },
   ]
   let _pe = 0
   const ev = (portalId: string, section: string, label: string, kind: import('./types').PortalEventKind, at: number, dwellMs?: number): import('./types').PortalEvent => ({ id: `pe${++_pe}`, portalId, section, label, kind, at, dwellMs })
@@ -727,6 +765,13 @@ export function buildSeed(): State {
     { id: 'pr6', type: 'manual', title: 'SolarEdge inverter — quick guide', manufacturer: 'SolarEdge', desc: 'Reading the display, error codes and resets.', content: 'ERROR CODES. Error 18xx (AC voltage) usually clears itself when the grid stabilises. To reset the inverter: switch the ON/OFF/P switch to OFF, wait for the screen to power down, then back to ON. A steady green LED means normal production; a red LED indicates a fault — note the code on the display and share it with your installer.', global: true },
     { id: 'pr7', type: 'manual', title: 'GivEnergy battery — maintenance', manufacturer: 'GivEnergy', desc: 'Keeping your battery healthy year-round.', content: 'Keep the area around the battery clear and ventilated. Update firmware via the portal when prompted. If the battery stops charging, check the breaker and the app’s system status page before calling out an engineer.', global: true },
     { id: 'pr8', type: 'manual', title: 'Your Powerwall guide', manufacturer: 'Tesla', desc: 'Personalised for your install.', content: 'Your system pairs a Tesla Powerwall with a SolarEdge inverter. See the Tesla and SolarEdge manuals for troubleshooting. Your installer commissioned the system on your handover date.', global: false, portalId: 'cp1' },
+  ]
+
+  // ── Offers surfaced inside portals — some global, some pushed to one customer ──
+  const portalOffers: import('./types').PortalOffer[] = [
+    { id: 'po1', global: true, kind: 'referral', title: 'Refer a neighbour, you both get £150', blurb: 'Know someone with a sunny roof? When they go solar with us, you each get £150.', cta: 'Refer a friend', createdAt: days(20), status: 'active' },
+    { id: 'po2', global: true, kind: 'service', title: 'Solar Care — annual health check', blurb: 'A yearly panel clean, performance check and priority support from £8/month.', cta: 'See Solar Care', savingHint: 'Keeps output at its best', createdAt: days(6), status: 'active' },
+    { id: 'po3', portalId: 'cp2', kind: 'battery', title: 'Add a battery to your system', blurb: 'You’re exporting cheap solar by day and buying it back at night. A battery could store it — most of our customers add one within a year.', cta: 'Get a battery quote', savingHint: 'Save ~£320/yr more', createdAt: days(2), status: 'active' },
   ]
 
   const dashboardWidgets: import('./types').DashboardWidget[] = [
@@ -773,5 +818,5 @@ export function buildSeed(): State {
     },
   ]
 
-  return { deals, pipelines, activePipelineId, dashboardWidgets, portals, portalEvents, portalResources, people, orgs, leads, activities, emails, inboxAutoReply: 'off' as const, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, linkedinThreads, enrolments, reachCampaigns, scheduledTasks, studioConfig, projects, playbooks, brandKit, docTemplates, brandDocs, products: mProducts, documents, emailCampaigns, customFields, activeTrade, features, onboarded: true, engineers, jobs, currentRole: 'owner', teamMembers, teamChannels, teamMessages, announcements, employees, leaveRequests, policies, certifications, expenses, stock, reviews, brandAssets, messaging, mediaAssets, contentItems, mktRequests, mktConnectors, solarCampaigns: [], solarProspects: [], designs: [], surveys, toasts: [], railExpanded: true }
+  return { deals, pipelines, activePipelineId, dashboardWidgets, portals, portalEvents, portalResources, portalOffers, people, orgs, leads, activities, emails, inboxAutoReply: 'off' as const, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, linkedinThreads, enrolments, reachCampaigns, scheduledTasks, studioConfig, projects, playbooks, brandKit, docTemplates, brandDocs, products: mProducts, documents, emailCampaigns, customFields, activeTrade, features, onboarded: true, engineers, jobs, currentRole: 'owner', teamMembers, teamChannels, teamMessages, announcements, employees, leaveRequests, policies, certifications, expenses, stock, reviews, brandAssets, messaging, mediaAssets, contentItems, mktRequests, mktConnectors, solarCampaigns: [], solarProspects: [], designs: [], surveys, toasts: [], railExpanded: true }
 }

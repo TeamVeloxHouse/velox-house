@@ -809,6 +809,39 @@ export interface CustomerPortal {
   status: 'invited' | 'active'
   invitedAt: number
   lastActiveAt?: number
+  // ── System make-up (drives targeted offers + the energy flow) ──
+  hasBattery?: boolean
+  hasEv?: boolean
+  // ── Live monitoring: which brand's app/portal this customer uses + a deep link into it ──
+  monitoringPlatform?: string // Tesla · SolarEdge · GivEnergy · Enphase · SolisCloud · FoxESS…
+  monitoringUrl?: string
+  // ── The post-acceptance journey the customer follows (ordered; first not-done = current) ──
+  journey?: PortalMilestone[]
+}
+// A step in the customer's install journey. Ordered; the first not-`done` step is the "current" one.
+export type PortalMilestoneKey =
+  | 'accepted' | 'survey' | 'design' | 'dno-submitted' | 'dno-approved' | 'scheduled' | 'installed' | 'commissioned' | 'handover'
+export interface PortalMilestone {
+  key: PortalMilestoneKey
+  label: string
+  blurb: string // customer-friendly one-liner shown under the step
+  done: boolean
+  at?: number // when it was completed / booked
+  date?: string // an ISO date this step points at (e.g. the booked install date → drives the countdown)
+}
+// An offer surfaced inside a customer's portal — pushed by the team or auto-suggested from missing kit.
+export type PortalOfferKind = 'battery' | 'ev' | 'upgrade' | 'service' | 'referral' | 'general'
+export interface PortalOffer {
+  id: ID
+  portalId?: ID // a specific customer; omit + global:true for everyone
+  global?: boolean
+  kind: PortalOfferKind
+  title: string
+  blurb: string
+  cta: string // button label
+  savingHint?: string // e.g. "Save ~£320/yr"
+  createdAt: number
+  status: 'active' | 'interested' | 'dismissed'
 }
 export type PortalEventKind = 'view' | 'click' | 'download' | 'chat' | 'video' | 'login'
 export interface PortalEvent {
@@ -1037,6 +1070,7 @@ export interface State {
   portals: CustomerPortal[]
   portalEvents: PortalEvent[]
   portalResources: PortalResource[]
+  portalOffers: PortalOffer[]
   people: Person[]
   orgs: Org[]
   leads: Lead[]
