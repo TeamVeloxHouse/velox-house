@@ -6,12 +6,18 @@ const YIELD_PER_KWP = 950
 // Panels are ~460W; work out a plausible count from the array size.
 export function panelsFor(kwp: number) { return Math.max(4, Math.round((kwp * 1000) / 460)) }
 
-/** Transparent, defensible pricing for a residential system. Ranges in the UI. */
-export function priceDesign(d: ShowroomDesign): number {
-  const panels = 2400 + d.systemKwp * 1150 // base (scaffold, inverter, install) + per-kWp
-  const battery = d.hasBattery ? 900 + d.batteryKwh * 480 : 0
+/** Transparent, defensible pricing for a residential system, itemised for a real quote. */
+export function priceBreakdown(d: ShowroomDesign): { panels: number; battery: number; charger: number; subtotal: number; total: number } {
+  const round = (n: number) => Math.round(n / 10) * 10
+  const panels = round(2400 + d.systemKwp * 1150) // base (scaffold, inverter, install) + per-kWp
+  const battery = d.hasBattery ? round(900 + d.batteryKwh * 480) : 0
   const charger = d.addEvCharger ? 900 : 0
-  return Math.round((panels + battery + charger) / 10) * 10
+  const subtotal = panels + battery + charger
+  return { panels, battery, charger, subtotal, total: subtotal } // 0% VAT on domestic solar/battery
+}
+
+export function priceDesign(d: ShowroomDesign): number {
+  return priceBreakdown(d).total
 }
 
 export type ShowroomModel = {

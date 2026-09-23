@@ -4,10 +4,10 @@ import { TopBar } from '../components/TopBar'
 import { PageBody } from '../components/Page'
 import { Button, Kpi, Chip, Avatar } from '../components/ui'
 import { Modal, Field, Input, Select } from '../components/overlays'
-import { Plus, Sun, Bolt, Check, ChevronRight, Star, Wrench, Building, Sparkle, Robot, Play, MapPin, Camera, Upload } from '../components/icons'
+import { Plus, Sun, Bolt, Check, ChevronRight, Star, Wrench, Building, Sparkle, Robot, Play, MapPin, Camera, Upload, Lock, Dollar } from '../components/icons'
 import { useState_, useActions } from '../store/store'
 import type { ShowroomSession } from '../store/types'
-import { showroomModel, panelsFor, starterDesign, kwhFromSpend, monthlyGeneration, dailyGenerationCurve, cashFlowSeries } from '../lib/showroom'
+import { showroomModel, panelsFor, starterDesign, kwhFromSpend, monthlyGeneration, dailyGenerationCurve, cashFlowSeries, priceBreakdown } from '../lib/showroom'
 import { generateMockupForAddress } from '../lib/mockup'
 import { money, classNames } from '../lib/format'
 
@@ -121,12 +121,14 @@ const sections = [
   { key: 'welcome', label: 'Welcome' },
   { key: 'home', label: 'Your home' },
   { key: 'today', label: 'Energy today' },
+  { key: 'motivations', label: 'Why go solar' },
   { key: 'design', label: 'Design your system' },
   { key: 'bill', label: 'Your new bill' },
   { key: 'why', label: 'Why Solar House' },
   { key: 'process', label: 'How it works' },
   { key: 'portal', label: 'Your portal' },
-  { key: 'close', label: 'Let’s do it' },
+  { key: 'quote', label: 'Your quote' },
+  { key: 'close', label: 'Accept & sign' },
 ]
 
 export function ShowroomExperience() {
@@ -185,11 +187,13 @@ export function ShowroomExperience() {
           <section id="welcome" ref={(el) => { sectionRefs.current.welcome = el }} className="scroll-mt-6"><SlideWelcome session={session} /></section>
           <section id="home" ref={(el) => { sectionRefs.current.home = el }} className="scroll-mt-6"><SlideHome session={session} /></section>
           <section id="today" ref={(el) => { sectionRefs.current.today = el }} className="scroll-mt-6"><SlideToday session={session} /></section>
+          <section id="motivations" ref={(el) => { sectionRefs.current.motivations = el }} className="scroll-mt-6"><SectionMotivations /></section>
           <section id="design" ref={(el) => { sectionRefs.current.design = el }} className="scroll-mt-6"><SectionDesign session={session} /></section>
           <section id="bill" ref={(el) => { sectionRefs.current.bill = el }} className="scroll-mt-6"><SlideBill session={session} /></section>
           <section id="why" ref={(el) => { sectionRefs.current.why = el }} className="scroll-mt-6"><SectionWhy /></section>
           <section id="process" ref={(el) => { sectionRefs.current.process = el }} className="scroll-mt-6"><SectionProcess /></section>
           <section id="portal" ref={(el) => { sectionRefs.current.portal = el }} className="scroll-mt-6"><SlidePortal session={session} /></section>
+          <section id="quote" ref={(el) => { sectionRefs.current.quote = el }} className="scroll-mt-6"><SlideQuote session={session} /></section>
           <section id="close" ref={(el) => { sectionRefs.current.close = el }} className="scroll-mt-6"><SlideClose session={session} won={won} onWin={(p) => setWon(p)} /></section>
         </div>
       </div>
@@ -267,6 +271,7 @@ function CashFlowChart({ series }: { series: number[] }) {
 }
 
 function SlideWelcome({ session }: { session: ShowroomSession }) {
+  const m = useMemo(() => showroomModel(session), [session])
   return (
     <div className="rounded-card p-7 text-white relative overflow-hidden" style={{ background: `linear-gradient(150deg,${NAVY},#0A3B33)` }}>
       <div className="absolute inset-0" style={{ background: 'radial-gradient(80% 100% at 90% -10%, rgba(245,166,35,0.18), transparent 55%)' }} />
@@ -274,8 +279,14 @@ function SlideWelcome({ session }: { session: ShowroomSession }) {
         <div className="flex items-center gap-2 text-[12px] font-semibold" style={{ color: '#F5B85C' }}><Sun size={14} /> SOLAR PROPOSAL · PREPARED IN PERSON</div>
         <h1 className="text-[30px] sm:text-[38px] font-bold leading-tight">Welcome, {session.name.split(' ')[0]}.</h1>
         <p className="text-[14px] max-w-[600px]" style={{ color: '#c3ccdb' }}>Let’s design the right solar &amp; battery system for <b className="text-white">{session.address}</b> and show you exactly what it does to your bills.</p>
-        <div className="flex flex-wrap gap-2 mt-1">
+        <div className="flex flex-wrap gap-2">
           {['MCS certified', 'NICEIC approved', 'RECC member', '4.8★ from 43 reviews'].map((t) => <Chip key={t} tone="positive">{t}</Chip>)}
+        </div>
+        <div className="flex flex-wrap gap-5 mt-3 pt-4 border-t border-white/12">
+          <div><div className="text-[11px]" style={{ color: '#93A0B4' }}>You'll save</div><div className="text-[26px] font-bold" style={{ color: '#8FE0C6' }}>{money(m.annualSaving + m.evSaving)}<span className="text-[13px] font-medium">/yr</span></div></div>
+          <div><div className="text-[11px]" style={{ color: '#93A0B4' }}>Over 25 years</div><div className="text-[26px] font-bold" style={{ color: '#8FE0C6' }}>{money(m.lifetimeSaving, { compact: true })}</div></div>
+          <div><div className="text-[11px]" style={{ color: '#93A0B4' }}>System size</div><div className="text-[26px] font-bold text-white">{session.design.systemKwp} kWp</div></div>
+          <div><div className="text-[11px]" style={{ color: '#93A0B4' }}>Bill cut by</div><div className="text-[26px] font-bold" style={{ color: '#8FE0C6' }}>{Math.round((1 - m.newBill / Math.max(1, m.currentBill)) * 100)}%</div></div>
         </div>
       </div>
     </div>
@@ -357,6 +368,43 @@ function SlideToday({ session }: { session: ShowroomSession }) {
         <Stat label="Per year" value={money(m.currentBill)} sub="electricity" tone="#C2410C" />
         <Stat label="Per month" value={money(session.monthlySpend)} sub="today" />
         <Stat label="Usage" value={`${(session.annualKwh / 1000).toFixed(1)}k`} sub="kWh / yr" tone={ACCENT} />
+      </div>
+    </div>
+  )
+}
+
+const motivations = [
+  {
+    icon: <Bolt size={18} />, title: 'Stop renting your electricity', stat: '+64% since 2021',
+    blurb: 'Grid prices have climbed relentlessly and show no sign of stopping — every panel on your roof is a fixed-price unit you never have to buy again.',
+  },
+  {
+    icon: <Lock size={18} />, title: 'Energy independence', stat: 'Generate your own',
+    blurb: 'Less exposure to price shocks, supplier changes and grid outages — the electricity your home runs on, made on your own roof.',
+  },
+  {
+    icon: <Star size={18} />, title: "Adds to your home's value", stat: 'Buyers notice it',
+    blurb: 'Solar with a strong track record of low bills is a tangible, provable asset in a sale — not just a nice-to-have.',
+  },
+  {
+    icon: <Sun size={18} />, title: 'Lower carbon footprint', stat: '~1.3t CO₂/yr avg.',
+    blurb: 'A meaningful, measurable cut to your footprint with no change to how you live — the panels do the work.',
+  },
+]
+
+function SectionMotivations() {
+  return (
+    <div className="flex flex-col gap-4">
+      <div><Eyebrow>Why go solar</Eyebrow><h2 className="text-[22px] font-bold text-ink mt-1">This isn't just about the bill</h2></div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {motivations.map((m) => (
+          <div key={m.title} className="bg-surface border border-border rounded-card p-4 flex flex-col gap-1.5">
+            <div className="w-9 h-9 rounded-lg bg-accent-wash text-accent flex items-center justify-center">{m.icon}</div>
+            <div className="text-[14px] font-semibold text-ink mt-1">{m.title}</div>
+            <div className="text-[12px] font-bold text-accent">{m.stat}</div>
+            <div className="text-[12.5px] text-muted-b leading-snug">{m.blurb}</div>
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -543,19 +591,105 @@ function SlidePortal({ session }: { session: ShowroomSession }) {
   )
 }
 
+function SlideQuote({ session }: { session: ShowroomSession }) {
+  const m = useMemo(() => showroomModel(session), [session])
+  const b = useMemo(() => priceBreakdown(session.design), [session.design])
+  const monthly = Math.round(b.total / 120) // ~10yr 0% finance guide
+  return (
+    <div className="flex flex-col gap-4">
+      <div><Eyebrow>Your quote</Eyebrow><h2 className="text-[22px] font-bold text-ink mt-1">Everything, itemised — no surprises</h2></div>
+      <div className="bg-surface border border-border rounded-card p-5">
+        <div className="flex items-center justify-between py-1.5"><span className="text-[13px] text-muted-b">Solar panels, inverter &amp; installation</span><span className="text-[13px] font-semibold text-ink-2">{money(b.panels)}</span></div>
+        {session.design.hasBattery && <div className="flex items-center justify-between py-1.5"><span className="text-[13px] text-muted-b">Battery storage ({session.design.batteryKwh} kWh)</span><span className="text-[13px] font-semibold text-ink-2">{money(b.battery)}</span></div>}
+        {session.design.addEvCharger && <div className="flex items-center justify-between py-1.5"><span className="text-[13px] text-muted-b">EV smart charger</span><span className="text-[13px] font-semibold text-ink-2">{money(b.charger)}</span></div>}
+        <div className="flex items-center justify-between py-1.5 border-t border-divider mt-1"><span className="text-[13px] text-muted-b">VAT (0% on domestic solar &amp; battery)</span><span className="text-[13px] font-semibold text-positive">£0</span></div>
+        <div className="flex items-center justify-between pt-3 mt-1 border-t border-divider"><span className="text-[15px] font-bold text-ink">Total</span><span className="text-[26px] font-bold text-ink">{money(b.total)}</span></div>
+        <div className="text-[12.5px] text-muted-2 mt-1">or about <b className="text-accent">{money(monthly)}/month</b> on 0% finance over 10 years</div>
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        <Stat label="You save" value={`${money(m.annualSaving + m.evSaving, { compact: true })}/yr`} tone={ACCENT} />
+        <Stat label="Payback" value={`${m.paybackYears} yrs`} />
+        <Stat label="25yr saving" value={money(m.lifetimeSaving, { compact: true })} tone={ACCENT} />
+      </div>
+      <div className="text-[11.5px] text-muted-3">Guide price, confirmed at survey. Valid for 30 days from today. Includes full design, scaffolding, install, commissioning and MCS/DNO paperwork.</div>
+    </div>
+  )
+}
+
+/** A drawn signature, captured on the session as a data URL — not a legally-binding e-signature,
+ *  but a real captured mark kept for the record, gating the accept action. */
+function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) => void }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const drawing = useRef(false)
+  const drawn = useRef(false)
+
+  function pos(clientX: number, clientY: number) {
+    const canvas = canvasRef.current!
+    const rect = canvas.getBoundingClientRect()
+    return { x: (clientX - rect.left) * (canvas.width / rect.width), y: (clientY - rect.top) * (canvas.height / rect.height) }
+  }
+  function start(clientX: number, clientY: number) {
+    drawing.current = true
+    const { x, y } = pos(clientX, clientY)
+    canvasRef.current!.getContext('2d')!.beginPath()
+    canvasRef.current!.getContext('2d')!.moveTo(x, y)
+  }
+  function move(clientX: number, clientY: number) {
+    if (!drawing.current) return
+    const ctx = canvasRef.current!.getContext('2d')!
+    const { x, y } = pos(clientX, clientY)
+    ctx.strokeStyle = NAVY; ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
+    ctx.lineTo(x, y); ctx.stroke()
+    drawn.current = true
+  }
+  function end() {
+    if (!drawing.current) return
+    drawing.current = false
+    onChange(drawn.current ? canvasRef.current!.toDataURL('image/png') : null)
+  }
+  function clear() {
+    const canvas = canvasRef.current!
+    canvas.getContext('2d')!.clearRect(0, 0, canvas.width, canvas.height)
+    drawn.current = false
+    onChange(null)
+  }
+  return (
+    <div className="flex flex-col gap-1.5">
+      <canvas
+        ref={canvasRef} width={480} height={110}
+        className="w-full border border-input-border rounded-lg bg-white touch-none cursor-crosshair"
+        style={{ height: 110 }}
+        onPointerDown={(e) => start(e.clientX, e.clientY)} onPointerMove={(e) => move(e.clientX, e.clientY)} onPointerUp={end} onPointerLeave={end}
+        onMouseDown={(e) => start(e.clientX, e.clientY)} onMouseMove={(e) => move(e.clientX, e.clientY)} onMouseUp={end} onMouseLeave={end}
+        onTouchStart={(e) => start(e.touches[0].clientX, e.touches[0].clientY)} onTouchMove={(e) => { e.preventDefault(); move(e.touches[0].clientX, e.touches[0].clientY) }} onTouchEnd={end}
+      />
+      <div className="flex items-center justify-between">
+        <div className="text-[11px] text-muted-3">Sign above to accept</div>
+        <button onClick={clear} className="text-[11.5px] font-semibold text-muted-2 hover:text-ink-2">Clear</button>
+      </div>
+    </div>
+  )
+}
+
 function SlideClose({ session, won, onWin }: { session: ShowroomSession; won: { portalId: string } | null; onWin: (p: { portalId: string }) => void }) {
   const act = useActions()
   const nav = useNavigate()
   const m = useMemo(() => showroomModel(session), [session])
-  const monthly = Math.round(m.price / 120) // ~10yr 0% finance guide
-  const win = () => { const r = act.winShowroom(session, m.price, m.annualSaving); onWin({ portalId: r.portalId }) }
+  const b = useMemo(() => priceBreakdown(session.design), [session.design])
+  const monthly = Math.round(b.total / 120) // ~10yr 0% finance guide
+  const [signature, setSignature] = useState<string | null>(null)
+  const accept = () => {
+    if (signature) act.updateShowroom(session.id, { signature })
+    const r = act.winShowroom(session, b.total, m.annualSaving)
+    onWin({ portalId: r.portalId })
+  }
   if (won || session.status === 'won') {
     const pid = won?.portalId ?? session.portalId!
     return (
       <div className="bg-surface border border-positive-border rounded-card p-8 text-center flex flex-col items-center gap-3">
         <span className="w-14 h-14 rounded-full grid place-items-center text-white" style={{ background: ACCENT }}><Check size={26} /></span>
         <h2 className="text-[24px] font-bold text-ink">Welcome to Solar House! 🎉</h2>
-        <p className="text-[13.5px] text-muted-b max-w-[520px]">{session.name.split(' ')[0]}’s draft proposal is confirmed, the deal is logged, and their portal is live. We’ll be in touch to book the survey.</p>
+        <p className="text-[13.5px] text-muted-b max-w-[520px]">{session.name.split(' ')[0]}’s proposal is accepted and signed, the deal is logged, and their portal is live. We’ll be in touch to book the survey.</p>
         <div className="flex gap-2.5 flex-wrap justify-center mt-1">
           <Button variant="primary" color={ACCENT} icon={<Robot size={15} />} onClick={() => nav(`/customers/${pid}`)}>Open their portal</Button>
           <Button onClick={() => nav('/showroom')}>Back to showroom</Button>
@@ -564,18 +698,25 @@ function SlideClose({ session, won, onWin }: { session: ShowroomSession; won: { 
     )
   }
   return (
-    <div className="bg-surface border-2 border-positive-border rounded-card p-7 text-center">
-      <Eyebrow>Let’s do it</Eyebrow>
-      <h2 className="text-[22px] font-bold text-ink mt-1">Your {session.design.systemKwp} kWp{session.design.hasBattery ? ' + battery' : ''} system</h2>
-      <div className="text-[38px] font-bold text-ink mt-3">{money(m.price)}</div>
-      <div className="text-[13px] text-muted-b">or about <b className="text-accent">{money(monthly)}/month</b> on 0% finance</div>
-      <div className="grid grid-cols-3 gap-3 mt-4 max-w-[480px] mx-auto">
-        <Stat label="You save" value={`${money(m.annualSaving + m.evSaving, { compact: true })}/yr`} />
-        <Stat label="New bill" value={money(m.newBill)} tone={ACCENT} />
-        <Stat label="Payback" value={`${m.paybackYears}y`} tone={ACCENT} />
+    <div className="bg-surface border-2 border-positive-border rounded-card p-7">
+      <div className="text-center">
+        <Eyebrow>Accept &amp; sign</Eyebrow>
+        <h2 className="text-[22px] font-bold text-ink mt-1">Your {session.design.systemKwp} kWp{session.design.hasBattery ? ' + battery' : ''} system</h2>
+        <div className="text-[38px] font-bold text-ink mt-3">{money(b.total)}</div>
+        <div className="text-[13px] text-muted-b">or about <b className="text-accent">{money(monthly)}/month</b> on 0% finance</div>
+        <div className="grid grid-cols-3 gap-3 mt-4 max-w-[480px] mx-auto">
+          <Stat label="You save" value={`${money(m.annualSaving + m.evSaving, { compact: true })}/yr`} tone={ACCENT} />
+          <Stat label="New bill" value={money(m.newBill)} tone={ACCENT} />
+          <Stat label="25yr saving" value={money(m.lifetimeSaving, { compact: true })} tone={ACCENT} />
+        </div>
       </div>
-      <Button variant="primary" color={ACCENT} icon={<Check size={16} />} className="w-full justify-center max-w-[480px] mx-auto mt-5" onClick={win}>Confirm &amp; set up my portal</Button>
-      <div className="text-[11.5px] text-muted-3 mt-2">A draft proposal — nothing’s locked until survey. No deposit taken here.</div>
+      <div className="max-w-[480px] mx-auto mt-5 flex flex-col gap-3">
+        <SignaturePad onChange={setSignature} />
+        <Button variant="primary" color={ACCENT} icon={<Check size={16} />} className={classNames('w-full justify-center', !signature && 'opacity-40 pointer-events-none')} onClick={() => signature && accept()}>
+          Accept &amp; sign
+        </Button>
+        <div className="text-[11.5px] text-muted-3 text-center">A draft proposal — nothing’s locked in until survey. No deposit taken here.</div>
+      </div>
     </div>
   )
 }

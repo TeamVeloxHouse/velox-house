@@ -912,6 +912,7 @@ export interface ShowroomSession {
   mockupImage?: string // data URL — "solar on your roof" showroom image for the Home slide
   mockupSource?: 'ai' | 'streetview' | 'illustrated'
   billFileName?: string // an attached energy bill, kept for reference — not parsed
+  signature?: string // data URL — captured at accept, kept on the session for the record
 }
 
 // ── Commercial Solar Finder ────────────────────────────────────────────────
