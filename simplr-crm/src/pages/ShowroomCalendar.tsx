@@ -29,9 +29,13 @@ export function ShowroomCalendar() {
     act.updateShowroom(s.id, { bookingStatus: 'cancelled' })
     act.toast(`Cancelled ${s.name}'s showroom visit`, 'warning')
   }
-  function setBookingStatus(s: ShowroomSession, status: 'completed' | 'no-show') {
-    act.updateShowroom(s.id, { bookingStatus: status })
-    act.toast(status === 'no-show' ? `Marked ${s.name} as a no-show` : `Marked ${s.name}'s visit as completed`, status === 'no-show' ? 'warning' : 'positive')
+  function markCompleted(s: ShowroomSession) {
+    act.presentShowroom(s) // they came in, saw the proposal, no decision recorded here — queues a follow-up
+  }
+  function markNoShow(s: ShowroomSession) {
+    act.updateShowroom(s.id, { bookingStatus: 'no-show' })
+    const due = new Date(); due.setDate(due.getDate() + 1)
+    act.logActivity({ type: 'task', subject: `Rebook — ${s.name} was a no-show`, dealId: s.dealId, dueDate: due.toISOString().slice(0, 10), due: 'Tomorrow', priority: 'High' }, `Marked ${s.name} as a no-show — rebook task queued`)
   }
 
   return (
@@ -79,8 +83,8 @@ export function ShowroomCalendar() {
                             {(booking.bookingStatus || 'scheduled') === 'scheduled' && (
                               past ? (
                                 <div className="flex gap-1.5 opacity-0 group-hover:opacity-100">
-                                  <button onClick={() => setBookingStatus(booking, 'completed')} className="text-[10.5px] font-semibold text-positive hover:underline">Completed</button>
-                                  <button onClick={() => setBookingStatus(booking, 'no-show')} className="text-[10.5px] font-semibold text-warning hover:underline">No-show</button>
+                                  <button onClick={() => markCompleted(booking)} className="text-[10.5px] font-semibold text-positive hover:underline">Completed</button>
+                                  <button onClick={() => markNoShow(booking)} className="text-[10.5px] font-semibold text-warning hover:underline">No-show</button>
                                 </div>
                               ) : (
                                 <button onClick={() => cancel(booking)} className="text-[10.5px] font-semibold text-muted-3 hover:text-negative opacity-0 group-hover:opacity-100">Cancel</button>

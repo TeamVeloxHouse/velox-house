@@ -692,6 +692,8 @@ function SlideClose({ session, won, onWin }: { session: ShowroomSession; won: { 
     const r = act.winShowroom(session, b.total, m.annualSaving)
     onWin({ portalId: r.portalId })
   }
+  const [losing, setLosing] = useState(false)
+  const [reason, setReason] = useState('')
   if (won || session.status === 'won') {
     const pid = won?.portalId ?? session.portalId!
     return (
@@ -703,6 +705,24 @@ function SlideClose({ session, won, onWin }: { session: ShowroomSession; won: { 
           <Button variant="primary" color={ACCENT} icon={<Robot size={15} />} onClick={() => nav(`/customers/${pid}`)}>Open their portal</Button>
           <Button onClick={() => nav('/showroom')}>Back to showroom</Button>
         </div>
+      </div>
+    )
+  }
+  if (session.status === 'presented') {
+    return (
+      <div className="bg-surface border border-border rounded-card p-7 text-center flex flex-col items-center gap-2">
+        <div className="text-[14px] font-semibold text-ink">{session.name.split(' ')[0]} is thinking it over</div>
+        <div className="text-[12.5px] text-muted-b max-w-[440px]">A follow-up task is queued for the team. When they're ready, come back here to accept &amp; sign.</div>
+        <Button variant="primary" color={ACCENT} className="mt-1" onClick={() => act.updateShowroom(session.id, { status: 'draft' })}>Back to accept &amp; sign</Button>
+      </div>
+    )
+  }
+  if (session.status === 'lost') {
+    return (
+      <div className="bg-surface border border-border rounded-card p-7 text-center flex flex-col items-center gap-2">
+        <div className="text-[14px] font-semibold text-ink">Not going ahead</div>
+        <div className="text-[12.5px] text-muted-b max-w-[440px]">Logged as lost — a follow-up task is queued in 3 days.</div>
+        <Button className="mt-1" onClick={() => act.updateShowroom(session.id, { status: 'draft' })}>Reopen</Button>
       </div>
     )
   }
@@ -725,6 +745,22 @@ function SlideClose({ session, won, onWin }: { session: ShowroomSession; won: { 
           Accept &amp; sign
         </Button>
         <div className="text-[11.5px] text-muted-3 text-center">A draft proposal — nothing’s locked in until survey. No deposit taken here.</div>
+
+        {!losing ? (
+          <div className="flex items-center justify-center gap-4 pt-2 border-t border-divider mt-1">
+            <button onClick={() => act.presentShowroom(session)} className="text-[11.5px] font-semibold text-muted-2 hover:text-ink-2">They need time to think it over</button>
+            <button onClick={() => setLosing(true)} className="text-[11.5px] font-semibold text-muted-2 hover:text-negative">Not going ahead</button>
+          </div>
+        ) : (
+          <div className="pt-2 border-t border-divider mt-1 flex flex-col gap-2">
+            <div className="text-[12px] font-semibold text-ink-2">Why aren't they going ahead? (kept for the team)</div>
+            <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} placeholder="e.g. price, needs to check with partner, roof unsuitable…" className="w-full rounded-lg border border-input-border px-3 py-2 text-[13px] outline-none focus:border-accent" />
+            <div className="flex gap-2">
+              <Button onClick={() => setLosing(false)}>Cancel</Button>
+              <Button color="#B01B4F" onClick={() => act.loseShowroom(session, reason)}>Confirm — not going ahead</Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

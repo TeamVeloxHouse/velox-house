@@ -802,6 +802,30 @@ export function useActions() {
       toast(`Sale won — ${session.name}'s portal is ready 🎉`, 'positive')
       return { dealId: deal.id, portalId: portal.id, projectId: project.id }
     },
+    /** They didn't accept in the room — mark it, log why, and queue a real follow-up rather than
+     *  letting the session just go quiet. */
+    loseShowroom: (session: import('./types').ShowroomSession, reason: string) => {
+      dispatch({ type: 'UPDATE_SHOWROOM', id: session.id, patch: { status: 'lost', ...(session.scheduledDate ? { bookingStatus: 'completed' } : {}) } })
+      if (session.dealId) dispatch({ type: 'MARK_LOST', id: session.dealId, reason })
+      const due = new Date(); due.setDate(due.getDate() + 3)
+      dispatch({ type: 'ADD_ACTIVITY', activity: {
+        id: uid('act'), type: 'task', subject: `Follow up — ${session.name} didn't accept in the showroom`, body: reason,
+        dealId: session.dealId, dueDate: due.toISOString().slice(0, 10), due: 'In 3 days', done: false, priority: 'High',
+        who: 'Jordan Miles', createdAt: Date.now(), source: 'manual',
+      } })
+      toast(`${session.name} — follow-up task queued for 3 days`, 'warning')
+    },
+    /** They came in but the rep didn't get to (or need) a decision yet — presented, still open. */
+    presentShowroom: (session: import('./types').ShowroomSession) => {
+      dispatch({ type: 'UPDATE_SHOWROOM', id: session.id, patch: { status: 'presented', bookingStatus: 'completed' } })
+      const due = new Date(); due.setDate(due.getDate() + 2)
+      dispatch({ type: 'ADD_ACTIVITY', activity: {
+        id: uid('act'), type: 'task', subject: `Follow up — ${session.name} (presented, thinking it over)`,
+        dealId: session.dealId, dueDate: due.toISOString().slice(0, 10), due: 'In 2 days', done: false, priority: 'Medium',
+        who: 'Jordan Miles', createdAt: Date.now(), source: 'manual',
+      } })
+      toast(`${session.name} marked presented — follow-up queued for 2 days`)
+    },
     /** Customer taps "I'm interested" on an offer → a real warm lead for the team + logged. */
     portalOfferInterest: (portal: import('./types').CustomerPortal, offer: import('./types').PortalOffer) => {
       dispatch({ type: 'UPDATE_PORTAL_OFFER', id: offer.id, patch: { status: 'interested' } })
