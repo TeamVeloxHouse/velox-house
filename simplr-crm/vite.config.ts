@@ -6,6 +6,7 @@ import { parcelAt } from './server/parcelProvider.mjs'
 import { pdlSearch } from './server/sourcingProvider.mjs'
 import { staticSatellite } from './server/roofImage.mjs'
 import { staticStreetView } from './server/streetViewProvider.mjs'
+import { aiSolarMockup } from './server/imageGenProvider.mjs'
 import { placesSearch, placesRadiusScan, placesAutocomplete } from './server/placesProvider.mjs'
 import { pvgisHourly } from './server/pvgisProvider.mjs'
 import { callOvi } from './server/oviProvider.mjs'
@@ -135,6 +136,41 @@ function streetViewApi(env: Record<string, string>): Plugin {
         staticStreetView(lat, lng, heading, size, key)
           .then(({ buf, contentType }) => { res.setHeader('Content-Type', contentType); res.setHeader('Cache-Control', 'public, max-age=86400'); res.end(buf) })
           .catch(() => { res.statusCode = 404; res.end() })
+      })
+    },
+  }
+}
+
+/** Dev-only real AI "solar on the roof" render — Street View photo → gpt-image-1 edit.
+ *  This is a real, paid OpenAI call (~$0.02–$0.19/image). Set OPENAI_API_KEY (gpt-image-1,
+ *  verified org — platform.openai.com → Settings → Organization → Verify) alongside
+ *  GOOGLE_MAPS_API_KEY (Street View Static API) to go live; without either, returns
+ *  { fallback: true } and the client uses the free composite overlay instead. */
+function aiMockupApi(env: Record<string, string>): Plugin {
+  const mapsKey = env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || ''
+  const openaiKey = env.OPENAI_API_KEY || process.env.OPENAI_API_KEY || ''
+  return {
+    name: 'ai-mockup-api',
+    configureServer(server) {
+      server.middlewares.use('/api/ai-mockup', (req, res) => {
+        if (req.method !== 'POST') { res.statusCode = 405; return res.end() }
+        res.setHeader('Content-Type', 'application/json')
+        if (!mapsKey || !openaiKey) return res.end(JSON.stringify({ fallback: true, reason: 'no-key' }))
+        let body = ''
+        req.on('data', (c) => (body += c))
+        req.on('end', async () => {
+          try {
+            const { lat, lng, heading } = JSON.parse(body || '{}')
+            if (typeof lat !== 'number' || typeof lng !== 'number') return res.end(JSON.stringify({ fallback: true, reason: 'no-location' }))
+            const { buf, contentType } = await staticStreetView(lat, lng, heading, '1024x1024', mapsKey)
+            const png = await aiSolarMockup(buf, contentType, openaiKey)
+            res.setHeader('Content-Type', 'image/png')
+            res.end(png)
+          } catch (e) {
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ fallback: true, reason: String((e as Error)?.message || e) }))
+          }
+        })
       })
     },
   }
@@ -324,7 +360,7 @@ function epcApi(_env: Record<string, string>): Plugin {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   return {
-    plugins: [react(), solarApi(env), solarLayerApi(env), mapTilesApi(env), parcelApi(env), sourcingApi(env), roofImageApi(env), streetViewApi(env), placesApi(env), autocompleteApi(env), pvgisApi(), geocodeApi(env), epcApi(env), oviApi(env)],
+    plugins: [react(), solarApi(env), solarLayerApi(env), mapTilesApi(env), parcelApi(env), sourcingApi(env), roofImageApi(env), streetViewApi(env), aiMockupApi(env), placesApi(env), autocompleteApi(env), pvgisApi(), geocodeApi(env), epcApi(env), oviApi(env)],
     server: { port: 3010, host: true },
   }
 })

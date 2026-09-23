@@ -324,7 +324,7 @@ export interface Deal {
   custom?: Record<string, string>
   solar?: import('../lib/solar').SolarDesign
   mockupImage?: string // data URL — the proposal's "solar on your roof" showroom image
-  mockupSource?: 'streetview' | 'illustrated'
+  mockupSource?: 'ai' | 'streetview' | 'illustrated'
   energyBill?: EnergyBill
 }
 
@@ -910,7 +910,7 @@ export interface ShowroomSession {
   portalId?: ID
   presenter?: string
   mockupImage?: string // data URL — "solar on your roof" showroom image for the Home slide
-  mockupSource?: 'streetview' | 'illustrated'
+  mockupSource?: 'ai' | 'streetview' | 'illustrated'
   billFileName?: string // an attached energy bill, kept for reference — not parsed
 }
 

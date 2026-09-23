@@ -296,7 +296,7 @@ export function Proposal() {
               </div>
               {deal.mockupSource && (
                 <div className="text-[11px] text-muted-3 mt-2">
-                  {deal.mockupSource === 'streetview' ? 'Real street-level photo of this address, with a stylised preview of panel placement.' : "No street imagery was available for this address — showing an illustrated preview instead."}
+                  {deal.mockupSource === 'ai' ? 'AI-generated preview of solar panels on this property, from a real street-level photo.' : deal.mockupSource === 'streetview' ? 'Real street-level photo of this address, with a stylised preview of panel placement.' : "No street imagery was available for this address — showing an illustrated preview instead."}
                 </div>
               )}
             </section>

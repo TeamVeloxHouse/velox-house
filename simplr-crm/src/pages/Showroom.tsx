@@ -336,7 +336,7 @@ function SlideHome({ session }: { session: ShowroomSession }) {
         </div>
         {session.mockupSource && (
           <div className="text-[11.5px] text-muted-3">
-            {session.mockupSource === 'streetview' ? 'A real street photo of this address, with a preview of panel placement.' : 'No street imagery was available for this address — showing an illustrated preview instead.'}
+            {session.mockupSource === 'ai' ? 'AI-generated preview of solar panels on this property, from a real street-level photo.' : session.mockupSource === 'streetview' ? 'A real street photo of this address, with a preview of panel placement.' : 'No street imagery was available for this address — showing an illustrated preview instead.'}
           </div>
         )}
       </div>

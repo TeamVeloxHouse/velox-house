@@ -1,16 +1,18 @@
-/* Showroom mockup — a "solar on your roof" image for the proposal hero.
+/* Showroom mockup — a "solar on your roof" image for the proposal/showroom hero.
  *
- * Real part: a Google Street View photo of the actual house (via /api/street-view, server-side
- * key). Illustrated part: a stylised panel array drawn on top with a <canvas>, sized and coloured
- * from the real design (panel count, aspect). It is NOT a geometrically accurate render of the
- * roof — it's a tidy, attractive "here's roughly what it'll look like" image, same spirit as the
- * satellite RoofRender. Swap `drawPanelOverlay` for a real image-generation call (e.g. OpenAI
- * images) later without touching the call sites — they only care about the returned data URL.
+ * Three tiers, tried in order, each a strict fallback of the one before:
+ *  1. AI  — a real Street View photo, edited by gpt-image-1 to add photorealistic panels
+ *     (/api/ai-mockup, needs OPENAI_API_KEY + a verified org — real cost per image).
+ *  2. Composite — the same real Street View photo with a stylised panel-count grid drawn on
+ *     with <canvas>. Free, instant, always available once GOOGLE_MAPS_API_KEY has Street View
+ *     Static enabled. Not geometrically accurate — a tidy "here's roughly what it'll look like".
+ *  3. Illustrated — a generic drawn house, for addresses with no Street View imagery at all.
+ * Callers only see the returned { dataUrl, source }; they don't need to know which tier fired.
  */
 import type { LatLng } from './solar'
 import type { SolarDesign } from './solar'
 
-export type MockupResult = { dataUrl: string; source: 'streetview' | 'illustrated' }
+export type MockupResult = { dataUrl: string; source: 'ai' | 'streetview' | 'illustrated' }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -88,9 +90,37 @@ export function streetViewSrc(center: LatLng, heading?: number, size = '960x600'
   return `/api/street-view?lat=${center.lat}&lng=${center.lng}&size=${size}${h}`
 }
 
-/** Builds the showroom mockup: real street photo (or an illustrated fallback) + a stylised
- *  panel-count overlay from the actual design. Returns a JPEG data URL. */
+/** Real AI render: /api/ai-mockup takes a real Street View photo and asks gpt-image-1 to add
+ *  panels to the roof, photorealistically. Returns null (never throws) when it's not configured
+ *  (no OPENAI_API_KEY / unverified org / no imagery) or the call fails — the caller falls back
+ *  to the free composite overlay, which always works. */
+async function tryAiMockup(center: LatLng, heading?: number): Promise<string | null> {
+  try {
+    const r = await fetch('/api/ai-mockup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lat: center.lat, lng: center.lng, heading }) })
+    const ct = r.headers.get('content-type') || ''
+    if (!r.ok || !ct.startsWith('image/')) return null // {fallback:true} JSON, or an error
+    const blob = await r.blob()
+    return await new Promise<string>((resolve, reject) => {
+      const fr = new FileReader()
+      fr.onload = () => resolve(fr.result as string)
+      fr.onerror = () => reject(new Error('read failed'))
+      fr.readAsDataURL(blob)
+    })
+  } catch {
+    return null
+  }
+}
+
+/** Builds the showroom mockup. Tries the real AI render first (a real Street View photo with
+ *  panels added by gpt-image-1); if that isn't configured or fails, falls back to a free
+ *  composite — the same real photo with a stylised panel-count overlay drawn on with canvas —
+ *  and finally to an illustrated house if there's no imagery for the address at all. */
 async function generateMockupAt(center: LatLng | null, panels: number, heading?: number): Promise<MockupResult> {
+  if (center) {
+    const ai = await tryAiMockup(center, heading)
+    if (ai) return { dataUrl: ai, source: 'ai' }
+  }
+
   const canvas = document.createElement('canvas')
   canvas.width = W; canvas.height = H
   const ctx = canvas.getContext('2d')!
