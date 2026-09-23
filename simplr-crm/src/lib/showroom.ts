@@ -89,3 +89,38 @@ export function starterDesign(annualKwh: number): ShowroomDesign {
   const kwp = Math.max(3, Math.min(6, Math.round((annualKwh / 950) * 10) / 10))
   return { systemKwp: kwp, panels: panelsFor(kwp), hasBattery: false, batteryKwh: 5, hasEv: false, addEvCharger: false }
 }
+
+/** UK seasonal solar shape — share of annual generation falling in each month, south-ish roof.
+ *  Illustrative (not site-specific), used only to show the shape of the generation year. */
+const MONTH_SHARE = [0.020, 0.036, 0.068, 0.098, 0.128, 0.138, 0.134, 0.114, 0.082, 0.052, 0.024, 0.016]
+export function monthlyGeneration(annualKwh: number): { month: string; kwh: number }[] {
+  const names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  return names.map((month, i) => ({ month, kwh: Math.round(annualKwh * MONTH_SHARE[i]) }))
+}
+
+/** A typical clear day's generation curve (half-hourly, sunrise-ish to sunset-ish), scaled so its
+ *  area matches a plausible summer day's output for this system. Illustrative — a real day varies
+ *  with cloud and season; this shows the daily *shape* a customer can expect on a good day. */
+export function dailyGenerationCurve(systemKwp: number): { hour: number; kw: number }[] {
+  const peakKw = systemKwp * 0.82 // real-world peak is a bit under nameplate
+  const pts: { hour: number; kw: number }[] = []
+  for (let h = 5; h <= 21; h += 0.5) {
+    const t = (h - 13) / 8 // centred on 13:00
+    const kw = Math.max(0, peakKw * Math.exp(-3.1 * t * t))
+    pts.push({ hour: h, kw: Math.round(kw * 100) / 100 })
+  }
+  return pts
+}
+
+/** Year-by-year cumulative net cash flow: -upfrontCost at year 0, then +savings each year
+ *  (degrading generation, inflating energy prices) minus the upfront spend. Same math as the
+ *  lifetime total in showroomModel, exposed year-by-year for the chart. */
+export function cashFlowSeries(annualSaving: number, upfrontCost: number, years = 25): number[] {
+  const out = [-upfrontCost]
+  let cum = -upfrontCost
+  for (let y = 0; y < years; y++) {
+    cum += annualSaving * Math.pow(1 - UK.pvDegradation, y) * Math.pow(1 + UK.energyInflation, y)
+    out.push(Math.round(cum))
+  }
+  return out
+}

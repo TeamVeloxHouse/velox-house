@@ -71,6 +71,18 @@ function drawPanelOverlay(ctx: CanvasRenderingContext2D, roof: { x0: number; y0:
   }
 }
 
+/** Geocodes a free-text address via /api/geocode (server-side key), for callers — like the
+ *  Showroom — that only have an address string, not a lat/lng center. Returns null on failure
+ *  (no key, or the address didn't resolve), so the caller can fall back to the illustrated house. */
+async function geocodeAddress(address: string): Promise<LatLng | null> {
+  try {
+    const r = await fetch('/api/geocode', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ address }) })
+    const j = await r.json()
+    if (typeof j.lat === 'number' && typeof j.lng === 'number') return { lat: j.lat, lng: j.lng }
+  } catch { /* fall through to illustrated */ }
+  return null
+}
+
 export function streetViewSrc(center: LatLng, heading?: number, size = '960x600') {
   const h = heading !== undefined ? `&heading=${Math.round(heading)}` : ''
   return `/api/street-view?lat=${center.lat}&lng=${center.lng}&size=${size}${h}`
@@ -78,7 +90,7 @@ export function streetViewSrc(center: LatLng, heading?: number, size = '960x600'
 
 /** Builds the showroom mockup: real street photo (or an illustrated fallback) + a stylised
  *  panel-count overlay from the actual design. Returns a JPEG data URL. */
-export async function generateMockup(design: SolarDesign, heading?: number): Promise<MockupResult> {
+async function generateMockupAt(center: LatLng | null, panels: number, heading?: number): Promise<MockupResult> {
   const canvas = document.createElement('canvas')
   canvas.width = W; canvas.height = H
   const ctx = canvas.getContext('2d')!
@@ -86,9 +98,9 @@ export async function generateMockup(design: SolarDesign, heading?: number): Pro
   let source: MockupResult['source'] = 'illustrated'
   let roof: { x0: number; y0: number; x1: number; y1: number; apex: number }
 
-  if (design.center) {
+  if (center) {
     try {
-      const img = await loadImage(streetViewSrc(design.center, heading))
+      const img = await loadImage(streetViewSrc(center, heading))
       ctx.drawImage(img, 0, 0, W, H)
       source = 'streetview'
       // Photos vary — assume the house roofline sits in the upper-middle third, a reasonable
@@ -105,7 +117,18 @@ export async function generateMockup(design: SolarDesign, heading?: number): Pro
     roof = drawSkyHouse(ctx).roof
   }
 
-  drawPanelOverlay(ctx, roof, design.panels)
+  drawPanelOverlay(ctx, roof, panels)
 
   return { dataUrl: canvas.toDataURL('image/jpeg', 0.9), source }
+}
+
+export async function generateMockup(design: SolarDesign, heading?: number): Promise<MockupResult> {
+  return generateMockupAt(design.center ?? null, design.panels, heading)
+}
+
+/** Same mockup, but starting from a free-text address (geocoded server-side) rather than a
+ *  design's known lat/lng — for callers like the Showroom that only collect an address. */
+export async function generateMockupForAddress(address: string, panels: number, heading?: number): Promise<MockupResult> {
+  const center = await geocodeAddress(address)
+  return generateMockupAt(center, panels, heading)
 }
