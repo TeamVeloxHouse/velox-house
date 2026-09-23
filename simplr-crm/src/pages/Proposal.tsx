@@ -185,7 +185,7 @@ export function Proposal() {
   }, [deal?.id])
 
   if (!deal || !base || !design) {
-    return (<><TopBar title="Proposal" /><div className="flex-1 flex items-center justify-center text-muted-b">No proposal for this deal. <button onClick={() => nav('/studio/design')} className="text-accent font-semibold ml-1">Design one →</button></div></>)
+    return (<><TopBar title="Proposal" /><div className="flex-1 flex items-center justify-center text-muted-b">No proposal for this deal. {deal && <button onClick={() => nav(`/studio/design?deal=${deal.id}&addr=${encodeURIComponent(deal.org || deal.name)}`)} className="text-accent font-semibold ml-1">Design one →</button>}</div></>)
   }
 
   function persist(next: number) {

@@ -4,7 +4,7 @@ import { TopBar } from '../components/TopBar'
 import { PageBody } from '../components/Page'
 import { Button, Chip } from '../components/ui'
 import { Modal, Field, Input, Select } from '../components/overlays'
-import { Note, Envelope, Phone, Meeting, Task, File, Check, Sparkle } from '../components/icons'
+import { Note, Envelope, Phone, Meeting, Task, File, Check, Sparkle, Sun } from '../components/icons'
 import { NextBestAction, RecordSummary, ScorePill, ConversationIntel, CompletenessMeter } from '../components/ai-widgets'
 import { CustomFieldRows } from '../components/CustomFields'
 import { BookJobModal } from './Jobs'
@@ -201,6 +201,16 @@ export function DealDetail() {
                 <div className="flex items-center gap-1.5 text-[12px] font-semibold" style={{ color: '#F5B85C' }}><Sparkle size={13} /> Solar proposal</div>
                 <div className="text-[18px] font-bold mt-1">{deal.solar.systemKwp} kWp · {money(deal.solar.systemCost, { compact: true })}</div>
                 <div className="text-[12px] mt-0.5" style={{ color: '#57C9B4' }}>{gbp(deal.solar.annualSavings)}/yr savings · open Sales Mode →</div>
+              </button>
+            )}
+            {!deal.solar && (
+              <button
+                onClick={() => nav(`/studio/design?deal=${deal.id}&addr=${encodeURIComponent(deal.org || deal.name)}`)}
+                className="rounded-card p-4 text-left border-2 border-dashed border-border-blue hover:border-accent hover:bg-accent-wash transition-colors"
+              >
+                <div className="flex items-center gap-1.5 text-[12px] font-semibold text-accent"><Sun size={13} /> No solar design yet</div>
+                <div className="text-[13px] font-semibold text-ink mt-1">Design a roof →</div>
+                <div className="text-[11.5px] text-muted-2 mt-0.5">Attaches the result straight to this deal.</div>
               </button>
             )}
             <RecordSummary summary={dealSummary(deal, allActivities, allPeople)} ask={`Summarise the ${deal.org} deal and what's blocking it`} />

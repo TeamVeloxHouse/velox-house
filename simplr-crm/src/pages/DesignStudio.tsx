@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { TopBar } from '../components/TopBar'
 import { PageBody } from '../components/Page'
 import { Button } from '../components/ui'
 import { Sun, Sparkle, Building, Check } from '../components/icons'
 import { AiComposer } from '../components/AiChat'
-import { useActions, useState_ } from '../store/store'
+import { useActions, useSelectors, useState_ } from '../store/store'
 import { designFrom, analyseRoof, analyseRoofLive, gbp, PANEL_DIM, type SolarDesign, type RoofAnalysis, type RoofSegment } from '../lib/solar'
 
 type DMsg = { role: 'user' | 'ai'; text: string; steps?: { label: string; done: boolean }[] }
@@ -107,8 +107,13 @@ export function RoofRender({ design }: { design: SolarDesign }) {
 export function DesignStudio() {
   const nav = useNavigate()
   const act = useActions()
+  const sel = useSelectors()
   const { studioConfig } = useState_()
-  const [address, setAddress] = useState('')
+  const [params] = useSearchParams()
+  const dealId = params.get('deal')
+  const addrParam = params.get('addr')
+  const targetDeal = dealId ? sel.dealById(dealId) : undefined
+  const [address, setAddress] = useState(addrParam || '')
   const [committed, setCommitted] = useState('')
   const [analysis, setAnalysis] = useState<RoofAnalysis | null>(null)
   const [analysing, setAnalysing] = useState(false)
@@ -116,6 +121,8 @@ export function DesignStudio() {
   const [aiMsgs, setAiMsgs] = useState<DMsg[]>([])
   const aiScroll = useRef<HTMLDivElement>(null)
   useEffect(() => { aiScroll.current?.scrollTo({ top: aiScroll.current.scrollHeight, behavior: 'smooth' }) }, [aiMsgs])
+  // Arrived from a deal with a known address — kick the design off automatically.
+  useEffect(() => { if (addrParam && targetDeal) run(addrParam) }, [])
 
   const design = analysis ? designFrom(analysis, committed, panels, studioConfig) : null
 
@@ -171,14 +178,25 @@ export function DesignStudio() {
   }
   function generateProposal() {
     if (!design) return
+    if (targetDeal) {
+      act.updateDeal(targetDeal.id, { solar: design, value: design.systemCost, subtitle: `${design.systemKwp} kWp · ${design.panels} panels` })
+      act.toast(`Design saved to ${targetDeal.name}`)
+      nav(`/studio/proposal/${targetDeal.id}`)
+      return
+    }
     const d = act.addDeal({ name: `Solar install — ${design.address}`, org: design.address, value: design.systemCost, stage: 'Demo Scheduled', subtitle: `${design.systemKwp} kWp · ${design.panels} panels`, chips: [{ label: 'Solar', tone: 'accent' }, { label: `${design.billOffsetPct}% offset`, tone: 'positive' }], solar: design })
     nav(`/studio/proposal/${d.id}`)
   }
 
   return (
     <>
-      <TopBar title="Design Studio" crumbs={['Studio', 'Instant solar design']} actions={design ? <Button variant="primary" icon={<Sparkle size={16} />} onClick={generateProposal}>Generate proposal</Button> : undefined} />
+      <TopBar title="Design Studio" crumbs={['Studio', 'Instant solar design']} actions={design ? <Button variant="primary" icon={<Sparkle size={16} />} onClick={generateProposal}>{targetDeal ? 'Save to proposal' : 'Generate proposal'}</Button> : undefined} />
       <PageBody>
+        {targetDeal && (
+          <div className="flex items-center gap-2 text-[12.5px] font-medium text-accent bg-accent-wash rounded-lg px-3 py-2">
+            <Sparkle size={14} /> Designing for <b>{targetDeal.name}</b> — saving here attaches straight to that deal, not a new one.
+          </div>
+        )}
         {/* Design with TellOvi AI */}
         <div className="rounded-card border border-border-blue bg-[#FBFCFF] overflow-hidden">
           <div className="px-4 py-3 border-b border-border-blue flex items-center gap-2.5">

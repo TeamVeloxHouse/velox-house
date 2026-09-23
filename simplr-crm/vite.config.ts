@@ -325,6 +325,6 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   return {
     plugins: [react(), solarApi(env), solarLayerApi(env), mapTilesApi(env), parcelApi(env), sourcingApi(env), roofImageApi(env), streetViewApi(env), placesApi(env), autocompleteApi(env), pvgisApi(), geocodeApi(env), epcApi(env), oviApi(env)],
-    server: { port: 3010 },
+    server: { port: 3010, host: true },
   }
 })

@@ -51,7 +51,7 @@ export function buildSeed(): State {
     // Cirrus / UPS refresh timeline
     { id: 'act1', type: 'call', subject: 'Discovery call with Callum Reed', body: 'Walked through the UPS refresh scope. Strong technical fit; procurement sign-off is the gate.', dealId: 'd9', personId: 'p2', done: true, who: 'Jordan Miles', createdAt: hrs(2), source: 'manual' },
     { id: 'act2', type: 'email', subject: 'Sent revised proposal v3', body: 'Included phased rollout option and the maintenance retainer line item.', dealId: 'd9', personId: 'p2', done: true, who: 'Jordan Miles', createdAt: days(1), source: 'email' },
-    { id: 'act3', type: 'change', subject: 'Stage moved to Negotiations Started', body: 'From Proposal Made · deal value updated to $415,000.', dealId: 'd9', done: true, who: 'System', createdAt: days(2) },
+    { id: 'act3', type: 'change', subject: 'Stage moved to Negotiations Started', body: 'From Proposal Made · deal value updated to £415,000.', dealId: 'd9', done: true, who: 'System', createdAt: days(2) },
     { id: 'act4', type: 'note', subject: 'Note added', body: 'Legal flagged two redline clauses on liability caps. Nothing dealbreaking.', dealId: 'd9', personId: 'p2', done: true, who: 'Priya Nair', createdAt: days(3), source: 'manual' },
     // open tasks
     { id: 'act5', type: 'call', subject: 'Call Callum re: redlines', dealId: 'd9', personId: 'p2', due: 'Today · 16:00', done: false, priority: 'High', who: 'Jordan Miles', createdAt: mins(30) },
@@ -130,7 +130,7 @@ export function buildSeed(): State {
 
   const agentRuns: AgentRun[] = [
     { id: 'ar1', agent: 'Inbox triage', kind: 'draft', title: 'Drafted reply to Callum Reed', detail: 'Re: Revised proposal v3 — addresses the liability-cap question and proposes a legal call. Ready to review and send.', when: mins(20), status: 'pending', dealId: 'd9', personId: 'p2', emailTo: 'callum@cirrus.com', emailBody: 'Hi Callum,\n\nThanks for the quick turnaround. On the liability caps: our standard is a 12-month fees cap and I’ve reflected that in the SOW. Happy to get legal on a short call this week to close it out.\n\nBest,\nJordan' },
-    { id: 'ar2', agent: 'Deal-risk watch', kind: 'risk', title: 'Gale Renewables has gone quiet', detail: 'No activity in 9 days on a $512K deal stuck in budget review. Recommend a re-engagement email to the economic buyer.', when: hrs(2), status: 'pending', dealId: 'd10' },
+    { id: 'ar2', agent: 'Deal-risk watch', kind: 'risk', title: 'Gale Renewables has gone quiet', detail: 'No activity in 9 days on a £512K deal stuck in budget review. Recommend a re-engagement email to the economic buyer.', when: hrs(2), status: 'pending', dealId: 'd10' },
     { id: 'ar3', agent: 'Follow-up chaser', kind: 'task', title: 'Suggested task: chase PO on Northgate Rail', detail: 'HV cabling deal has an overdue step. Create a task to chase the purchase order?', when: hrs(3), status: 'pending', dealId: 'd6', personId: 'p6' },
     { id: 'ar4', agent: 'Lead qualifier', kind: 'triage', title: 'Qualified & routed 3 new leads', detail: 'Scored Elena Voss (88), Callum Reed (91) and Sam Idris (82) as high-intent and assigned to Jordan.', when: hrs(5), status: 'approved' },
     { id: 'ar5', agent: 'Meeting notetaker', kind: 'summary', title: 'Summarised the Brightleaf kickoff', detail: 'Wrote notes + 3 action items to Brightleaf Farms after the recorded call.', when: days(1), status: 'approved', dealId: 'd3', personId: 'p5' },
@@ -278,7 +278,7 @@ export function buildSeed(): State {
   const automations: Automation[] = [
     { id: 'au1', name: 'Qualified deal handoff', active: true, steps: [
       { id: 'as1', kind: 'trigger', title: 'Deal enters "Demo Scheduled"', subtitle: 'When a deal is moved into the stage' },
-      { id: 'as2', kind: 'condition', title: 'Value is over $50,000', subtitle: 'Only run for higher-value opportunities' },
+      { id: 'as2', kind: 'condition', title: 'Value is over £50,000', subtitle: 'Only run for higher-value opportunities' },
       { id: 'as3', kind: 'email', title: 'Send intro email from owner', subtitle: 'Template: "Qualified — next steps"' },
       { id: 'as4', kind: 'task', title: 'Create follow-up task', subtitle: 'Due 2 business days after entry' },
       { id: 'as5', kind: 'notify', title: 'Notify sales manager', subtitle: 'Slack #deals channel' },
