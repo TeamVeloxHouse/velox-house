@@ -9,6 +9,7 @@ import { Bars, Grid, Plus, Check, Sun, Box, Flow, Building, Dollar, Clock, Layer
 import { Table, Row, Cell } from '../components/Table'
 import { useState_, useActions, useSelectors } from '../store/store'
 import { buildProject, MILESTONES, buildOrder, buildInvoice, orderTotal, projectFinance } from '../lib/delivery'
+import { estimateMaterials, materialsTotal } from '../lib/materials'
 import { DnoTab, DnoStatusPill } from './DnoSection'
 import type { StudioProject, ProjectOrder, ProjectInvoice, OrderItem, InvoiceKind, InvoiceStatus, OrderStatus } from '../store/types'
 import { gbp } from '../lib/solar'
@@ -195,6 +196,7 @@ export function ProjectDetail() {
             { id: 'overview', label: 'Overview', icon: Layers },
             { id: 'timeline', label: 'Timeline', icon: Clock },
             { id: 'dno', label: `DNO${p.dno ? ` · ${p.dno.form}` : ''}`, icon: Bolt },
+            { id: 'materials', label: 'Materials', icon: Grid },
             { id: 'orders', label: `Orders${orders.length ? ` · ${orders.length}` : ''}`, icon: Box },
             { id: 'invoices', label: `Invoices${invoices.length ? ` · ${invoices.length}` : ''}`, icon: Dollar },
           ]}
@@ -203,6 +205,7 @@ export function ProjectDetail() {
         {tab === 'overview' && <OverviewTab p={p} atPto={atPto} />}
         {tab === 'timeline' && <TimelineTab p={p} />}
         {tab === 'dno' && <DnoTab p={p} />}
+        {tab === 'materials' && <MaterialsTab p={p} />}
         {tab === 'orders' && <OrdersTab p={p} />}
         {tab === 'invoices' && <InvoicesTab p={p} />}
       </PageBody>
@@ -291,6 +294,40 @@ function TimelineTab({ p }: { p: StudioProject }) {
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  )
+}
+
+function MaterialsTab({ p }: { p: StudioProject }) {
+  const act = useActions()
+  const items = estimateMaterials(p)
+  const total = materialsTotal(items)
+  const already = (p.orders ?? []).some((o) => o.supplier === 'Job estimate')
+  return (
+    <div className="bg-surface border border-border rounded-card p-5">
+      <div className="flex items-center justify-between mb-1">
+        <div><div className="text-[15px] font-semibold text-ink">Materials estimate</div><div className="text-[12px] text-muted-2">Generated from {p.systemKwp ?? 4} kWp · confirm against the actual site survey before ordering</div></div>
+        <Button
+          icon={<Plus size={15} />}
+          onClick={() => { act.addOrder(p.id, buildOrder('Job estimate', items)); act.toast('Materials estimate added to Orders') }}
+          className={already ? 'opacity-50 pointer-events-none' : undefined}
+        >
+          {already ? 'Already ordered' : 'Send to orders'}
+        </Button>
+      </div>
+      <div className="mt-4 flex flex-col gap-1">
+        {items.map((it, idx) => (
+          <div key={idx} className="flex items-center text-[12.5px] text-ink-3 py-1.5 border-b border-divider last:border-0">
+            <span className="flex-1">{it.name}</span>
+            <span className="text-muted-2 tabular-nums w-28 text-right">{it.qty} × {gbp(it.unitCost)}</span>
+            <span className="font-semibold text-ink-2 tabular-nums w-24 text-right">{gbp(it.qty * it.unitCost)}</span>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center justify-between pt-3 mt-1">
+        <span className="text-[14px] font-bold text-ink">Estimated materials cost</span>
+        <span className="text-[20px] font-bold text-ink">{gbp(total)}</span>
       </div>
     </div>
   )
