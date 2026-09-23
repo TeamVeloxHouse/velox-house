@@ -68,6 +68,7 @@ export function DesignHome() {
             <label className="flex-1 flex flex-col gap-1.5">
               <span className="eyebrow text-[10px] text-muted-3">Site address</span>
               <AddressAutocomplete value={addr} placeholder="Start typing a building or address…"
+                onChange={(t) => { setAddr(t); setPin(undefined) }}
                 onPick={async (p) => { setAddr(p.text); setPin(undefined); const g = await geocodeLocation(p.text); if (g) setPin({ lat: g.lat, lng: g.lng }) }} />
             </label>
             <Button variant="primary" icon={<Plus size={16} />} onClick={createFromAddress} className={creating ? 'opacity-60 pointer-events-none' : ''}>{creating ? 'Creating…' : 'New design'}</Button>

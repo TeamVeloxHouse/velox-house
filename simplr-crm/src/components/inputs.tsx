@@ -83,8 +83,8 @@ export function Stepper({ value, onChange, min = 0, max = 9999, step = 1, suffix
 
 /* ─────────── Address autocomplete (Google-Maps-style) ─────────── */
 export type PlacePick = { text: string; placeId?: string }
-export function AddressAutocomplete({ value, onPick, placeholder }: {
-  value: string; onPick: (p: PlacePick) => void; placeholder?: string
+export function AddressAutocomplete({ value, onPick, onChange, placeholder }: {
+  value: string; onPick: (p: PlacePick) => void; onChange?: (text: string) => void; placeholder?: string
 }) {
   const [q, setQ] = useState(value)
   const [sug, setSug] = useState<PlacePick[]>([])
@@ -113,7 +113,7 @@ export function AddressAutocomplete({ value, onPick, placeholder }: {
   return (
     <div ref={ref} className="relative">
       <div className={classNames(base, 'flex items-center h-[38px] px-3')}>
-        <input value={q} onChange={(e) => { setQ(e.target.value); setOpen(true) }} onFocus={() => q.length >= 3 && setOpen(true)} placeholder={placeholder} className="flex-1 bg-transparent outline-none text-[13px]" />
+        <input value={q} onChange={(e) => { setQ(e.target.value); setOpen(true); onChange?.(e.target.value) }} onFocus={() => q.length >= 3 && setOpen(true)} placeholder={placeholder} className="flex-1 bg-transparent outline-none text-[13px]" />
         {loading && <span className="w-4 h-4 rounded-full border-2 border-accent border-t-transparent animate-spin" />}
       </div>
       {open && sug.length > 0 && (

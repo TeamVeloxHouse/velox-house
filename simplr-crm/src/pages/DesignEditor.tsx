@@ -97,6 +97,7 @@ export function DesignEditor() {
   const panelLayer = useRef<L.LayerGroup | null>(null)
   const ghostLayer = useRef<L.LayerGroup | null>(null)
   const previewLayer = useRef<L.LayerGroup | null>(null) // suggested-layout ghosts, click to drop one before accepting
+  const detectingRef = useRef(false) // StrictMode mounts twice — without this, auto-detect ran (and toasted) twice
   const rgbLayer = useRef<L.ImageOverlay | null>(null)
   const gTiles = useRef<L.TileLayer | null>(null)
   const aerialKey = useRef<string | null>(null)
@@ -504,10 +505,12 @@ export function DesignEditor() {
   // ── Centre on the design; auto-detect the first time if empty ──
   useEffect(() => {
     if (!map.current || !design) return
+    // Designs saved before auto-obstruction detection was removed still carry its false positives.
+    if ((design.obstacles ?? []).some((o) => o.source === 'auto')) act.updateDesign(design.id, { obstacles: (design.obstacles ?? []).filter((o) => o.source !== 'auto') })
     ;(async () => {
       let c = design.center
       if (!c && design.address) { const g = await geocodeLocation(design.address); if (g) { c = { lat: g.lat, lng: g.lng }; act.updateDesign(design.id, { center: c }) } }
-      if (c) map.current!.setView([c.lat, c.lng], 19)
+      if (c) map.current!.setView([c.lat, c.lng], 20)
       if (c && design.planes.length === 0) runDetect(c)
       // Pull the real building height from OSM once (free, no key) so the 3D model isn't a guess.
       if (c && design.eaveHeightM == null) {
@@ -700,11 +703,12 @@ export function DesignEditor() {
 
   // ── Actions ──
   async function runDetect(center?: LatLng) {
-    if (!design || busy) return
+    if (!design || busy || detectingRef.current) return
+    detectingRef.current = true
     setBusy(true); setStatus('Measuring the roof from satellite…')
     try {
-      const { planes, obstacles, center: c, measured } = await detectPlanes(design.address, center || design.center)
-      if (c && map.current) map.current.setView([c.lat, c.lng], 19)
+      const { planes, center: c, measured } = await detectPlanes(design.address, center || design.center)
+      if (c && map.current) map.current.setView([c.lat, c.lng], 20)
       if (!measured) {
         // No real measurement available (no Solar key) — don't fabricate giant boxes; ask for a trace.
         act.updateDesign(design.id, { center: c || design.center })
@@ -712,13 +716,14 @@ export function DesignEditor() {
         return
       }
       // Keep hand-drawn planes + user-added obstructions, REPLACE previously-detected ones so repeated
-      // taps don't stack boxes.
+      // taps don't stack boxes. Obstructions are placed by the designer with the keep-out tool (as in
+      // SolarEdge Designer) — auto-detection flagged gutters, sheds and trees as chimneys/HVAC.
       const kept = design.planes.filter((p) => p.source === 'manual')
       const keptObs = (design.obstacles ?? []).filter((o) => o.source === 'manual')
-      act.updateDesign(design.id, { planes: [...planes, ...kept], obstacles: [...obstacles, ...keptObs], center: c || design.center })
+      act.updateDesign(design.id, { planes: [...planes, ...kept], obstacles: keptObs, center: c || design.center })
       if (!planes.length) act.toast('No roof planes found here — draw them by hand instead', 'warning')
-      else act.toast(`${planes.length} plane${planes.length === 1 ? '' : 's'}${obstacles.length ? ` · ${obstacles.length} obstruction${obstacles.length === 1 ? '' : 's'}` : ''} detected — refine or draw the real roof`)
-    } catch { act.toast('Could not measure this roof', 'warning') } finally { setBusy(false); setStatus('') }
+      else act.toast(`${planes.length} roof face${planes.length === 1 ? '' : 's'} detected — check them against the photo`)
+    } catch { act.toast('Could not measure this roof', 'warning') } finally { setBusy(false); setStatus(''); detectingRef.current = false }
   }
   function addManualPlane(ring: LatLng[]) {
     const d = designRef.current; if (!d) return
@@ -1043,13 +1048,13 @@ export function DesignEditor() {
               )
             })()}
             {drawing && !busy && (
-              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[500] h-9 px-4 rounded-full text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Target size={14} />Click each corner of the roof, then click the first point to close</div>
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-[500] h-9 px-4 rounded-full text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Target size={14} />Click each corner of the roof, then click the first point to close</div>
             )}
             {view === '2d' && !busy && tool === 'pin' && (
-              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[510] h-9 px-4 rounded-full text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Target size={14} />Click the exact roof to re-centre &amp; detect here</div>
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-[510] h-9 px-4 rounded-full text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Target size={14} />Click the exact roof to re-centre &amp; detect here</div>
             )}
             {view === '2d' && !busy && tool === 'edit' && (
-              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[510] h-9 px-4 rounded-full text-white text-[12px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Wrench size={13} />Drag a corner to reshape · click an edge to add a point · right-click a point to remove — live dimensions show as you drag</div>
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-[510] h-9 px-4 rounded-full text-white text-[12px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Wrench size={13} />Drag a corner to reshape · click an edge to add a point · right-click a point to remove — live dimensions show as you drag</div>
             )}
             {!busy && sel && !(view === '2d' && tool === 'pin') && (
               <div className={`absolute top-3 left-[64px] z-[540] flex pointer-events-none [&>*]:pointer-events-auto overflow-x-auto ${view === '3d' ? 'right-3' : 'right-[232px]'}`}>
@@ -1074,12 +1079,12 @@ export function DesignEditor() {
                 <span className="truncate">{boundaryInfo.source === 'inspire' ? 'HMLR INSPIRE title boundary' : boundaryInfo.found ? 'Building footprint — connect INSPIRE for the legal plot' : 'No boundary found here'}</span>
               </div>
             )}
-            {view === '2d' && !busy && !drawing && !sel && design.planes.length > 0 && (tool === 'add' || tool === 'remove' || tool === 'rotate' || tool === 'select') && (
-              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[500] h-9 px-4 rounded-full text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}>
+            {view === '2d' && !busy && !drawing && !sel && !preview && design.planes.length > 0 && (tool === 'add' || tool === 'remove' || tool === 'rotate' || tool === 'select') && (
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-[500] h-9 px-4 rounded-full text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}>
                 {tool === 'add' && <><Grid size={14} />Click to place a module · drag for a block{ghostN != null ? ` · ${ghostN}` : ''}</>}
                 {tool === 'remove' && <><EraseIcon />Click a panel to remove · drag to clear a block{ghostN != null ? ` · ${ghostN}` : ''}</>}
                 {tool === 'rotate' && <><RotateIcon />Drag around the array to spin the grid{rotDeg != null ? ` · ${rotDeg}°` : ''}</>}
-                {tool === 'select' && <><CursorIcon />Click a panel · drag empty to box-select · drag to move · corner/handle to rotate · Del removes</>}
+                {tool === 'select' && <><CursorIcon />Click a panel to select · drag to move · Del removes</>}
               </div>
             )}
             {design.planes.length === 0 && !busy && !drawing && (
