@@ -144,6 +144,7 @@ export const STAGES: Stage[] = [
     groups: [
       { label: 'Sell & onboard', items: [
         { to: '/showroom', icon: Sun, label: 'Showroom', end: true },
+        { to: '/showroom/calendar', icon: Calendar, label: 'Booking calendar' },
         { to: '/customers', icon: Users, label: 'Customer portals' },
       ] },
       { label: 'Aftercare', items: [

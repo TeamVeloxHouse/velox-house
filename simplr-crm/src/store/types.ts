@@ -913,6 +913,12 @@ export interface ShowroomSession {
   mockupSource?: 'ai' | 'streetview' | 'illustrated'
   billFileName?: string // an attached energy bill, kept for reference — not parsed
   signature?: string // data URL — captured at accept, kept on the session for the record
+  // ── booking — which showroom slot this session is/was scheduled into ──
+  location?: string // which showroom, e.g. 'Cheltenham' | 'Cardiff' | 'Melksham'
+  scheduledDate?: string // ISO yyyy-mm-dd
+  scheduledTime?: string // 'HH:mm', 24hr — the slot start
+  bookingStatus?: 'scheduled' | 'completed' | 'no-show' | 'cancelled'
+  leadId?: ID // the lead this booking was made from, if any
 }
 
 // ── Commercial Solar Finder ────────────────────────────────────────────────

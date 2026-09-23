@@ -4,7 +4,7 @@ import { TopBar } from '../components/TopBar'
 import { PageBody } from '../components/Page'
 import { Button, Kpi, Chip, Avatar } from '../components/ui'
 import { Modal, Field, Input, Select } from '../components/overlays'
-import { Plus, Sun, Bolt, Check, ChevronRight, Star, Wrench, Building, Sparkle, Robot, Play, MapPin, Camera, Upload, Lock, Dollar } from '../components/icons'
+import { Plus, Sun, Bolt, Check, ChevronRight, Star, Wrench, Building, Sparkle, Robot, Play, MapPin, Camera, Upload, Lock, Dollar, Calendar } from '../components/icons'
 import { useState_, useActions } from '../store/store'
 import type { ShowroomSession } from '../store/types'
 import { showroomModel, panelsFor, starterDesign, kwhFromSpend, monthlyGeneration, dailyGenerationCurve, cashFlowSeries, priceBreakdown } from '../lib/showroom'
@@ -24,7 +24,16 @@ export function ShowroomHome() {
   const statusTone: Record<string, 'positive' | 'accent' | 'warning' | 'neutral'> = { won: 'positive', presented: 'accent', draft: 'warning', lost: 'neutral' }
   return (
     <>
-      <TopBar title="Showroom" crumbs={['Customers']} actions={<Button variant="primary" icon={<Plus size={16} />} onClick={() => setOpen(true)}>New session</Button>} />
+      <TopBar
+        title="Showroom"
+        crumbs={['Customers']}
+        actions={
+          <>
+            <Button icon={<Calendar size={16} />} onClick={() => nav('/showroom/calendar')}>Booking calendar</Button>
+            <Button variant="primary" icon={<Plus size={16} />} onClick={() => setOpen(true)}>New session (walk-in)</Button>
+          </>
+        }
+      />
       <PageBody>
         <div className="grid grid-cols-4 gap-4">
           <Kpi variant="deep" label="Sessions" value={String(showroom.length)} delta="All time" />

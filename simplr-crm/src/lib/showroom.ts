@@ -1,6 +1,30 @@
 import { simulateHome, UK } from './energy'
 import type { ShowroomSession, ShowroomDesign } from '../store/types'
 
+// ── Showroom booking calendar ──────────────────────────────────────────────
+export const SHOWROOM_LOCATIONS = ['Cheltenham', 'Cardiff', 'Melksham'] as const
+export const SLOT_TIMES = ['09:00', '10:30', '12:00', '13:30', '15:00', '16:30'] as const // 90-min slots
+
+export function isoDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+export function addDays(iso: string, n: number): string {
+  const d = new Date(iso + 'T00:00:00')
+  d.setDate(d.getDate() + n)
+  return isoDate(d)
+}
+export function formatDateLabel(iso: string): string {
+  const d = new Date(iso + 'T00:00:00')
+  return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
+}
+/** Is this date/time slot already in the past relative to now? Past slots can't be booked. */
+export function slotIsPast(dateIso: string, time: string): boolean {
+  const [h, m] = time.split(':').map(Number)
+  const slot = new Date(dateIso + 'T00:00:00')
+  slot.setHours(h, m, 0, 0)
+  return slot.getTime() < Date.now()
+}
+
 // UK generation yield — kWh per kWp per year (typical south-ish roof).
 const YIELD_PER_KWP = 950
 // Panels are ~460W; work out a plausible count from the array size.

@@ -25,6 +25,7 @@ import { LiveMeeting } from './pages/LiveMeeting'
 import { Calendar } from './pages/Calendar'
 import { CustomerPortals, CustomerPortal, SupportRequests, ResourceLibrary, PortalWelcome } from './pages/CustomerPortal'
 import { ShowroomHome, ShowroomExperience } from './pages/Showroom'
+import { ShowroomCalendar } from './pages/ShowroomCalendar'
 import { Agents } from './pages/Agents'
 import { Prospector } from './pages/Prospector'
 import { LinkedInInbox } from './pages/LinkedInInbox'
@@ -153,6 +154,7 @@ export const router = createBrowserRouter([
       { path: 'studio/surveys/:id', element: <SurveyReport /> },
       // TellOvi Customers — showroom, portals & aftercare
       { path: 'showroom', element: <ShowroomHome /> },
+      { path: 'showroom/calendar', element: <ShowroomCalendar /> },
       { path: 'showroom/:id', element: <ShowroomExperience /> },
       { path: 'customers', element: <CustomerPortals /> },
       { path: 'customers/support', element: <SupportRequests /> },
