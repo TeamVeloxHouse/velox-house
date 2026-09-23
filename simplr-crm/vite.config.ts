@@ -5,6 +5,7 @@ import { mapTileBytes } from './server/mapTilesProvider.mjs'
 import { parcelAt } from './server/parcelProvider.mjs'
 import { pdlSearch } from './server/sourcingProvider.mjs'
 import { staticSatellite } from './server/roofImage.mjs'
+import { staticStreetView } from './server/streetViewProvider.mjs'
 import { placesSearch, placesRadiusScan, placesAutocomplete } from './server/placesProvider.mjs'
 import { pvgisHourly } from './server/pvgisProvider.mjs'
 import { callOvi } from './server/oviProvider.mjs'
@@ -110,6 +111,28 @@ function roofImageApi(env: Record<string, string>): Plugin {
         const z = u.searchParams.get('z') || '20', size = u.searchParams.get('size') || '640x400'
         if (!key || !lat || !lng) { res.statusCode = 404; return res.end() }
         staticSatellite(lat, lng, z, size, key)
+          .then(({ buf, contentType }) => { res.setHeader('Content-Type', contentType); res.setHeader('Cache-Control', 'public, max-age=86400'); res.end(buf) })
+          .catch(() => { res.statusCode = 404; res.end() })
+      })
+    },
+  }
+}
+
+/** Dev-only Street View photo proxy for the proposal "showroom mockup" — a real photo of the
+ *  front of the house, composited client-side with a stylised panel overlay. Reuses
+ *  GOOGLE_MAPS_API_KEY; enable the "Street View Static API" on that key. */
+function streetViewApi(env: Record<string, string>): Plugin {
+  const key = env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || ''
+  return {
+    name: 'street-view-api',
+    configureServer(server) {
+      server.middlewares.use('/api/street-view', (req, res) => {
+        const u = new URL(req.url || '', 'http://localhost')
+        const lat = u.searchParams.get('lat'), lng = u.searchParams.get('lng')
+        const heading = u.searchParams.get('heading')
+        const size = u.searchParams.get('size') || '640x400'
+        if (!key || !lat || !lng) { res.statusCode = 404; return res.end() }
+        staticStreetView(lat, lng, heading, size, key)
           .then(({ buf, contentType }) => { res.setHeader('Content-Type', contentType); res.setHeader('Cache-Control', 'public, max-age=86400'); res.end(buf) })
           .catch(() => { res.statusCode = 404; res.end() })
       })
@@ -301,7 +324,7 @@ function epcApi(_env: Record<string, string>): Plugin {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   return {
-    plugins: [react(), solarApi(env), solarLayerApi(env), mapTilesApi(env), parcelApi(env), sourcingApi(env), roofImageApi(env), placesApi(env), autocompleteApi(env), pvgisApi(), geocodeApi(env), epcApi(env), oviApi(env)],
+    plugins: [react(), solarApi(env), solarLayerApi(env), mapTilesApi(env), parcelApi(env), sourcingApi(env), roofImageApi(env), streetViewApi(env), placesApi(env), autocompleteApi(env), pvgisApi(), geocodeApi(env), epcApi(env), oviApi(env)],
     server: { port: 3010 },
   }
 })

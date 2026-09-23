@@ -323,6 +323,18 @@ export interface Deal {
   quoted?: boolean // a proposal/quote has gone out — lifts the deal into the commit forecast
   custom?: Record<string, string>
   solar?: import('../lib/solar').SolarDesign
+  mockupImage?: string // data URL — the proposal's "solar on your roof" showroom image
+  mockupSource?: 'streetview' | 'illustrated'
+  energyBill?: EnergyBill
+}
+
+/** A customer-supplied energy bill, used to give them a real savings figure instead of the
+ *  modelled default. Entered by hand (annual or monthly spend); a file can be attached for the
+ *  sales team's reference but is not parsed — no OCR is wired up. */
+export interface EnergyBill {
+  annualCost?: number // £/yr, as told to us by the customer
+  fileName?: string
+  addedAt: number
 }
 
 export interface Person {

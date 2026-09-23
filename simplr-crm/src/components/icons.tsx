@@ -300,3 +300,15 @@ export const MapPin = (p: IconProps) => (
     <circle cx="12" cy="10.5" r="2.3" />
   </Base>
 )
+export const Camera = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" />
+    <circle cx="12" cy="13" r="3.5" />
+  </Base>
+)
+export const Upload = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M12 15V4M8 8l4-4 4 4" />
+    <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
+  </Base>
+)
