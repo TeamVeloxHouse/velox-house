@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useReducer, type ReactNo
 import { buildSeed } from './seed'
 import * as pipelineHelpers from '../lib/pipelines'
 import { buildApplication, buildDocPack, nextStatus, newEventId, stamp, resolveDno, classify, statusEventLabel, dnoRefPrefix, autopilotSteps } from '../lib/dno'
+import { buildProject } from '../lib/delivery'
 import type { PipelineStage, DnoApplication, DnoStatus, DnoDocKind, StudioProject } from './types'
 import type { State, Deal, Person, Lead, Org, Activity, EmailMsg, Toast, ID, SolarCampaign, SolarProspect, SolarContact, SolarProspectStatus, SiteSurvey, SurveyProductKey } from './types'
 import { surveyRef, photoSlotsFor, surveyToDnoSite, surveyFlags, completeness } from '../lib/survey'
@@ -787,10 +788,19 @@ export function useActions() {
         hasBattery: d.hasBattery, hasEv: d.hasEv, journey,
       }
       dispatch({ type: 'ADD_PORTAL', portal })
-      dispatch({ type: 'UPDATE_SHOWROOM', id: session.id, patch: { status: 'won', dealId: deal.id, portalId: portal.id } })
+      dispatch({ type: 'UPDATE_SHOWROOM', id: session.id, patch: { status: 'won', dealId: deal.id, portalId: portal.id, ...(session.scheduledDate ? { bookingStatus: 'completed' } : {}) } })
       dispatch({ type: 'ADD_ACTIVITY', activity: { id: uid('act'), type: 'change', subject: `Won in the showroom — ${session.name} 🎉`, body: `${label} · £${price.toLocaleString()}`, dealId: deal.id, done: true, who: 'Jordan Miles', createdAt: Date.now(), source: 'manual' } })
+
+      // Acceptance kicks off delivery: a project is started immediately, and DNO Autopilot
+      // classifies + drafts the grid application right away — no one has to remember to do it.
+      const project = buildProject({ dealId: deal.id, address: session.address, customer: session.name, owner: 'Jordan Miles', value: price })
+      project.systemKwp = d.systemKwp
+      project.dno = buildApplication(project)
+      dispatch({ type: 'ADD_PROJECT', project })
+      dispatch({ type: 'ADD_ACTIVITY', activity: { id: uid('act'), type: 'change', subject: 'DNO Autopilot started', body: `Classified as ${project.dno.classification} · ${project.dno.dnoRegion}`, dealId: deal.id, done: true, who: 'Jordan Miles', createdAt: Date.now(), source: 'ai' } })
+
       toast(`Sale won — ${session.name}'s portal is ready 🎉`, 'positive')
-      return { dealId: deal.id, portalId: portal.id }
+      return { dealId: deal.id, portalId: portal.id, projectId: project.id }
     },
     /** Customer taps "I'm interested" on an offer → a real warm lead for the team + logged. */
     portalOfferInterest: (portal: import('./types').CustomerPortal, offer: import('./types').PortalOffer) => {

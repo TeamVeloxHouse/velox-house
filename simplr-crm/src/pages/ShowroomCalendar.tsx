@@ -29,6 +29,10 @@ export function ShowroomCalendar() {
     act.updateShowroom(s.id, { bookingStatus: 'cancelled' })
     act.toast(`Cancelled ${s.name}'s showroom visit`, 'warning')
   }
+  function setBookingStatus(s: ShowroomSession, status: 'completed' | 'no-show') {
+    act.updateShowroom(s.id, { bookingStatus: status })
+    act.toast(status === 'no-show' ? `Marked ${s.name} as a no-show` : `Marked ${s.name}'s visit as completed`, status === 'no-show' ? 'warning' : 'positive')
+  }
 
   return (
     <>
@@ -72,8 +76,15 @@ export function ShowroomCalendar() {
                           </button>
                           <div className="flex flex-col items-end gap-1">
                             <Chip tone={statusTone[booking.bookingStatus || 'scheduled']}>{booking.bookingStatus || 'scheduled'}</Chip>
-                            {booking.bookingStatus !== 'cancelled' && (
-                              <button onClick={() => cancel(booking)} className="text-[10.5px] font-semibold text-muted-3 hover:text-negative opacity-0 group-hover:opacity-100">Cancel</button>
+                            {(booking.bookingStatus || 'scheduled') === 'scheduled' && (
+                              past ? (
+                                <div className="flex gap-1.5 opacity-0 group-hover:opacity-100">
+                                  <button onClick={() => setBookingStatus(booking, 'completed')} className="text-[10.5px] font-semibold text-positive hover:underline">Completed</button>
+                                  <button onClick={() => setBookingStatus(booking, 'no-show')} className="text-[10.5px] font-semibold text-warning hover:underline">No-show</button>
+                                </div>
+                              ) : (
+                                <button onClick={() => cancel(booking)} className="text-[10.5px] font-semibold text-muted-3 hover:text-negative opacity-0 group-hover:opacity-100">Cancel</button>
+                              )
                             )}
                           </div>
                         </div>
