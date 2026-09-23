@@ -96,6 +96,7 @@ export function DesignEditor() {
   const planeLayer = useRef<L.LayerGroup | null>(null)
   const panelLayer = useRef<L.LayerGroup | null>(null)
   const ghostLayer = useRef<L.LayerGroup | null>(null)
+  const previewLayer = useRef<L.LayerGroup | null>(null) // suggested-layout ghosts, click to drop one before accepting
   const rgbLayer = useRef<L.ImageOverlay | null>(null)
   const gTiles = useRef<L.TileLayer | null>(null)
   const aerialKey = useRef<string | null>(null)
@@ -123,6 +124,7 @@ export function DesignEditor() {
   const selPanelRef = useRef<string[]>([]); selPanelRef.current = selPanelIds
   const [tool, setTool] = useState<Tool>('select')
   const [ghostN, setGhostN] = useState<number | null>(null)
+  const [preview, setPreview] = useState<{ planes: DesignPlane[]; removed: Set<string> } | null>(null)
   const [rotDeg, setRotDeg] = useState<number | null>(null)
   const [hdReady, setHdReady] = useState(false)
   const [hdOn, setHdOn] = useState(true)
@@ -158,6 +160,7 @@ export function DesignEditor() {
     measureLayer.current = L.layerGroup().addTo(m)
     editMeasureLayer.current = L.layerGroup().addTo(m)
     ghostLayer.current = L.layerGroup().addTo(m)
+    previewLayer.current = L.layerGroup().addTo(m)
     boundaryLayer.current = L.layerGroup().addTo(m)
     // Dedicated pane for the Google high-res aerial overlay: above the base tiles, below the vectors.
     m.createPane('rgb'); const rp = m.getPane('rgb'); if (rp) { rp.style.zIndex = '250'; rp.style.pointerEvents = 'none' }
@@ -533,9 +536,12 @@ export function DesignEditor() {
       if (!p.panels?.length) tip.openTooltip([topPt.lat, topPt.lng])
       poly.addTo(lyr)
       // Sleek black modules (OpenSolar look) — near-black glass with a thin cool frame.
-      p.panels?.forEach((pn) => {
-        L.polygon(pn.corners.map((v) => [v.lat, v.lng]) as [number, number][], { pmIgnore: true, renderer: panelRenderer.current!, color: '#3A4A6B', weight: 0.7, fillColor: '#0A0E17', fillOpacity: 0.94 } as any).addTo(pl)
-      })
+      // Hidden while a suggested layout is being previewed on this plane, so the amber ghosts read clearly.
+      if (!preview?.planes.some((pp) => pp.id === p.id)) {
+        p.panels?.forEach((pn) => {
+          L.polygon(pn.corners.map((v) => [v.lat, v.lng]) as [number, number][], { pmIgnore: true, renderer: panelRenderer.current!, color: '#3A4A6B', weight: 0.7, fillColor: '#0A0E17', fillOpacity: 0.94 } as any).addTo(pl)
+        })
+      }
       // Facing arrow — one per filled array, pointing downslope (the way the panels face).
       if (p.panels?.length) {
         const c = p.polygon.reduce((a, v) => ({ lat: a.lat + v.lat / p.polygon.length, lng: a.lng + v.lng / p.polygon.length }), { lat: 0, lng: 0 })
@@ -579,7 +585,39 @@ export function DesignEditor() {
       try { map.current.fitBounds(L.latLngBounds(all).pad(0.3), { maxZoom: 20, animate: false }) } catch { /* single point */ }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [design?.planes, selId, selPanelIds, mapReady])
+  }, [design?.planes, selId, selPanelIds, mapReady, preview])
+
+  // ── Suggested-layout preview — amber ghosts from the last auto-layout run, click one to drop it
+  // before accepting. Nothing here is committed to the design until "Accept" is pressed. ──
+  useEffect(() => {
+    const lyr = previewLayer.current
+    if (!lyr) return
+    lyr.clearLayers()
+    if (!preview) return
+    preview.planes.forEach((p) => {
+      p.panels?.forEach((pn) => {
+        if (preview.removed.has(pn.id)) return
+        const poly = L.polygon(pn.corners.map((v) => [v.lat, v.lng]) as [number, number][], {
+          renderer: panelRenderer.current!, pmIgnore: true, interactive: true,
+          color: '#F5A623', weight: 1.6, dashArray: '3 2', fillColor: '#F5A623', fillOpacity: 0.35,
+        } as any)
+        poly.on('click', (e) => { L.DomEvent.stopPropagation(e); setPreview((cur) => (cur ? { ...cur, removed: new Set(cur.removed).add(pn.id) } : cur)) })
+        poly.addTo(lyr)
+      })
+    })
+  }, [preview, mapReady])
+
+  function acceptPreview() {
+    if (!preview) return
+    const planes = preview.planes.map((p) => ({ ...p, panels: (p.panels ?? []).filter((pn) => !preview.removed.has(pn.id)) }))
+    commitSnapshot(planes)
+    const kept = planes.reduce((s, p) => s + (p.panels?.length ?? 0), 0)
+    setPreview(null)
+    act.toast(`${kept} panel${kept === 1 ? '' : 's'} accepted`, 'positive')
+  }
+  function discardPreview() {
+    setPreview(null)
+  }
 
   // ── Redraw obstructions whenever they change — coloured keep-outs with a draggable centroid handle ──
   useEffect(() => {
@@ -615,23 +653,29 @@ export function DesignEditor() {
       const bg = tone === 'area' ? 'rgba(124,58,237,.92)' : 'rgba(10,14,23,.86)'
       L.marker([lat, lng], { interactive: false, pmIgnore: true, keyboard: false, icon: L.divIcon({ className: '', html: `<div style="transform:translate(-50%,-50%);white-space:nowrap;font:700 11px/1 system-ui;color:#fff;background:${bg};padding:2px 5px;border-radius:5px;box-shadow:0 1px 3px rgba(0,0,0,.4)">${text}</div>`, iconSize: [0, 0] }) }).addTo(lyr)
     }
+    // Edge-length labels get unreadable fast with several small planes on screen at once — only
+    // dimension the selected plane's edges (or every plane's, if there's just the one). Every
+    // plane still gets its compact area+pitch badge, which is what stays legible zoomed out.
+    const dimensionEdgesFor = design.planes.length <= 1 ? design.planes.map((p) => p.id) : selId ? [selId] : []
     design.planes.forEach((p) => {
       const ring = p.polygon
       const mLat = 110540, mLng = 111320 * Math.cos((ring[0].lat * Math.PI) / 180)
-      for (let i = 0; i < ring.length; i++) {
-        const a = ring[i], b = ring[(i + 1) % ring.length]
-        const dx = (b.lng - a.lng) * mLng, dy = (b.lat - a.lat) * mLat
-        const len = Math.hypot(dx, dy)
-        if (len < 0.5) continue
-        // plan length → true surface length up the slope (sloped edges only): approximate with pitch on
-        // the up-slope component. Kept simple: show plan length, which is what a roofer measures on plan.
-        label((a.lat + b.lat) / 2, (a.lng + b.lng) / 2, `${len.toFixed(1)} m`, 'edge')
+      if (dimensionEdgesFor.includes(p.id)) {
+        for (let i = 0; i < ring.length; i++) {
+          const a = ring[i], b = ring[(i + 1) % ring.length]
+          const dx = (b.lng - a.lng) * mLng, dy = (b.lat - a.lat) * mLat
+          const len = Math.hypot(dx, dy)
+          if (len < 0.5) continue
+          // plan length → true surface length up the slope (sloped edges only): approximate with pitch on
+          // the up-slope component. Kept simple: show plan length, which is what a roofer measures on plan.
+          label((a.lat + b.lat) / 2, (a.lng + b.lng) / 2, `${len.toFixed(1)} m`, 'edge')
+        }
       }
       const cx = ring.reduce((s, v) => s + v.lat, 0) / ring.length, cy = ring.reduce((s, v) => s + v.lng, 0) / ring.length
       label(cx, cy, `${Math.round(slopedAreaM2(p.areaM2, p.pitchDeg))} m² · ${effTilt(p)}°`, 'area')
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [design?.planes, measureOn, view, mapReady, tool])
+  }, [design?.planes, measureOn, view, mapReady, tool, selId])
 
   // Delete / Backspace removes the selected panel (ignored while typing in a field).
   useEffect(() => {
@@ -801,9 +845,10 @@ export function DesignEditor() {
     setStatus(goal.kind === 'max' ? 'Ovi is maximising coverage across every plane…' : goal.kind === 'target-kwp' ? `Ovi is sizing the array to ${goal.kwp} kWp…` : `Ovi is sizing the array to ~${goal.kwh.toLocaleString()} kWh/yr…`)
     setTimeout(() => {
       const res = autoLayout(d.planes, module, goal, d.setbackM, { obstacles: obsRings(d) })
-      commitSnapshot(res.planes)
       setBusy(false); setStatus('')
-      act.toast(res.count ? `Ovi placed ${res.count} panels — ${res.kwp} kWp across ${res.planes.filter((p) => p.panels?.length).length} plane(s)` : 'No room for panels on these planes', res.count ? 'positive' : 'warning')
+      if (!res.count) { act.toast('No room for panels on these planes', 'warning'); return }
+      setPreview({ planes: res.planes, removed: new Set() })
+      act.toast(`Ovi suggests ${res.count} panels — ${res.kwp} kWp. Review below, then Accept.`, 'positive')
     }, 700)
   }
   function computeTotals(planes: DesignPlane[]) {
@@ -986,6 +1031,17 @@ export function DesignEditor() {
             {busy && (
               <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[500] h-9 px-4 rounded-full bg-black/75 text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal"><span className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />{status}</div>
             )}
+            {preview && (() => {
+              const kept = preview.planes.reduce((s, p) => s + (p.panels ?? []).filter((pn) => !preview.removed.has(pn.id)).length, 0)
+              return (
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[500] bg-surface rounded-card shadow-modal border border-border px-4 py-3 flex items-center gap-3">
+                  <div className="flex items-center gap-2 text-[13px] font-semibold text-ink-2"><Sparkle size={15} className="text-accent" /> {kept} panel{kept === 1 ? '' : 's'} suggested</div>
+                  <div className="text-[11.5px] text-muted-2">Click a panel to drop it</div>
+                  <Button onClick={discardPreview}>Discard</Button>
+                  <Button variant="primary" icon={<Check size={15} />} onClick={acceptPreview} className={kept === 0 ? 'opacity-40 pointer-events-none' : ''}>Accept {kept}</Button>
+                </div>
+              )
+            })()}
             {drawing && !busy && (
               <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[500] h-9 px-4 rounded-full text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Target size={14} />Click each corner of the roof, then click the first point to close</div>
             )}
