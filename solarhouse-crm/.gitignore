@@ -2,3 +2,5 @@ node_modules
 dist
 .env
 .env.local
+data/inspire/
+data/ostn15/

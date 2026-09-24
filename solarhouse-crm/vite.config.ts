@@ -8,7 +8,7 @@ import { staticSatellite } from './server/roofImage.mjs'
 import { staticStreetView } from './server/streetViewProvider.mjs'
 import { aiSolarMockup } from './server/imageGenProvider.mjs'
 import { placesSearch, placesRadiusScan, placesAutocomplete } from './server/placesProvider.mjs'
-import { pvgisHourly } from './server/pvgisProvider.mjs'
+import { pvgisHourly, pvgisMonthly } from './server/pvgisProvider.mjs'
 import { callOvi } from './server/oviProvider.mjs'
 import { mapboxGeocode, mapboxReverse, mapboxSuggest } from './server/mapboxProvider.mjs'
 
@@ -345,6 +345,20 @@ function pvgisApi(): Plugin {
   return {
     name: 'pvgis-api',
     configureServer(server) {
+      // Monthly + annual specific yield for one plane (kWh/kWp) — the MCS engine's per-location Kk.
+      const monthlyCache = new Map<string, unknown>()
+      server.middlewares.use('/api/pvgis-monthly', async (req, res) => {
+        res.setHeader('Content-Type', 'application/json')
+        const u = new URL(req.url || '', 'http://x')
+        const lat = Number(u.searchParams.get('lat')), lng = Number(u.searchParams.get('lng'))
+        const tilt = Number(u.searchParams.get('tilt') ?? 35), az = Number(u.searchParams.get('azimuth') ?? 0)
+        if (![lat, lng].every(Number.isFinite)) { res.statusCode = 400; return res.end('{}') }
+        const key = `${lat.toFixed(3)},${lng.toFixed(3)},${tilt},${az}`
+        try {
+          if (!monthlyCache.has(key)) monthlyCache.set(key, await pvgisMonthly(lat, lng, tilt, az))
+          res.end(JSON.stringify(monthlyCache.get(key)))
+        } catch (e) { res.end(JSON.stringify({ fallback: true, reason: String((e as Error)?.message || e) })) }
+      })
       server.middlewares.use('/api/pvgis', (req, res) => {
         if (req.method !== 'POST') { res.statusCode = 405; return res.end() }
         let body = ''

@@ -135,7 +135,7 @@ export function DesignEditor() {
   const rootRef = useRef<HTMLDivElement>(null)
   const [isFs, setIsFs] = useState(false)
   const boundaryLayer = useRef<L.LayerGroup | null>(null)
-  const [boundaryOn, setBoundaryOn] = useState(false)
+  const [boundaryOn, setBoundaryOn] = useState(true) // title boundary on by default (Land Registry INSPIRE)
   const [measureOn, setMeasureOn] = useState(false)
   const [boundaryInfo, setBoundaryInfo] = useState<{ source: 'inspire' | 'footprint'; found: boolean } | null>(null)
   const [, setHistTick] = useState(0) // bump re-renders so undo/redo buttons re-evaluate enablement
@@ -500,8 +500,13 @@ export function DesignEditor() {
       if (cancelled || !boundaryLayer.current) return
       const g = boundaryLayer.current; g.clearLayers()
       if (source === 'inspire') {
-        neighbours.forEach((nr) => L.polygon(nr.map((v) => [v.lat, v.lng]) as [number, number][], { color: '#E5484D', weight: 1, opacity: 0.35, fill: false, pmIgnore: true, interactive: false } as any).addTo(g))
-        if (ring) L.polygon(ring.map((v) => [v.lat, v.lng]) as [number, number][], { color: '#E5484D', weight: 3, opacity: 0.95, fillColor: '#E5484D', fillOpacity: 0.05, pmIgnore: true, interactive: false } as any).addTo(g)
+        // Land Registry title boundary — teal, with a dark halo so it reads on any roof; neighbours faint
+        neighbours.forEach((nr) => L.polygon(nr.map((v) => [v.lat, v.lng]) as [number, number][], { color: '#62E4CC', weight: 1, opacity: 0.35, dashArray: '4 4', fill: false, pmIgnore: true, interactive: false } as any).addTo(g))
+        if (ring) {
+          const ll = ring.map((v) => [v.lat, v.lng]) as [number, number][]
+          L.polygon(ll, { color: '#05111D', weight: 5.5, opacity: 0.35, fill: false, pmIgnore: true, interactive: false } as any).addTo(g)
+          L.polygon(ll, { color: '#62E4CC', weight: 2.6, opacity: 1, fillColor: '#62E4CC', fillOpacity: 0.04, pmIgnore: true, interactive: false } as any).addTo(g)
+        }
       } else if (ring) {
         L.polygon(ring.map((v) => [v.lat, v.lng]) as [number, number][], { color: '#F5A524', weight: 2, opacity: 0.9, dashArray: '6 4', fill: false, pmIgnore: true, interactive: false } as any).addTo(g)
       }
@@ -1101,8 +1106,8 @@ export function DesignEditor() {
             })()}
             {view === '2d' && boundaryOn && boundaryInfo && (
               <div className="absolute bottom-3 left-3 z-[500] h-8 px-3 rounded-full bg-white/95 backdrop-blur border border-border shadow-modal text-[11.5px] font-semibold inline-flex items-center gap-1.5 max-w-[380px]">
-                <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: boundaryInfo.source === 'inspire' ? '#E5484D' : '#F5A524' }} />
-                <span className="truncate">{boundaryInfo.source === 'inspire' ? 'HMLR INSPIRE title boundary' : boundaryInfo.found ? 'Building footprint — connect INSPIRE for the legal plot' : 'No boundary found here'}</span>
+                <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: boundaryInfo.source === 'inspire' ? '#62E4CC' : '#F5A524' }} />
+                <span className="truncate">{boundaryInfo.source === 'inspire' ? 'Land Registry title boundary (INSPIRE)' : boundaryInfo.found ? 'Building footprint — connect INSPIRE for the legal plot' : 'No boundary found here'}</span>
               </div>
             )}
             {view === '2d' && !busy && !drawing && !sel && !preview && design.planes.length > 0 && (tool === 'add' || tool === 'remove' || tool === 'rotate' || tool === 'select') && (

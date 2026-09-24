@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "inspire": "node scripts/inspire-build.mjs"
   },
   "dependencies": {
     "@geoman-io/leaflet-geoman-free": "^2.18.3",
@@ -14,6 +15,7 @@
     "geotiff": "^2.1.3",
     "jspdf": "^2.5.2",
     "leaflet": "^1.9.4",
+    "proj4": "^2.22.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.26.2",
