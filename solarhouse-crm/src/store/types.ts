@@ -1168,6 +1168,8 @@ export interface Design {
   annualConsumptionKwh?: number // household/site annual demand (kWh)
   occupancy?: 'home_all_day' | 'in_half_day' | 'out_all_day'
   batteryKwh?: number // usable battery capacity (kWh), 0 = none
+  horizon?: { id: ID; label: string; bearingDeg: number; distanceM: number; heightM: number; widthM: number }[] // off-roof obstructions (trees, buildings) for the MCS sun-path shade factor
+  shadeOverrides?: Record<ID, number> // per-plane shade factor set by the surveyor
   createdAt: number
   updatedAt: number
 }

@@ -1,3 +1,4 @@
+import { McsProduction } from '../components/McsProduction'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import L from 'leaflet'
@@ -1142,7 +1143,7 @@ export function DesignEditor() {
           }
         </div>
 
-        {tab === 'production' && <ProductionPane design={design} moduleId={moduleId} kwp={kwp} count={totals.count} annualKwh={Math.round(totals.kwh)} />}
+        {tab === 'production' && <McsProduction design={design} moduleId={moduleId} effTilt={effTilt} />}
         {tab === 'proposal' && <ProposalPane design={design} kwp={kwp} count={totals.count} annualKwh={Math.round(totals.kwh)} onPush={pushToProposal} hasProposal={showroom.some((s) => s.designId === design.id)} onOpen={() => nav('/studio/proposals')} onConfirm={() => act.updateDesign(design.id, { status: 'confirmed', systemKwp: kwp, panels: totals.count, annualKwh: Math.round(totals.kwh) })} />}
         <DesignCopilot open={oviOpen} onClose={() => setOviOpen(false)} onExecute={oviExecute} />
       </div>
