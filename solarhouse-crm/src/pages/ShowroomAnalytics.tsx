@@ -1,6 +1,8 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { TopBar } from '../components/TopBar'
-import { Pie, Lock, ChevronDown } from '../components/icons'
+import { Pie, Lock, ChevronDown, Flow, Bars, Users, Person, Target, Clock, Sun, Bolt, Layers, Dollar, Check, File, Calendar } from '../components/icons'
+import { Panel, StatTile } from '../components/ui'
+type IconT = (p: { size?: number; className?: string }) => JSX.Element
 import { useState_ } from '../store/store'
 import { money, classNames } from '../lib/format'
 import type { Showroom } from '../store/types'
@@ -45,8 +47,8 @@ export function ShowroomAnalytics() {
           </select>
         </label>
         {viewer !== 'md' && <span className="h-8 px-2.5 rounded-full bg-control text-[12px] font-semibold text-ink-3 flex items-center gap-1.5"><Lock size={12} />Only {SHOWROOM_META[viewer].name} data is visible</span>}
-        <div className="ml-auto flex items-center gap-1 bg-control rounded-control p-[3px]">
-          {PRESETS.map((p) => <button key={p.id} onClick={() => { setPreset(p.id); setCustom(null) }} className={classNames('h-[30px] px-2.5 rounded-[7px] text-[12px] font-semibold', !custom && preset === p.id ? 'bg-white text-accent shadow-[0_1px_2px_rgba(11,18,32,0.08)]' : 'text-muted-b hover:text-ink-3')}>{p.label}</button>)}
+        <div className="ml-auto flex items-center gap-1 bg-[#E9EDF2] border border-[#DDE3EA] rounded-control p-[3px]">
+          {PRESETS.map((p) => <button key={p.id} onClick={() => { setPreset(p.id); setCustom(null) }} className={classNames('h-[30px] px-2.5 rounded-[7px] text-[12px] font-semibold', !custom && preset === p.id ? 'bg-white text-accent font-bold shadow-[0_1px_3px_rgba(11,18,32,0.14)]' : 'text-ink-3 hover:text-ink-3')}>{p.label}</button>)}
         </div>
         <div className="flex items-center gap-1.5 text-[12.5px] text-muted-b">
           <input type="date" value={iso(range.from)} onChange={(e) => setCustom({ from: new Date(e.target.value).getTime(), to: range.to })} className="h-9 px-2 rounded-control border border-border bg-surface text-[12.5px] text-ink-2 outline-none focus:border-accent" />
@@ -57,7 +59,7 @@ export function ShowroomAnalytics() {
 
       <main className="flex-1 overflow-y-auto p-7 flex flex-col gap-5">
         {/* headline */}
-        <div className="grid grid-cols-4 xl:grid-cols-8 gap-3">
+        <div className="grid grid-cols-4 2xl:grid-cols-8 gap-3">
           <Kpi cmp={canCompare} l="Revenue signed" v={money(a.kpi.revenue, { compact: true })} cur={a.kpi.revenue} prev={prev.kpi.revenue} />
           <Kpi cmp={canCompare} l="Systems signed" v={String(a.kpi.signed)} cur={a.kpi.signed} prev={prev.kpi.signed} />
           <Kpi cmp={canCompare} l="Proposal acceptance" v={`${a.kpi.acceptance}%`} cur={a.kpi.acceptance} prev={prev.kpi.acceptance} pts hint="Of proposals sent in range, signed" />
@@ -148,8 +150,15 @@ export function ShowroomAnalytics() {
   )
 }
 
+const PANEL_ICON: Record<string, IconT> = {
+  Funnel: Flow, 'Signed revenue by week': Bars, 'Showrooms side by side': Users, Advisers: Person, 'Lead sources': Target, 'Why deals were lost': Clock,
+  'Panels: proposed vs accepted': Sun, 'Inverters & hybrid systems': Bolt, Batteries: Layers, 'Battery size': Layers, 'System size': Sun, Finance: Dollar,
+}
+const KPI_ICON: Record<string, IconT> = {
+  'Revenue signed': Dollar, 'Systems signed': Check, 'Proposal acceptance': File, 'Consultation close rate': Target, 'Average order value': Pie, 'Battery attach': Layers, 'Proposal → signed': Clock, 'Showroom no-shows': Calendar,
+}
 function Card({ title, sub, children }: { title: string; sub?: string; children: ReactNode }) {
-  return <section className="rounded-card bg-surface border border-border shadow-card p-5"><div className="mb-3"><div className="text-[14px] font-bold text-ink">{title}</div>{sub && <div className="text-[12px] text-muted-2 mt-0.5">{sub}</div>}</div>{children}</section>
+  return <Panel title={title} sub={sub} icon={PANEL_ICON[title]}>{children}</Panel>
 }
 
 function Kpi({ l, v, cur, prev, pts, lowerBetter, hint, cmp = true }: { l: string; v: string; cur: number; prev: number; pts?: boolean; lowerBetter?: boolean; hint?: string; cmp?: boolean }) {
@@ -157,13 +166,9 @@ function Kpi({ l, v, cur, prev, pts, lowerBetter, hint, cmp = true }: { l: strin
   const good = lowerBetter ? diff < 0 : diff > 0
   const flat = diff === 0 || (!prev && !pts)
   return (
-    <div className="rounded-card bg-surface border border-border shadow-card px-3.5 py-3 min-w-0" title={hint}>
-      <div className="text-[11.5px] text-muted-b truncate">{l}</div>
-      <div className="text-[21px] font-bold text-ink tracking-[-0.02em] mt-0.5 tabular-nums">{v}</div>
-      <div className={classNames('text-[11px] font-semibold mt-0.5', flat ? 'text-muted-3' : good ? 'text-positive' : 'text-negative')}>
-        {!cmp ? <span className="font-normal text-muted-3">No earlier data to compare</span> : flat ? 'No change' : `${diff > 0 ? '▲' : '▼'} ${Math.abs(diff)}${pts ? ' pts' : '%'}`} {cmp && <span className="font-normal text-muted-3">vs prev.</span>}
-      </div>
-    </div>
+    <StatTile label={l} value={v} icon={KPI_ICON[l]} hint={hint} tone={l === 'Revenue signed' ? 'good' : 'accent'}
+      delta={cmp && !flat ? `${diff > 0 ? '▲' : '▼'} ${Math.abs(diff)}${pts ? ' pts' : '%'}` : undefined} deltaGood={cmp && !flat ? good : undefined}
+      sub={!cmp ? 'No earlier data to compare' : flat ? 'No change vs prev.' : 'vs previous period'} />
   )
 }
 

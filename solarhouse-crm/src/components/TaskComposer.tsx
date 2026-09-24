@@ -120,9 +120,9 @@ export function TaskComposer({
       footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" onClick={save}>{existing ? 'Save changes' : 'Create task'}</Button></>}
     >
       {/* type */}
-      <div className="inline-flex bg-control rounded-control p-[3px] gap-0.5 self-start">
+      <div className="inline-flex bg-[#E9EDF2] border border-[#DDE3EA] rounded-control p-[3px] gap-0.5 self-start">
         {TYPES.map((t) => (
-          <button key={t.id} onClick={() => setType(t.id)} className={classNames('h-8 px-3 rounded-[7px] text-[12.5px] font-medium flex items-center gap-1.5 transition-colors', type === t.id ? 'bg-white text-accent shadow-[0_1px_2px_rgba(11,18,32,0.08)]' : 'text-muted-b hover:text-ink-3')}>
+          <button key={t.id} onClick={() => setType(t.id)} className={classNames('h-8 px-3 rounded-[7px] text-[12.5px] font-medium flex items-center gap-1.5 transition-colors', type === t.id ? 'bg-white text-accent font-bold shadow-[0_1px_3px_rgba(11,18,32,0.14)]' : 'text-ink-3 hover:text-ink-3')}>
             <t.icon size={14} /> {t.label}
           </button>
         ))}

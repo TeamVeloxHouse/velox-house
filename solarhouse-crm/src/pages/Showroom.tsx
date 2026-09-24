@@ -112,8 +112,8 @@ export function ShowroomHome() {
         <section className="rounded-card bg-surface border border-border shadow-card overflow-hidden">
           <div className="px-4 py-3 border-b border-divider flex items-center gap-2 flex-wrap">
             <Play size={15} className="text-accent" /><span className="text-[14px] font-bold text-ink">{loc} presentations</span>
-            <div className="flex items-center gap-1 ml-3 bg-control rounded-control p-[3px]">
-              {(['all', 'upcoming', 'won', 'presented', 'lost', 'no-show'] as const).map((f) => <button key={f} onClick={() => { setFilter(f); setLimit(25) }} className={classNames('h-7 px-2.5 rounded-[6px] text-[12px] font-semibold capitalize flex items-center gap-1', filter === f ? 'bg-white text-accent shadow-[0_1px_2px_rgba(11,18,32,0.08)]' : 'text-muted-b')}>{f === 'all' ? 'All' : f}<span className="text-[10.5px] text-muted-3">{count(f)}</span></button>)}
+            <div className="flex items-center gap-1 ml-3 bg-[#E9EDF2] border border-[#DDE3EA] rounded-control p-[3px]">
+              {(['all', 'upcoming', 'won', 'presented', 'lost', 'no-show'] as const).map((f) => <button key={f} onClick={() => { setFilter(f); setLimit(25) }} className={classNames('h-7 px-2.5 rounded-[6px] text-[12px] font-semibold capitalize flex items-center gap-1', filter === f ? 'bg-white text-accent font-bold shadow-[0_1px_3px_rgba(11,18,32,0.14)]' : 'text-ink-3')}>{f === 'all' ? 'All' : f}<span className="text-[10.5px] text-muted-3">{count(f)}</span></button>)}
             </div>
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name or postcode…" className="ml-auto h-8 w-[220px] px-3 rounded-control border border-border text-[12.5px] outline-none focus:border-accent" />
           </div>

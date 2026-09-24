@@ -90,9 +90,9 @@ export function DealsBoard() {
             <ShowroomTab key={s} on={showroom === s} onClick={() => setShowroom(s)} label={SHOWROOM_META[s].name} color={SHOWROOM_META[s].color}
               count={shDeals.filter((d) => d.journey!.showroom === s && !d.lost && !d.won).length} />
           ))}
-          <div className="ml-auto inline-flex bg-control rounded-control p-[3px] gap-0.5">
+          <div className="ml-auto inline-flex bg-[#E9EDF2] border border-[#DDE3EA] rounded-control p-[3px] gap-0.5">
             {([['board', Bars, 'Board'], ['table', Grid, 'Table'], ['queue', Flow, 'Work queue']] as const).map(([id, I, l]) => (
-              <button key={id} onClick={() => setView(id)} className={classNames('h-[30px] px-3 rounded-[7px] flex items-center gap-1.5 text-[12.5px] font-semibold transition-colors', view === id ? 'bg-white text-accent shadow-[0_1px_2px_rgba(11,18,32,0.08)]' : 'text-muted-b hover:text-ink-3')}><I size={14} />{l}</button>
+              <button key={id} onClick={() => setView(id)} className={classNames('h-[30px] px-3 rounded-[7px] flex items-center gap-1.5 text-[12.5px] font-semibold transition-colors', view === id ? 'bg-white text-accent font-bold shadow-[0_1px_3px_rgba(11,18,32,0.14)]' : 'text-ink-3 hover:text-ink-3')}><I size={14} />{l}</button>
             ))}
           </div>
         </div>
@@ -148,34 +148,47 @@ function Stat({ v, l }: { v: string; l: string }) { return <span><b className="t
 
 /* ─────────── Board ─────────── */
 const COL_CAP = 30
+// One distinct colour per stage (validated for colour-blind separation); always shown with the label.
+export const STAGE_COLOR: Record<string, string> = {
+  'New enquiry': '#0284C7', Contacted: '#7C3AED', Consultation: '#DB2777', 'Proposal sent': '#D97706', Survey: '#0891B2', Signed: '#16A34A',
+}
 function Board({ byStage, onOpen, onQueue, onDrop }: { byStage: Record<string, Deal[]>; onOpen: (d: Deal) => void; onQueue: (s: string) => void; onDrop: (id: string, s: string) => void }) {
   const [drag, setDrag] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   return (
-    <main className="flex-1 min-h-0 overflow-x-auto p-5">
-      <div className="grid gap-3 h-full" style={{ gridTemplateColumns: `repeat(${SH_STAGES.length}, minmax(236px, 1fr))` }}>
+    <main className="flex-1 min-h-0 overflow-x-auto p-5 pt-3 flex flex-col gap-2.5">
+      <div className="flex items-center gap-4 text-[11.5px] text-muted-b shrink-0">
+        <span className="font-semibold text-ink-3">Card edge = next action</span>
+        {([['#DC2626', 'Overdue'], ['#F59E0B', 'Due today or tomorrow'], ['#34D399', 'On track'], ['#16A34A', 'Signed']] as const).map(([c, l]) => <span key={l} className="flex items-center gap-1.5"><span className="w-[3px] h-3.5 rounded-full" style={{ background: c }} />{l}</span>)}
+        <span className="ml-auto">Badge = days in this stage</span>
+      </div>
+      <div className="grid gap-3 flex-1 min-h-0" style={{ gridTemplateColumns: `repeat(${SH_STAGES.length}, minmax(236px, 1fr))` }}>
         {SH_STAGES.map((stage, i) => {
           const col = byStage[stage] ?? []
           const late = col.filter((d) => stageAge(d).tone === 'late').length
           const shown = expanded[stage] ? col : col.slice(0, COL_CAP)
           const value = col.reduce((s, d) => s + d.value, 0)
           const avgDays = col.length ? Math.round(col.reduce((s, d) => s + stageAge(d).days, 0) / col.length) : 0
+          const c = STAGE_COLOR[stage]
           return (
             <div key={stage} onDragOver={(e) => e.preventDefault()} onDrop={() => { if (drag) onDrop(drag, stage); setDrag(null) }}
-              className={classNames('flex flex-col min-h-0 rounded-xl bg-[#EEF1F5]/70 border border-transparent', drag && 'border-dashed border-accent-400')}>
-              <div className="px-3 pt-3 pb-2">
+              className={classNames('flex flex-col min-h-0 rounded-xl border overflow-hidden', drag ? 'border-dashed border-accent-400' : 'border-[#E1E6EC]')}
+              style={{ background: `color-mix(in srgb, ${c} 5%, #F3F5F8)` }}>
+              {/* Stage header: its own colour (identity), numbered, so the flow reads left → right */}
+              <div className="px-3 pt-0 pb-2.5 bg-white border-b border-[#E6EAF0]">
+                <div className="h-[4px] -mx-3 mb-2.5" style={{ background: c }} />
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full" style={{ background: ['#A7E6DA', '#6FD3BE', '#1FAE94', '#13927B', '#0E8C79', '#0A5F52'][i] }} />
-                  <span className="text-[13px] font-bold text-ink">{stage}</span>
-                  <span className="text-[11.5px] font-bold text-muted-b">{col.length}</span>
-                  {col.length > 0 && <button onClick={() => onQueue(stage)} title="Work through this stage one by one" className="ml-auto h-6 px-2 rounded-md bg-white border border-border text-[11px] font-semibold text-accent hover:bg-accent-wash flex items-center gap-1"><Flow size={11} />Work</button>}
+                  <span className="w-5 h-5 rounded-md text-[10.5px] font-extrabold text-white flex items-center justify-center shrink-0" style={{ background: c }}>{i + 1}</span>
+                  <span className="text-[13.5px] font-extrabold text-ink truncate">{stage}</span>
+                  <span className="text-[11px] font-bold rounded-full px-1.5 min-w-[22px] text-center" style={{ color: c, background: `color-mix(in srgb, ${c} 12%, white)` }}>{col.length}</span>
+                  {col.length > 0 && <button onClick={() => onQueue(stage)} title="Work through this stage one by one" className="ml-auto h-6 px-2 rounded-md bg-white border border-[#CDD5DF] text-[11px] font-bold text-ink-2 hover:border-accent hover:text-accent flex items-center gap-1 shadow-[0_1px_2px_rgba(16,24,40,0.06)]"><Flow size={11} />Work</button>}
                 </div>
-                <div className="flex items-center gap-2 mt-1 text-[11.5px] text-muted-2">
-                  <span>{money(value, { compact: true })}</span><span>·</span><span>avg {avgDays}d here</span>
-                  {late > 0 && <span className="ml-auto text-[#B01B4F] font-semibold">{late} overdue</span>}
+                <div className="flex items-center gap-2 mt-1.5 text-[11.5px] text-muted-b">
+                  <span className="font-bold text-ink-2">{money(value, { compact: true })}</span><span>·</span><span>avg {avgDays}d here</span>
+                  {late > 0 && <span className="ml-auto text-[#B01B4F] font-bold">{late} overdue</span>}
                 </div>
               </div>
-              <div className="flex-1 overflow-y-auto px-2 pb-2 flex flex-col gap-1.5">
+              <div className="flex-1 overflow-y-auto px-2 py-2 flex flex-col gap-1.5">
                 {shown.map((d) => <DealCard key={d.id} d={d} onOpen={() => onOpen(d)} onDragStart={() => setDrag(d.id)} onDragEnd={() => setDrag(null)} />)}
                 {col.length > COL_CAP && (
                   <button onClick={() => setExpanded((e) => ({ ...e, [stage]: !e[stage] }))} className="h-8 rounded-lg border border-dashed border-input-border text-[12px] font-semibold text-muted-b hover:text-accent hover:border-accent">
@@ -197,9 +210,14 @@ function DealCard({ d, onOpen, onDragStart, onDragEnd }: { d: Deal; onOpen: () =
   const na = d.journey?.nextAction
   const due = na ? dueLabel(na.due) : null
   const sr = SHOWROOM_META[d.journey!.showroom]
+  // Urgency, not stage, colours the card's left edge — driven by the NEXT ACTION so it stays a real
+  // triage signal: red = action overdue, amber = due today/tomorrow, green = fine. (Time in stage has its own badge.)
+  const dueSoon = !!na && na.due - Date.now() < 2 * 86_400_000
+  const edge = d.won ? '#16A34A' : due?.overdue ? '#DC2626' : dueSoon ? '#F59E0B' : '#34D399'
   return (
     <div draggable onDragStart={onDragStart} onDragEnd={onDragEnd} onClick={onOpen}
-      className="bg-surface rounded-lg border border-border px-3 py-2.5 cursor-pointer hover:border-input-border hover:shadow-card transition-shadow">
+      className="bg-white rounded-lg border border-[#E1E6EC] border-l-[3px] pl-2.5 pr-3 py-2.5 cursor-pointer shadow-[0_1px_2px_rgba(16,24,40,0.05)] hover:shadow-[0_4px_12px_-4px_rgba(16,24,40,0.16)] hover:-translate-y-px transition-all"
+      style={{ borderLeftColor: edge }}>
       <div className="flex items-center gap-2">
         <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: sr.color }} title={`${sr.name} showroom`} />
         <span className="text-[13px] font-semibold text-ink-2 truncate flex-1">{d.name}</span>

@@ -33,7 +33,7 @@ export function Button({ children, variant = 'secondary', onClick, icon, classNa
   return (
     <button
       onClick={onClick}
-      className={classNames(base, 'bg-card-sheen border border-border-blue text-ink-3 font-medium shadow-[0_1px_1.5px_rgba(16,24,40,0.05)] hover:bg-[#F3F6FC] hover:shadow-[0_2px_5px_rgba(16,24,40,0.08)]', className)}
+      className={classNames(base, 'bg-white border border-[#CDD5DF] text-ink-2 font-semibold shadow-[0_1px_2px_rgba(16,24,40,0.08)] hover:border-accent-400 hover:text-accent hover:bg-accent-wash-4 hover:shadow-[0_3px_8px_-2px_rgba(16,24,40,0.12)]', className)}
       style={color ? { color, borderColor: color } : undefined}
     >
       {icon}
@@ -53,7 +53,7 @@ export function Segmented({
   onChange: (v: string) => void
 }) {
   return (
-    <div className="inline-flex bg-control rounded-control p-[3px] gap-0.5">
+    <div className="inline-flex bg-[#E9EDF2] border border-[#DDE3EA] rounded-control p-[3px] gap-0.5">
       {options.map((o) => {
         const active = o === value
         return (
@@ -62,7 +62,7 @@ export function Segmented({
             onClick={() => onChange(o)}
             className={classNames(
               'h-[30px] px-3 rounded-[7px] text-[13px] transition-colors duration-150',
-              active ? 'bg-white text-ink font-semibold shadow-[0_1px_2px_rgba(11,18,32,0.08)]' : 'text-muted-b hover:text-ink-3',
+              active ? 'bg-white text-accent font-bold shadow-[0_1px_3px_rgba(11,18,32,0.14)]' : 'text-ink-3 font-medium hover:text-ink hover:bg-white/60',
             )}
           >
             {o}
@@ -129,7 +129,7 @@ export function Avatar({
 /* ---------- Card ---------- */
 export function Card({ children, className, pad = true }: { children: ReactNode; className?: string; pad?: boolean }) {
   return (
-    <div className={classNames('bg-surface border border-border rounded-card', pad && 'p-[18px]', className)}>{children}</div>
+    <div className={classNames('bg-surface border border-[#E1E6EC] rounded-card shadow-card', pad && 'p-[18px]', className)}>{children}</div>
   )
 }
 
@@ -154,7 +154,7 @@ export function Kpi({
       className={classNames(
         'rounded-card p-[18px]',
         variant === 'blue' && 'bg-kpi-blue border border-border-blue shadow-card',
-        variant === 'plain' && 'bg-surface border border-border',
+        variant === 'plain' && 'bg-surface border border-[#E1E6EC] shadow-card',
         isDeep && 'bg-deep-panel shadow-lift',
       )}
     >
@@ -170,6 +170,51 @@ export function Kpi({
         </div>
       )}
     </div>
+  )
+}
+
+/* ---------- Stat tile — the headline number, with hierarchy ----------
+ * Icon chip + label, a big value, a supporting line, and an optional tone that tints the chip and
+ * the top edge so the eye lands on what matters (good / warning / bad). */
+type IconT = (p: { size?: number; className?: string }) => JSX.Element
+const TONES = {
+  accent: { fg: '#0E7A66', bg: '#E3F4EF', edge: '#1FAE94' },
+  good: { fg: '#0E7C66', bg: '#E3F4EF', edge: '#16A34A' },
+  warn: { fg: '#B45309', bg: '#FDF1E3', edge: '#D97706' },
+  bad: { fg: '#B01B4F', bg: '#FDE8EE', edge: '#DB2777' },
+  info: { fg: '#0369A1', bg: '#E6F2FA', edge: '#0284C7' },
+  neutral: { fg: '#475467', bg: '#EEF1F5', edge: '#98A1B0' },
+}
+export type StatTone = keyof typeof TONES
+export function StatTile({ label, value, sub, icon: I, tone = 'accent', delta, deltaGood, hint }: { label: string; value: ReactNode; sub?: ReactNode; icon?: IconT; tone?: StatTone; delta?: string; deltaGood?: boolean; hint?: string }) {
+  const t = TONES[tone]
+  return (
+    <div className="relative rounded-card bg-white border border-[#E1E6EC] shadow-card overflow-hidden px-4 pt-3.5 pb-3 min-w-0" title={hint}>
+      <span className="absolute inset-x-0 top-0 h-[3px]" style={{ background: t.edge }} />
+      <div className="flex items-center gap-2">
+        {I && <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: t.bg, color: t.fg }}><I size={14} /></span>}
+        <span className="text-[12px] font-semibold text-ink-3 truncate">{label}</span>
+      </div>
+      <div className="text-[24px] font-extrabold text-ink tracking-[-0.025em] mt-2 leading-none tabular-nums" style={tone === 'warn' || tone === 'bad' ? { color: t.fg } : undefined}>{value}</div>
+      <div className="flex items-center gap-1.5 mt-1.5 min-h-[16px]">
+        {delta && <span className={classNames('text-[11px] font-bold rounded px-1 py-px', deltaGood === undefined ? 'bg-control text-muted-b' : deltaGood ? 'bg-positive-wash text-positive' : 'bg-negative-wash text-negative')}>{delta}</span>}
+        {sub && <span className="text-[11.5px] text-muted-2 truncate">{sub}</span>}
+      </div>
+    </div>
+  )
+}
+
+/* ---------- Panel — a titled section card with a clear header ---------- */
+export function Panel({ title, sub, icon: I, action, children, className, pad = true }: { title: string; sub?: string; icon?: IconT; action?: ReactNode; children: ReactNode; className?: string; pad?: boolean }) {
+  return (
+    <section className={classNames('rounded-card bg-white border border-[#E1E6EC] shadow-card overflow-hidden', className)}>
+      <header className="px-5 py-3.5 border-b border-[#EDF0F4] bg-gradient-to-b from-[#FBFCFD] to-white flex items-center gap-2.5">
+        {I && <span className="w-8 h-8 rounded-[9px] bg-accent-wash text-accent flex items-center justify-center shrink-0"><I size={15} /></span>}
+        <div className="min-w-0 flex-1"><div className="text-[14.5px] font-bold text-ink leading-tight">{title}</div>{sub && <div className="text-[12px] text-muted-2 mt-0.5 truncate">{sub}</div>}</div>
+        {action}
+      </header>
+      <div className={pad ? 'p-5' : ''}>{children}</div>
+    </section>
   )
 }
 

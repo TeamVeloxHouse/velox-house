@@ -4,7 +4,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        canvas: '#F6F7F9',
+        canvas: '#F1F4F7',
         surface: '#FFFFFF',
         'surface-tint': '#FBFCFF',
         rail: '#0B1220',
@@ -39,7 +39,7 @@ export default {
         'warning-wash-2': '#FEF6F2',
         negative: '#B01B4F',
         'negative-wash': '#FDECEF',
-        border: '#E4E8EE',
+        border: '#DEE3EA',
         'border-blue': '#CFE7E0',
         'border-blue-2': '#DEF0EA',
         divider: '#EDF0F4',
@@ -59,7 +59,7 @@ export default {
       },
       boxShadow: {
         // Layered, modern elevation — two stacked shadows give soft, natural lift.
-        card: '0 1px 2px -1px rgba(16,24,40,0.06), 0 3px 8px -2px rgba(16,24,40,0.06)',
+        card: '0 1px 2px rgba(16,24,40,0.06), 0 4px 14px -4px rgba(16,24,40,0.11)',
         lift: '0 2px 6px -2px rgba(16,24,40,0.08), 0 12px 28px -8px rgba(16,24,40,0.12)',
         chrome: '0 1px 0 rgba(16,24,40,0.03), 0 6px 16px -10px rgba(16,24,40,0.14)',
         primary: '0 1px 2px rgba(11,18,32,0.18), 0 8px 20px -4px rgba(14,122,102,0.30)',
@@ -73,7 +73,7 @@ export default {
         // Barely-there top sheen so surfaces read as lit, not flat.
         'card-sheen': 'linear-gradient(180deg,#FFFFFF 0%,#FBFCFE 100%)',
         // Layered canvas so cards lift off a living ground, not dead grey.
-        'canvas-fade': 'linear-gradient(180deg,#F1F4F9 0%,#F6F7FA 34%,#F5F6F9 100%)',
+        'canvas-fade': 'linear-gradient(180deg,#EBEFF5 0%,#F1F4F7 30%,#F1F4F7 100%)',
       },
     },
   },

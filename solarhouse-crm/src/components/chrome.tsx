@@ -68,7 +68,7 @@ export function ViewSwitch<T extends string>({
   onChange: (v: T) => void
 }) {
   return (
-    <div className="inline-flex bg-control rounded-control p-[3px] gap-0.5">
+    <div className="inline-flex bg-[#E9EDF2] border border-[#DDE3EA] rounded-control p-[3px] gap-0.5">
       {tabs.map((t) => (
         <button
           key={t.id}
@@ -76,7 +76,7 @@ export function ViewSwitch<T extends string>({
           title={t.label}
           className={classNames(
             'h-[30px] w-9 rounded-[7px] flex items-center justify-center transition-colors',
-            value === t.id ? 'bg-white text-accent shadow-[0_1px_2px_rgba(11,18,32,0.08)]' : 'text-muted-b hover:text-ink-3',
+            value === t.id ? 'bg-white text-accent font-bold shadow-[0_1px_3px_rgba(11,18,32,0.14)]' : 'text-ink-3 hover:text-ink-3',
           )}
         >
           <t.icon size={16} />

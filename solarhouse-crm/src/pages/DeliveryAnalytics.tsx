@@ -1,7 +1,8 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { TopBar } from '../components/TopBar'
-import { Pie } from '../components/icons'
+import { Pie, Bars, Flow, Users, Bolt, Dollar, Calendar, Wrench, Clock, File, Check, Box, Target } from '../components/icons'
+import { Panel, StatTile } from '../components/ui'
 import { useState_ } from '../store/store'
 import { money, classNames } from '../lib/format'
 import type { Showroom } from '../store/types'
@@ -28,13 +29,13 @@ export function DeliveryAnalytics() {
       <TopBar title="Delivery analytics" crumbs={['Delivery', 'Installs']} identity={{ icon: Pie, accent: '#0A8F79' }}
         tabs={{ items: [{ id: 'all', label: 'All showrooms' }, ...SHOWROOMS.map((s) => ({ id: s, label: SHOWROOM_META[s].name }))], value: showroom, onChange: (v) => setShowroom(v as Showroom | 'all') }} />
       <div className="shrink-0 bg-surface border-b border-border px-7 py-3 flex items-center gap-3">
-        <div className="flex items-center gap-1 bg-control rounded-control p-[3px]">
-          {PRESETS.map((p) => <button key={p.id} onClick={() => setPreset(p.id)} className={classNames('h-[30px] px-2.5 rounded-[7px] text-[12px] font-semibold', preset === p.id ? 'bg-white text-accent shadow-[0_1px_2px_rgba(11,18,32,0.08)]' : 'text-muted-b hover:text-ink-3')}>{p.label}</button>)}
+        <div className="flex items-center gap-1 bg-[#E9EDF2] border border-[#DDE3EA] rounded-control p-[3px]">
+          {PRESETS.map((p) => <button key={p.id} onClick={() => setPreset(p.id)} className={classNames('h-[30px] px-2.5 rounded-[7px] text-[12px] font-semibold', preset === p.id ? 'bg-white text-accent font-bold shadow-[0_1px_3px_rgba(11,18,32,0.14)]' : 'text-ink-3 hover:text-ink-3')}>{p.label}</button>)}
         </div>
         <span className="text-[12px] text-muted-2">Installs, DNO and hand-offs counted by the date they happened</span>
       </div>
       <main className="flex-1 overflow-y-auto p-7 flex flex-col gap-5">
-        <div className="grid grid-cols-4 xl:grid-cols-8 gap-3">
+        <div className="grid grid-cols-4 2xl:grid-cols-8 gap-3">
           <Tile l="Installs completed" v={String(a.kpi.installed)} s={`${a.kpi.kwp} kWp · ${money(a.kpi.value, { compact: true })}`} />
           <Tile l="Signed → installed" v={`${a.kpi.signedToInstall}d`} s="average" />
           <Tile l="Signed → DNO submitted" v={`${a.kpi.signedToDno}d`} s="average" />
@@ -105,15 +106,16 @@ export function DeliveryAnalytics() {
   )
 }
 
+// Each panel/tile gets an icon so the page has anchors to scan by, not a wall of equal boxes.
+const PANEL_ICON: Record<string, (p: { size?: number; className?: string }) => JSX.Element> = {
+  'Installs completed by week': Bars, 'Where every job is right now': Flow, 'Install teams': Users, 'DNO applications': Bolt, 'Quality & cash': Dollar, 'Installing in the next 14 days': Calendar,
+}
+const TILE_ICON: Record<string, (p: { size?: number; className?: string }) => JSX.Element> = {
+  'Installs completed': Wrench, 'Signed → installed': Clock, 'Signed → DNO submitted': File, 'DNO turnaround': Bolt, 'Install → handover': Check, Backlog: Box, 'Snag rate': Target, 'To collect': Dollar,
+}
 function Card({ title, sub, children }: { title: string; sub?: string; children: ReactNode }) {
-  return <section className="rounded-card bg-surface border border-border shadow-card p-5"><div className="mb-3"><div className="text-[14px] font-bold text-ink">{title}</div>{sub && <div className="text-[12px] text-muted-2 mt-0.5">{sub}</div>}</div>{children}</section>
+  return <Panel title={title} sub={sub} icon={PANEL_ICON[title]}>{children}</Panel>
 }
 function Tile({ l, v, s, tone }: { l: string; v: string; s?: string; tone?: 'warn' | 'bad' }) {
-  return (
-    <div className="rounded-card bg-surface border border-border shadow-card px-3.5 py-3 min-w-0">
-      <div className="text-[11.5px] text-muted-b truncate">{l}</div>
-      <div className={classNames('text-[21px] font-bold tracking-[-0.02em] mt-0.5 tabular-nums', tone === 'bad' ? 'text-negative' : tone === 'warn' ? 'text-[#B45309]' : 'text-ink')}>{v}</div>
-      {s && <div className="text-[11px] text-muted-2 truncate">{s}</div>}
-    </div>
-  )
+  return <StatTile label={l} value={v} sub={s} icon={TILE_ICON[l]} tone={tone ?? (l === 'Installs completed' ? 'good' : 'accent')} />
 }

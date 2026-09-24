@@ -14,7 +14,8 @@ import { INSTALL_STAGES, INSTALL_STAGE_HELP, installStage, signedAt, installAt, 
  * and clicking it opens the same customer record on its Delivery tab. */
 
 const SHOWROOMS = Object.keys(SHOWROOM_META) as Showroom[]
-const SHADES = ['#A7E6DA', '#6FD3BE', '#1FAE94', '#13927B', '#0E8C79', '#0A5F52', '#98A1B0']
+// Distinct stage colours (same validated set as Sales), always paired with the stage name.
+const SHADES = ['#16A34A', '#D97706', '#DB2777', '#7C3AED', '#0284C7', '#0891B2', '#64748B']
 
 export function Installs() {
   const nav = useNavigate()
@@ -44,8 +45,8 @@ export function Installs() {
             return <button key={s} onClick={() => setShowroom(s)} className={classNames('h-9 pl-3 pr-2 rounded-full border flex items-center gap-2 text-[13px] font-semibold', showroom === s ? 'bg-ink text-white border-ink' : 'bg-surface border-border text-ink-3 hover:border-input-border')}>
               {s !== 'all' && <span className="w-2 h-2 rounded-full" style={{ background: SHOWROOM_META[s].color }} />}{s === 'all' ? 'All showrooms' : SHOWROOM_META[s].name}<span className={classNames('text-[11px] rounded-full px-1.5 font-bold', showroom === s ? 'bg-white/15' : 'bg-control text-muted-b')}>{n}</span></button>
           })}
-          <div className="ml-auto inline-flex bg-control rounded-control p-[3px] gap-0.5">
-            {([['board', Bars, 'Board'], ['table', Grid, 'Table']] as const).map(([id, I, l]) => <button key={id} onClick={() => setView(id)} className={classNames('h-[30px] px-3 rounded-[7px] flex items-center gap-1.5 text-[12.5px] font-semibold', view === id ? 'bg-white text-accent shadow-[0_1px_2px_rgba(11,18,32,0.08)]' : 'text-muted-b')}><I size={14} />{l}</button>)}
+          <div className="ml-auto inline-flex bg-[#E9EDF2] border border-[#DDE3EA] rounded-control p-[3px] gap-0.5">
+            {([['board', Bars, 'Board'], ['table', Grid, 'Table']] as const).map(([id, I, l]) => <button key={id} onClick={() => setView(id)} className={classNames('h-[30px] px-3 rounded-[7px] flex items-center gap-1.5 text-[12.5px] font-semibold', view === id ? 'bg-white text-accent font-bold shadow-[0_1px_3px_rgba(11,18,32,0.14)]' : 'text-ink-3')}><I size={14} />{l}</button>)}
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -65,12 +66,17 @@ export function Installs() {
         <main className="flex-1 min-h-0 overflow-x-auto p-5">
           <div className="grid gap-3 h-full" style={{ gridTemplateColumns: `repeat(${stages.length}, minmax(228px, 1fr))` }}>
             {stages.map((s, i) => { const col = by(s); return (
-              <div key={s} className="flex flex-col min-h-0 rounded-xl bg-[#EEF1F5]/70">
-                <div className="px-3 pt-3 pb-2" title={INSTALL_STAGE_HELP[s]}>
-                  <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full" style={{ background: SHADES[i] }} /><span className="text-[13px] font-bold text-ink">{s}</span><span className="text-[11.5px] font-bold text-muted-b">{col.length}</span></div>
-                  <div className="text-[11px] text-muted-2 mt-0.5 truncate">{INSTALL_STAGE_HELP[s]}</div>
+              <div key={s} className="flex flex-col min-h-0 rounded-xl border border-[#E1E6EC] overflow-hidden" style={{ background: `color-mix(in srgb, ${SHADES[i]} 5%, #F3F5F8)` }}>
+                <div className="px-3 pb-2.5 bg-white border-b border-[#E6EAF0]" title={INSTALL_STAGE_HELP[s]}>
+                  <div className="h-[4px] -mx-3 mb-2.5" style={{ background: SHADES[i] }} />
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-md text-[10.5px] font-extrabold text-white flex items-center justify-center shrink-0" style={{ background: SHADES[i] }}>{i + 1}</span>
+                    <span className="text-[13.5px] font-extrabold text-ink truncate">{s}</span>
+                    <span className="text-[11px] font-bold rounded-full px-1.5 min-w-[22px] text-center" style={{ color: SHADES[i], background: `color-mix(in srgb, ${SHADES[i]} 12%, white)` }}>{col.length}</span>
+                  </div>
+                  <div className="text-[11px] text-muted-b mt-1 truncate">{INSTALL_STAGE_HELP[s]}</div>
                 </div>
-                <div className="flex-1 overflow-y-auto px-2 pb-2 flex flex-col gap-1.5">
+                <div className="flex-1 overflow-y-auto px-2 py-2 flex flex-col gap-1.5">
                   {col.slice(0, 40).map((d) => <Card key={d.id} d={d} onOpen={() => open(d)} flag={hasIssue(d)} />)}
                   {col.length > 40 && <button onClick={() => { setView('table') }} className="h-8 rounded-lg border border-dashed border-input-border text-[12px] font-semibold text-muted-b">See all {col.length} in the table</button>}
                   {!col.length && <div className="text-[12px] text-muted-3 text-center py-6">Nothing here</div>}
@@ -95,7 +101,7 @@ function Card({ d, onOpen, flag }: { d: Deal; onOpen: () => void; flag: boolean 
       : `Signed ${daysSince(signedAt(d))}d ago`
   const kit = del.orders.every((o) => o.status === 'delivered') ? 'Kit in' : del.orders.some((o) => o.status === 'ordered') ? 'Kit ordered' : 'Kit to order'
   return (
-    <button onClick={onOpen} className="bg-surface rounded-lg border border-border px-3 py-2.5 text-left hover:border-input-border hover:shadow-card transition-shadow">
+    <button onClick={onOpen} className="bg-white rounded-lg border border-[#E1E6EC] border-l-[3px] pl-2.5 pr-3 py-2.5 text-left shadow-[0_1px_2px_rgba(16,24,40,0.05)] hover:shadow-[0_4px_12px_-4px_rgba(16,24,40,0.16)] hover:-translate-y-px transition-all" style={{ borderLeftColor: flag ? '#DC2626' : kit === 'Kit to order' && (st === 'Install booked' || st === 'Ready to book') ? '#F59E0B' : '#34D399' }}>
       <div className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: sr.color }} /><span className="text-[13px] font-semibold text-ink-2 truncate flex-1">{d.name}</span>{flag && <span className="w-2 h-2 rounded-full bg-negative shrink-0" title="Has an issue" />}</div>
       <div className="text-[11.5px] text-muted-2 mt-0.5 truncate">{d.journey!.system?.kwp} kWp{d.journey!.system?.batteryKwh ? ` + ${d.journey!.system.batteryKwh} kWh` : ''} · {d.org.split(',').slice(-1)[0]}</div>
       <div className="flex items-center gap-1.5 mt-1.5 text-[11px]">

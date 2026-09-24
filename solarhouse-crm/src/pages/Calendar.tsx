@@ -95,9 +95,9 @@ export function CalendarView() {
         </div>
         <div className="text-[16px] font-bold text-ink">{label}</div>
         <div className="ml-auto flex items-center gap-3">
-          <div className="inline-flex bg-control rounded-control p-[3px] gap-0.5">
+          <div className="inline-flex bg-[#E9EDF2] border border-[#DDE3EA] rounded-control p-[3px] gap-0.5">
             {(['month', 'week'] as const).map((v) => (
-              <button key={v} onClick={() => setView(v)} className={classNames('h-[30px] px-3 rounded-[7px] text-[12.5px] font-medium capitalize transition-colors', view === v ? 'bg-white text-accent shadow-[0_1px_2px_rgba(11,18,32,0.08)]' : 'text-muted-b hover:text-ink-3')}>{v}</button>
+              <button key={v} onClick={() => setView(v)} className={classNames('h-[30px] px-3 rounded-[7px] text-[12.5px] font-medium capitalize transition-colors', view === v ? 'bg-white text-accent font-bold shadow-[0_1px_3px_rgba(11,18,32,0.14)]' : 'text-ink-3 hover:text-ink-3')}>{v}</button>
             ))}
           </div>
           <Button variant="primary" icon={<Plus size={16} />} onClick={() => setNewFor(today)}>New event</Button>

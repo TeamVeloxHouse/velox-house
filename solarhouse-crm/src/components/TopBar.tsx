@@ -71,27 +71,32 @@ export function TopBar({
         </div>
       </div>
       {tabs && (
-        <nav className="flex items-stretch gap-1 -mb-px overflow-x-auto no-scrollbar">
-          {tabs.items.map((t) => {
-            const on = t.id === tabs.value
-            return (
-              <button
-                key={t.id}
-                onClick={() => tabs.onChange(t.id)}
-                className={classNames(
-                  'h-11 px-3 flex items-center gap-2 text-[13px] whitespace-nowrap border-b-2 transition-colors',
-                  on ? 'font-semibold' : 'border-transparent text-muted-b font-medium hover:text-ink-3',
-                )}
-                style={on ? { borderColor: identity?.accent ?? '#0E7A66', color: identity?.accent ?? '#0E7A66' } : undefined}
-              >
-                {t.icon && <t.icon size={15} />}
-                {t.label}
-                {t.count != null && t.count > 0 && (
-                  <span className={classNames('text-[10.5px] font-bold rounded-full min-w-[18px] h-[18px] px-1.5 flex items-center justify-center', on ? 'text-white' : 'bg-control text-muted-b')} style={on ? { background: identity?.accent ?? '#0E7A66' } : undefined}>{t.count}</span>
-                )}
-              </button>
-            )
-          })}
+        // Tabs read as destinations: a recessed track, each tab a pill with icon + count, the active
+        // one lifted white with the page's accent — obvious at a glance, consistent CRM-wide.
+        <nav className="pb-3 -mt-1 overflow-x-auto no-scrollbar">
+          <div className="inline-flex items-center gap-1 p-1 rounded-[12px] bg-[#E9EDF2] border border-[#DDE3EA]">
+            {tabs.items.map((t) => {
+              const on = t.id === tabs.value
+              const accent = identity?.accent ?? '#0E7A66'
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => tabs.onChange(t.id)}
+                  className={classNames(
+                    'h-9 px-3.5 rounded-[9px] flex items-center gap-2 text-[13.5px] whitespace-nowrap transition-all duration-150',
+                    on ? 'bg-white font-bold shadow-[0_1px_3px_rgba(11,18,32,0.14),0_4px_10px_-4px_rgba(11,18,32,0.12)]' : 'text-ink-3 font-semibold hover:bg-white/70 hover:text-ink',
+                  )}
+                  style={on ? { color: accent } : undefined}
+                >
+                  {t.icon && <t.icon size={16} />}
+                  {t.label}
+                  {t.count != null && t.count > 0 && (
+                    <span className={classNames('text-[11px] font-bold rounded-full min-w-[20px] h-[20px] px-1.5 flex items-center justify-center', on ? 'text-white' : 'bg-white text-ink-3 border border-[#DDE3EA]')} style={on ? { background: accent } : undefined}>{t.count}</span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
         </nav>
       )}
     </header>

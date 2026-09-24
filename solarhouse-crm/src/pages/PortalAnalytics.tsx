@@ -1,7 +1,8 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { TopBar } from '../components/TopBar'
-import { Pie, Search, Clock } from '../components/icons'
+import { Pie, Search, Clock, Bars as BarsIcon, Grid, File, Flow, Lock, Sparkle, Person, Users, Check, Robot } from '../components/icons'
+import { Panel, StatTile } from '../components/ui'
 import { useState_ } from '../store/store'
 import { classNames } from '../lib/format'
 import type { Showroom, PortalEvent } from '../store/types'
@@ -58,15 +59,15 @@ export function PortalAnalytics() {
     <>
       <TopBar title="Portal analytics" crumbs={['Customers', 'Portals']} identity={{ icon: Pie, accent: '#0E7A66' }} />
       <div className="shrink-0 bg-surface border-b border-border px-7 py-3 flex items-center gap-3 flex-wrap">
-        <div className="flex items-center gap-1 bg-control rounded-control p-[3px]">
-          {PRESETS.map((p) => <button key={p.id} onClick={() => setPreset(p.id)} className={classNames('h-[30px] px-2.5 rounded-[7px] text-[12px] font-semibold', preset === p.id ? 'bg-white text-accent shadow-[0_1px_2px_rgba(11,18,32,0.08)]' : 'text-muted-b hover:text-ink-3')}>{p.label}</button>)}
+        <div className="flex items-center gap-1 bg-[#E9EDF2] border border-[#DDE3EA] rounded-control p-[3px]">
+          {PRESETS.map((p) => <button key={p.id} onClick={() => setPreset(p.id)} className={classNames('h-[30px] px-2.5 rounded-[7px] text-[12px] font-semibold', preset === p.id ? 'bg-white text-accent font-bold shadow-[0_1px_3px_rgba(11,18,32,0.14)]' : 'text-ink-3 hover:text-ink-3')}>{p.label}</button>)}
         </div>
         <select value={showroom} onChange={(e) => setShowroom(e.target.value as Showroom | 'all')} className="h-9 px-3 rounded-control border border-border text-[13px] text-ink-3 outline-none focus:border-accent">
           <option value="all">All showrooms</option>{SHOWROOMS.map((s) => <option key={s} value={s}>{SHOWROOM_META[s].name}</option>)}
         </select>
       </div>
       <main className="flex-1 overflow-y-auto p-7 flex flex-col gap-5">
-        <div className="grid grid-cols-3 xl:grid-cols-6 gap-3">
+        <div className="grid grid-cols-3 2xl:grid-cols-6 gap-3">
           <Tile l="Logins" v={logins.length} prev={loginsPrev.length} />
           <Tile l="Customers who logged in" v={uniq} prev={uniqPrev} />
           <Tile l="Activation" v={`${activation}%`} hint="Portals opened at least once" />
@@ -149,19 +150,20 @@ function group(ev: PortalEvent[], key: (e: PortalEvent) => string) {
   ev.forEach((e) => { const k = key(e); const x = m.get(k) ?? { n: 0, dwell: 0 }; x.n++; x.dwell += e.dwellMs ?? 0; m.set(k, x) })
   return [...m.entries()].map(([k, v]) => ({ k, ...v })).sort((a, b) => b.n - a.n)
 }
+type IconT = (p: { size?: number; className?: string }) => JSX.Element
+const PANEL_ICON: Record<string, IconT> = {
+  'Logins by week': BarsIcon, 'Most visited sections': Grid, 'Top pages & items': File, 'What they look at, by journey stage': Flow, 'How they log in': Lock,
+  'Most engaged customers': Sparkle, 'Gone quiet or never opened': Clock, 'Individual customer activity': Person,
+}
+const TILE_ICON: Record<string, IconT> = { Logins: Lock, 'Customers who logged in': Users, Activation: Check, 'Pages viewed': Grid, 'Avg time per visit': Clock, 'Ask Ovi questions': Robot }
 function Card({ title, sub, children }: { title: string; sub?: string; children: ReactNode }) {
-  return <section className="rounded-card bg-surface border border-border shadow-card p-5"><div className="mb-3"><div className="text-[14px] font-bold text-ink">{title}</div>{sub && <div className="text-[12px] text-muted-2 mt-0.5">{sub}</div>}</div>{children}</section>
+  return <Panel title={title} sub={sub} icon={PANEL_ICON[title]}>{children}</Panel>
 }
 function Tile({ l, v, prev, hint }: { l: string; v: number | string; prev?: number; hint?: string }) {
   const n = typeof v === 'number' ? v : 0
   const d = prev != null && prev > 0 ? Math.round(((n - prev) / prev) * 100) : null
-  return (
-    <div className="rounded-card bg-surface border border-border shadow-card px-3.5 py-3" title={hint}>
-      <div className="text-[11.5px] text-muted-b">{l}</div>
-      <div className="text-[21px] font-bold text-ink mt-0.5 tabular-nums">{typeof v === 'number' ? v.toLocaleString() : v}</div>
-      {d != null && <div className={classNames('text-[11px] font-semibold', d > 0 ? 'text-positive' : d < 0 ? 'text-negative' : 'text-muted-3')}>{d > 0 ? '▲' : d < 0 ? '▼' : ''} {Math.abs(d)}% <span className="font-normal text-muted-3">vs prev.</span></div>}
-    </div>
-  )
+  return <StatTile label={l} value={typeof v === 'number' ? v.toLocaleString() : v} icon={TILE_ICON[l]} hint={hint}
+    delta={d != null && d !== 0 ? `${d > 0 ? '▲' : '▼'} ${Math.abs(d)}%` : undefined} deltaGood={d != null && d !== 0 ? d > 0 : undefined} sub={d != null ? 'vs previous period' : hint} />
 }
 function Bars({ rows }: { rows: { k: string; n: number; extra?: string }[] }) {
   const max = Math.max(1, ...rows.map((r) => r.n))
