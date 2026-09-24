@@ -30,6 +30,11 @@ export interface Activity {
   estimateMins?: number // planned time
   files?: TaskFile[]
   subtasks?: SubTask[]
+  // ── scheduling detail (lib/activityTaxonomy — fixed lists so it can be reported on) ──
+  purpose?: string
+  location?: string
+  startTime?: string // HH:MM
+  reminder?: string
 }
 
 export interface ProjectMilestone { key: string; label: string; done: boolean; date?: string }

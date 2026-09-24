@@ -1,13 +1,14 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { TopBar } from '../components/TopBar'
 import { Button, Segmented } from '../components/ui'
 import { MonthGrid, type GridEvent } from '../components/MonthGrid'
-import { Modal, Field, Input, Select } from '../components/overlays'
+import { Modal, Field, Input, Select, Textarea } from '../components/overlays'
+import { EVENT_TYPES, PURPOSES, LOCATIONS, DURATIONS, REMINDERS, fmtDuration, type EventTypeId } from '../lib/activityTaxonomy'
 import { Plus, Phone, Meeting as MeetingIcon, Task as TaskIcon, Envelope, Wrench, Note } from '../components/icons'
 import { useState_, useActions } from '../store/store'
 import { isoDay, todayISO, effectiveDueDate, isTask } from '../lib/tasks'
-import type { Activity, ActivityType } from '../store/types'
+import { YOU_MEMBER_ID, type Activity, type ActivityType } from '../store/types'
 import { classNames } from '../lib/format'
 
 type EvType = 'task' | 'call' | 'email' | 'meeting' | 'job' | 'note'
@@ -47,7 +48,7 @@ export function useCalendarEvents(): CalEvent[] {
       if (!isTask(a)) return
       const date = effectiveDueDate(a)
       if (!date) return
-      ev.push({ id: a.id, date, title: a.subject, sub: dealName(a.dealId) || (a.who ?? ''), type: a.type as EvType, to: a.dealId ? `/deals/${a.dealId}` : '/tasks', done: a.done })
+      ev.push({ id: a.id, date, start: a.startTime, title: a.subject, sub: [a.purpose, a.location, dealName(a.dealId) || a.who].filter(Boolean).join(' · '), type: a.type as EvType, to: a.dealId ? `/deals/${a.dealId}` : '/tasks', done: a.done })
     })
     meetings.forEach((m) => { if (m.date) ev.push({ id: m.id, date: m.date, start: m.start, title: m.title, sub: m.dealOrg, type: 'meeting', to: '/meetings' }) })
     jobs.forEach((j) => { if (j.date) ev.push({ id: j.id, date: j.date, start: j.start, title: j.title, sub: j.customer, type: 'job', to: '/jobs' }) })
@@ -107,7 +108,7 @@ export function CalendarView({ only }: { only?: EvType[] } = {}) {
         </div>
         <div className="ml-auto flex items-center gap-3">
           <Segmented options={['Month', 'Week', 'Day']} value={view[0].toUpperCase() + view.slice(1)} onChange={(v) => setView(v.toLowerCase() as 'month' | 'week' | 'day')} />
-          <Button variant="primary" icon={<Plus size={16} />} onClick={() => setNewFor(view === 'day' ? cursor : today)}>New event</Button>
+          <Button variant="primary" icon={<Plus size={16} />} onClick={() => setNewFor(view === 'day' ? cursor : today)}>Schedule</Button>
         </div>
       </div>
 
@@ -152,34 +153,62 @@ export function CalendarView({ only }: { only?: EvType[] } = {}) {
 
 const PRETTY = (iso: string) => { const [y, m, d] = iso.split('-').map(Number); return `${d} ${MONTHS[m - 1]} ${y}` }
 
-function NewEventModal({ date, onClose }: { date: string | null; onClose: () => void }) {
-  const { deals } = useState_()
+/** Schedule anything — every field is a fixed list (lib/activityTaxonomy) so it records consistently. */
+export function NewEventModal({ date, onClose }: { date: string | null; onClose: () => void }) {
+  const { deals, teamMembers } = useState_()
   const act = useActions()
-  const [type, setType] = useState<ActivityType>('meeting')
-  const [subject, setSubject] = useState('')
+  const [type, setType] = useState<EventTypeId>('meeting')
+  const [purpose, setPurpose] = useState<string>(PURPOSES.meeting[0])
+  const [day, setDay] = useState(date ?? todayISO())
   const [time, setTime] = useState('10:00')
+  const [mins, setMins] = useState(60)
+  const [location, setLocation] = useState<string>(LOCATIONS[0])
   const [dealId, setDealId] = useState('')
+  const [who, setWho] = useState(YOU_MEMBER_ID)
   const [priority, setPriority] = useState<'High' | 'Medium' | 'Low'>('Medium')
+  const [reminder, setReminder] = useState('1h')
+  const [subject, setSubject] = useState('')
+  const [notes, setNotes] = useState('')
+  useEffect(() => { if (date) setDay(date) }, [date])
   if (!date) return null
+  const deal = deals.find((d) => d.id === dealId)
+  const title = subject.trim() || `${purpose}${deal ? ` — ${deal.name}` : ''}`
+  const people = teamMembers.filter((m) => !m.bot)
   const create = () => {
-    if (!subject.trim()) return
-    const person = deals.find((d) => d.id === dealId)?.personIds[0]
-    const a: Partial<Activity> & { type: ActivityType; subject: string } = { type, subject, dueDate: date, due: PRETTY(date), dealId: dealId || undefined, personId: person, priority }
-    act.logActivity(a, `${type[0].toUpperCase() + type.slice(1)} scheduled for ${humanDay(date)}`)
-    setSubject(''); onClose()
+    const a: Partial<Activity> & { type: ActivityType; subject: string } = {
+      type, subject: title, body: notes.trim() || undefined, dueDate: day, due: PRETTY(day), dealId: dealId || undefined, personId: deal?.personIds[0],
+      priority, purpose, location, startTime: type === 'task' ? undefined : time, estimateMins: mins, reminder, assigneeIds: [who], who: people.find((m) => m.id === who)?.name,
+    }
+    act.logActivity(a, `${EVENT_TYPES.find((t) => t.id === type)!.label} scheduled · ${humanDay(day)}${type !== 'task' ? ` ${time}` : ''}`)
+    setSubject(''); setNotes(''); onClose()
   }
   return (
-    <Modal open={!!date} onClose={onClose} title="New event" subtitle={`Scheduled for ${PRETTY(date)}${time ? ` · ${time}` : ''}`}
+    <Modal open onClose={onClose} title="Schedule" subtitle={`${title} · ${PRETTY(day)}${type !== 'task' ? ` at ${time}` : ''} · ${fmtDuration(mins)}`}
       footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" onClick={create}>Add to calendar</Button></>}>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Type"><Select value={type} onChange={(e) => setType(e.target.value as ActivityType)}>{['meeting', 'call', 'task', 'email'].map((t) => (<option key={t} value={t}>{t[0].toUpperCase() + t.slice(1)}</option>))}</Select></Field>
-        <Field label="Time"><Input type="time" value={time} onChange={(e) => setTime(e.target.value)} /></Field>
+      <div className="grid grid-cols-4 gap-2">
+        {EVENT_TYPES.map((t) => (
+          <button key={t.id} onClick={() => { setType(t.id); setPurpose(PURPOSES[t.id][0]); setLocation(t.id === 'call' ? 'Phone' : t.id === 'task' || t.id === 'email' ? 'Office' : LOCATIONS[0]); setMins(t.id === 'meeting' ? 60 : t.id === 'call' ? 15 : 30) }}
+            className={classNames('h-10 rounded-[10px] border text-[13px] font-semibold flex items-center justify-center gap-1.5', type === t.id ? 'bg-[#15223B] border-[#15223B] text-white' : 'border-[#E1E6EC] text-ink-3 hover:bg-control')}>
+            {(() => { const I = EV[t.id].icon; return <I size={14} className={type === t.id ? 'text-[#62E4CC]' : ''} /> })()}{t.label}
+          </button>
+        ))}
       </div>
-      <Field label="Title"><Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="What's happening?" autoFocus /></Field>
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Deal"><Select value={dealId} onChange={(e) => setDealId(e.target.value)}><option value="">None</option>{deals.map((d) => (<option key={d.id} value={d.id}>{d.name}</option>))}</Select></Field>
-        <Field label="Priority"><Select value={priority} onChange={(e) => setPriority(e.target.value as 'High' | 'Medium' | 'Low')}>{['High', 'Medium', 'Low'].map((p) => (<option key={p}>{p}</option>))}</Select></Field>
+        <Field label="What is it?"><Select value={purpose} onChange={(e) => setPurpose(e.target.value)}>{PURPOSES[type].map((p) => <option key={p}>{p}</option>)}</Select></Field>
+        <Field label="Customer"><Select value={dealId} onChange={(e) => setDealId(e.target.value)}><option value="">No customer</option>{deals.filter((d) => !d.lost).map((d) => (<option key={d.id} value={d.id}>{d.name}{d.journey ? ` · ${d.journey.postcode}` : ''}</option>))}</Select></Field>
       </div>
+      <div className="grid grid-cols-3 gap-3">
+        <Field label="Date"><Input type="date" value={day} onChange={(e) => setDay(e.target.value)} /></Field>
+        {type !== 'task' ? <Field label="Start"><Input type="time" value={time} onChange={(e) => setTime(e.target.value)} /></Field> : <Field label="Priority"><Select value={priority} onChange={(e) => setPriority(e.target.value as 'High' | 'Medium' | 'Low')}>{['High', 'Medium', 'Low'].map((p) => <option key={p}>{p}</option>)}</Select></Field>}
+        <Field label={type === 'task' ? 'Time needed' : 'Duration'}><Select value={String(mins)} onChange={(e) => setMins(Number(e.target.value))}>{DURATIONS.map((m) => <option key={m} value={m}>{fmtDuration(m)}</option>)}</Select></Field>
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        <Field label="Where"><Select value={location} onChange={(e) => setLocation(e.target.value)}>{LOCATIONS.map((l) => <option key={l}>{l}</option>)}</Select></Field>
+        <Field label="Who's doing it"><Select value={who} onChange={(e) => setWho(e.target.value)}>{people.map((m) => <option key={m.id} value={m.id}>{m.name}{m.you ? ' (you)' : ''}</option>)}</Select></Field>
+        <Field label="Reminder"><Select value={reminder} onChange={(e) => setReminder(e.target.value)}>{REMINDERS.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}</Select></Field>
+      </div>
+      <Field label="Title (optional)"><Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder={title} /></Field>
+      <Field label="Notes"><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Agenda, what to bring, access notes, anything the team should know…" /></Field>
     </Modal>
   )
 }
