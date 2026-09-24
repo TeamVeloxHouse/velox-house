@@ -313,7 +313,24 @@ export interface JourneyStep {
   notes?: string
   data?: Record<string, string | number>
 }
+/* Post-sale delivery detail — everything ops needs between contract and handover. */
+export interface DeliveryOrder { supplier: string; items: string; status: 'to-order' | 'ordered' | 'delivered'; orderedAt?: number; eta?: number; deliveredAt?: number; value: number }
+export interface DeliveryPayment { label: string; amount: number; status: 'paid' | 'due' | 'overdue' | 'not-due'; at?: number }
+export interface DeliverySnag { text: string; status: 'open' | 'fixed'; at: number }
+export interface Delivery {
+  kit: { item: string; qty: number; detail: string }[]
+  orders: DeliveryOrder[]
+  scaffold: { company: string; status: 'not-booked' | 'booked' | 'up' | 'down'; upAt?: number; downAt?: number }
+  team?: string
+  installDays: number
+  checklist: { label: string; done: boolean }[]
+  commissioning: Record<string, string>
+  payments: DeliveryPayment[]
+  snags: DeliverySnag[]
+}
+
 export interface Journey {
+  delivery?: Delivery // present once the contract is signed
   showroom: Showroom
   source: string
   address: string

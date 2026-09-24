@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { Gear, ChevronRight, ChevronDown, Search } from './icons'
 import { classNames } from '../lib/format'
-import { useState_ } from '../store/store'
+import { useState_, useActions } from '../store/store'
 import { STAGES, stageForPath, BRAND_GRAD, type Stage, type NavGroup } from './nav-config'
+import { ROLES, roleByKey } from '../lib/roles'
+import type { UserRole } from '../store/types'
 
 // Apollo-style sidebar: every area is an expandable section holding its pages, so
 // the whole app is reachable from one place and the page header stays clean.
@@ -16,18 +18,22 @@ const write = (k: string, v: string) => { try { localStorage.setItem(k, v) } cat
 
 export function Rail() {
   const location = useLocation()
-  const { features, teamChannels, conversations } = useState_()
+  const { features, teamChannels, conversations, currentRole } = useState_()
   const teamUnread = teamChannels.reduce((s, c) => s + c.unread, 0)
   const activeId = stageForPath(location.pathname)
+  const { setRole } = useActions()
+  const allowed = (roles?: string[]) => !roles || roles.includes(currentRole)
 
+  // Only what this role may see: areas and pages both carry optional `roles`.
   const areas = STAGES
-    .filter((s) => !s.feature || features[s.feature])
+    .filter((s) => (!s.feature || features[s.feature]) && allowed(s.roles))
     .map((s) => ({
       ...s,
       groups: s.groups
-        .map((g) => ({ ...g, items: g.items.filter((it) => !it.feature || features[it.feature]) }))
+        .map((g) => ({ ...g, items: g.items.filter((it) => (!it.feature || features[it.feature]) && allowed(it.roles)) }))
         .filter((g) => g.items.length > 0),
     }))
+    .filter((s) => s.groups.length > 0)
 
   const [expanded, setExpanded] = useState(() => read(LS_RAIL) !== '0')
   useEffect(() => write(LS_RAIL, expanded ? '1' : '0'), [expanded])
@@ -95,17 +101,28 @@ export function Rail() {
 
       {/* footer */}
       <div className={classNames('mt-3 pt-3 border-t border-white/10 flex flex-col gap-1', !expanded && 'items-center')}>
-        <NavLink
-          to="/settings"
-          title={expanded ? undefined : 'Settings'}
-          className={({ isActive }) => classNames('flex items-center transition-colors', expanded ? 'h-9 rounded-[10px] px-2 gap-2.5' : 'w-10 h-10 rounded-[11px] justify-center', isActive ? 'text-white bg-white/[0.08]' : 'text-rail-idle hover:text-white hover:bg-white/[0.06]')}
-        >
-          <Gear size={18} className="shrink-0" />
-          {expanded && <span className="text-[13px] font-medium">Settings</span>}
-        </NavLink>
+        {currentRole === 'owner' && (
+          <NavLink
+            to="/settings"
+            title={expanded ? undefined : 'Settings'}
+            className={({ isActive }) => classNames('flex items-center transition-colors', expanded ? 'h-9 rounded-[10px] px-2 gap-2.5' : 'w-10 h-10 rounded-[11px] justify-center', isActive ? 'text-white bg-white/[0.08]' : 'text-rail-idle hover:text-white hover:bg-white/[0.06]')}
+          >
+            <Gear size={18} className="shrink-0" />
+            {expanded && <span className="text-[13px] font-medium">Settings</span>}
+          </NavLink>
+        )}
         <div className={classNames('flex items-center', expanded ? 'px-2 py-1.5 gap-2.5' : 'justify-center mt-1')}>
-          <div className="w-[32px] h-[32px] rounded-full bg-[#2A3546] text-[#C6CEDB] flex items-center justify-center text-[12px] font-semibold shrink-0">JM</div>
-          {expanded && <div className="min-w-0"><div className="text-[13px] font-semibold text-white truncate">Jordan Miles</div><div className="text-[11px] text-rail-idle truncate">Account executive</div></div>}
+          <div className="w-[32px] h-[32px] rounded-full bg-[#2A3546] text-[#C6CEDB] flex items-center justify-center text-[12px] font-semibold shrink-0" title={roleByKey(currentRole).label}>JM</div>
+          {expanded && (
+            <div className="min-w-0 flex-1">
+              <div className="text-[13px] font-semibold text-white truncate">Jordan Miles</div>
+              {/* Admin preview: see the app exactly as each role would */}
+              <select value={currentRole} onChange={(e) => setRole(e.target.value as UserRole, true)} title="View the app as another role"
+                className="w-full -ml-0.5 bg-transparent text-[11px] text-rail-idle hover:text-white outline-none cursor-pointer">
+                {ROLES.map((r) => <option key={r.key} value={r.key} className="text-ink">{r.key === 'owner' ? `${r.label} (admin)` : `View as ${r.label}`}</option>)}
+              </select>
+            </div>
+          )}
         </div>
       </div>
     </nav>

@@ -28,6 +28,8 @@ import { CustomerPortal, SupportRequests, ResourceLibrary, PortalWelcome } from 
 import { ShowroomHome, ShowroomExperience } from './pages/Showroom'
 import { ShowroomCalendar } from './pages/ShowroomCalendar'
 import { ShowroomAnalytics } from './pages/ShowroomAnalytics'
+import { Installs } from './pages/Installs'
+import { DeliveryAnalytics } from './pages/DeliveryAnalytics'
 import { PortalList } from './pages/PortalList'
 import { PortalAnalytics } from './pages/PortalAnalytics'
 import { PortalBuilder } from './pages/PortalBuilder'
@@ -103,8 +105,8 @@ export const router = createBrowserRouter([
       { path: 'marketing/connectors', element: <MarketingConnectors /> },
       { path: 'marketing/reports', element: <MktReports /> },
       { path: 'delivery', element: <DeliveryDept /> },
-      { path: 'delivery/installs', element: <DelInstalls /> },
-      { path: 'delivery/field', element: <DelField /> },
+      { path: 'delivery/installs', element: <Navigate to="/installs" replace /> },
+      { path: 'delivery/field', element: <Navigate to="/installs" replace /> },
       { path: 'delivery/certificates', element: <DelCertificates /> },
       { path: 'delivery/service', element: <DelService /> },
       { path: 'agents', element: <Agents /> },
@@ -123,8 +125,8 @@ export const router = createBrowserRouter([
       { path: 'insights', element: <Insights /> },
       { path: 'forecast', element: <Forecast /> },
       { path: 'products', element: <Products /> },
-      { path: 'jobs', element: <Jobs /> },
-      { path: 'projects', element: <Projects /> },
+      { path: 'jobs', element: <Navigate to="/installs" replace /> },
+      { path: 'projects', element: <Navigate to="/installs" replace /> },
       { path: 'campaigns', element: <Campaigns /> },
       { path: 'automation', element: <Automation /> },
       { path: 'automation/:id', element: <Automation /> },
@@ -154,7 +156,9 @@ export const router = createBrowserRouter([
       { path: 'studio/analytics', element: <StudioAnalytics /> },
       { path: 'studio/pricing', element: <StudioPricing /> },
       { path: 'studio/ev', element: <EvCalculator /> },
-      { path: 'studio/delivery', element: <Delivery /> },
+      { path: 'studio/delivery', element: <Navigate to="/installs" replace /> }, // merged into Installs
+      { path: 'installs', element: <Installs /> },
+      { path: 'installs/analytics', element: <DeliveryAnalytics /> },
       { path: 'studio/delivery/:id', element: <ProjectDetail /> },
       { path: 'studio/dno', element: <DnoQueue /> },
       { path: 'studio/surveys', element: <SurveysList /> },

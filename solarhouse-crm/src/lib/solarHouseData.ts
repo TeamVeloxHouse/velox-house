@@ -5,7 +5,7 @@
  * handover), with drop-off at each step, so ~50 sign and ~50 installs land a month. Deterministic
  * (seeded PRNG) so the demo looks the same on every machine. */
 
-import type { Deal, Person, Lead, Activity, Journey, JourneyStep, JourneyKey, Showroom, Pipeline, ShowroomSession, CustomerPortal, PortalEvent, PortalConfig } from '../store/types'
+import type { Deal, Person, Lead, Activity, Journey, JourneyStep, JourneyKey, Showroom, Pipeline, ShowroomSession, CustomerPortal, PortalEvent, PortalConfig, Delivery, DeliveryPayment } from '../store/types'
 import { makeStages } from './pipelines'
 
 // ── Pipeline — the sales half of the journey lives on the board ────────────────────────────
@@ -189,7 +189,44 @@ export function generateSolarHouse(now = Date.now(), months = 4): SolarHouseData
       return { label, due }
     })()
 
-    const journey: Journey = { showroom, source, address, postcode, phone, email, property, system: reachedProposal ? system : undefined, steps, nextAction }
+    // ── Delivery detail for signed customers — consistent with where their journey is ──
+    let delivery: Delivery | undefined
+    const sStep = steps.find((s) => s.key === 'signed')
+    if (sStep) {
+      const dnoS = steps.find((s) => s.key === 'dno'), instS = steps.find((s) => s.key === 'install'), handS = steps.find((s) => s.key === 'handover')
+      const installed = !!instS?.done, onSite = !!instS && instS.at <= now && !instS.done
+      const orderedAt = sStep.at + between(1, 4) * DAY
+      const wholesaler = pick(['Midsummer Energy', 'Segen', 'City Plumbing Solar', 'Wind & Sun'])
+      const mk = (supplier: string, items: string, value: number, leadDays: number) => {
+        const o = orderedAt <= now && (dnoS?.done ?? 0) > 0 ? orderedAt : undefined
+        const eta = o ? o + leadDays * DAY : undefined
+        return { supplier, items, value, status: (!o ? 'to-order' : eta! <= now ? 'delivered' : 'ordered') as 'to-order' | 'ordered' | 'delivered', orderedAt: o, eta, deliveredAt: eta && eta <= now ? eta : undefined }
+      }
+      const deposit = Math.round(price * 0.25), finance = system.finance !== 'Cash'
+      delivery = {
+        kit: [
+          { item: panelModel, qty: panels, detail: `${kwp} kWp array` },
+          { item: inverter, qty: 1, detail: batteryKwh ? 'Hybrid inverter' : 'String inverter' },
+          ...(batteryKwh ? [{ item: batteryModel ?? 'Battery', qty: 1, detail: `${batteryKwh} kWh usable` }] : []),
+          { item: pick(['Renusol VS+ mounting', 'K2 SingleRail mounting', 'Esdec ClickFit Evo']), qty: 1, detail: `${Math.ceil(panels / 2)} rail sets` },
+          ...(evCharger ? [{ item: pick(['Zappi v2.1 7kW', 'Ohme Home Pro', 'Hypervolt Home 3']), qty: 1, detail: 'Tethered 7 kW charger' }] : []),
+          { item: 'Isolators, AC/DC cabling, generation meter', qty: 1, detail: 'Electrical sundries' },
+        ],
+        orders: [mk(wholesaler, `${panels}× panels, inverter${batteryKwh ? ', battery' : ''}`, Math.round(price * 0.46), between(3, 9)), mk(pick(['Renusol UK', 'K2 Systems', 'Esdec']), 'Mounting kit', Math.round(price * 0.05), between(2, 6)), ...(evCharger ? [mk('myenergi / Ohme', 'EV charger', 780, 4)] : [])],
+        scaffold: { company: pick(['Apex Scaffolding', 'SafeRise Scaffold', 'Western Access']), status: installed ? 'down' : onSite || (instS && instS.at - now < 3 * DAY) ? 'up' : instS ? 'booked' : 'not-booked', upAt: instS ? instS.at - 2 * DAY : undefined, downAt: installed ? instS!.done! + 3 * DAY : undefined },
+        team: instS ? TEAMS[showroom] : undefined,
+        installDays: kwp > 6 ? 2 : 1,
+        checklist: ['Scaffold inspected & signed off', 'Array installed & fixings photographed', 'Inverter & battery mounted', 'DC & AC tested (IR, polarity, Zs)', 'Monitoring online', 'Customer walkthrough done', 'Site left clean'].map((label) => ({ label, done: installed || (onSite && r() < 0.5) })),
+        commissioning: installed ? { 'Insulation resistance': `${Math.round(between(200, 999))} MΩ`, 'Earth loop (Zs)': `${between(0.2, 0.8).toFixed(2)} Ω`, 'Array Voc': `${Math.round(panels * 41.2)} V`, 'Export limit': kwp + batteryKwh * 0.4 > 7 ? '3.68 kW (G100)' : 'None', 'Monitoring': 'Online', 'First-day yield': `${Math.round(between(8, 30))} kWh` } : {},
+        payments: [
+          { label: 'Deposit (25%)', amount: deposit, status: 'paid', at: sStep.at + DAY },
+          ...(finance ? [{ label: 'Finance payout', amount: price - deposit, status: (installed ? (r() < 0.85 ? 'paid' : 'due') : 'not-due') as DeliveryPayment['status'], at: installed ? instS!.done! + between(3, 12) * DAY : undefined }]
+            : [{ label: 'Final balance (75%)', amount: price - deposit, status: (installed ? (handS ? (r() < 0.9 ? 'paid' : 'overdue') : 'due') : 'not-due') as DeliveryPayment['status'], at: installed ? instS!.done! + between(1, 10) * DAY : undefined }]),
+        ],
+        snags: installed && r() < 0.18 ? [{ text: pick(['Monitoring dongle dropping Wi-Fi', 'Loose tile above array edge', 'Battery app not linked', 'Generation meter reading low']), status: r() < 0.6 ? 'fixed' : 'open', at: instS!.done! + between(1, 8) * DAY }] : [],
+      }
+    }
+    const journey: Journey = { showroom, source, address, postcode, phone, email, property, system: reachedProposal ? system : undefined, steps, nextAction, delivery }
     deals.push({
       id, name, org: `${street}, ${town}`, subtitle: reachedProposal ? `${kwp} kWp${batteryKwh ? ` + ${batteryKwh} kWh battery` : ''}` : `${property.type} · ${property.roofAspect} roof`,
       value: reachedProposal ? price : Math.round(price / 500) * 500, stage, closeDate: new Date(Math.max(now, t) + 14 * DAY).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),

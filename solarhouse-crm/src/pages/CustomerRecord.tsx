@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { TopBar } from '../components/TopBar'
 import { Phone, Envelope, MapPin, Check, Clock, ChevronDown, ChevronRight, Sun, Bolt, File, Home, Person, Task, Plus, Sparkle, Note } from '../components/icons'
 import { useActions, useState_ } from '../store/store'
@@ -8,6 +8,7 @@ import type { Deal, JourneyKey, JourneyStep } from '../store/types'
 import { JOURNEY, SHOWROOM_META } from '../lib/solarHouseData'
 import { STAGE_GUIDE, advancePatch, stageAge, dueLabel, currentStep, labelOf, isComplete } from '../lib/journey'
 import { DealDetail } from './DealDetail'
+import { DeliveryPanel } from '../components/DeliveryPanel'
 
 /* The Solar House customer record — one page for a customer's whole life with us:
  * enquiry → contact → consultation → proposal → survey → signed → DNO → install → handover/portal.
@@ -51,6 +52,8 @@ function Record({ d }: { d: Deal }) {
   const sr = SHOWROOM_META[j.showroom]
   const [openStep, setOpenStep] = useState<JourneyKey | null>(complete ? null : cur.key)
   const [note, setNote] = useState('')
+  const [params] = useSearchParams()
+  const [tab, setTab] = useState<'journey' | 'delivery'>(params.get('tab') === 'delivery' ? 'delivery' : 'journey')
 
   // Work through a stage without going back to the board: prev/next customer in the same stage.
   const peers = useMemo(() => deals.filter((x) => x.journey && !x.lost && x.stage === d.stage && x.journey.showroom === j.showroom && !x.won === !d.won).sort((a, b) => (currentStep(a)?.at ?? 0) - (currentStep(b)?.at ?? 0)), [deals, d.stage, d.won, j.showroom])
@@ -148,6 +151,14 @@ function Record({ d }: { d: Deal }) {
           </div>
         </div>
 
+        {j.delivery && (
+          <div className="bg-surface border-b border-border px-7 flex items-stretch gap-1">
+            {([['journey', 'Customer journey'], ['delivery', 'Delivery']] as const).map(([id, l]) => (
+              <button key={id} onClick={() => setTab(id)} className={classNames('h-11 px-3 text-[13px] border-b-2 -mb-px', tab === id ? 'border-accent text-accent font-semibold' : 'border-transparent text-muted-b font-medium hover:text-ink-3')}>{l}</button>
+            ))}
+          </div>
+        )}
+        {tab === 'delivery' && j.delivery ? <div className="px-7 py-5"><DeliveryPanel d={d} /></div> : (
         <div className="px-7 py-5 grid grid-cols-[1fr_340px] gap-5 items-start">
           {/* ── stages ── */}
           <div className="flex flex-col gap-3 min-w-0">
@@ -227,6 +238,7 @@ function Record({ d }: { d: Deal }) {
             </Side>
           </div>
         </div>
+        )}
       </main>
     </>
   )
