@@ -187,7 +187,7 @@ body {
 }
 .sh-hdr-title { color: var(--hdr-fg); }
 .sh-hdr-muted { color: var(--hdr-muted); }
-.sh-hdr-crumb-on { color: rgba(255, 255, 255, 0.85); }
+.sh-hdr-crumb-on { color: #15223B; font-weight: 600; }
 
 /* icon buttons (back / search / bell) and every control a page drops into the header share one
    translucent-white material: 36px tall, 10px radius. The gradient primary stays the one CTA. */

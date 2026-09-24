@@ -14,8 +14,8 @@ import { CalendarView } from './Calendar'
 import { Dropdown } from '../components/Dropdown'
 
 const typeIcon: Record<string, any> = { call: Phone, meeting: Meeting, task: TaskIcon, email: Envelope }
-const typeColor: Record<string, string> = { call: '#0E7A66', meeting: '#15223B', task: '#C2410C', email: '#0369A1' } // same as the calendar (EV)
-const typeWash: Record<string, string> = { call: '#E1F6F1', meeting: '#E9EDF4', task: '#FDF1E7', email: '#E6F2FA' }
+const typeColor: Record<string, string> = { call: '#0E7A66', meeting: '#15223B', task: '#2FBFA5', email: '#64748B' } // same as the calendar (EV)
+const typeWash: Record<string, string> = { call: '#E1F6F1', meeting: '#E9EDF4', task: '#E6FAF6', email: '#F1F3F7' }
 const prioTone: Record<string, 'negative' | 'warning' | 'neutral'> = { High: 'negative', Medium: 'warning', Low: 'neutral' }
 const TODAY_B: Bucket[] = ['overdue', 'today']
 const UPCOMING_B: Bucket[] = ['tomorrow', 'upcoming', 'none']

@@ -42,8 +42,8 @@ export function MonthGrid({ year, month0, events, onDay, onMore, dayBadge }: {
 
   return (
     <div className="flex-1 min-h-0 flex flex-col rounded-card border border-[#E1E6EC] bg-white shadow-card overflow-hidden">
-      <div className="grid grid-cols-7 shrink-0 border-b border-[#EDF0F4] bg-[#FAFBFC]">
-        {DOW.map((d, i) => <div key={d} className={classNames('text-[11px] font-bold uppercase tracking-wide text-center py-2', i >= 5 ? 'text-muted-3' : 'text-muted-b')}>{d}</div>)}
+      <div className="grid grid-cols-7 shrink-0 bg-[#15223B]">
+        {DOW.map((d, i) => <div key={d} className={classNames('text-[11px] font-bold uppercase tracking-[0.08em] text-center py-2.5', i >= 5 ? 'text-white/55' : 'text-[#62E4CC]')}>{d}</div>)}
       </div>
       <div ref={box} className="flex-1 min-h-0 grid grid-cols-7" style={{ gridTemplateRows: `repeat(${weeks.length}, minmax(0, 1fr))` }}>
         {weeks.flat().map((d, i) => {

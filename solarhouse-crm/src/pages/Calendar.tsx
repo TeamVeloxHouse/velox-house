@@ -13,13 +13,13 @@ import { classNames } from '../lib/format'
 type EvType = 'task' | 'call' | 'email' | 'meeting' | 'job' | 'note'
 type CalEvent = { id: string; date: string; start?: string; title: string; sub: string; type: EvType; to?: string; done?: boolean }
 
-// one distinct colour per kind (they used to share near-identical greens)
+// one colour per kind, all from the brand family (navy · deep teal · teal · slate · light navy)
 export const EV: Record<EvType, { color: string; wash: string; icon: any; label: string }> = {
   meeting: { color: '#15223B', wash: '#E9EDF4', icon: MeetingIcon, label: 'Meeting' },
   call: { color: '#0E7A66', wash: '#E1F6F1', icon: Phone, label: 'Call' },
-  task: { color: '#C2410C', wash: '#FDF1E7', icon: TaskIcon, label: 'Task' },
-  email: { color: '#0369A1', wash: '#E6F2FA', icon: Envelope, label: 'Email' },
-  job: { color: '#7C3AED', wash: '#F1ECFE', icon: Wrench, label: 'Job' },
+  task: { color: '#2FBFA5', wash: '#E6FAF6', icon: TaskIcon, label: 'Task' },
+  email: { color: '#64748B', wash: '#F1F3F7', icon: Envelope, label: 'Email' },
+  job: { color: '#4A5A78', wash: '#EDF0F5', icon: Wrench, label: 'Job' },
   note: { color: '#7A8494', wash: '#F1F3F7', icon: Note, label: 'Note' },
 }
 

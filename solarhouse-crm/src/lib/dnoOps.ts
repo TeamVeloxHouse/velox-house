@@ -8,7 +8,7 @@ import type { Deal, Journey } from '../store/types'
 const DAY = 86_400_000
 export type DnoState = 'to-submit' | 'submitted' | 'info' | 'approved' | 'connected'
 export const DNO_STATE: Record<DnoState, { label: string; color: string; bg: string; help: string }> = {
-  'to-submit': { label: 'To submit', color: '#8A5A00', bg: '#FBF0DF', help: 'Contract signed — application not sent yet' },
+  'to-submit': { label: 'To submit', color: '#4A5A78', bg: '#EDF0F5', help: 'Contract signed — application not sent yet' },
   submitted: { label: 'With the DNO', color: '#15223B', bg: '#E9EDF4', help: 'Sent — waiting on the network' },
   info: { label: 'Info requested', color: '#B01B4F', bg: '#FDECEF', help: 'The network has asked a question' },
   approved: { label: 'Approved', color: '#0A5A4C', bg: '#E1F6F1', help: 'Offer / acceptance in — clear to install' },

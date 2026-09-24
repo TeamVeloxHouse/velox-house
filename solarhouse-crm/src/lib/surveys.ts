@@ -9,10 +9,10 @@ import { SURVEYORS } from './solarHouseData'
 const DAY = 86_400_000
 export type SurveyStatus = 'to-book' | 'booked' | 'today' | 'overdue' | 'completed'
 export const SURVEY_STATUS: Record<SurveyStatus, { label: string; color: string; bg: string }> = {
-  'to-book': { label: 'To book', color: '#8A5A00', bg: '#FBF0DF' },
+  'to-book': { label: 'To book', color: '#4A5A78', bg: '#EDF0F5' },
   booked: { label: 'Booked', color: '#15223B', bg: '#E9EDF4' },
   today: { label: 'Today', color: '#0A5A4C', bg: '#D6F7F0' },
-  overdue: { label: 'Not done yet', color: '#B01B4F', bg: '#FDECEF' },
+  overdue: { label: 'Not done yet', color: '#15223B', bg: '#D6F7F0' },
   completed: { label: 'Completed', color: '#0A5A4C', bg: '#E1F6F1' },
 }
 export const SLOTS = ['09:00', '11:30', '14:00'] as const

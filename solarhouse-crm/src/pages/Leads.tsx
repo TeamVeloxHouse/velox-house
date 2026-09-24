@@ -13,10 +13,10 @@ import { useNavigate } from 'react-router-dom'
 import { Dropdown } from '../components/Dropdown'
 
 export const LEAD_STATUS_META: Record<LeadStatus, { label: string; tone: string; dot: string }> = {
-  new: { label: 'New', tone: 'text-accent-700 bg-accent-wash-2', dot: '#13927B' },
-  working: { label: 'Working', tone: 'text-[#8A5A00] bg-[#FBF0DF]', dot: '#B45309' },
-  nurturing: { label: 'Nurturing', tone: 'text-[#6D28D9] bg-[#F1EBFE]', dot: '#159C86' },
-  qualified: { label: 'Qualified', tone: 'text-positive bg-[#E6F4EF]', dot: '#0E7C66' },
+  new: { label: 'New', tone: 'text-[#0A5A4C] bg-[#D6F7F0]', dot: '#2FBFA5' },
+  working: { label: 'Working', tone: 'text-[#15223B] bg-[#E9EDF4]', dot: '#15223B' },
+  nurturing: { label: 'Nurturing', tone: 'text-[#4A5A78] bg-[#EDF0F5]', dot: '#4A5A78' },
+  qualified: { label: 'Qualified', tone: 'text-[#0A5A4C] bg-[#E1F6F1]', dot: '#0E7A66' },
   unqualified: { label: 'Unqualified', tone: 'text-muted-2 bg-control', dot: '#8A93A3' },
 }
 function StatusPill({ status }: { status: LeadStatus }) {
