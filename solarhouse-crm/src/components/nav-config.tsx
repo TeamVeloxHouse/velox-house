@@ -38,6 +38,26 @@ export type Stage = {
 export const BRAND_GRAD = 'linear-gradient(135deg,#1FAE94 0%,#159C86 100%)'
 
 export const STAGES: Stage[] = [
+  // Personal — everyone in the company gets their own day here (not just sales).
+  {
+    id: 'mywork', name: 'My Work', desc: 'Your day, tasks & meetings', icon: Check, to: '/',
+    accent: '#159C86', wash: '#E8FAF5',
+    groups: [
+      { label: 'Me', items: [
+        { to: '/', icon: Grid, label: 'My Day', end: true },
+        { to: '/tasks', icon: Check, label: 'My Tasks' },
+        { to: '/meetings', icon: Video, label: 'Meetings' },
+        { to: '/calendar', icon: Calendar, label: 'Calendar' },
+        { to: '/team', icon: Users, label: 'Team chat' },
+      ] },
+    ],
+  },
+  // One inbox for every customer channel — a single link, not a section.
+  {
+    id: 'inbox', name: 'Inbox', desc: 'Every customer conversation', icon: Envelope, to: '/inbox',
+    accent: '#13927B', wash: '#E3F4EF',
+    groups: [{ label: 'Inbox', items: [{ to: '/inbox', icon: Envelope, label: 'Inbox' }] }],
+  },
   {
     id: 'ovi', name: 'Ovi', desc: 'Your AI operator', icon: Sparkle, to: '/ai',
     accent: '#159C86', wash: '#E8FAF5',
@@ -46,37 +66,18 @@ export const STAGES: Stage[] = [
         { to: '/ai', icon: Robot, label: 'Ask Ovi' },
         { to: '/agents', icon: Robot, label: 'Automations' },
       ] },
-      { label: 'Workspace', items: [
-        { to: '/', icon: Grid, label: 'Home', end: true },
-        { to: '/tasks', icon: Check, label: 'My Tasks' },
-        { to: '/team', icon: Users, label: 'Team' },
-      ] },
     ],
   },
+  // Leads = where new homeowners come from (was Find): inbound leads + targeting tools.
   {
-    id: 'find', name: 'Find', desc: 'Homeowner leads & targeting', icon: Radar, to: '/tools',
-    accent: '#1FAE94', wash: '#E6F8F2', feature: 'reach',
+    id: 'leads', name: 'Leads', desc: 'New homeowners & targeting', icon: Radar, to: '/leads',
+    accent: '#1FAE94', wash: '#E6F8F2',
     groups: [
-      { label: 'Prospect', items: [
-        { to: '/tools', icon: Grid, label: 'Overview', feature: 'reach', end: true },
+      { label: 'Leads', items: [
+        { to: '/leads', icon: Bolt, label: 'Lead inbox', badge: 8 },
         { to: '/tools/home-finder', icon: Home, label: 'Home Finder', feature: 'reach' },
         { to: '/tools/database', icon: Layers, label: 'All prospects', feature: 'reach' },
-      ] },
-    ],
-  },
-  {
-    id: 'engage', name: 'Engage', desc: 'Follow-up & conversations', icon: Send, to: '/inbox',
-    accent: '#13927B', wash: '#E3F4EF',
-    groups: [
-      { label: 'Follow-up', items: [
-        { to: '/reach/email', icon: Envelope, label: 'Email', feature: 'reach' },
-        { to: '/reach/schedules', icon: Clock, label: 'Scheduled tasks', feature: 'reach' },
-      ] },
-      { label: 'Conversations', items: [
-        { to: '/inbox', icon: Envelope, label: 'Sales Inbox' },
-        { to: '/activities', icon: Bars, label: 'Activities', badge: 6 },
-        { to: '/meetings', icon: Video, label: 'Meetings' },
-        { to: '/calendar', icon: Calendar, label: 'Calendar' },
+        { to: '/tools', icon: Grid, label: 'Lead tools', feature: 'reach', end: true },
       ] },
     ],
   },
@@ -95,18 +96,15 @@ export const STAGES: Stage[] = [
     ],
   },
   {
-    id: 'close', name: 'Close', desc: 'Pipeline & contacts', icon: Target, to: '/deals',
+    id: 'close', name: 'Sales', desc: 'Pipeline & customers', icon: Target, to: '/deals',
     accent: '#059669', wash: '#E7F6F1',
     groups: [
-      { label: 'Pipeline', items: [
+      { label: 'Sales', items: [
         { to: '/deals', icon: Bars, label: 'Deals' },
-        { to: '/leads', icon: Bolt, label: 'Leads', badge: 8 },
         { to: '/forecast', icon: Target, label: 'Forecast' },
+        { to: '/people', icon: Person, label: 'Contacts' },
+        { to: '/insights', icon: Pie, label: 'Insights' },
       ] },
-      { label: 'Contacts', items: [
-        { to: '/people', icon: Person, label: 'People' },
-      ] },
-      { label: 'Analyse', items: [{ to: '/insights', icon: Pie, label: 'Insights' }] },
     ],
   },
   {
@@ -182,8 +180,8 @@ export const stageById = (id: string) => STAGES.find((s) => s.id === id) ?? STAG
 
 // Coarse section-root fallbacks when no nav item is an exact prefix (bare roots, detail pages).
 const rootFallbacks: [string, string][] = [
-  ['/reach/outreach', 'engage'], ['/reach/campaigns', 'engage'], ['/reach/email', 'engage'], ['/reach/schedules', 'engage'],
-  ['/tools', 'find'], ['/reach', 'find'], ['/design', 'design'], ['/studio', 'design'], ['/delivery', 'deliver'], ['/customers', 'deliver'],
+  ['/reach', 'inbox'], ['/activities', 'mywork'],
+  ['/tools', 'leads'], ['/design', 'design'], ['/studio', 'design'], ['/delivery', 'deliver'], ['/customers', 'customers'],
   ['/finance', 'business'], ['/operations', 'business'], ['/hr', 'business'], ['/marketing', 'business'],
 ]
 

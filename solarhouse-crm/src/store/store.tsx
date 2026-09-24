@@ -24,6 +24,8 @@ type Action =
   | { type: 'UPDATE_DEAL'; id: ID; patch: Partial<Deal> }
   | { type: 'MOVE_STAGE'; id: ID; stage: StageName }
   | { type: 'MARK_WON'; id: ID }
+  | { type: 'UPDATE_CONVERSATION'; id: ID; patch: Partial<import('./types').Conversation> }
+  | { type: 'ADD_COMMS_MESSAGE'; id: ID; message: import('./types').CommsMessage }
   | { type: 'MARK_LOST'; id: ID; reason?: string }
   | { type: 'REMOVE_DEAL'; id: ID }
   | { type: 'ADD_PORTAL'; portal: import('./types').CustomerPortal }
@@ -305,6 +307,10 @@ function reducer(state: State, action: Action): State {
       return { ...state, emails: state.emails.filter((e) => e.id !== action.id) }
     case 'SET_AUTO_REPLY':
       return { ...state, inboxAutoReply: action.mode }
+    case 'UPDATE_CONVERSATION':
+      return { ...state, conversations: state.conversations.map((c) => (c.id === action.id ? { ...c, ...action.patch } : c)) }
+    case 'ADD_COMMS_MESSAGE':
+      return { ...state, conversations: state.conversations.map((c) => (c.id === action.id ? { ...c, messages: [...c.messages, action.message], status: action.message.dir === 'out' && c.status === 'done' ? 'open' : c.status } : c)) }
     case 'MARK_READ':
       return { ...state, emails: state.emails.map((e) => (e.id === action.id ? { ...e, unread: false } : e)) }
     case 'TOGGLE_MEETING_BOT':
@@ -988,6 +994,8 @@ export function useActions() {
       return full
     },
     markRead: (id: ID) => dispatch({ type: 'MARK_READ', id }),
+    updateConversation: (id: ID, patch: Partial<import('./types').Conversation>) => dispatch({ type: 'UPDATE_CONVERSATION', id, patch }),
+    addCommsMessage: (id: ID, message: import('./types').CommsMessage) => dispatch({ type: 'ADD_COMMS_MESSAGE', id, message }),
     setAutoReply: (mode: import('./types').AutoReplyMode) => {
       dispatch({ type: 'SET_AUTO_REPLY', mode })
       toast(mode === 'off' ? 'Ovi auto-reply off' : mode === 'draft' ? 'Ovi will draft replies for your approval' : 'Ovi will auto-send replies', mode === 'send' ? 'accent' : 'positive')

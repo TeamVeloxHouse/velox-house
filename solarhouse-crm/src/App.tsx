@@ -10,6 +10,7 @@ import { PersonDetail } from './pages/PersonDetail'
 import { Organisations } from './pages/Organisations'
 import { Activities } from './pages/Activities'
 import { Inbox } from './pages/Inbox'
+import { UnifiedInbox } from './pages/UnifiedInbox'
 import { Insights } from './pages/Insights'
 import { Forecast } from './pages/Forecast'
 import { Products } from './pages/Products'
@@ -113,7 +114,7 @@ export const router = createBrowserRouter([
       { path: 'people/:id', element: <PersonDetail /> },
       { path: 'organisations', element: <Organisations /> },
       { path: 'activities', element: <Activities /> },
-      { path: 'inbox', element: <Inbox /> },
+      { path: 'inbox', element: <UnifiedInbox /> },
       { path: 'linkedin', element: <LinkedInInbox /> },
       { path: 'insights', element: <Insights /> },
       { path: 'forecast', element: <Forecast /> },

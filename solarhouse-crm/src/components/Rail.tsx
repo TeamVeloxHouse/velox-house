@@ -16,7 +16,7 @@ const write = (k: string, v: string) => { try { localStorage.setItem(k, v) } cat
 
 export function Rail() {
   const location = useLocation()
-  const { features, teamChannels } = useState_()
+  const { features, teamChannels, conversations } = useState_()
   const teamUnread = teamChannels.reduce((s, c) => s + c.unread, 0)
   const activeId = stageForPath(location.pathname)
 
@@ -40,8 +40,9 @@ export function Rail() {
   useEffect(() => { setOpen((o) => (o.includes(activeId) ? o : [...o, activeId])) }, [activeId])
   const toggle = (id: string) => setOpen((o) => (o.includes(id) ? o.filter((x) => x !== id) : [...o, id]))
 
-  const badgeFor = (to: string, badge?: number) => (to === '/team' && teamUnread > 0 ? teamUnread : badge)
-  const areaBadge = (s: Stage) => (s.groups.some((g) => g.items.some((it) => it.to === '/team')) && teamUnread > 0 ? teamUnread : undefined)
+  const inboxUnread = conversations.filter((c) => c.unread).length
+  const badgeFor = (to: string, badge?: number) => (to === '/team' && teamUnread > 0 ? teamUnread : to === '/inbox' ? inboxUnread || undefined : badge)
+  const areaBadge = (s: Stage) => (s.to === '/inbox' ? inboxUnread || undefined : s.groups.some((g) => g.items.some((it) => it.to === '/team')) && teamUnread > 0 ? teamUnread : undefined)
 
   return (
     <nav
@@ -82,7 +83,9 @@ export function Rail() {
       {/* areas */}
       <div className={classNames('flex-1 flex flex-col', expanded ? 'overflow-y-auto no-scrollbar -mx-1 px-1 gap-0.5' : 'gap-1.5 items-center')}>
         {areas.map((s) =>
-          expanded ? (
+          expanded && s.groups.flatMap((g) => g.items).length === 1 ? (
+            <DirectLink key={s.id} s={s} badge={badgeFor(s.to)} />
+          ) : expanded ? (
             <AreaSection key={s.id} s={s} active={s.id === activeId} open={open.includes(s.id)} onToggle={() => toggle(s.id)} badgeFor={badgeFor} />
           ) : (
             <AreaIcon key={s.id} s={s} active={s.id === activeId} badge={areaBadge(s)} badgeFor={badgeFor} />
@@ -119,6 +122,24 @@ function AreaTile({ s, active, size = 26 }: { s: Stage; active: boolean; size?: 
     >
       <s.icon size={size > 30 ? 19 : 16} />
     </span>
+  )
+}
+
+/** An area with a single page (e.g. Inbox) — just a link, no expand/collapse. */
+function DirectLink({ s, badge }: { s: Stage; badge?: number }) {
+  return (
+    <NavLink
+      to={s.to}
+      className={({ isActive }) => classNames('group h-9 rounded-[10px] px-1.5 flex items-center gap-2.5 transition-colors', isActive ? 'text-white' : 'text-[#B7C0CE] hover:text-white hover:bg-white/[0.04]')}
+    >
+      {({ isActive }) => (
+        <>
+          <AreaTile s={s} active={isActive} />
+          <span className={classNames('flex-1 text-left text-[13.5px] truncate', isActive ? 'font-semibold' : 'font-medium')}>{s.name}</span>
+          {badge != null && <span className="text-[10.5px] font-bold rounded-full min-w-[18px] h-[18px] px-1.5 flex items-center justify-center bg-[#62E4CC] text-[#15223B]">{badge}</span>}
+        </>
+      )}
+    </NavLink>
   )
 }
 

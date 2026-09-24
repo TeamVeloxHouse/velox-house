@@ -405,6 +405,37 @@ export interface EmailMsg {
   handled?: boolean // Ovi has drafted/handled a reply for this inbound email
 }
 
+/* ── Unified inbox — every customer conversation, across every channel, in one thread ── */
+export type CommsChannel = 'email' | 'whatsapp' | 'sms' | 'call' | 'web' | 'social' | 'portal'
+export type CommsStage = 'new-lead' | 'assessment' | 'quoted' | 'survey' | 'installing' | 'customer'
+export interface CommsMessage {
+  id: ID
+  channel: CommsChannel
+  dir: 'in' | 'out' | 'note' // note = internal, never sent
+  author: string
+  body: string
+  at: number // epoch ms
+  subject?: string // email only
+  callSecs?: number // call only; 0 = missed
+  voicemail?: string // transcript
+}
+export interface Conversation {
+  id: ID
+  name: string
+  phone?: string
+  email?: string
+  address?: string
+  stage: CommsStage
+  source?: string // how they first reached us
+  assignee?: string // team member name
+  status: 'open' | 'snoozed' | 'done'
+  unread: boolean
+  starred?: boolean
+  dealId?: ID
+  valueHint?: number // likely system value, £
+  messages: CommsMessage[]
+}
+
 // Inbox auto-reply mode: off · draft for approval · auto-send.
 export type AutoReplyMode = 'off' | 'draft' | 'send'
 
@@ -1132,6 +1163,7 @@ export interface State {
   leads: Lead[]
   activities: Activity[]
   emails: EmailMsg[]
+  conversations: Conversation[] // unified inbox (Solar House)
   inboxAutoReply: AutoReplyMode
   meetings: Meeting[]
   agents: Agent[]

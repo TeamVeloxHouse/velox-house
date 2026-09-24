@@ -3,6 +3,7 @@ import type { State, Deal, Person, Activity, EmailMsg, Meeting, Agent, AgentRun,
 import { MILESTONES } from '../lib/delivery'
 import { buildApplication } from '../lib/dno'
 import { tradeByKey } from '../lib/trades'
+import { buildConversations } from './commsSeed' // unified-inbox demo threads
 import { pipelineFromTemplate, templateByKey } from '../lib/pipelines'
 import { money } from '../lib/format'
 import { AI_MEMBER_ID, YOU_MEMBER_ID } from './types'
@@ -825,5 +826,5 @@ export function buildSeed(): State {
     },
   ]
 
-  return { deals, pipelines, activePipelineId, dashboardWidgets, portals, portalEvents, portalResources, portalOffers, showroom, people, orgs, leads, activities, emails, inboxAutoReply: 'off' as const, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, linkedinThreads, enrolments, reachCampaigns, scheduledTasks, studioConfig, projects, playbooks, brandKit, docTemplates, brandDocs, products: mProducts, documents, emailCampaigns, customFields, activeTrade, features, onboarded: true, engineers, jobs, currentRole: 'owner', teamMembers, teamChannels, teamMessages, announcements, employees, leaveRequests, policies, certifications, expenses, stock, reviews, brandAssets, messaging, mediaAssets, contentItems, mktRequests, mktConnectors, solarCampaigns: [], solarProspects: [], designs: [], surveys, toasts: [], railExpanded: true }
+  return { deals, pipelines, activePipelineId, dashboardWidgets, portals, portalEvents, portalResources, portalOffers, showroom, people, orgs, leads, activities, emails, conversations: buildConversations(), inboxAutoReply: 'off' as const, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, linkedinThreads, enrolments, reachCampaigns, scheduledTasks, studioConfig, projects, playbooks, brandKit, docTemplates, brandDocs, products: mProducts, documents, emailCampaigns, customFields, activeTrade, features, onboarded: true, engineers, jobs, currentRole: 'owner', teamMembers, teamChannels, teamMessages, announcements, employees, leaveRequests, policies, certifications, expenses, stock, reviews, brandAssets, messaging, mediaAssets, contentItems, mktRequests, mktConnectors, solarCampaigns: [], solarProspects: [], designs: [], surveys, toasts: [], railExpanded: true }
 }
