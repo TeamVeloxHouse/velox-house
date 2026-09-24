@@ -1,6 +1,7 @@
 import type { Deal } from '../store/types'
 import { SHOWROOM_META } from './solarHouseData'
 import { enquiredAt } from './journey'
+import { money } from './format'
 
 /* One aggregated view of the sales data, used by the built-in insight panels AND handed to Ovi as
  * context — so both read the same numbers. Everything here is computed from the deals' journeys. */
@@ -29,7 +30,7 @@ export function buildDataset(all: Deal[]) {
   const byShowroom = group(deals, (d) => SHOWROOM_META[d.journey!.showroom]?.name)
   const byAdviser = group(deals, (d) => d.owner)
   const byArea = group(deals, (d) => d.journey!.postcode?.split(' ')[0]).slice(0, 12)
-  const byMonth = group(deals, (d) => month(enquiredAt(d)))
+  const byMonth = group(deals, (d) => month(enquiredAt(d))).sort((a, b) => Date.parse(`1 ${a.key.replace(' ', ' 20')}`) - Date.parse(`1 ${b.key.replace(' ', ' 20')}`))
   // product mix of signed systems
   const withBattery = won.filter((d) => (d.journey!.system?.batteryKwh ?? 0) > 0).length
   const withEv = won.filter((d) => d.journey!.system?.evCharger).length
@@ -90,7 +91,7 @@ export const RENDER_TOOL = {
 export function fallbackInsight(q: string, ds: Dataset): Insight {
   const s = q.toLowerCase()
   const pct = (n: number) => `${n}%`
-  const tableOf = (rows: Row[], label: string) => ({ type: 'table' as const, columns: [label, 'Enquiries', 'Signed', 'Win rate', 'Signed £'], rows: rows.map((r) => [r.key, r.enquiries, r.signed, pct(r.conv), `£${Math.round(r.value / 1000)}K`]) })
+  const tableOf = (rows: Row[], label: string) => ({ type: 'table' as const, columns: [label, 'Enquiries', 'Signed', 'Win rate', 'Signed £'], rows: rows.map((r) => [r.key, r.enquiries, r.signed, pct(r.conv), money(r.value, { compact: true })]) })
   if (/source|channel|marketing|where.*come|facebook|google|referral/.test(s)) {
     const best = [...ds.bySource].filter((r) => r.enquiries >= 5).sort((a, b) => b.conv - a.conv)[0]
     return { title: 'Which lead sources pay off', summary: best ? `${best.key} converts best at ${best.conv}% — worth more budget. Volume and quality don't always line up: compare enquiries with signed value.` : 'Here is how each source performs.', blocks: [{ type: 'bars', title: 'Win rate by source', unit: 'percent', items: ds.bySource.map((r) => ({ label: r.key, value: r.conv })) }, tableOf(ds.bySource, 'Source')] }
@@ -100,7 +101,7 @@ export function fallbackInsight(q: string, ds: Dataset): Insight {
   if (/battery|ev|product|mix|size|kwp|attach/.test(s)) return { title: 'What customers are buying', summary: `${ds.totals.batteryAttach}% of signed homes add a battery and ${ds.totals.evAttach}% an EV charger; the average system is ${ds.totals.avgKwp} kWp at £${Math.round(ds.totals.avgValue / 100) / 10}K.`, blocks: [{ type: 'stats', items: [{ label: 'Battery attach', value: pct(ds.totals.batteryAttach) }, { label: 'EV attach', value: pct(ds.totals.evAttach) }, { label: 'Avg system', value: `${ds.totals.avgKwp} kWp` }, { label: 'Avg value', value: `£${Math.round(ds.totals.avgValue).toLocaleString('en-GB')}` }] }, { type: 'bars', title: 'Signed systems by size', unit: 'count', items: ds.bySize.map((r) => ({ label: r.key, value: r.signed })) }] }
   if (/slow|speed|fast|time|days|bottleneck|stuck|long/.test(s)) { const worst = [...ds.speed].sort((a, b) => b.days - a.days)[0]; return { title: 'Where time goes', summary: `The slowest step is ${worst.key.toLowerCase()} at a median ${worst.days} days.`, blocks: [{ type: 'bars', title: 'Median days per step', unit: 'days', items: ds.speed.map((r) => ({ label: r.key, value: r.days })) }] } }
   if (/area|postcode|town|region|where/.test(s)) return { title: 'Best postcode areas', summary: 'Enquiries and win rate by postcode district — useful for targeting leaflets and ads.', blocks: [{ type: 'bars', title: 'Enquiries by area', unit: 'count', items: ds.byArea.map((r) => ({ label: r.key, value: r.enquiries })) }, tableOf(ds.byArea, 'Area')] }
-  return { title: 'Sales at a glance', summary: `${ds.totals.enquiries} enquiries, ${ds.totals.signed} signed (£${Math.round(ds.totals.signedValue / 1000)}K) at a ${ds.totals.winRate}% win rate.`, blocks: [{ type: 'stats', items: [{ label: 'Enquiries', value: String(ds.totals.enquiries) }, { label: 'Signed', value: String(ds.totals.signed) }, { label: 'Win rate', value: pct(ds.totals.winRate) }, { label: 'Signed value', value: `£${Math.round(ds.totals.signedValue / 1000)}K` }] }, { type: 'bars', title: 'Enquiries by month', unit: 'count', items: ds.byMonth.map((r) => ({ label: r.key, value: r.enquiries })) }] }
+  return { title: 'Sales at a glance', summary: `${ds.totals.enquiries} enquiries, ${ds.totals.signed} signed (${money(ds.totals.signedValue, { compact: true })}) at a ${ds.totals.winRate}% win rate.`, blocks: [{ type: 'stats', items: [{ label: 'Enquiries', value: String(ds.totals.enquiries) }, { label: 'Signed', value: String(ds.totals.signed) }, { label: 'Win rate', value: pct(ds.totals.winRate) }, { label: 'Signed value', value: money(ds.totals.signedValue, { compact: true }) }] }, { type: 'bars', title: 'Enquiries by month', unit: 'count', items: ds.byMonth.map((r) => ({ label: r.key, value: r.enquiries })) }] }
 }
 
 /** Ask the live model; resolves to null if it's not available so the caller can fall back. */
