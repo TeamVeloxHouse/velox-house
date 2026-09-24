@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { useState_, useActions } from '../store/store'
 import { teamAnswer, wantsAi, type PlannedAction } from '../lib/teamAi'
+import { askTeamOvi, type OviAction } from '../lib/teamOviLive'
 import type { TeamActionRef, TeamChannel, TeamMessage } from '../store/types'
 
 /**
@@ -43,9 +44,39 @@ export function useTeamChat(channel: TeamChannel) {
     })
   }
 
-  function runAi(sourceText: string) {
+  /** Run a live-model Ovi action against the store; returns an openable chip for the message. */
+  function runLive(a: OviAction): TeamActionRef {
+    const deal = a.customer ? deals.find((d) => d.name.toLowerCase() === a.customer!.toLowerCase()) ?? deals.find((d) => d.name.toLowerCase().includes(a.customer!.toLowerCase())) : undefined
+    const assignee = a.assignee ? teamMembers.find((m) => m.name.toLowerCase() === a.assignee!.toLowerCase() || m.name.split(' ')[0].toLowerCase() === a.assignee!.toLowerCase()) : undefined
+    const iso = (s?: string) => (s && /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : new Date(Date.now() + 86_400_000).toISOString().slice(0, 10))
+    const pretty = (s: string) => new Date(`${s}T12:00`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+    if (a.tool === 'create_task') {
+      const d = iso(a.due_date)
+      act.addActivity({ type: 'task', subject: a.subject, body: a.notes, dueDate: d, due: pretty(d), priority: a.priority ?? 'Medium', dealId: deal?.id, personId: deal?.personIds[0], who: assignee?.name ?? 'Ovi', assigneeIds: assignee ? [assignee.id] : undefined, source: 'ai' })
+      return { kind: 'task', label: `Task · ${a.subject}${assignee ? ` → ${assignee.name.split(' ')[0]}` : ''}`, to: deal ? `/deals/${deal.id}` : '/tasks' }
+    }
+    const d = iso(a.date)
+    act.addActivity({ type: a.type, subject: `${a.purpose}${deal ? ` — ${deal.name}` : ''}`, body: a.notes, dueDate: d, due: pretty(d), startTime: a.time, purpose: a.purpose, location: a.location, dealId: deal?.id, personId: deal?.personIds[0], who: assignee?.name ?? 'Ovi', assigneeIds: assignee ? [assignee.id] : undefined, source: 'ai' })
+    return { kind: a.type === 'meeting' ? 'meeting' : 'task', label: `${a.purpose} · ${pretty(d)}${a.time ? ` ${a.time}` : ''}`, to: '/tasks' }
+  }
+
+  async function runAi(sourceText: string) {
     if (busy.current) return
     busy.current = true
+    // live model first: it can read the customers and actually do things
+    setWork({ steps: ['Reading the thread', 'Checking customers & the team', 'Doing it'], i: 0 })
+    const tickId = setInterval(() => setWork((w) => (w && w.i < w.steps.length - 1 ? { ...w, i: w.i + 1 } : w)), 900)
+    const me = teamMembers.find((m) => m.you)?.name ?? 'Jordan Miles'
+    const live = await askTeamOvi({ text: sourceText, channelName: channel.name, history: msgs.slice(-8).map((m) => ({ who: teamMembers.find((t) => t.id === m.authorId)?.name ?? 'Someone', text: m.text })), team: teamMembers, deals, me })
+    clearInterval(tickId)
+    if (live) {
+      const refs = live.actions.map(runLive)
+      const text = live.reply || (refs.length ? `Done — ${refs.map((r) => r.label).join('; ')}.` : 'Noted.')
+      act.postAiMessage(channel.id, text, undefined, refs.length ? refs : undefined)
+      setWork(null)
+      busy.current = false
+      return
+    }
     const plan = teamAnswer(sourceText)
     let i = 0
     const tick = () => {
@@ -66,11 +97,15 @@ export function useTeamChat(channel: TeamChannel) {
 
   function send(text: string) {
     act.postMessage(channel.id, text)
-    if (channel.ai && wantsAi(text, true)) setTimeout(() => runAi(text), 350)
+    // @mentions: let each mentioned teammate know (Ovi is handled below)
+    const mentioned = teamMembers.filter((m) => !m.bot && !m.you && new RegExp(`@${m.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(text))
+    if (mentioned.length) act.toast(`Notified ${mentioned.map((m) => m.name.split(' ')[0]).join(', ')}`)
+    const askedOvi = /@ovi\b/i.test(text)
+    if (askedOvi || (channel.ai && wantsAi(text, true))) setTimeout(() => { void runAi(text) }, 350)
   }
   function handle(msg: TeamMessage) {
     act.markMessageHandled(msg.id)
-    runAi(msg.text)
+    void runAi(msg.text)
   }
 
   return { msgs, members, work, send, handle }

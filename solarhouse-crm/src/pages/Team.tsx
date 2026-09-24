@@ -47,12 +47,16 @@ function MemberAvatar({ m, size = 32, ring }: { m?: TeamMember; size?: number; r
 
 /* ---------- rich chat text: **bold** + @mentions ---------- */
 function ChatText({ text }: { text: string }) {
-  const parts = text.split(/(\*\*[^*]+\*\*|@Ovi|@ai\b)/gi)
+  const { teamMembers } = useState_()
+  // @Ovi and @Full Name for every teammate become mention pills
+  const names = ['Ovi', ...teamMembers.filter((m) => !m.bot).map((m) => m.name)].sort((a, b) => b.length - a.length).map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+  const parts = text.split(new RegExp(`(\\*\\*[^*]+\\*\\*|@(?:${names.join('|')})\\b|@ai\\b)`, 'gi'))
   return (
     <span className="whitespace-pre-wrap leading-relaxed">
       {parts.map((p, i) => {
         if (/^\*\*[^*]+\*\*$/.test(p)) return <strong key={i} className="font-semibold text-ink">{p.slice(2, -2)}</strong>
-        if (/^@tellovi ai$/i.test(p) || /^@ai$/i.test(p)) return <span key={i} className="font-semibold text-accent bg-accent-wash rounded px-1">{p}</span>
+        if (/^@(ovi|ai)$/i.test(p)) return <span key={i} className="font-semibold text-[#15223B] bg-[#62E4CC]/40 rounded px-1">{p}</span>
+        if (p.startsWith('@') && p.length > 1) return <span key={i} className="font-semibold text-[#15223B] bg-[#E9EDF4] rounded px-1">{p}</span>
         return <span key={i}>{p}</span>
       })}
     </span>
@@ -213,21 +217,59 @@ function MessageRow({ msg, channel, onHandle, onReact }: { msg: TeamMessage; cha
 }
 
 /* ---------- composer ---------- */
+/** Composer with @mentions: type "@" to pick a teammate or Ovi (↑/↓ + Enter, or click). */
 function Composer({ placeholder, onSend, disabled }: { placeholder: string; onSend: (t: string) => void; disabled?: boolean }) {
+  const { teamMembers } = useState_()
   const [v, setV] = useState('')
-  function submit() { if (!v.trim() || disabled) return; onSend(v.trim()); setV('') }
+  const [caret, setCaret] = useState(0)
+  const [hi, setHi] = useState(0)
+  const ta = useRef<HTMLTextAreaElement>(null)
+  // the "@word" being typed just before the caret
+  const m = /(^|\s)@([\w'-]*)$/.exec(v.slice(0, caret))
+  const q = m ? m[2].toLowerCase() : null
+  const options = q == null ? [] : teamMembers.filter((t) => !t.you && (t.bot ? 'ovi' : t.name.toLowerCase()).split(' ').some((w) => w.startsWith(q)) || (q === '' && !t.you)).slice(0, 7)
+  const pick = (t: TeamMember) => {
+    const before = v.slice(0, caret).replace(/@([\w'-]*)$/, `@${t.bot ? 'Ovi' : t.name} `)
+    const next = before + v.slice(caret)
+    setV(next); setHi(0)
+    requestAnimationFrame(() => { ta.current?.focus(); ta.current?.setSelectionRange(before.length, before.length); setCaret(before.length) })
+  }
+  function submit() { if (!v.trim() || disabled) return; onSend(v.trim()); setV(''); setCaret(0) }
   return (
-    <div className="bg-surface border border-border rounded-2xl flex items-end gap-2 p-2 shadow-card">
-      <button onClick={() => setV((x) => (x.startsWith('@Ovi ') ? x : '@Ovi ' + x))} title="Mention Ovi" className="w-9 h-9 rounded-xl border border-border-blue bg-accent-wash text-accent hover:bg-[#E4ECFB] flex items-center justify-center shrink-0"><Sparkle size={16} /></button>
-      <textarea
-        value={v}
-        onChange={(e) => setV(e.target.value)}
-        onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit() } }}
-        rows={1}
-        placeholder={placeholder}
-        className="flex-1 resize-none outline-none bg-transparent text-[14px] text-ink-2 placeholder:text-muted-3 px-1.5 py-1.5 max-h-32"
-      />
-      <button onClick={submit} disabled={!v.trim() || disabled} className="w-9 h-9 rounded-xl bg-accent-gradient text-white flex items-center justify-center shadow-primary disabled:opacity-40 disabled:shadow-none shrink-0"><Send size={16} /></button>
+    <div className="relative">
+      {options.length > 0 && (
+        <div className="absolute bottom-full mb-2 left-12 w-[300px] rounded-[12px] bg-white border border-[#E1E6EC] shadow-[0_16px_36px_-10px_rgba(16,24,40,0.28)] p-1.5 z-20">
+          <div className="px-2 pt-1 pb-1.5 eyebrow text-muted-3">Mention</div>
+          {options.map((t, i) => (
+            <button key={t.id} onMouseDown={(e) => { e.preventDefault(); pick(t) }} onMouseEnter={() => setHi(i)} className={classNames('w-full flex items-center gap-2.5 px-2 py-1.5 rounded-[8px] text-left', i === hi ? 'bg-[#E6FAF6]' : '')}>
+              <MemberAvatar m={t} size={24} />
+              <span className="min-w-0 flex-1"><span className="block text-[13px] font-semibold text-ink-2">{t.bot ? 'Ovi' : t.name}</span><span className="block text-[11px] text-muted-2 truncate">{t.bot ? 'Ask a question or get something done' : t.role}</span></span>
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="bg-white border border-[#E1E6EC] rounded-2xl flex items-end gap-2 p-2 shadow-card focus-within:border-accent-400">
+        <button onClick={() => { const nv = v && !v.endsWith(' ') ? `${v} @` : `${v}@`; setV(nv); setCaret(nv.length); requestAnimationFrame(() => { ta.current?.focus(); ta.current?.setSelectionRange(nv.length, nv.length) }) }} title="Mention someone or Ovi" className="w-9 h-9 rounded-xl bg-[#15223B] text-[#62E4CC] hover:bg-[#1E2F4E] flex items-center justify-center shrink-0 text-[16px] font-bold">@</button>
+        <textarea
+          ref={ta}
+          value={v}
+          onChange={(e) => { setV(e.target.value); setCaret(e.target.selectionStart); setHi(0) }}
+          onSelect={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart)}
+          onKeyDown={(e) => {
+            if (options.length) {
+              if (e.key === 'ArrowDown') { e.preventDefault(); setHi((h) => (h + 1) % options.length); return }
+              if (e.key === 'ArrowUp') { e.preventDefault(); setHi((h) => (h - 1 + options.length) % options.length); return }
+              if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); pick(options[hi]); return }
+              if (e.key === 'Escape') { setCaret(-1); return }
+            }
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit() }
+          }}
+          rows={1}
+          placeholder={placeholder}
+          className="flex-1 resize-none outline-none bg-transparent text-[14px] text-ink-2 placeholder:text-muted-3 px-1.5 py-1.5 max-h-32"
+        />
+        <button onClick={submit} disabled={!v.trim() || disabled} className="w-9 h-9 rounded-xl bg-[#15223B] text-white flex items-center justify-center disabled:opacity-40 shrink-0"><Send size={16} /></button>
+      </div>
     </div>
   )
 }
