@@ -33,7 +33,7 @@ export function Button({ children, variant = 'secondary', onClick, icon, classNa
   return (
     <button
       onClick={onClick}
-      className={classNames(base, 'bg-white border border-[#CDD5DF] text-ink-2 font-semibold shadow-[0_1px_2px_rgba(16,24,40,0.08)] hover:border-accent-400 hover:text-accent hover:bg-accent-wash-4 hover:shadow-[0_3px_8px_-2px_rgba(16,24,40,0.12)]', className)}
+      className={classNames(base, 'btn-secondary bg-white border border-[#CDD5DF] text-ink-2 font-semibold shadow-[0_1px_2px_rgba(16,24,40,0.08)] hover:border-accent-400 hover:text-accent hover:bg-accent-wash-4 hover:shadow-[0_3px_8px_-2px_rgba(16,24,40,0.12)]', className)}
       style={color ? { color, borderColor: color } : undefined}
     >
       {icon}
@@ -53,7 +53,8 @@ export function Segmented({
   onChange: (v: string) => void
 }) {
   return (
-    <div className="inline-flex bg-[#E9EDF2] border border-[#DDE3EA] rounded-control p-[3px] gap-0.5">
+    // seg-track / seg-on / seg-off pick up a frosted-glass look inside the mint header (index.css).
+    <div className="seg-track inline-flex bg-[#E9EDF2] border border-[#DDE3EA] rounded-control p-[3px] gap-0.5">
       {options.map((o) => {
         const active = o === value
         return (
@@ -62,6 +63,7 @@ export function Segmented({
             onClick={() => onChange(o)}
             className={classNames(
               'h-[30px] px-3 rounded-[7px] text-[13px] transition-colors duration-150',
+              active ? 'seg-on' : 'seg-off',
               active ? 'bg-white text-accent font-bold shadow-[0_1px_3px_rgba(11,18,32,0.14)]' : 'text-ink-3 font-medium hover:text-ink hover:bg-white/60',
             )}
           >

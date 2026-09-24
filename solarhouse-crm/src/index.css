@@ -180,6 +180,35 @@ body {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 8px 20px -14px rgba(10, 90, 76, 0.28);
 }
 
+/* Frosted-glass controls in the header — same material as the back / search / bell buttons. */
+.sh-topbar .seg-track {
+  background: rgba(255, 255, 255, 0.42);
+  backdrop-filter: blur(10px) saturate(140%);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  border-color: rgba(255, 255, 255, 0.85);
+  border-radius: 12px;
+  padding: 4px;
+  box-shadow: 0 1px 2px rgba(10, 59, 52, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+.sh-topbar .seg-track > button { border-radius: 9px; }
+.sh-topbar .seg-off { color: #2F5A50; }
+.sh-topbar .seg-off:hover { background: rgba(255, 255, 255, 0.55); color: #0B2A24; }
+.sh-topbar .seg-on {
+  background: rgba(255, 255, 255, 0.95);
+  color: #0A5A4C;
+  box-shadow: 0 1px 2px rgba(10, 59, 52, 0.1), 0 4px 10px -4px rgba(10, 59, 52, 0.22);
+}
+
+.sh-topbar .btn-secondary:not([style]) {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(10px) saturate(140%);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  border-color: rgba(255, 255, 255, 0.85);
+  color: #1F4A40;
+  box-shadow: 0 1px 2px rgba(10, 59, 52, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+.sh-topbar .btn-secondary:not([style]):hover { background: rgba(255, 255, 255, 0.95); color: #0A5A4C; }
+
 /* Modern interactive tiles: a gentle lift on hover for anything marked .tile-hover. */
 .tile-hover { transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
 .tile-hover:hover { transform: translateY(-2px); border-color: #CFE3DD; box-shadow: 0 2px 4px rgba(16,24,40,0.05), 0 14px 30px -14px rgba(10,59,52,0.26) !important; }
