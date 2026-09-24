@@ -53,7 +53,7 @@ export default {
       borderRadius: {
         chip: '6px',
         control: '9px',
-        card: '12px',
+        card: '14px',
         rail: '11px',
         overlay: '16px',
       },

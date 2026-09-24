@@ -168,6 +168,22 @@ body {
 .sh-portal .no-sb::-webkit-scrollbar { display: none; }
 .sh-portal .no-sb { scrollbar-width: none; }
 
+/* Page header band — a light mint gradient with two soft glows, a hairline highlight on top and
+   a teal-tinted edge underneath, so the header clearly belongs to the brand and separates the
+   navy sidebar from the neutral page body. */
+.sh-topbar {
+  background:
+    radial-gradient(560px 160px at 10% -30%, rgba(98, 228, 204, 0.55) 0%, transparent 70%),
+    radial-gradient(680px 200px at 94% -40%, rgba(31, 174, 148, 0.30) 0%, transparent 70%),
+    linear-gradient(100deg, #D3F2E8 0%, #E6F8F1 48%, #D8F1E9 100%);
+  border-bottom: 1px solid #BCE2D6;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 8px 20px -14px rgba(10, 90, 76, 0.28);
+}
+
+/* Modern interactive tiles: a gentle lift on hover for anything marked .tile-hover. */
+.tile-hover { transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+.tile-hover:hover { transform: translateY(-2px); border-color: #CFE3DD; box-shadow: 0 2px 4px rgba(16,24,40,0.05), 0 14px 30px -14px rgba(10,59,52,0.26) !important; }
+
 /* Depth everywhere: any white card surface in the CRM lifts off the canvas, so pages that
    hand-roll cards get the same elevation as the shared Card / Panel / StatTile components. */
 .bg-surface.rounded-card:not(.shadow-none),

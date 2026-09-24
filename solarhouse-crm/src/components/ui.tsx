@@ -189,14 +189,15 @@ export type StatTone = keyof typeof TONES
 export function StatTile({ label, value, sub, icon: I, tone = 'accent', delta, deltaGood, hint }: { label: string; value: ReactNode; sub?: ReactNode; icon?: IconT; tone?: StatTone; delta?: string; deltaGood?: boolean; hint?: string }) {
   const t = TONES[tone]
   return (
-    <div className="relative rounded-card bg-white border border-[#E1E6EC] shadow-card overflow-hidden px-4 pt-3.5 pb-3 min-w-0" title={hint}>
-      <span className="absolute inset-x-0 top-0 h-[3px]" style={{ background: t.edge }} />
-      <div className="flex items-center gap-2">
-        {I && <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: t.bg, color: t.fg }}><I size={14} /></span>}
-        <span className="text-[12px] font-semibold text-ink-3 truncate">{label}</span>
+    // Sleek tile: no hard stripe — a soft tone glow in the corner, a gradient icon chip and a hover lift.
+    <div className="tile-hover relative rounded-[14px] bg-white border border-[#E6EAF0] shadow-card overflow-hidden px-4 pt-4 pb-3.5 min-w-0" title={hint}>
+      <span className="pointer-events-none absolute -top-10 -right-10 w-28 h-28 rounded-full opacity-60" style={{ background: `radial-gradient(circle, ${t.bg} 0%, transparent 70%)` }} />
+      <div className="relative flex items-center gap-2.5">
+        {I && <span className="w-8 h-8 rounded-[10px] flex items-center justify-center shrink-0 ring-1 ring-inset ring-black/[0.03]" style={{ background: `linear-gradient(145deg, #fff 0%, ${t.bg} 100%)`, color: t.fg }}><I size={15} /></span>}
+        <span className="text-[12px] font-semibold text-muted-b truncate">{label}</span>
       </div>
-      <div className="text-[24px] font-extrabold text-ink tracking-[-0.025em] mt-2 leading-none tabular-nums" style={tone === 'warn' || tone === 'bad' ? { color: t.fg } : undefined}>{value}</div>
-      <div className="flex items-center gap-1.5 mt-1.5 min-h-[16px]">
+      <div className="relative text-[26px] font-extrabold text-ink tracking-[-0.03em] mt-3 leading-none tabular-nums" style={tone === 'warn' || tone === 'bad' ? { color: t.fg } : undefined}>{value}</div>
+      <div className="relative flex items-center gap-1.5 mt-2 min-h-[16px]">
         {delta && <span className={classNames('text-[11px] font-bold rounded px-1 py-px', deltaGood === undefined ? 'bg-control text-muted-b' : deltaGood ? 'bg-positive-wash text-positive' : 'bg-negative-wash text-negative')}>{delta}</span>}
         {sub && <span className="text-[11.5px] text-muted-2 truncate">{sub}</span>}
       </div>
@@ -207,9 +208,9 @@ export function StatTile({ label, value, sub, icon: I, tone = 'accent', delta, d
 /* ---------- Panel — a titled section card with a clear header ---------- */
 export function Panel({ title, sub, icon: I, action, children, className, pad = true }: { title: string; sub?: string; icon?: IconT; action?: ReactNode; children: ReactNode; className?: string; pad?: boolean }) {
   return (
-    <section className={classNames('rounded-card bg-white border border-[#E1E6EC] shadow-card overflow-hidden', className)}>
-      <header className="px-5 py-3.5 border-b border-[#EDF0F4] bg-gradient-to-b from-[#FBFCFD] to-white flex items-center gap-2.5">
-        {I && <span className="w-8 h-8 rounded-[9px] bg-accent-wash text-accent flex items-center justify-center shrink-0"><I size={15} /></span>}
+    <section className={classNames('rounded-[14px] bg-white border border-[#E6EAF0] shadow-card overflow-hidden', className)}>
+      <header className="px-5 py-3.5 border-b border-[#EEF1F5] flex items-center gap-2.5">
+        {I && <span className="w-8 h-8 rounded-[10px] text-accent flex items-center justify-center shrink-0 ring-1 ring-inset ring-accent/10" style={{ background: 'linear-gradient(145deg, #F4FBF9 0%, #DDF2EB 100%)' }}><I size={15} /></span>}
         <div className="min-w-0 flex-1"><div className="text-[14.5px] font-bold text-ink leading-tight">{title}</div>{sub && <div className="text-[12px] text-muted-2 mt-0.5 truncate">{sub}</div>}</div>
         {action}
       </header>
