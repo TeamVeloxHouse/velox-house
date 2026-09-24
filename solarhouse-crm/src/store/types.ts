@@ -1170,6 +1170,8 @@ export interface Design {
   batteryKwh?: number // usable battery capacity (kWh), 0 = none
   horizon?: { id: ID; label: string; bearingDeg: number; distanceM: number; heightM: number; widthM: number }[] // off-roof obstructions (trees, buildings) for the MCS sun-path shade factor
   shadeOverrides?: Record<ID, number> // per-plane shade factor set by the surveyor
+  finance?: Record<string, number> // per-design overrides of lib/finance DEFAULT_FINANCE (price rise, SEG, discount rate…)
+  priceOverride?: number // quoted price (£) when the adviser sets one, instead of the Studio pricing formula
   createdAt: number
   updatedAt: number
 }

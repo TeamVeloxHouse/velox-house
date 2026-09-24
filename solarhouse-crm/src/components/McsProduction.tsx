@@ -5,7 +5,7 @@ import { Sun, Bolt, Home, Pie, Plus, Target } from './icons'
 import { useActions } from '../store/store'
 import type { Design, DesignPlane } from '../store/types'
 import { moduleById } from '../lib/panels'
-import { mcsEstimate, shadeFactor, obstructionFrom, OCCUPANCY_LABEL, KK_SOURCE_LABEL, type Occupancy, type McsResult, type Obstruction, type Segment } from '../lib/mcs'
+import { mcsEstimate, resolveArrays, shadeFactor, obstructionFrom, OCCUPANCY_LABEL, KK_SOURCE_LABEL, type Occupancy, type McsResult, type Obstruction, type Segment } from '../lib/mcs'
 import { classNames } from '../lib/format'
 
 /* Production tab — the MCS-style estimate the customer's proposal is built on: per-array kWp × Kk × SF,
@@ -55,27 +55,40 @@ export function SunpathDiagram({ segments, title }: { segments: (Segment & { sha
   )
 }
 
-export function McsProduction({ design, moduleId, effTilt }: { design: Design; moduleId: string; effTilt: (p: DesignPlane) => number }) {
-  const act = useActions()
+/** The MCS estimate for the placed panels, plus the per-kWp yield (Kk × SF) of every roof plane — the
+ *  Production tab, Savings tab and optimiser all read from this one hook. */
+export function useMcs(design: Design, moduleId: string, effTilt: (p: DesignPlane) => number) {
   const [res, setRes] = useState<McsResult | null>(null)
-  const [newHz, setNewHz] = useState({ label: 'Tree', bearing: 'S', distance: '8', height: '6', width: '4' })
+  const [planeYield, setPlaneYield] = useState<Record<string, number>>({})
   const occ = (design.occupancy ?? 'in_half_day') as Occupancy
   const use = design.annualConsumptionKwh ?? 3800
   const batt = design.batteryKwh ?? 0
   const filled = design.planes.filter((p) => p.panels?.length)
   const lat = design.center?.lat ?? 51.5
-  const shade = useMemo(() => Object.fromEntries(filled.map((p) => [p.id, shadeFactor(lat, obstructionsFor(p, design))])), [design, lat]) // eslint-disable-line react-hooks/exhaustive-deps
+  const shade = useMemo(() => Object.fromEntries(design.planes.map((p) => [p.id, shadeFactor(lat, obstructionsFor(p, design))])), [design, lat]) // eslint-disable-line react-hooks/exhaustive-deps
   const postcode = design.address.match(/[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}/i)?.[0]
+  const sfOf = (id: string) => design.shadeOverrides?.[id] ?? shade[id]?.sf ?? 1
 
   useEffect(() => {
-    if (!design.center || !filled.length) { setRes(null); return }
+    if (!design.center) { setRes(null); return }
     let live = true
-    mcsEstimate({
-      arrays: filled.map((p, i) => ({ id: p.id, name: p.name || `Array ${i + 1}`, kwp: ((p.panels?.length ?? 0) * moduleById(p.moduleId ?? moduleId).watts) / 1000, tiltDeg: effTilt(p), azimuthFromSouthDeg: toSouth(p.azimuthDeg), shadeFactor: design.shadeOverrides?.[p.id] ?? shade[p.id]?.sf ?? 1 })),
-      site: { ...design.center, postcode }, useKwh: use, occupancy: occ, batteryUsableKwh: batt,
+    const site = { ...design.center, postcode }
+    if (filled.length) mcsEstimate({
+      arrays: filled.map((p, i) => ({ id: p.id, name: p.name || `Array ${i + 1}`, kwp: ((p.panels?.length ?? 0) * moduleById(p.moduleId ?? moduleId).watts) / 1000, tiltDeg: effTilt(p), azimuthFromSouthDeg: toSouth(p.azimuthDeg), shadeFactor: sfOf(p.id) })),
+      site, useKwh: use, occupancy: occ, batteryUsableKwh: batt,
     }).then((r) => { if (live) setRes(r) })
+    else setRes(null)
+    if (design.planes.length) resolveArrays(design.planes.map((p) => ({ id: p.id, kwp: 1, tiltDeg: effTilt(p), azimuthFromSouthDeg: toSouth(p.azimuthDeg), shadeFactor: sfOf(p.id) })), site)
+      .then((r) => { if (live) setPlaneYield(Object.fromEntries(r.arrays.map((a) => [a.id, a.kwh]))) })
     return () => { live = false }
   }, [design, moduleId, shade, use, occ, batt]) // eslint-disable-line react-hooks/exhaustive-deps
+  return { res, planeYield, shade, filled, occ, use, batt, sfOf }
+}
+
+export function McsProduction({ design, moduleId, effTilt }: { design: Design; moduleId: string; effTilt: (p: DesignPlane) => number }) {
+  const act = useActions()
+  const [newHz, setNewHz] = useState({ label: 'Tree', bearing: 'S', distance: '8', height: '6', width: '4' })
+  const { res, shade, filled, occ, use, batt } = useMcs(design, moduleId, effTilt)
 
   const COMPASS: Record<string, number> = { N: 0, NE: 45, E: 90, SE: 135, S: 180, SW: 225, W: 270, NW: 315 }
   const addHorizon = () => {
