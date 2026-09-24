@@ -14,6 +14,7 @@ import { DnoTab, DnoStatusPill } from './DnoSection'
 import type { StudioProject, ProjectOrder, ProjectInvoice, OrderItem, InvoiceKind, InvoiceStatus, OrderStatus } from '../store/types'
 import { gbp } from '../lib/solar'
 import { classNames } from '../lib/format'
+import { Dropdown } from '../components/Dropdown'
 
 const milestoneColor = ['#57C9B4', '#7AA0F5', '#57C9B4', '#13927B', '#2E5AD8', '#13927B', '#1740B8', '#0E7C66']
 
@@ -380,11 +381,11 @@ function OrdersTab({ p }: { p: StudioProject }) {
 const ORDER_TONE: Record<OrderStatus, 'neutral' | 'accent' | 'positive'> = { draft: 'neutral', ordered: 'accent', delivered: 'positive' }
 function OrderStatusSelect({ status, onChange }: { status: OrderStatus; onChange: (s: OrderStatus) => void }) {
   return (
-    <select value={status} onChange={(e) => onChange(e.target.value as OrderStatus)} className={classNames('h-7 px-2 rounded-md border text-[11.5px] font-semibold outline-none shrink-0', status === 'delivered' ? 'border-positive/40 text-positive bg-positive/5' : status === 'ordered' ? 'border-accent/40 text-accent bg-accent-wash' : 'border-input-border text-muted-b')}>
+    <Dropdown value={status} onChange={(e) => onChange(e.target.value as OrderStatus)} className={classNames('h-7 px-2 rounded-md border text-[11.5px] font-semibold outline-none shrink-0', status === 'delivered' ? 'border-positive/40 text-positive bg-positive/5' : status === 'ordered' ? 'border-accent/40 text-accent bg-accent-wash' : 'border-input-border text-muted-b')}>
       <option value="draft">Draft</option>
       <option value="ordered">Ordered</option>
       <option value="delivered">Delivered</option>
-    </select>
+    </Dropdown>
   )
 }
 

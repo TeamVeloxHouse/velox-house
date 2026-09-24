@@ -8,6 +8,7 @@ import { useState_, useActions } from '../store/store'
 import { money, classNames } from '../lib/format'
 import { stages } from '../data/mock'
 import type { Deal, UserRole } from '../store/types'
+import { Dropdown } from '../components/Dropdown'
 
 // Only Finance and Directors see the revenue forecast.
 const ALLOWED: UserRole[] = ['owner', 'finance']
@@ -37,9 +38,9 @@ export function Forecast() {
   const roleSwitch = (
     <label className="flex items-center gap-2 text-[12.5px] text-muted-b">
       <span className="hidden sm:inline">Viewing as</span>
-      <select value={currentRole} onChange={(e) => act.setRole(e.target.value as UserRole)} className="h-8 px-2.5 rounded-control border border-input-border bg-white text-[12.5px] text-ink-2 outline-none focus:border-accent">
+      <Dropdown value={currentRole} onChange={(e) => act.setRole(e.target.value as UserRole)} className="h-8 px-2.5 rounded-control border border-input-border bg-white text-[12.5px] text-ink-2 outline-none focus:border-accent">
         {(Object.keys(ROLE_LABEL) as UserRole[]).map((r) => (<option key={r} value={r}>{ROLE_LABEL[r]}</option>))}
-      </select>
+      </Dropdown>
     </label>
   )
 

@@ -9,6 +9,7 @@ import type { Showroom, PortalEvent } from '../store/types'
 import { SHOWROOM_META } from '../lib/solarHouseData'
 import { PRESETS, previous, type Range } from '../lib/salesAnalytics'
 import { portalRows, relTime } from '../lib/portalStats'
+import { Dropdown } from '../components/Dropdown'
 
 /* Portal analytics — how customers actually use their portals: logins, what they look at, how long,
  * where they are in their journey, and a per-customer activity timeline. */
@@ -62,9 +63,9 @@ export function PortalAnalytics() {
         <div className="flex items-center gap-1 bg-[#E9EDF2] border border-[#DDE3EA] rounded-control p-[3px]">
           {PRESETS.map((p) => <button key={p.id} onClick={() => setPreset(p.id)} className={classNames('h-[30px] px-2.5 rounded-[7px] text-[12px] font-semibold', preset === p.id ? 'bg-white text-accent font-bold shadow-[0_1px_3px_rgba(11,18,32,0.14)]' : 'text-ink-3 hover:text-ink-3')}>{p.label}</button>)}
         </div>
-        <select value={showroom} onChange={(e) => setShowroom(e.target.value as Showroom | 'all')} className="h-9 px-3 rounded-control border border-border text-[13px] text-ink-3 outline-none focus:border-accent">
+        <Dropdown value={showroom} onChange={(e) => setShowroom(e.target.value as Showroom | 'all')} className="h-9 px-3 rounded-control border border-border text-[13px] text-ink-3 outline-none focus:border-accent">
           <option value="all">All showrooms</option>{SHOWROOMS.map((s) => <option key={s} value={s}>{SHOWROOM_META[s].name}</option>)}
-        </select>
+        </Dropdown>
       </div>
       <main className="flex-1 overflow-y-auto p-7 flex flex-col gap-5">
         <div className="grid grid-cols-3 2xl:grid-cols-6 gap-3">

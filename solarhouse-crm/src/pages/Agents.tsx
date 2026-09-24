@@ -8,6 +8,7 @@ import { Modal, Field, Input, Textarea, Select } from '../components/overlays'
 import { useState_, useActions } from '../store/store'
 import type { AgentRun } from '../store/types'
 import { classNames } from '../lib/format'
+import { Dropdown } from '../components/Dropdown'
 
 const kindIcon: Record<AgentRun['kind'], (p: { size?: number; className?: string }) => JSX.Element> = { draft: Envelope, task: Task, risk: Bolt, enrich: Building, triage: Sparkle, summary: Note }
 const kindLabel: Record<AgentRun['kind'], string> = { draft: 'Draft', task: 'Task', risk: 'Risk', enrich: 'Enrich', triage: 'Triage', summary: 'Summary' }
@@ -74,10 +75,10 @@ export function Agents() {
               <div className="text-[15px] font-semibold text-ink mr-1">Activity log</div>
               <Segmented options={['Today', '7 days', 'All']} value={time} onChange={setTime} />
               <Segmented options={['All', 'Needs approval', 'Applied', 'Dismissed']} value={statusF} onChange={setStatusF} />
-              <select value={agentF} onChange={(e) => setAgentF(e.target.value)} className="h-8 px-2.5 rounded-control border border-input-border bg-white text-[12.5px] text-ink-2 outline-none focus:border-accent">
+              <Dropdown value={agentF} onChange={(e) => setAgentF(e.target.value)} className="h-8 px-2.5 rounded-control border border-input-border bg-white text-[12.5px] text-ink-2 outline-none focus:border-accent">
                 <option>All agents</option>
                 {agents.map((a) => (<option key={a.id}>{a.name}</option>))}
-              </select>
+              </Dropdown>
               <span className="text-[12px] text-muted-2 ml-auto">{log.length} task{log.length === 1 ? '' : 's'}</span>
             </div>
 

@@ -19,6 +19,7 @@ import { Design3D } from '../components/Design3D'
 import { DesignCopilot } from '../components/DesignCopilot'
 import { EnergyPanel } from '../components/EnergyPanel'
 import type { Design, DesignObstacle, DesignObstacleKind, DesignPanel, DesignPlane, PanelOrientation, RackingType } from '../store/types'
+import { Dropdown } from '../components/Dropdown'
 
 type LatLng = { lat: number; lng: number }
 const uid = (p: string) => `${p}${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`
@@ -1135,9 +1136,9 @@ function DesignInspector({ design, selId, onSelect, onUpdate, onFill, onClear, o
         </div>
         <label className="flex items-center gap-2 mt-3 text-[12px] text-muted-b">
           <Grid size={13} />Module
-          <select value={moduleId} onChange={(e) => setModuleId(e.target.value)} className="flex-1 h-8 px-2 rounded-control border border-input-border bg-white text-[12.5px] outline-none focus:border-accent">
+          <Dropdown value={moduleId} onChange={(e) => setModuleId(e.target.value)} className="flex-1 h-8 px-2 rounded-control border border-input-border bg-white text-[12.5px] outline-none focus:border-accent">
             {MODULES.map((m) => <option key={m.id} value={m.id}>{m.watts} W · {m.brand}</option>)}
-          </select>
+          </Dropdown>
         </label>
       </div>
       {design.planes.length > 0 && (
@@ -1237,9 +1238,9 @@ function ArrayInspector({ design, sel, moduleId, setModuleId, onSelect, onUpdate
 
             {/* Module */}
             <Field label="Module">
-              <select value={sel.moduleId ?? moduleId} onChange={(e) => onUpdate(sel.id, { moduleId: e.target.value }, true)} className="w-full h-9 px-2 rounded-control border border-input-border bg-white text-[12.5px] outline-none focus:border-accent">
+              <Dropdown value={sel.moduleId ?? moduleId} onChange={(e) => onUpdate(sel.id, { moduleId: e.target.value }, true)} className="w-full h-9 px-2 rounded-control border border-input-border bg-white text-[12.5px] outline-none focus:border-accent">
                 {MODULES.map((m) => <option key={m.id} value={m.id}>{m.brand} {m.name} · {m.watts} W</option>)}
-              </select>
+              </Dropdown>
               <div className="text-[11px] text-muted-2 mt-1">{mod.cell} · {mod.effPct}% · {mod.w}×{mod.h} m · £{mod.priceGbp}/panel · {mod.warrantyYr} yr</div>
             </Field>
 

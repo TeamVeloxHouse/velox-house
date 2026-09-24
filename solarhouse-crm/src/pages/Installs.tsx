@@ -8,6 +8,7 @@ import { money, classNames } from '../lib/format'
 import type { Deal, Showroom } from '../store/types'
 import { SHOWROOM_META } from '../lib/solarHouseData'
 import { INSTALL_STAGES, INSTALL_STAGE_HELP, installStage, signedAt, installAt, daysSince, outstanding, type InstallStage } from '../lib/installs'
+import { Dropdown } from '../components/Dropdown'
 
 /* Installs — every signed customer from contract to handover, in one pipeline. This replaces the
  * old Delivery / Installs / Field jobs / Jobs / Projects pages: a signed deal IS the install job,
@@ -120,9 +121,9 @@ function InstallTable({ list, onOpen, hasIssue }: { list: Deal[]; onOpen: (d: De
   return (
     <main className="flex-1 min-h-0 overflow-y-auto p-5">
       <div className="flex items-center gap-2 mb-3 text-[12.5px] text-muted-b">Sort
-        <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)} className="h-8 px-2 rounded-control border border-border bg-surface text-[12.5px] text-ink-3 outline-none">
+        <Dropdown value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)} className="h-8 px-2 rounded-control border border-border bg-surface text-[12.5px] text-ink-3 outline-none">
           <option value="install">Install date</option><option value="signed">Newest signed</option><option value="value">Value</option><option value="owed">Most to collect</option>
-        </select>
+        </Dropdown>
       </div>
       <div className="rounded-card bg-surface border border-border shadow-card overflow-hidden">
         <div className="grid gap-3 px-4 h-10 items-center border-b border-divider bg-[#FAFBFC] text-[10.5px] font-semibold uppercase tracking-[0.07em] text-muted-3" style={{ gridTemplateColumns: T }}>

@@ -9,6 +9,7 @@ import { useState_, useActions } from '../store/store'
 import { triageEmail, draftReply } from '../lib/inbox'
 import type { EmailMsg } from '../store/types'
 import { classNames } from '../lib/format'
+import { Dropdown } from '../components/Dropdown'
 
 const folders = [
   { label: 'Inbox', icon: Envelope, key: 'inbox' },
@@ -97,11 +98,11 @@ export function Inbox() {
           <label className="flex items-center gap-1.5 text-[12.5px] text-muted-b">
             <Robot size={15} className={inboxAutoReply === 'off' ? 'text-muted-3' : 'text-accent'} />
             <span className="hidden md:inline">Ovi auto-reply</span>
-            <select value={inboxAutoReply} onChange={(e) => act.setAutoReply(e.target.value as 'off' | 'draft' | 'send')} className="h-8 px-2 rounded-control border border-input-border bg-white text-[12.5px] font-medium text-ink-2 outline-none focus:border-accent">
+            <Dropdown value={inboxAutoReply} onChange={(e) => act.setAutoReply(e.target.value as 'off' | 'draft' | 'send')} className="h-8 px-2 rounded-control border border-input-border bg-white text-[12.5px] font-medium text-ink-2 outline-none focus:border-accent">
               <option value="off">Off</option>
               <option value="draft">Draft for me</option>
               <option value="send">Auto-send</option>
-            </select>
+            </Dropdown>
           </label>
           <Button icon={<File size={16} />} onClick={() => act.toast('Templates — 6 available', 'accent')}>Templates</Button>
           <Button variant="primary" icon={<Plus size={16} />} onClick={() => setComposeOpen(true)}>Compose</Button>

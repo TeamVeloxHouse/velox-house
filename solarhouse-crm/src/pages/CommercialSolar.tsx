@@ -12,6 +12,7 @@ import { interpretBrief, geocodeLocation, prospectToSolar, revealContactsFor, SE
 import type { SolarProspect, SolarProspectStatus } from '../store/types'
 import { SOLAR_STATUSES } from '../store/types'
 import { RoofOverlay } from '../components/RoofOverlay'
+import { Dropdown } from '../components/Dropdown'
 
 const TOOL = 'commercial-solar'
 
@@ -296,10 +297,10 @@ function RoofsTab({ prospects, running, progress, campaigns, campaignId, setCamp
           <div className="text-[15px] font-bold text-ink">{prospects.length} roofs</div>
           {running && <span className="text-[12.5px] text-accent flex items-center gap-1.5"><span className="w-3.5 h-3.5 rounded-full border-2 border-accent border-t-transparent animate-spin" />{progress?.message}</span>}
         </div>
-        <select value={campaignId ?? 'all'} onChange={(e) => setCampaignId(e.target.value === 'all' ? null : e.target.value)} className="h-9 px-3 rounded-control border border-input-border bg-white text-[13px] outline-none focus:border-accent">
+        <Dropdown value={campaignId ?? 'all'} onChange={(e) => setCampaignId(e.target.value === 'all' ? null : e.target.value)} className="h-9 px-3 rounded-control border border-input-border bg-white text-[13px] outline-none focus:border-accent">
           <option value="all">All scans</option>
           {campaigns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
+        </Dropdown>
       </div>
       {prospects.length > 0 && (
         <div className="grid grid-cols-4 gap-3">
@@ -364,9 +365,9 @@ export function BigRoofCard({ p, onOpen }: { p: SolarProspect; onOpen: () => voi
           {p.contactsRevealed && p.contacts[0]
             ? <span className="text-[12px] text-ink-2 flex items-center gap-1.5 truncate"><Person size={13} className="text-muted-2" /><b className="font-semibold truncate">{p.contacts[0].name}</b><span className="text-muted-2 truncate">· {p.contacts[0].title}</span></span>
             : <span className="text-[12px] text-muted-2 flex items-center gap-1.5"><Person size={13} />Contacts hidden</span>}
-          <select value={p.status} onClick={(e) => e.stopPropagation()} onChange={(e) => act.setSolarProspectStatus(p.id, e.target.value as SolarProspectStatus)} className="h-7 px-2 rounded-control border border-input-border bg-white text-[11.5px] outline-none focus:border-accent">
+          <Dropdown value={p.status} onClick={(e) => e.stopPropagation()} onChange={(e) => act.setSolarProspectStatus(p.id, e.target.value as SolarProspectStatus)} className="h-7 px-2 rounded-control border border-input-border bg-white text-[11.5px] outline-none focus:border-accent">
             {SOLAR_STATUSES.map((s) => <option key={s} value={s}>{STATUS_META[s].label}</option>)}
-          </select>
+          </Dropdown>
         </div>
       </div>
     </div>
@@ -432,8 +433,8 @@ function PeoplePanel({ p, jobTitles }: { p: SolarProspect; jobTitles?: string[] 
       <div className="px-3.5 py-2.5 border-b border-divider flex items-center gap-2 flex-wrap bg-control/40">
         <div className="text-[13px] font-bold text-ink">People <span className="text-muted-2 font-normal">({people.length})</span></div>
         <div className="relative flex-1 min-w-[160px]"><Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-2" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name or title…" className="h-8 w-full pl-8 pr-2 rounded-control border border-input-border bg-white text-[12.5px] outline-none focus:border-accent" /></div>
-        <select value={sen} onChange={(e) => setSen(e.target.value)} className="h-8 px-2 rounded-control border border-input-border bg-white text-[12px] outline-none focus:border-accent">{seniorities.map((s) => <option key={s} value={s}>{s === 'all' ? 'All seniority' : s}</option>)}</select>
-        <select value={dept} onChange={(e) => setDept(e.target.value)} className="h-8 px-2 rounded-control border border-input-border bg-white text-[12px] outline-none focus:border-accent">{depts.map((d) => <option key={d} value={d}>{d === 'all' ? 'All departments' : d}</option>)}</select>
+        <Dropdown value={sen} onChange={(e) => setSen(e.target.value)} className="h-8 px-2 rounded-control border border-input-border bg-white text-[12px] outline-none focus:border-accent">{seniorities.map((s) => <option key={s} value={s}>{s === 'all' ? 'All seniority' : s}</option>)}</Dropdown>
+        <Dropdown value={dept} onChange={(e) => setDept(e.target.value)} className="h-8 px-2 rounded-control border border-input-border bg-white text-[12px] outline-none focus:border-accent">{depts.map((d) => <option key={d} value={d}>{d === 'all' ? 'All departments' : d}</option>)}</Dropdown>
         <button onClick={addToList} disabled={!sel.size} className="h-8 px-3 rounded-control text-white text-[12.5px] font-semibold disabled:opacity-40 flex items-center gap-1.5" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Check size={13} />Add {sel.size || ''} to list</button>
       </div>
       <div className="max-h-[280px] overflow-y-auto">
@@ -549,9 +550,9 @@ export function ProspectDetail({ p, onClose, jobTitles }: { p: SolarProspect; on
         </div>
         <div className="border-t border-divider p-3.5 flex items-center justify-between gap-3 shrink-0">
           <label className="flex items-center gap-2 text-[12.5px] text-muted-b">Status
-            <select value={p.status} onChange={(e) => act.setSolarProspectStatus(p.id, e.target.value as SolarProspectStatus)} className="h-8 px-2 rounded-control border border-input-border bg-white text-[12.5px] outline-none focus:border-accent">
+            <Dropdown value={p.status} onChange={(e) => act.setSolarProspectStatus(p.id, e.target.value as SolarProspectStatus)} className="h-8 px-2 rounded-control border border-input-border bg-white text-[12.5px] outline-none focus:border-accent">
               {SOLAR_STATUSES.map((s) => <option key={s} value={s}>{STATUS_META[s].label}</option>)}
-            </select>
+            </Dropdown>
           </label>
           <div className="flex items-center gap-2">
             <Button variant="secondary" onClick={onClose}>Close</Button>
@@ -592,7 +593,7 @@ export function PipelineBoard({ prospects, onOpen }: { prospects: SolarProspect[
               <div className="text-right font-semibold text-ink-2">{Math.round(p.systemKwp)}</div>
               <div className="text-right text-positive font-semibold">{money(p.year1Saving, { compact: true })}</div>
               <div className="text-right text-ink-2">{p.paybackYears}y</div>
-              <select value={p.status} onClick={(e) => e.stopPropagation()} onChange={(e) => act.setSolarProspectStatus(p.id, e.target.value as SolarProspectStatus)} className="h-8 px-2 rounded-control border border-input-border bg-white text-[12px] outline-none focus:border-accent">{SOLAR_STATUSES.map((s) => <option key={s} value={s}>{STATUS_META[s].label}</option>)}</select>
+              <Dropdown value={p.status} onClick={(e) => e.stopPropagation()} onChange={(e) => act.setSolarProspectStatus(p.id, e.target.value as SolarProspectStatus)} className="h-8 px-2 rounded-control border border-input-border bg-white text-[12px] outline-none focus:border-accent">{SOLAR_STATUSES.map((s) => <option key={s} value={s}>{STATUS_META[s].label}</option>)}</Dropdown>
             </div>
           ))}
         </div>
@@ -641,8 +642,8 @@ export function ProspectDatabase({ prospects, onOpen, showTool }: { prospects: S
     <div className="flex flex-col gap-3 flex-1 min-h-0">
       <div className="flex items-center gap-2 flex-wrap">
         <div className="relative flex-1 min-w-[220px]"><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-2" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search company, address, domain…" className="h-9 w-full pl-9 pr-3 rounded-control border border-input-border bg-white text-[13px] outline-none focus:border-accent" /></div>
-        <select value={status} onChange={(e) => setStatus(e.target.value as any)} className="h-9 px-3 rounded-control border border-input-border bg-white text-[13px] outline-none focus:border-accent"><option value="all">Any status</option>{SOLAR_STATUSES.map((s) => <option key={s} value={s}>{STATUS_META[s].label}</option>)}</select>
-        <select value={sort} onChange={(e) => setSort(e.target.value as any)} className="h-9 px-3 rounded-control border border-input-border bg-white text-[13px] outline-none focus:border-accent"><option value="score">Sort: Score</option><option value="kwp">Sort: kWp</option><option value="payback">Sort: Payback</option><option value="saving">Sort: Saving</option></select>
+        <Dropdown value={status} onChange={(e) => setStatus(e.target.value as any)} className="h-9 px-3 rounded-control border border-input-border bg-white text-[13px] outline-none focus:border-accent"><option value="all">Any status</option>{SOLAR_STATUSES.map((s) => <option key={s} value={s}>{STATUS_META[s].label}</option>)}</Dropdown>
+        <Dropdown value={sort} onChange={(e) => setSort(e.target.value as any)} className="h-9 px-3 rounded-control border border-input-border bg-white text-[13px] outline-none focus:border-accent"><option value="score">Sort: Score</option><option value="kwp">Sort: kWp</option><option value="payback">Sort: Payback</option><option value="saving">Sort: Saving</option></Dropdown>
       </div>
       <div className="flex items-center gap-4 flex-wrap text-[12px] text-muted-b">
         <label className="flex items-center gap-2">Min kWp <input type="range" min={0} max={500} step={10} value={minKwp} onChange={(e) => setMinKwp(+e.target.value)} className="accent-accent" /><b className="text-ink-2 w-8">{minKwp}</b></label>

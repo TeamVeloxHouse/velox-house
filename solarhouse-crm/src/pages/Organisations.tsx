@@ -8,6 +8,7 @@ import { Modal, Field, Input, Select } from '../components/overlays'
 import { type Org } from '../data/mock'
 import { useState_, useActions } from '../store/store'
 import { money } from '../lib/format'
+import { Dropdown } from '../components/Dropdown'
 
 function exportCsv(orgs: Org[]) {
   const head = ['Name', 'Industry', 'People', 'Open value', 'Won lifetime', 'Owner', 'Relationship']
@@ -78,8 +79,8 @@ export function Organisations() {
             <Search size={15} className="text-muted-3" />
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search organisations" className="bg-transparent outline-none flex-1 text-[13px] text-ink-2 placeholder:text-muted-3" />
           </div>
-          <select value={fIndustry} onChange={(e) => setFIndustry(e.target.value)} className="h-9 px-2.5 rounded-control border border-input-border bg-white text-[13px] text-ink-2 outline-none focus:border-accent"><option>All</option>{industries.map((i) => <option key={i}>{i}</option>)}</select>
-          <select value={fRel} onChange={(e) => setFRel(e.target.value)} className="h-9 px-2.5 rounded-control border border-input-border bg-white text-[13px] text-ink-2 outline-none focus:border-accent"><option>All</option><option>New</option><option>Expanding</option><option>Stable</option><option>At risk</option><option>Renewal due</option></select>
+          <Dropdown value={fIndustry} onChange={(e) => setFIndustry(e.target.value)} className="h-9 px-2.5 rounded-control border border-input-border bg-white text-[13px] text-ink-2 outline-none focus:border-accent"><option>All</option>{industries.map((i) => <option key={i}>{i}</option>)}</Dropdown>
+          <Dropdown value={fRel} onChange={(e) => setFRel(e.target.value)} className="h-9 px-2.5 rounded-control border border-input-border bg-white text-[13px] text-ink-2 outline-none focus:border-accent"><option>All</option><option>New</option><option>Expanding</option><option>Stable</option><option>At risk</option><option>Renewal due</option></Dropdown>
           {(q || fIndustry !== 'All' || fRel !== 'All') && <button onClick={() => { setQ(''); setFIndustry('All'); setFRel('All') }} className="text-[12.5px] text-accent font-medium">Clear</button>}
           <span className="ml-auto text-[12.5px] text-muted-2">{filtered.length} of {orgs.length}</span>
         </div>

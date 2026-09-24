@@ -14,6 +14,7 @@ import type { SolarProspect, SolarProspectStatus } from '../store/types'
 import { SOLAR_STATUSES } from '../store/types'
 import { RoofOverlay } from '../components/RoofOverlay'
 import { CompanyLogo, STATUS_META, scoreTone, ProspectDetail, ProspectDatabase, PipelineBoard, measureRoofInto } from './CommercialSolar'
+import { Dropdown } from '../components/Dropdown'
 
 const TOOL = 'company-search'
 
@@ -318,15 +319,15 @@ function CompaniesTab({ prospects, running, progress, campaigns, campaignId, set
           <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-3" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter companies…" className="h-9 w-[220px] pl-8 pr-3 rounded-control border border-border bg-surface text-[13px] outline-none focus:border-accent" />
         </div>
-        <select value={campaignId ?? 'all'} onChange={(e) => setCampaignId(e.target.value === 'all' ? null : e.target.value)} className="h-9 px-3 rounded-control border border-border bg-surface text-[13px] outline-none focus:border-accent max-w-[220px]">
+        <Dropdown value={campaignId ?? 'all'} onChange={(e) => setCampaignId(e.target.value === 'all' ? null : e.target.value)} className="h-9 px-3 rounded-control border border-border bg-surface text-[13px] outline-none focus:border-accent max-w-[220px]">
           <option value="all">All searches</option>
           {campaigns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
-        <select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} className="h-9 px-3 rounded-control border border-border bg-surface text-[13px] outline-none focus:border-accent">
+        </Dropdown>
+        <Dropdown value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} className="h-9 px-3 rounded-control border border-border bg-surface text-[13px] outline-none focus:border-accent">
           <option value="score">Sort: Best fit</option>
           <option value="saving">Sort: Biggest saving</option>
           <option value="name">Sort: A–Z</option>
-        </select>
+        </Dropdown>
       </div>
 
       {/* results */}
@@ -461,9 +462,9 @@ function CompanyRow({ p, onOpen, jobTitles }: { p: SolarProspect; onOpen: () => 
       {/* stage */}
       <div onClick={(e) => e.stopPropagation()} className="relative">
         <span className="absolute left-2.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full pointer-events-none" style={{ background: meta.tone }} />
-        <select value={p.status} onChange={(e) => act.setSolarProspectStatus(p.id, e.target.value as SolarProspectStatus)} className="h-8 w-full pl-6 pr-2 rounded-full border border-border bg-surface text-[12px] font-semibold text-ink-3 outline-none focus:border-accent hover:border-input-border cursor-pointer">
+        <Dropdown value={p.status} onChange={(e) => act.setSolarProspectStatus(p.id, e.target.value as SolarProspectStatus)} className="h-8 w-full pl-6 pr-2 rounded-full border border-border bg-surface text-[12px] font-semibold text-ink-3 outline-none focus:border-accent hover:border-input-border cursor-pointer">
           {SOLAR_STATUSES.map((s) => <option key={s} value={s}>{STATUS_META[s].label}</option>)}
-        </select>
+        </Dropdown>
       </div>
 
       <ChevronRight size={16} className="text-muted-3 group-hover:text-accent transition-colors" />

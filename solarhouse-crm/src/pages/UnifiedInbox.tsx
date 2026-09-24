@@ -5,6 +5,7 @@ import { Envelope, Phone, Sparkle, Search, Star, Clock, Check, ChevronDown, Chev
 import { useActions, useState_ } from '../store/store'
 import { classNames, money } from '../lib/format'
 import type { CommsChannel, CommsMessage, CommsStage, Conversation } from '../store/types'
+import { Dropdown } from '../components/Dropdown'
 
 /* The Solar House unified inbox — every customer conversation across email, WhatsApp, SMS, calls,
  * web forms, social and the customer portal, in ONE thread per homeowner. Replies are logged here;
@@ -308,9 +309,9 @@ function Thread({ c, rightOpen, toggleRight }: { c: Conversation; rightOpen: boo
           {wa && <a href={wa} target="_blank" rel="noreferrer" className="h-8 px-3 rounded-control border border-border bg-surface text-[12.5px] font-semibold text-[#1DA851] hover:bg-[#E6F7EC] flex items-center gap-1.5"><WhatsAppIcon size={14} /><span className="hidden xl:inline">WhatsApp</span></a>}
           {c.phone && <a href={`tel:${c.phone.replace(/\s/g, '')}`} className="w-8 h-8 rounded-control border border-border bg-surface text-ink-3 hover:bg-control flex items-center justify-center" title={`Call ${c.phone}`}><Phone size={14} /></a>}
           <div className="w-px h-6 bg-divider mx-1" />
-          <select value={c.assignee ?? ''} onChange={(e) => act.updateConversation(c.id, { assignee: e.target.value || undefined })} className="h-8 px-2 rounded-control border border-border bg-surface text-[12.5px] text-ink-3 outline-none focus:border-accent" title="Assign">
+          <Dropdown value={c.assignee ?? ''} onChange={(e) => act.updateConversation(c.id, { assignee: e.target.value || undefined })} className="h-8 px-2 rounded-control border border-border bg-surface text-[12.5px] text-ink-3 outline-none focus:border-accent" title="Assign">
             <option value="">Unassigned</option>{TEAM.map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
+          </Dropdown>
           <IconBtn title={c.status === 'snoozed' ? 'Unsnooze' : 'Snooze until tomorrow'} on={c.status === 'snoozed'} onClick={() => act.updateConversation(c.id, { status: c.status === 'snoozed' ? 'open' : 'snoozed' })}><Clock size={15} /></IconBtn>
           <button onClick={() => act.updateConversation(c.id, { status: c.status === 'done' ? 'open' : 'done' })} className={classNames('h-8 px-3 rounded-control text-[12.5px] font-semibold flex items-center gap-1.5', c.status === 'done' ? 'bg-control text-ink-3' : 'bg-accent-gradient text-white shadow-primary')}><Check size={14} />{c.status === 'done' ? 'Reopen' : 'Done'}</button>
           <IconBtn title={rightOpen ? 'Hide customer panel' : 'Show customer panel'} on={rightOpen} onClick={toggleRight}><Person size={15} /></IconBtn>

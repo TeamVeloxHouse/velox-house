@@ -12,6 +12,7 @@ import type { Activity, ID } from '../store/types'
 import { isTask, bucketOf, isYesterday, effectiveDueDate, BUCKET_META, fmtMins, type Bucket } from '../lib/tasks'
 import { classNames } from '../lib/format'
 import { CalendarView } from './Calendar'
+import { Dropdown } from '../components/Dropdown'
 
 const typeIcon: Record<string, any> = { call: Phone, meeting: Meeting, task: TaskIcon, email: Envelope }
 const typeColor: Record<string, string> = { call: '#13927B', meeting: '#0E7C66', task: '#C2410C', email: '#13927B' }
@@ -143,11 +144,11 @@ export function MyTasks() {
         </div>
         <label className="flex items-center gap-2 text-[12.5px] text-ink-3">
           <span className="text-muted-2">Whose</span>
-          <select value={scope} onChange={(e) => setScope(e.target.value)} className="h-9 px-2.5 rounded-control border border-input-border bg-white text-[13px] outline-none focus:border-accent">
+          <Dropdown value={scope} onChange={(e) => setScope(e.target.value)} className="h-9 px-2.5 rounded-control border border-input-border bg-white text-[13px] outline-none focus:border-accent">
             <option value={YOU_MEMBER_ID}>My tasks</option>
             <option value="all">Everyone</option>
             {[...new Set(activities.map((a) => a.who))].filter((n) => n && n !== 'System' && n !== scopeMemberYou && !n.includes('team')).sort().map((n) => (<option key={n} value={`name:${n}`}>{n}</option>))}
-          </select>
+          </Dropdown>
         </label>
         <div className="ml-auto flex items-center gap-2 text-[12.5px]">
           <Chip tone="accent" dot>{openToday.length} due today</Chip>

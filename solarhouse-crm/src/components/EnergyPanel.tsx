@@ -1,5 +1,6 @@
 import { selfConsumptionRate } from '../lib/solar'
 import type { Design } from '../store/types'
+import { Dropdown } from './Dropdown'
 
 /* Energy analysis for the design sidebar — consumption offset, self-consumption, a monthly
  * generation-vs-usage chart, a typical-day curve, and estimated bill savings. Deterministic model
@@ -65,9 +66,9 @@ export function EnergyPanel({ design, annualKwh, onUpdate }: { design: Design; a
         </label>
         <label className="flex items-center gap-2 text-[11.5px] text-muted-b">
           <span className="w-[86px] shrink-0">Occupancy</span>
-          <select value={occupancy} onChange={(e) => onUpdate({ occupancy: e.target.value as Design['occupancy'] })} className="flex-1 h-8 px-2 rounded-control border border-input-border bg-white text-[12.5px] outline-none focus:border-accent">
+          <Dropdown value={occupancy} onChange={(e) => onUpdate({ occupancy: e.target.value as Design['occupancy'] })} className="flex-1 h-8 px-2 rounded-control border border-input-border bg-white text-[12.5px] outline-none focus:border-accent">
             {OCC.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-          </select>
+          </Dropdown>
         </label>
         <label className="flex items-center gap-2 text-[11.5px] text-muted-b">
           <span className="w-[86px] shrink-0">Battery</span>

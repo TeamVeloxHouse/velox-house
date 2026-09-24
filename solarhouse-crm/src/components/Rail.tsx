@@ -6,6 +6,7 @@ import { useState_, useActions } from '../store/store'
 import { STAGES, stageForPath, BRAND_GRAD, type Stage, type NavGroup } from './nav-config'
 import { ROLES, roleByKey } from '../lib/roles'
 import type { UserRole } from '../store/types'
+import { Dropdown } from './Dropdown'
 
 // Apollo-style sidebar: every area is an expandable section holding its pages, so
 // the whole app is reachable from one place and the page header stays clean.
@@ -117,10 +118,10 @@ export function Rail() {
             <div className="min-w-0 flex-1">
               <div className="text-[13px] font-semibold text-white truncate">Jordan Miles</div>
               {/* Admin preview: see the app exactly as each role would */}
-              <select value={currentRole} onChange={(e) => setRole(e.target.value as UserRole, true)} title="View the app as another role"
+              <Dropdown value={currentRole} onChange={(e) => setRole(e.target.value as UserRole, true)} title="View the app as another role"
                 className="w-full -ml-0.5 bg-transparent text-[11px] text-rail-idle hover:text-white outline-none cursor-pointer">
                 {ROLES.map((r) => <option key={r.key} value={r.key} className="text-ink">{r.key === 'owner' ? `${r.label} (admin)` : `View as ${r.label}`}</option>)}
-              </select>
+              </Dropdown>
             </div>
           )}
         </div>

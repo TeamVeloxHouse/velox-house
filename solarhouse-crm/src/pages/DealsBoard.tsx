@@ -9,6 +9,7 @@ import type { Deal, Showroom } from '../store/types'
 import { money, classNames } from '../lib/format'
 import { SH_STAGES, SHOWROOM_META, JOURNEY } from '../lib/solarHouseData'
 import { stageAge, dueLabel, currentStep, enquiredAt, advancePatch, labelOf, STAGE_GUIDE } from '../lib/journey'
+import { Dropdown } from '../components/Dropdown'
 
 /* Solar House deals — built for ~100 enquiries a month across four showrooms.
  * Board for the overview, Table for sorting/bulk work, Work queue for clearing a busy stage. */
@@ -97,28 +98,28 @@ export function DealsBoard() {
           <div className="ml-auto flex items-center min-w-0 overflow-x-auto no-scrollbar divide-x divide-[#DDE3EA] text-[12px] text-muted-b">
             <Stat v={String(enquiriesMonth)} l="enquiries this month" />
             <Stat v={String(signedMonth.length)} l={`signed · ${money(signedMonth.reduce((s, d) => s + d.value, 0), { compact: true })}`} />
-            <Stat v={String(installsMonth)} l="installed" />
+            <Stat hide v={String(installsMonth)} l="installed" />
             <Stat v={`${conv}%`} l="win rate" />
-            <Stat v={`${avgDaysToSign}d`} l="enquiry → signed" />
+            <Stat hide v={`${avgDaysToSign}d`} l="enquiry → signed" />
           </div>
         </div>
-        <div className="flex items-center gap-4 min-w-0">
-          <div className="flex-1 min-w-0 h-10 flex items-center rounded-[12px] bg-white border border-[#E1E6EC] shadow-[0_1px_2px_rgba(16,24,40,0.05)] divide-x divide-[#EDF0F4]">
-            <label className="flex-1 min-w-[180px] h-full flex items-center gap-2 px-3.5">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 min-w-0">
+          <div className="flex-1 min-w-fit h-10 flex items-center rounded-[12px] bg-white border border-[#E1E6EC] shadow-[0_1px_2px_rgba(16,24,40,0.05)] divide-x divide-[#EDF0F4]">
+            <label className="flex-1 min-w-[200px] h-full flex items-center gap-2 px-3.5">
               <Search size={15} className="text-muted-3 shrink-0" />
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Name, street, postcode, phone…" className="bg-transparent outline-none flex-1 min-w-0 text-[13px] text-ink-2 placeholder:text-muted-3" />
             </label>
-            <select value={owner} onChange={(e) => setOwner(e.target.value)} className="h-full px-3.5 bg-transparent text-[13px] font-semibold text-ink-3 outline-none cursor-pointer hover:text-ink">
+            <Dropdown value={owner} onChange={(e) => setOwner(e.target.value)} className="h-full px-3.5 bg-transparent text-[13px] font-semibold text-ink-3 outline-none cursor-pointer hover:text-ink">
               <option value="All">All advisers</option>{owners.map((o) => <option key={o}>{o}</option>)}
-            </select>
+            </Dropdown>
             <div className="h-full flex items-center gap-1 px-1.5">
               <FilterToggle on={owner === ME} onClick={() => setOwner((o) => (o === ME ? 'All' : ME))} label="My deals" />
               <FilterToggle on={attention} onClick={() => setAttention((a) => !a)} label="Needs attention" icon={<Clock size={13} />} danger />
             </div>
             {view !== 'table' && (
-              <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="h-full px-3.5 bg-transparent text-[13px] font-semibold text-ink-3 outline-none cursor-pointer hover:text-ink rounded-r-[12px]">
+              <Dropdown value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="h-full px-3.5 bg-transparent text-[13px] font-semibold text-ink-3 outline-none cursor-pointer hover:text-ink rounded-r-[12px]">
                 <option value="oldest">Longest in stage first</option><option value="due">Next action due first</option><option value="value">Highest value first</option><option value="newest">Newest enquiry first</option>
-              </select>
+              </Dropdown>
             )}
           </div>
           <div className="shrink-0 inline-flex items-center gap-0.5 p-1 h-10 rounded-[12px] bg-[#E9EDF2] border border-[#DDE3EA]">
@@ -161,7 +162,7 @@ function FilterToggle({ on, onClick, label, icon, danger }: { on: boolean; onCli
     </button>
   )
 }
-function Stat({ v, l }: { v: string; l: string }) { return <span className="px-3.5 first:pl-0 last:pr-0 whitespace-nowrap"><b className="text-[15px] text-ink font-bold tabular-nums">{v}</b> {l}</span> }
+function Stat({ v, l, hide }: { v: string; l: string; hide?: boolean }) { return <span className={classNames("px-3.5 first:pl-0 last:pr-0 whitespace-nowrap", hide && "hidden 2xl:inline")}><b className="text-[15px] text-ink font-bold tabular-nums">{v}</b> {l}</span> }
 
 /* ─────────── Board ─────────── */
 const COL_CAP = 30
@@ -292,12 +293,12 @@ function TableView({ deals, onOpen }: { deals: Deal[]; onOpen: (d: Deal) => void
       {sel.length > 0 && (
         <div className="sticky top-0 z-10 rounded-card bg-[#15223B] text-white px-4 py-2.5 flex items-center gap-3 text-[13px] shadow-lift">
           <b>{sel.length} selected</b>
-          <select onChange={(e) => { if (!e.target.value) return; sel.forEach((id) => act.moveStage(id, e.target.value)); act.toast(`Moved ${sel.length} to ${e.target.value}`); setSel([]); e.target.value = '' }} className="h-8 px-2 rounded-md bg-white/10 border border-white/20 text-white text-[12.5px] outline-none">
+          <Dropdown onChange={(e) => { if (!e.target.value) return; sel.forEach((id) => act.moveStage(id, e.target.value)); act.toast(`Moved ${sel.length} to ${e.target.value}`); setSel([]); e.target.value = '' }} className="h-8 px-2 rounded-md bg-white/10 border border-white/20 text-white text-[12.5px] outline-none">
             <option value="">Move to stage…</option>{SH_STAGES.map((s) => <option key={s} value={s} className="text-ink">{s}</option>)}
-          </select>
-          <select onChange={(e) => { if (!e.target.value) return; sel.forEach((id) => act.updateDeal(id, { owner: e.target.value })); act.toast(`Assigned ${sel.length} to ${e.target.value}`); setSel([]); e.target.value = '' }} className="h-8 px-2 rounded-md bg-white/10 border border-white/20 text-white text-[12.5px] outline-none">
+          </Dropdown>
+          <Dropdown onChange={(e) => { if (!e.target.value) return; sel.forEach((id) => act.updateDeal(id, { owner: e.target.value })); act.toast(`Assigned ${sel.length} to ${e.target.value}`); setSel([]); e.target.value = '' }} className="h-8 px-2 rounded-md bg-white/10 border border-white/20 text-white text-[12.5px] outline-none">
             <option value="">Assign adviser…</option>{[...new Set(deals.map((d) => d.owner))].map((o) => <option key={o} value={o} className="text-ink">{o}</option>)}
-          </select>
+          </Dropdown>
           <button onClick={() => { sel.forEach((id) => { const d = deals.find((x) => x.id === id); if (d) act.markLost(id, d.name, 'Bulk closed') }); setSel([]) }} className="h-8 px-3 rounded-md bg-white/10 hover:bg-white/20 text-[12.5px] font-semibold">Mark lost</button>
           <button onClick={() => setSel([])} className="ml-auto text-white/70 hover:text-white text-[12.5px]">Clear</button>
         </div>

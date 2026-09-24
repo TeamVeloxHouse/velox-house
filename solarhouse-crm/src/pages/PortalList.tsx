@@ -8,6 +8,7 @@ import { classNames, money } from '../lib/format'
 import type { Showroom } from '../store/types'
 import { SHOWROOM_META } from '../lib/solarHouseData'
 import { portalRows, relTime, type PortalRow } from '../lib/portalStats'
+import { Dropdown } from '../components/Dropdown'
 
 /* Customer portals — built for hundreds of live portals: segment by where the customer is in their
  * journey, filter by showroom, sort by engagement, and page through a dense table. */
@@ -83,9 +84,9 @@ export function PortalList() {
         <main className="flex-1 min-w-0 flex flex-col">
           <div className="shrink-0 px-5 py-3 border-b border-border bg-surface flex items-center gap-3 flex-wrap">
             <div className="h-9 w-[280px] rounded-control border border-border flex items-center gap-2 px-3"><Search size={14} className="text-muted-3" /><input value={q} onChange={(e) => { setQ(e.target.value); setPage(0) }} placeholder="Search customer, address or email…" className="flex-1 outline-none text-[13px]" /></div>
-            <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="h-9 px-3 rounded-control border border-border text-[13px] text-ink-3 outline-none focus:border-accent">
+            <Dropdown value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="h-9 px-3 rounded-control border border-border text-[13px] text-ink-3 outline-none focus:border-accent">
               <option value="recent">Last login first</option><option value="engaged">Most engaged first</option><option value="install">Install date</option><option value="name">Name A–Z</option>
-            </select>
+            </Dropdown>
             <div className="ml-auto flex items-center gap-5 text-[12px] text-muted-b">
               <span><b className="text-[14px] text-ink">{rows.length}</b> portals</span>
               <span><b className="text-[14px] text-ink">{rows.filter((r) => r.p.status === 'active').length}</b> activated</span>

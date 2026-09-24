@@ -7,6 +7,7 @@ import { Search, Radar, Plus, Check, Robot, Envelope, Link as LinkIcon, Sparkle 
 import { useState_, useActions } from '../store/store'
 import { sourceLeads, scoreTone, type SourcingCriteria, type SourcedLead } from '../lib/sourcing'
 import { classNames } from '../lib/format'
+import { Dropdown } from '../components/Dropdown'
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 const SIZES = ['', '1-10', '11-50', '51-200', '201-500', '501-1000']
@@ -83,9 +84,9 @@ export function PeopleFinder() {
             <LabeledInput label="Location" value={c.location ?? ''} onChange={(v) => set({ location: v })} placeholder="Any (UK)" />
             <label className="flex flex-col gap-1">
               <span className="text-[11px] font-semibold text-ink-3 uppercase tracking-wide">Company size</span>
-              <select value={c.companySize ?? ''} onChange={(e) => set({ companySize: e.target.value })} className="h-10 px-2.5 rounded-control border border-input-border bg-white text-[13px] text-ink-2 outline-none focus:border-accent">
+              <Dropdown value={c.companySize ?? ''} onChange={(e) => set({ companySize: e.target.value })} className="h-10 px-2.5 rounded-control border border-input-border bg-white text-[13px] text-ink-2 outline-none focus:border-accent">
                 {SIZES.map((s) => <option key={s} value={s}>{s || 'Any'}</option>)}
-              </select>
+              </Dropdown>
             </label>
             <div className="flex flex-col gap-1 justify-end">
               <span className="text-[11px] font-semibold text-transparent uppercase">Go</span>

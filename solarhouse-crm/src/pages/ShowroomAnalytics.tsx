@@ -8,6 +8,7 @@ import { money, classNames } from '../lib/format'
 import type { Showroom } from '../store/types'
 import { SHOWROOM_META, SHOWROOM_MANAGER } from '../lib/solarHouseData'
 import { analyse, PRESETS, previous, type Range, type Breakdown, type Analysis } from '../lib/salesAnalytics'
+import { Dropdown } from '../components/Dropdown'
 
 /* Showroom analytics — each showroom manager sees only their own showroom; the managing director
  * sees every showroom plus a side-by-side comparison. Everything responds to the date range. */
@@ -41,10 +42,10 @@ export function ShowroomAnalytics() {
       {/* filters — one row above everything */}
       <div className="sh-toolbar shrink-0 px-7 py-3 flex items-center gap-3 flex-wrap">
         <label className="flex items-center gap-2 text-[12.5px] text-muted-b">Viewing as
-          <select value={viewer} onChange={(e) => setViewer(e.target.value as Viewer)} className="h-9 px-3 rounded-control border border-border bg-surface text-[13px] font-semibold text-ink-2 outline-none focus:border-accent">
+          <Dropdown value={viewer} onChange={(e) => setViewer(e.target.value as Viewer)} className="h-9 px-3 rounded-control border border-border bg-surface text-[13px] font-semibold text-ink-2 outline-none focus:border-accent">
             <option value="md">Managing director (all showrooms)</option>
             {SHOWROOMS.map((s) => <option key={s} value={s}>{SHOWROOM_MANAGER[s]} · {SHOWROOM_META[s].name} manager</option>)}
-          </select>
+          </Dropdown>
         </label>
         {viewer !== 'md' && <span className="h-8 px-2.5 rounded-full bg-control text-[12px] font-semibold text-ink-3 flex items-center gap-1.5"><Lock size={12} />Only {SHOWROOM_META[viewer].name} data is visible</span>}
         <div className="ml-auto flex items-center gap-1 bg-[#E9EDF2] border border-[#DDE3EA] rounded-control p-[3px]">

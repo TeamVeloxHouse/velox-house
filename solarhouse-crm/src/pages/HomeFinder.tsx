@@ -9,6 +9,7 @@ import { useActions, useState_ } from '../store/store'
 import { money, classNames } from '../lib/format'
 import { SOLAR_STATUSES, type SolarProspect, type SolarProspectStatus } from '../store/types'
 import { STATUS_META, scoreTone } from './CommercialSolar'
+import { Dropdown } from '../components/Dropdown'
 import {
   DEFAULT_CRITERIA, SHOWROOMS, PROPERTY_LABEL, runHomeFinder, homeToProspect, parseBrief, newCampaignId,
   type HomeCriteria, type PropertyType, type Aspect, type Progress, type Stage,
@@ -441,13 +442,13 @@ function Results({ homes, all, campaigns, campaignId, setCampaignId, running, pr
             </button>
           ))}
         </div>
-        <select value={campaignId ?? 'all'} onChange={(e) => setCampaignId(e.target.value === 'all' ? null : e.target.value)} className="ml-auto h-9 px-3 rounded-control border border-border bg-surface text-[13px] outline-none focus:border-accent max-w-[240px]">
+        <Dropdown value={campaignId ?? 'all'} onChange={(e) => setCampaignId(e.target.value === 'all' ? null : e.target.value)} className="ml-auto h-9 px-3 rounded-control border border-border bg-surface text-[13px] outline-none focus:border-accent max-w-[240px]">
           <option value="all">All searches</option>
           {campaigns.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
-        </select>
-        <select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} className="h-9 px-3 rounded-control border border-border bg-surface text-[13px] outline-none focus:border-accent">
+        </Dropdown>
+        <Dropdown value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} className="h-9 px-3 rounded-control border border-border bg-surface text-[13px] outline-none focus:border-accent">
           <option value="score">Sort: Best fit</option><option value="saving">Sort: Biggest saving</option><option value="payback">Sort: Fastest payback</option><option value="kwp">Sort: Largest system</option>
-        </select>
+        </Dropdown>
       </div>
 
       <div className="rounded-card bg-surface border border-border shadow-card overflow-hidden">
@@ -499,9 +500,9 @@ function HomeRow({ h }: { h: SolarProspect }) {
         <Ring score={h.score} />
         <div onClick={(e) => e.stopPropagation()} className="relative">
           <span className="absolute left-2.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full pointer-events-none" style={{ background: meta.tone }} />
-          <select value={h.status} onChange={(e) => act.setSolarProspectStatus(h.id, e.target.value as SolarProspectStatus)} className="h-8 w-full pl-6 pr-2 rounded-full border border-border bg-surface text-[12px] font-semibold text-ink-3 outline-none focus:border-accent cursor-pointer">
+          <Dropdown value={h.status} onChange={(e) => act.setSolarProspectStatus(h.id, e.target.value as SolarProspectStatus)} className="h-8 w-full pl-6 pr-2 rounded-full border border-border bg-surface text-[12px] font-semibold text-ink-3 outline-none focus:border-accent cursor-pointer">
             {SOLAR_STATUSES.map((s) => <option key={s} value={s}>{STATUS_META[s].label}</option>)}
-          </select>
+          </Dropdown>
         </div>
         <button onClick={addLead} className="h-8 px-2.5 rounded-control border border-border text-[12px] font-semibold text-ink-3 hover:border-accent hover:text-accent hover:bg-accent-wash flex items-center gap-1.5 justify-center"><Person size={13} />Add lead</button>
       </div>

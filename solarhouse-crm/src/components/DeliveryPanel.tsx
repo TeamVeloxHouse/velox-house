@@ -5,6 +5,7 @@ import { useActions, useState_ } from '../store/store'
 import { money, classNames } from '../lib/format'
 import type { Deal, Delivery } from '../store/types'
 import { INSTALL_STAGES, installStage, installAt, outstanding } from '../lib/installs'
+import { Dropdown } from './Dropdown'
 
 /* The Delivery tab of a customer record — everything ops needs between contract and handover,
  * on the same record Sales uses. Every control writes back to the deal, so it's live. */
@@ -64,9 +65,9 @@ export function DeliveryPanel({ d }: { d: Deal }) {
           <KV k="Install date" v={at ? fmt(at) : <span className="text-[#B45309] font-semibold">Not booked</span>} />
           <KV k="Team" v={del.team ?? '—'} /><KV k="Days on site" v={`${del.installDays}`} />
           <KV k="Scaffold" v={<span className="flex items-center gap-2 justify-end">{del.scaffold.company}
-            <select value={del.scaffold.status} onChange={(e) => save({ scaffold: { ...del.scaffold, status: e.target.value as Delivery['scaffold']['status'] } }, 'Scaffold updated')} className="h-7 px-1.5 rounded-md border border-border text-[12px] outline-none">
+            <Dropdown value={del.scaffold.status} onChange={(e) => save({ scaffold: { ...del.scaffold, status: e.target.value as Delivery['scaffold']['status'] } }, 'Scaffold updated')} className="h-7 px-1.5 rounded-md border border-border text-[12px] outline-none">
               {['not-booked', 'booked', 'up', 'down'].map((s) => <option key={s} value={s}>{s.replace('-', ' ')}</option>)}
-            </select></span>} />
+            </Dropdown></span>} />
           {del.scaffold.upAt && <KV k="Scaffold up / down" v={`${fmt(del.scaffold.upAt)} → ${del.scaffold.downAt ? fmt(del.scaffold.downAt) : 'after install'}`} />}
         </Panel>
       </div>
@@ -82,10 +83,10 @@ export function DeliveryPanel({ d }: { d: Deal }) {
             {del.orders.map((o, i) => { const [l, c, bg] = ORDER_TONE[o.status]; return (
               <div key={i} className="rounded-lg border border-divider px-3 py-2 flex items-center gap-3">
                 <div className="min-w-0 flex-1"><div className="text-[12.5px] font-semibold text-ink-2 truncate">{o.supplier}</div><div className="text-[11.5px] text-muted-2 truncate">{o.items} · {money(o.value, { compact: true })}{o.eta && o.status === 'ordered' ? ` · ETA ${fmt(o.eta)}` : ''}</div></div>
-                <select value={o.status} onChange={(e) => save({ orders: del.orders.map((x, k) => (k === i ? { ...x, status: e.target.value as typeof o.status, orderedAt: x.orderedAt ?? Date.now(), deliveredAt: e.target.value === 'delivered' ? Date.now() : x.deliveredAt } : x)) }, 'Order updated')}
+                <Dropdown value={o.status} onChange={(e) => save({ orders: del.orders.map((x, k) => (k === i ? { ...x, status: e.target.value as typeof o.status, orderedAt: x.orderedAt ?? Date.now(), deliveredAt: e.target.value === 'delivered' ? Date.now() : x.deliveredAt } : x)) }, 'Order updated')}
                   className="h-7 px-1.5 rounded-full text-[11.5px] font-semibold outline-none border-0" style={{ color: c, background: bg }}>
                   {(['to-order', 'ordered', 'delivered'] as const).map((s) => <option key={s} value={s}>{ORDER_TONE[s][0]}</option>)}
-                </select>
+                </Dropdown>
                 <span className="sr-only">{l}</span>
               </div>
             ) })}

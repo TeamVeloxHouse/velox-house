@@ -10,6 +10,7 @@ import { useState_, useActions, useSelectors } from '../store/store'
 import { LEAD_STATUSES, type Lead, type LeadStatus } from '../store/types'
 import { classNames, money } from '../lib/format'
 import { useNavigate } from 'react-router-dom'
+import { Dropdown } from '../components/Dropdown'
 
 export const LEAD_STATUS_META: Record<LeadStatus, { label: string; tone: string; dot: string }> = {
   new: { label: 'New', tone: 'text-accent-700 bg-accent-wash-2', dot: '#13927B' },
@@ -123,14 +124,14 @@ export function Leads() {
               <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-3" />
               <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search name, company…" className="h-8 pl-8 pr-3 rounded-control border border-input-border bg-white text-[12.5px] text-ink-2 outline-none focus:border-accent w-52" />
             </div>
-            <select value={source} onChange={(e) => setSource(e.target.value)} className="h-8 px-2.5 rounded-control border border-input-border bg-white text-[12.5px] text-ink-2 outline-none focus:border-accent">
+            <Dropdown value={source} onChange={(e) => setSource(e.target.value)} className="h-8 px-2.5 rounded-control border border-input-border bg-white text-[12.5px] text-ink-2 outline-none focus:border-accent">
               <option>All sources</option>
               {sources.map((s) => (<option key={s.label}>{s.label}</option>))}
-            </select>
-            <select value={owner} onChange={(e) => setOwner(e.target.value)} className="h-8 px-2.5 rounded-control border border-input-border bg-white text-[12.5px] text-ink-2 outline-none focus:border-accent">
+            </Dropdown>
+            <Dropdown value={owner} onChange={(e) => setOwner(e.target.value)} className="h-8 px-2.5 rounded-control border border-input-border bg-white text-[12.5px] text-ink-2 outline-none focus:border-accent">
               <option>All owners</option>
               {owners.map((o) => (<option key={o}>{o}</option>))}
-            </select>
+            </Dropdown>
             <Segmented options={['All time', '24 hours', '7 days', '30 days']} value={timeframe} onChange={setTimeframe} />
             <Segmented options={['Any', '60+', '75+']} value={minScore === 0 ? 'Any' : minScore === 60 ? '60+' : '75+'} onChange={(v) => setMinScore(v === 'Any' ? 0 : v === '60+' ? 60 : 75)} />
             {activeFilterCount > 0 && <button onClick={clearFilters} className="ml-auto text-[12.5px] text-accent font-semibold">Clear filters ({activeFilterCount})</button>}
@@ -432,9 +433,9 @@ function ImportLeadsModal({ open, onClose }: { open: boolean; onClose: () => voi
             {(['name', 'company', 'role', 'score'] as MapKey[]).map((k) => (
               <label key={k} className="flex items-center justify-between gap-2 text-[12.5px]">
                 <span className="text-muted-2 capitalize">{k}{k === 'name' ? ' *' : ''}</span>
-                <select value={map[k]} onChange={(e) => setMap((m) => ({ ...m, [k]: Number(e.target.value) }))} className="h-8 px-2 rounded-control border border-input-border bg-white text-[12.5px] text-ink-2 outline-none focus:border-accent max-w-[62%]">
+                <Dropdown value={map[k]} onChange={(e) => setMap((m) => ({ ...m, [k]: Number(e.target.value) }))} className="h-8 px-2 rounded-control border border-input-border bg-white text-[12.5px] text-ink-2 outline-none focus:border-accent max-w-[62%]">
                   {colOptions.map((o) => (<option key={o.i} value={o.i}>{o.label}</option>))}
-                </select>
+                </Dropdown>
               </label>
             ))}
           </div>

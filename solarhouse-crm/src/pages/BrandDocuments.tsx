@@ -6,6 +6,7 @@ import { Textarea } from '../components/overlays'
 import { File as FileIcon, Sparkle, Plus, Download, Layers, Robot } from '../components/icons'
 import { useState_, useActions } from '../store/store'
 import type { DocKind, DocFormat, DocTemplate, BrandDoc } from '../store/types'
+import { Dropdown } from '../components/Dropdown'
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 const FONTS = ['Inter', 'Poppins', 'Roboto', 'Montserrat', 'Georgia', 'System UI']
@@ -78,9 +79,9 @@ export function BrandDocuments() {
             </div>
 
             <Label>Font</Label>
-            <select value={brandKit.font} onChange={(e) => act.updateBrandKit({ font: e.target.value })} className="h-9 w-full px-2.5 mb-3 rounded-control border border-input-border bg-white text-[13px] text-ink-2 outline-none focus:border-accent">
+            <Dropdown value={brandKit.font} onChange={(e) => act.updateBrandKit({ font: e.target.value })} className="h-9 w-full px-2.5 mb-3 rounded-control border border-input-border bg-white text-[13px] text-ink-2 outline-none focus:border-accent">
               {FONTS.map((f) => <option key={f} value={f}>{f}</option>)}
-            </select>
+            </Dropdown>
 
             <Label>Tone of voice</Label>
             <Textarea value={brandKit.tone} onChange={(e) => act.updateBrandKit({ tone: e.target.value })} rows={3} />

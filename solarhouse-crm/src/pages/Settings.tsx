@@ -12,6 +12,7 @@ import { TRADE_PROFILES, tradeByKey } from '../lib/trades'
 import { INDUSTRY_TEMPLATES } from '../lib/pipelines'
 import { ROLES, roleByKey } from '../lib/roles'
 import { classNames } from '../lib/format'
+import { Dropdown } from '../components/Dropdown'
 
 const tree = [
   { group: 'Company', items: ['Users & permissions', 'Trade & modules', 'Teams', 'Billing', 'Security'] },
@@ -128,7 +129,7 @@ export function Settings() {
                     <Cell><Chip tone={u.role === 'Admin' ? 'accent' : 'neutral'}>{u.role}</Chip></Cell>
                     <Cell muted>{u.team}</Cell>
                     <Cell>
-                      <select
+                      <Dropdown
                         value={u.dash}
                         onChange={(e) => {
                           const dash = e.target.value as UserRole
@@ -139,7 +140,7 @@ export function Settings() {
                         className="h-8 px-2 rounded-control border border-input-border bg-white text-[12.5px] text-ink-2 outline-none focus:border-accent w-full"
                       >
                         {ROLES.map((r) => (<option key={r.key} value={r.key}>{r.label}</option>))}
-                      </select>
+                      </Dropdown>
                     </Cell>
                     <Cell><Chip tone={statusTone[u.status]} dot>{u.status}</Chip></Cell>
                   </Row>
@@ -668,10 +669,10 @@ function TradeModulesPanel() {
           </div>
           <label className="flex flex-col gap-1 items-end">
             <span className="text-[11px]" style={{ color: '#93A0B4' }}>Change trade</span>
-            <select value={activeTrade} onChange={(e) => act.selectTrade(e.target.value as TradeKey, { ...tradeByKey(e.target.value as TradeKey).features })}
+            <Dropdown value={activeTrade} onChange={(e) => act.selectTrade(e.target.value as TradeKey, { ...tradeByKey(e.target.value as TradeKey).features })}
               className="h-9 px-3 rounded-control bg-white/10 border border-white/20 text-white text-[13px] outline-none">
               {TRADE_PROFILES.map((t) => (<option key={t.key} value={t.key} className="text-ink">{t.name}</option>))}
-            </select>
+            </Dropdown>
           </label>
         </div>
       </div>

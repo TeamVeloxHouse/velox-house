@@ -202,7 +202,7 @@ body {
 /* ONE material for every control a page drops into the header (secondary buttons, selects,
    hand-rolled white buttons): frosted glass, 36px tall, 10px radius — matching back/search/bell.
    Primary (gradient) buttons are deliberately left solid as the one call to action. */
-.sh-hdr-ctrls :is(.btn-secondary, button.bg-white, button.bg-surface, select, a.bg-white, a.bg-surface):not(.seg-on) {
+.sh-hdr-ctrls :is(.btn-secondary, .sh-select, button.bg-white, button.bg-surface, select, a.bg-white, a.bg-surface):not(.seg-on) {
   height: 36px;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.6);
@@ -239,3 +239,9 @@ body {
 .bg-white.rounded-card:not(.shadow-none) {
   box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 4px 14px -4px rgba(16, 24, 40, 0.11);
 }
+
+/* Custom dropdown (components/Dropdown.tsx): the trigger shows it is open; the menu eases in. */
+.sh-select:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(31, 174, 148, 0.2); }
+.sh-select-open { border-color: #57C9B4 !important; box-shadow: 0 0 0 3px rgba(31, 174, 148, 0.16) !important; }
+@keyframes shMenuIn { from { opacity: 0; transform: translateY(-4px) scale(0.98); } to { opacity: 1; transform: none; } }
+.sh-menu { animation: shMenuIn .14s ease-out both; }

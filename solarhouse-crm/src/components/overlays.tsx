@@ -2,6 +2,7 @@ import { useEffect, type ReactNode } from 'react'
 import { useState_, useActions } from '../store/store'
 import { Check, Sparkle } from './icons'
 import { Button } from './ui'
+import { Dropdown, type DropdownProps } from './Dropdown'
 import { classNames } from '../lib/format'
 
 /* ---------- Modal ---------- */
@@ -63,11 +64,11 @@ export function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
 export function Textarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return <textarea {...props} className={classNames(inputCls, 'h-auto py-2 resize-none', props.className)} />
 }
-export function Select({ children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
+export function Select({ children, ...props }: DropdownProps) {
   return (
-    <select {...props} className={classNames(inputCls, 'appearance-none pr-8 cursor-pointer', props.className)}>
+    <Dropdown {...props} className={classNames(inputCls, 'cursor-pointer', props.className)}>
       {children}
-    </select>
+    </Dropdown>
   )
 }
 export { Button }

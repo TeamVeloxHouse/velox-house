@@ -8,6 +8,7 @@ import { Modal, Field, Input } from '../components/overlays'
 import { Plus, Filter, Search } from '../components/icons'
 import { useState_, useSelectors, useActions } from '../store/store'
 import type { Person } from '../store/types'
+import { Dropdown } from '../components/Dropdown'
 
 export function People() {
   const nav = useNavigate()
@@ -48,7 +49,7 @@ export function People() {
           </div>
           {showFilter && (
             <>
-              <select value={fOwner} onChange={(e) => setFOwner(e.target.value)} className="h-[38px] px-2.5 rounded-control border border-input-border bg-white text-[13px] text-ink-2 outline-none focus:border-accent"><option>All</option>{owners.map((o) => <option key={o}>{o}</option>)}</select>
+              <Dropdown value={fOwner} onChange={(e) => setFOwner(e.target.value)} className="h-[38px] px-2.5 rounded-control border border-input-border bg-white text-[13px] text-ink-2 outline-none focus:border-accent"><option>All</option>{owners.map((o) => <option key={o}>{o}</option>)}</Dropdown>
               <button onClick={() => setFHasDeals((v) => !v)} className={`h-[38px] px-3 rounded-control border text-[13px] font-medium ${fHasDeals ? 'bg-accent text-white border-accent' : 'border-border text-muted-b hover:bg-control'}`}>Has deals</button>
             </>
           )}

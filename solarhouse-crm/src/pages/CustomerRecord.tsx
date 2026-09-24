@@ -9,6 +9,7 @@ import { JOURNEY, SHOWROOM_META } from '../lib/solarHouseData'
 import { STAGE_GUIDE, advancePatch, stageAge, dueLabel, currentStep, labelOf, isComplete } from '../lib/journey'
 import { DealDetail } from './DealDetail'
 import { DeliveryPanel } from '../components/DeliveryPanel'
+import { Dropdown } from '../components/Dropdown'
 
 /* The Solar House customer record — one page for a customer's whole life with us:
  * enquiry → contact → consultation → proposal → survey → signed → DNO → install → handover/portal.
@@ -121,7 +122,7 @@ function Record({ d }: { d: Deal }) {
             {thread && <button onClick={() => nav('/inbox')} className="h-9 px-3 rounded-control border border-border text-[13px] font-semibold text-ink-3 hover:bg-control flex items-center gap-1.5"><Envelope size={14} />Inbox thread</button>}
             <button onClick={() => nav('/design')} className="h-9 px-3 rounded-control border border-border text-[13px] font-semibold text-ink-3 hover:bg-control flex items-center gap-1.5"><Sun size={14} />Design roof</button>
             <div className="ml-auto flex items-center gap-2">
-              {!d.lost && !complete && <select defaultValue="" onChange={(e) => { if (e.target.value) { act.markLost(d.id, d.name, e.target.value); e.target.value = '' } }} className="h-9 px-2 rounded-control border border-border bg-surface text-[12.5px] text-muted-b outline-none"><option value="">Mark lost…</option>{['Went with a cheaper quote', 'Not the right time', 'Roof not suitable', 'Couldn’t get finance', 'Stopped responding'].map((r) => <option key={r}>{r}</option>)}</select>}
+              {!d.lost && !complete && <Dropdown defaultValue="" onChange={(e) => { if (e.target.value) { act.markLost(d.id, d.name, e.target.value); e.target.value = '' } }} className="h-9 px-2 rounded-control border border-border bg-surface text-[12.5px] text-muted-b outline-none"><option value="">Mark lost…</option>{['Went with a cheaper quote', 'Not the right time', 'Roof not suitable', 'Couldn’t get finance', 'Stopped responding'].map((r) => <option key={r}>{r}</option>)}</Dropdown>}
             </div>
           </div>
         </div>

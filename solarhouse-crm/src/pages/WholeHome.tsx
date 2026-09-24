@@ -3,6 +3,7 @@ import { TopBar } from '../components/TopBar'
 import { PageBody } from '../components/Page'
 import { Sun, Bolt, Layers, Check, Sparkle } from '../components/icons'
 import { simulateHome, evComparison, EV_PRESETS, CHEMISTRY, UK, type Occupancy, type HomeSimInput } from '../lib/energy'
+import { Dropdown } from '../components/Dropdown'
 
 const money = (n: number) => `£${Math.round(n).toLocaleString('en-GB')}`
 
@@ -124,11 +125,11 @@ export function WholeHome() {
                   <NumField label="Annual electricity use" value={demand} onChange={setDemand} step={250} suffix="kWh" />
                   <div className="flex flex-col gap-1.5">
                     <FieldLabel>Who's home in the day?</FieldLabel>
-                    <select value={occupancy} onChange={(e) => setOccupancy(e.target.value as Occupancy)} className="h-9 px-2.5 rounded-control border border-input-border bg-white text-[13px] text-ink-2 outline-none focus:border-accent">
+                    <Dropdown value={occupancy} onChange={(e) => setOccupancy(e.target.value as Occupancy)} className="h-9 px-2.5 rounded-control border border-input-border bg-white text-[13px] text-ink-2 outline-none focus:border-accent">
                       <option value="out_all_day">Out all day</option>
                       <option value="in_half_day">In part of the day</option>
                       <option value="home_all_day">Home all day</option>
-                    </select>
+                    </Dropdown>
                   </div>
                 </div>
               </Card>

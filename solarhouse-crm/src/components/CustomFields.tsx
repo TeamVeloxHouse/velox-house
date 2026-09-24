@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useState_, useActions } from '../store/store'
 import type { CustomEntity, CustomField } from '../store/types'
 import { classNames } from '../lib/format'
+import { Dropdown } from './Dropdown'
 
 /** Inline-editable custom-field rows for a record's Details panel. */
 export function CustomFieldRows({ entity, id, values }: { entity: CustomEntity; id: string; values?: Record<string, string> }) {
@@ -31,14 +32,14 @@ function CustomRow({ field, entity, id, value }: { field: CustomField; entity: C
     <div className="flex items-center justify-between gap-3 group">
       <span className="text-[12px] text-muted-2 shrink-0">{field.label}</span>
       {field.type === 'select' ? (
-        <select
+        <Dropdown
           value={v}
           onChange={(e) => { setV(e.target.value); act.setCustom(entity, id, field.id, e.target.value) }}
           className="text-[13px] font-medium text-ink-2 bg-transparent text-right outline-none cursor-pointer hover:text-accent"
         >
           <option value="">—</option>
           {field.options?.map((o) => (<option key={o} value={o}>{o}</option>))}
-        </select>
+        </Dropdown>
       ) : editing ? (
         <input
           autoFocus
