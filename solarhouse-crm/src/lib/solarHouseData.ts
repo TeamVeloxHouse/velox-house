@@ -56,7 +56,10 @@ const ADVISERS: Record<Showroom, string[]> = {
 const ADV_PULL: Record<string, number> = { 'Jordan Miles': 1.02, 'Amy Price': 0.9, 'Beth Collins': 1.1, 'Tom Hale': 0.96, 'Rhys Evans': 0.88, 'Kate Morris': 1.08, 'Sophie Grant': 0.94 }
 export const SURVEYORS = ['Mark Lewis', 'Ieuan Davies', 'Sam Turner']
 const TEAMS: Record<Showroom, string> = { cardiff: 'Install team A (Cardiff)', cheltenham: 'Install team B (Glos)', melksham: 'Install team C (Wilts)' }
-const SOURCES: [string, number][] = [['Website enquiry', 26], ['Facebook lead ad', 22], ['Showroom walk-in', 14], ['Google search', 12], ['Referral', 10], ['Instagram', 6], ['Leekes in-store', 5], ['Phone call', 5]]
+const SOURCES: [string, number][] = [['Website enquiry', 26], ['Facebook lead ad', 22], ['Showroom walk-in', 14], ['Google search', 12], ['Referral', 10], ['Instagram', 6], ['Leekes in-store', 5], ['Phone call', 5], ['Solar on Steroids', 16]]
+// Solar on Steroids is the lead-gen partner: leads arrive as weekly CSV batches
+export const SOS = 'Solar on Steroids'
+export const batchLabelFor = (t: number) => { const d = new Date(t); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return { id: `sos-${d.toISOString().slice(0, 10)}`, label: `Solar on Steroids · ${d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`, receivedAt: d.setHours(9, 0, 0, 0) } }
 const LOST_REASONS = ['Went with a cheaper quote', 'Not the right time', 'Roof not suitable', 'Couldn’t get finance', 'Stopped responding', 'Moving house', 'Partner not keen']
 
 const DAY = 86_400_000
@@ -121,7 +124,7 @@ export function generateSolarHouse(now = Date.now(), months = 4): SolarHouseData
     }
 
     const responseMins = Math.round(Math.pow(r(), 2) * 600 + 4)
-    add('enquiry', t0, { channel: source, message: pick(['Interested in solar and battery', 'Want to cut our bills', 'Got an EV, want to charge from solar', 'Looking at a battery for our existing panels', 'Please call me back about a quote']), response: `${responseMins < 60 ? `${responseMins} min` : `${Math.round(responseMins / 60)} h`}` }, source)
+    add('enquiry', t0, { ...(source === SOS ? { batch: batchLabelFor(t0).label } : {}), channel: source, message: pick(['Interested in solar and battery', 'Want to cut our bills', 'Got an EV, want to charge from solar', 'Looking at a battery for our existing panels', 'Please call me back about a quote']), response: `${responseMins < 60 ? `${responseMins} min` : `${Math.round(responseMins / 60)} h`}` }, source)
     let n1 = reach(0.93, 0.02, 2)
     if (n1 && n1 <= now) {
       done(n1); t = n1
@@ -237,7 +240,7 @@ export function generateSolarHouse(now = Date.now(), months = 4): SolarHouseData
 
     // Lead inbox: the last ~10 days of enquiries.
     if (now - t0 < 10 * DAY) {
-      leads.push({ id: `l${i + 1}`, name, role: 'Homeowner', company: address, source, owner, created: relWhen(now - t0), createdAt: t0, score: Math.round(between(45, 96)), status: stageIdx === 0 ? 'new' : stageIdx < 3 ? 'working' : 'qualified', email, phone, value: price, converted: stageIdx > 0 || undefined })
+      leads.push({ id: `l${i + 1}`, name, role: 'Homeowner', company: address, address: street, postcode, monthlyBill: property.monthlyBill, interest: batteryKwh ? (evCharger ? 'Solar + battery + EV' : 'Solar + battery') : 'Solar only', batch: source === SOS ? batchLabelFor(t0) : undefined, source, owner, created: relWhen(now - t0), createdAt: t0, score: Math.round(between(45, 96)), status: stageIdx === 0 ? 'new' : stageIdx < 3 ? 'working' : 'qualified', email, phone, value: price, converted: stageIdx > 0 || undefined })
     }
 
     // Tasks: one live next action per open customer, plus the history of what was done.
@@ -305,6 +308,31 @@ export function generateSolarHouse(now = Date.now(), months = 4): SolarHouseData
           }
         }
       }
+    }
+  })
+
+  // Two fresh Solar on Steroids CSV batches that haven't been worked yet (the Lead inbox's job).
+  ;[[1, 38], [4, 44]].forEach(([daysAgo, n], b) => {
+    const receivedAt = now - daysAgo * DAY - 3 * 3600_000
+    const d = new Date(receivedAt)
+    const batch = { id: `sos-import-${b}`, label: `Solar on Steroids · ${d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`, receivedAt, file: `SOS_leads_${d.toISOString().slice(0, 10)}.csv` }
+    for (let k = 0; k < n; k++) {
+      const showroom = weighted<Showroom>([['cardiff', 40], ['cheltenham', 40], ['melksham', 20]])
+      const [town, district] = pick(AREAS[showroom])
+      const first = pick(FIRST), surname = pick(LAST)
+      const street = `${Math.floor(between(1, 140))} ${pick(STREETS)}`
+      const postcode = `${district} ${Math.floor(between(1, 9))}${String.fromCharCode(65 + Math.floor(r() * 26))}${String.fromCharCode(65 + Math.floor(r() * 26))}`
+      const bill = Math.round(between(85, 260))
+      const worked = daysAgo > 2 && r() < 0.45
+      leads.push({
+        id: `lsos${b}-${k}`, name: `${first} ${surname}`, role: 'Homeowner', company: `${street}, ${town} ${postcode}`, address: street, postcode, monthlyBill: bill,
+        interest: weighted([['Solar + battery', 55], ['Solar only', 20], ['Battery only', 15], ['Solar + battery + EV', 10]]),
+        notes: pick(['Owns home, south-facing roof', 'Wants a call after 5pm', 'Interested in finance options', 'Has an EV on order', 'Asked about battery backup', 'Existing panels, wants battery']),
+        source: SOS, owner: pick(ADVISERS[showroom]), created: daysAgo === 1 ? 'Yesterday' : `${daysAgo} days ago`, createdAt: receivedAt, score: Math.round(between(40, 92)),
+        status: worked ? 'working' : 'new', contactedAt: worked ? receivedAt + between(2, 30) * 3600_000 : undefined,
+        email: `${first.toLowerCase()}.${surname.toLowerCase()}${Math.floor(r() * 90)}@${pick(['gmail.com', 'outlook.com', 'hotmail.co.uk', 'icloud.com'])}`,
+        phone: `07${Math.floor(between(700, 999))} ${Math.floor(between(100000, 999999))}`, batch,
+      })
     }
   })
 

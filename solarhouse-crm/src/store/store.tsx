@@ -9,7 +9,7 @@ import { surveyRef, photoSlotsFor, surveyToDnoSite, surveyFlags, completeness } 
 import { AI_MEMBER_ID, YOU_MEMBER_ID } from './types'
 import type { StageName } from '../data/mock'
 
-const KEY = 'simplr.state.v26'
+const KEY = 'simplr.state.v27'
 let idc = 1000
 export const uid = (p = 'x') => `${p}${Date.now().toString(36)}${idc++}`
 
@@ -104,6 +104,7 @@ type Action =
   | { type: 'LI_UPDATE'; id: ID; patch: Partial<import('./types').LinkedInThread>; activity?: Activity }
   | { type: 'ADVANCE_ENROLMENT'; id: ID; patch: Partial<import('./types').Enrolment>; activity?: Activity }
   | { type: 'BULK_ADD_LEADS'; leads: Lead[] }
+  | { type: 'UPDATE_LEADS'; ids: ID[]; patch: Partial<Lead> }
   | { type: 'ADD_REACH_CAMPAIGN'; campaign: import('./types').ReachCampaign; enrolments: import('./types').Enrolment[] }
   | { type: 'ADD_SCHEDULED'; task: import('./types').ScheduledTask }
   | { type: 'TOGGLE_SCHEDULED'; id: ID }
@@ -414,6 +415,8 @@ function reducer(state: State, action: Action): State {
         enrolments: state.enrolments.map((e) => (e.id === action.id ? { ...e, ...action.patch } : e)),
         activities: action.activity ? [action.activity, ...state.activities] : state.activities,
       }
+    case 'UPDATE_LEADS':
+      return { ...state, leads: state.leads.map((l) => (action.ids.includes(l.id) ? { ...l, ...action.patch } : l)) }
     case 'BULK_ADD_LEADS':
       return { ...state, leads: [...action.leads, ...state.leads] }
     case 'ADD_REACH_CAMPAIGN':
@@ -1431,6 +1434,10 @@ export function useActions() {
       dispatch({ type: 'LI_UPDATE', id: t.id, patch: { status: 'accepted', kind: 'message', preview: 'Connected. Send a first message.' }, activity })
       toast(`Connected with ${t.name}`)
     },
+    /** Patch one or many leads (assign, status, contacted, pushed…). */
+    updateLeads: (ids: ID[], patch: Partial<Lead>) => dispatch({ type: 'UPDATE_LEADS', ids, patch }),
+    /** Import a labelled CSV batch (e.g. Solar on Steroids). */
+    importLeadBatch: (leads: Lead[]) => { dispatch({ type: 'BULK_ADD_LEADS', leads }); toast(`${leads.length} leads imported${leads[0]?.batch ? ` · ${leads[0].batch.label}` : ''}`) },
     bulkAddLeads: (rows: { name: string; company: string; role: string; score: number }[], source = 'Ovi') => {
       const leads: Lead[] = rows.map((r) => ({ id: uid('l'), name: r.name, role: r.role, company: r.company, source, owner: 'Jordan Miles', created: 'Just now', createdAt: Date.now(), score: r.score, status: 'new' as const }))
       dispatch({ type: 'BULK_ADD_LEADS', leads })

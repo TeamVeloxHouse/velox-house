@@ -5,7 +5,7 @@ import { MyTasks } from './pages/MyTasks'
 import { DealsBoard } from './pages/DealsBoard'
 import { DealDetail } from './pages/DealDetail'
 import { CustomerRecord } from './pages/CustomerRecord'
-import { Leads } from './pages/Leads'
+import { Leads, LeadsAnalytics } from './pages/Leads'
 import { People } from './pages/People'
 import { PersonDetail } from './pages/PersonDetail'
 import { Organisations } from './pages/Organisations'
@@ -118,6 +118,7 @@ export const router = createBrowserRouter([
       { path: 'deals', element: <DealsBoard /> },
       { path: 'deals/:id', element: <CustomerRecord /> },
       { path: 'leads', element: <Leads /> },
+      { path: 'leads/analytics', element: <LeadsAnalytics /> },
       { path: 'people', element: <People /> },
       { path: 'people/:id', element: <PersonDetail /> },
       { path: 'organisations', element: <Organisations /> },

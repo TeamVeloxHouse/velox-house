@@ -431,6 +431,15 @@ export interface Lead {
   referredByPortal?: ID // a referral raised by an existing customer from their portal
   archived?: boolean
   converted?: boolean
+  // ── residential detail (Solar House) ──
+  address?: string
+  postcode?: string
+  monthlyBill?: number
+  interest?: string // e.g. "Solar + battery", "Battery only", "EV charger"
+  notes?: string
+  batch?: { id: ID; label: string; receivedAt: number; file?: string } // CSV import batch (e.g. Solar on Steroids)
+  pushedDealId?: ID // the pipeline deal it became
+  contactedAt?: number
 }
 
 export interface EmailMsg {
