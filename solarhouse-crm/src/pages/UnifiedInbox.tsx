@@ -27,13 +27,13 @@ const SmsIcon: Icon = ({ size = 18, className }) => (
 )
 
 const CH: Record<CommsChannel, { label: string; color: string; wash: string; icon: Icon }> = {
-  email: { label: 'Email', color: '#0A64AD', wash: '#E7F0FA', icon: Envelope },
-  whatsapp: { label: 'WhatsApp', color: '#1DA851', wash: '#E6F7EC', icon: WhatsAppIcon },
-  sms: { label: 'SMS', color: '#7C3AED', wash: '#F1ECFD', icon: SmsIcon },
-  call: { label: 'Calls', color: '#D97706', wash: '#FDF3E3', icon: Phone },
-  web: { label: 'Web & lead ads', color: '#0E7A66', wash: '#E6F6F1', icon: Grid },
-  social: { label: 'Facebook & Instagram', color: '#DB2777', wash: '#FCE8F2', icon: Camera },
-  portal: { label: 'Customer portal', color: '#15223B', wash: '#E8ECF3', icon: Home },
+  email: { label: 'Email', color: '#15223B', wash: '#E9EDF4', icon: Envelope },
+  whatsapp: { label: 'WhatsApp', color: '#0E7A66', wash: '#E1F6F1', icon: WhatsAppIcon },
+  sms: { label: 'SMS', color: '#2FBFA5', wash: '#E6FAF6', icon: SmsIcon },
+  call: { label: 'Calls', color: '#4A5A78', wash: '#EDF0F5', icon: Phone },
+  web: { label: 'Web & lead ads', color: '#0A5A4C', wash: '#D6F7F0', icon: Grid },
+  social: { label: 'Facebook & Instagram', color: '#64748B', wash: '#F1F3F7', icon: Camera },
+  portal: { label: 'Customer portal', color: '#1E3A5F', wash: '#E7EDF5', icon: Home },
 }
 const STAGES: { id: CommsStage; label: string }[] = [
   { id: 'new-lead', label: 'New lead' }, { id: 'assessment', label: 'ROI assessment' }, { id: 'quoted', label: 'Quoted' },
@@ -69,8 +69,8 @@ function dayLabel(t: number) {
 }
 function sla(mins: number) {
   if (!mins) return null
-  const tone = mins < 30 ? '#0E7C66' : mins < 240 ? '#B45309' : '#B01B4F'
-  const bg = mins < 30 ? '#E9F5F1' : mins < 240 ? '#FDF3E3' : '#FDECEF'
+  const tone = mins < 30 ? '#0A5A4C' : mins < 240 ? '#15223B' : '#B01B4F'
+  const bg = mins < 30 ? '#E1F6F1' : mins < 240 ? '#E9EDF4' : '#FDECEF'
   const txt = mins < 60 ? `${mins}m` : mins < 1440 ? `${Math.floor(mins / 60)}h ${mins % 60 ? `${mins % 60}m` : ''}` : `${Math.floor(mins / 1440)}d`
   return { tone, bg, txt: txt.trim() }
 }
@@ -86,9 +86,9 @@ function oviRead(c: Conversation) {
   if (/battery/.test(text) && /panels/.test(text)) return { intent: 'Battery retrofit', tone: '#0E7C66', summary: `${first} already has older panels and wants to add a battery, a quick-win retrofit. Ask for their inverter make and a recent bill.`, replies: [`Hi ${first}! Yes, we add batteries to existing systems all the time. Could you send a photo of your inverter label and a recent bill? Then we can give you a proper saving figure.`] }
   if (/scaffold|nobody told/.test(text)) return { intent: 'Complaint risk', tone: '#B01B4F', summary: 'Customer surprised by an unannounced visit. Apologise, confirm the plan in writing and fix the notification.', replies: ['So sorry for the surprise, Helen, that should never have happened without a heads-up. The scaffold is safe to stay up and your install is still confirmed for Tuesday.'] }
   if (/friend|interested too|pass on/.test(text)) return { intent: 'Referral', tone: '#0E7C66', summary: `${first} wants to refer a friend. Thank them, capture the referral and trigger the portal reward.`, replies: [`That's so kind of you, ${first}! Please do pass on our number, or send me Joan's details and I'll give her a ring. As a thank-you, you'll get £100 when her system goes in.`] }
-  if (/survey|move|rearrange/.test(text)) return { intent: 'Scheduling', tone: '#0A64AD', summary: 'Scheduling request: confirm a new slot and send a reminder the day before.', replies: [`No problem at all, ${first}. I've moved you and will text a reminder the day before.`] }
+  if (/survey|move|rearrange/.test(text)) return { intent: 'Scheduling', tone: '#15223B', summary: 'Scheduling request: confirm a new slot and send a reminder the day before.', replies: [`No problem at all, ${first}. I've moved you and will text a reminder the day before.`] }
   if (/thank|brilliant|wonderful/.test(text)) return { intent: 'Happy customer', tone: '#0E7C66', summary: 'Positive feedback. Ask for a Google review while the moment is warm.', replies: [`Thank you so much, ${first}! Would you mind leaving us a quick Google review? It really helps a small local team.`] }
-  return { intent: 'Enquiry', tone: '#0A64AD', summary: `${first} has made a new enquiry. Qualify the roof, bill and timing, and offer a free ROI assessment.`, replies: [`Hi ${first}, thanks for getting in touch with The Solar House! When would be a good time for a quick call about your home?`] }
+  return { intent: 'Enquiry', tone: '#15223B', summary: `${first} has made a new enquiry. Qualify the roof, bill and timing, and offer a free ROI assessment.`, replies: [`Hi ${first}, thanks for getting in touch with The Solar House! When would be a good time for a quick call about your home?`] }
 }
 
 export function UnifiedInbox() {
@@ -150,7 +150,7 @@ export function UnifiedInbox() {
       <TopBar title="Inbox" crumbs={['Every channel, one thread per customer']}
         actions={
           <div className="flex items-center gap-2">
-            {overdue > 0 && <span className="h-8 px-2.5 rounded-full bg-negative-wash text-negative text-[12px] font-semibold flex items-center gap-1.5"><Clock size={13} />{overdue} waiting 4h+</span>}
+            {overdue > 0 && <span className="h-8 px-3 rounded-full bg-[#15223B] text-white text-[12px] font-semibold flex items-center gap-1.5"><Clock size={13} />{overdue} waiting 4h+</span>}
             <span className="h-8 px-2.5 rounded-full bg-control text-ink-3 text-[12px] font-semibold flex items-center gap-1.5">{unread} unread</span>
             <IconBtn title={focus ? 'Exit focus mode' : 'Focus mode: hide side panels'} on={focus} onClick={() => setFocus((f) => !f)}><ArrowUpRight size={16} className={focus ? 'rotate-180' : ''} /></IconBtn>
           </div>
@@ -176,7 +176,7 @@ export function UnifiedInbox() {
           {showLeft && (
             <div className="p-3 border-t border-divider flex flex-col gap-1.5">
               <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-3 mb-0.5">Connections</div>
-              {([['Outlook', '#0A64AD', false], ['WhatsApp Business', '#1DA851', false], ['Phone (VoIP)', '#D97706', false], ['Website forms', '#0E7A66', false], ['Meta lead ads', '#DB2777', false]] as const).map(([n, c, on]) => (
+              {([['Outlook', '#2FBFA5', false], ['WhatsApp Business', '#2FBFA5', false], ['Phone (VoIP)', '#2FBFA5', false], ['Website forms', '#2FBFA5', false], ['Meta lead ads', '#2FBFA5', false]] as const).map(([n, c, on]) => (
                 <div key={n} className="flex items-center gap-2 text-[12px]">
                   <span className="w-1.5 h-1.5 rounded-full" style={{ background: on ? c : '#C3CBD8' }} />
                   <span className="text-ink-3 flex-1 truncate">{n}</span>
@@ -218,11 +218,11 @@ export function UnifiedInbox() {
 
 function RailItem({ icon: I, label, count, on, compact, color, alert, onClick }: { icon: Icon; label: string; count: number; on: boolean; compact: boolean; color?: string; alert?: boolean; onClick: () => void }) {
   return (
-    <button onClick={onClick} title={compact ? `${label} (${count})` : undefined} className={classNames('relative h-9 rounded-lg flex items-center gap-2.5 text-[13px] transition-colors', compact ? 'justify-center' : 'px-2.5', on ? 'bg-accent-wash text-accent font-semibold' : 'text-ink-3 hover:bg-control')}>
-      <span style={color && !on ? { color } : undefined}><I size={16} /></span>
+    <button onClick={onClick} title={compact ? `${label} (${count})` : undefined} className={classNames('relative h-9 rounded-[10px] flex items-center gap-2.5 text-[13px] transition-colors', compact ? 'justify-center' : 'px-2.5', on ? 'bg-[#15223B] text-white font-semibold' : 'text-ink-3 hover:bg-control')}>
+      <span className={on ? 'text-[#62E4CC]' : ''} style={color && !on ? { color } : undefined}><I size={16} /></span>
       {!compact && <span className="flex-1 text-left truncate">{label}</span>}
-      {!compact && count > 0 && <span className={classNames('text-[11px] font-semibold rounded-full min-w-[20px] h-[18px] px-1.5 flex items-center justify-center', alert ? 'bg-negative text-white' : on ? 'bg-accent text-white' : 'text-muted-2')}>{count}</span>}
-      {compact && alert && <span className="absolute top-1.5 right-2 w-1.5 h-1.5 rounded-full bg-negative" />}
+      {!compact && count > 0 && <span className={classNames('text-[11px] font-semibold rounded-full min-w-[20px] h-[18px] px-1.5 flex items-center justify-center', alert ? (on ? 'bg-[#62E4CC] text-[#15223B]' : 'bg-[#15223B] text-white') : on ? 'bg-[#62E4CC] text-[#15223B]' : 'text-muted-2')}>{count}</span>}
+      {compact && alert && <span className="absolute top-1.5 right-2 w-1.5 h-1.5 rounded-full bg-[#15223B]" />}
     </button>
   )
 }
@@ -231,7 +231,7 @@ function ChannelAvatar({ c, size = 40 }: { c: Conversation; size?: number }) {
   const ch = CH[last(c).channel]
   return (
     <span className="relative shrink-0" style={{ width: size, height: size }}>
-      <span className="w-full h-full rounded-full flex items-center justify-center font-semibold text-[13px]" style={{ background: ch.wash, color: ch.color }}>{initials(c.name)}</span>
+      <span className="w-full h-full rounded-full flex items-center justify-center font-semibold text-[13px]" style={{ background: '#E9EDF4', color: '#15223B' }}>{initials(c.name)}</span>
       <span className="absolute -bottom-0.5 -right-0.5 w-[18px] h-[18px] rounded-full flex items-center justify-center text-white ring-2 ring-white" style={{ background: ch.color }}><ch.icon size={10} /></span>
     </span>
   )
@@ -242,8 +242,8 @@ function ConvRow({ c, on, onClick }: { c: Conversation; on: boolean; onClick: ()
   const s = sla(waitingMins(c))
   const preview = l.channel === 'call' ? (l.callSecs ? `📞 Call · ${Math.round(l.callSecs / 60)} min` : `📞 Missed call${l.voicemail ? ' · voicemail' : ''}`) : l.body.replace(/\n+/g, ' ')
   return (
-    <button onClick={onClick} className={classNames('w-full text-left px-4 py-3 border-b border-divider-row flex gap-3 relative transition-colors', on ? 'bg-accent-wash-4' : 'hover:bg-[#FAFBFC]')}>
-      {on && <span className="absolute left-0 top-0 bottom-0 w-[3px] bg-accent" />}
+    <button onClick={onClick} className={classNames('w-full text-left px-4 py-3 border-b border-divider-row flex gap-3 relative transition-colors', on ? 'bg-[#F1FBF8]' : 'hover:bg-[#FAFBFC]')}>
+      {on && <span className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#15223B]" />}
       <ChannelAvatar c={c} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
@@ -321,26 +321,26 @@ function Thread({ c, rightOpen, toggleRight }: { c: Conversation; rightOpen: boo
   return (
     <section className="flex-1 flex flex-col min-w-0 bg-[#F7F8FA]">
       {/* header */}
-      <div className="h-[68px] shrink-0 bg-surface border-b border-border px-5 flex items-center gap-3">
+      <div className="h-[72px] shrink-0 bg-white border-b border-[#E6EAF0] px-6 flex items-center gap-3">
         <ChannelAvatar c={c} size={38} />
         <div className="min-w-[110px] flex-1">
           <div className="flex items-center gap-2">
             <button onClick={record.open} title={record.deal ? `Open ${c.name}'s customer record` : 'Create a customer record'} className="text-[15.5px] font-bold text-ink truncate hover:underline decoration-2 underline-offset-4 decoration-[#62E4CC]">{c.name}</button>
             <button onClick={() => act.updateConversation(c.id, { starred: !c.starred })} title="Star"><Star size={15} className={c.starred ? 'text-[#F59E0B]' : 'text-muted-3 hover:text-ink-3'} /></button>
-            <button onClick={record.open} className="h-6 px-2 rounded-full bg-[#15223B] text-white text-[11px] font-semibold flex items-center gap-1 hover:bg-[#1E2F4E]"><Person size={11} className="text-[#62E4CC]" />{record.deal ? 'View record' : 'Create record'}</button>
+            <button onClick={record.open} className="h-6 px-2 rounded-full bg-[#15223B] text-white text-[11px] font-semibold flex items-center gap-1 hover:bg-[#1E2F4E] whitespace-nowrap shrink-0"><Person size={11} className="text-[#62E4CC]" />{record.deal ? 'View record' : 'Create record'}</button>
           </div>
           <div className="text-[12px] text-muted-2 truncate flex items-center gap-1.5">{channelsOf(c).map((k) => <span key={k} className="flex items-center gap-1" style={{ color: CH[k].color }}><SmallIcon k={k} /></span>)}<span>· {c.address?.split(',').slice(-1)[0]?.trim()}</span></div>
         </div>
         <div className="ml-auto flex items-center gap-1.5 shrink-0">
-          {outlook && <a href={outlook} target="_blank" rel="noreferrer" className="h-8 px-3 rounded-control border border-border bg-surface text-[12.5px] font-semibold text-[#0A64AD] hover:bg-[#E7F0FA] flex items-center gap-1.5" title="Opens the conversation in Outlook to reply there"><Envelope size={14} /><span className="hidden xl:inline">Open in Outlook</span></a>}
-          {wa && <a href={wa} target="_blank" rel="noreferrer" className="h-8 px-3 rounded-control border border-border bg-surface text-[12.5px] font-semibold text-[#1DA851] hover:bg-[#E6F7EC] flex items-center gap-1.5"><WhatsAppIcon size={14} /><span className="hidden xl:inline">WhatsApp</span></a>}
-          {c.phone && <a href={`tel:${c.phone.replace(/\s/g, '')}`} className="w-8 h-8 rounded-control border border-border bg-surface text-ink-3 hover:bg-control flex items-center justify-center" title={`Call ${c.phone}`}><Phone size={14} /></a>}
+          {outlook && <a href={outlook} target="_blank" rel="noreferrer" className="h-9 px-3 rounded-[10px] border border-[#E1E6EC] bg-white text-[12.5px] font-semibold text-ink-2 hover:bg-control flex items-center gap-1.5" title="Opens the conversation in Outlook to reply there"><Envelope size={14} /><span className="hidden xl:inline">Open in Outlook</span></a>}
+          {wa && <a href={wa} target="_blank" rel="noreferrer" className="h-9 px-3 rounded-[10px] border border-[#E1E6EC] bg-white text-[12.5px] font-semibold text-ink-2 hover:bg-control flex items-center gap-1.5"><WhatsAppIcon size={14} /><span className="hidden xl:inline">WhatsApp</span></a>}
+          {c.phone && <a href={`tel:${c.phone.replace(/\s/g, '')}`} className="w-9 h-9 rounded-[10px] border border-[#E1E6EC] bg-white text-ink-3 hover:bg-control flex items-center justify-center" title={`Call ${c.phone}`}><Phone size={14} /></a>}
           <div className="w-px h-6 bg-divider mx-1" />
-          <Dropdown value={c.assignee ?? ''} onChange={(e) => act.updateConversation(c.id, { assignee: e.target.value || undefined })} className="h-8 px-2 rounded-control border border-border bg-surface text-[12.5px] text-ink-3 outline-none focus:border-accent" title="Assign">
+          <Dropdown value={c.assignee ?? ''} onChange={(e) => act.updateConversation(c.id, { assignee: e.target.value || undefined })} className="h-9 px-3 rounded-[10px] border border-[#E1E6EC] bg-white text-[12.5px] font-semibold text-ink-3 outline-none focus:border-accent" title="Assign">
             <option value="">Unassigned</option>{TEAM.map((t) => <option key={t} value={t}>{t}</option>)}
           </Dropdown>
           <IconBtn title={c.status === 'snoozed' ? 'Unsnooze' : 'Snooze until tomorrow'} on={c.status === 'snoozed'} onClick={() => act.updateConversation(c.id, { status: c.status === 'snoozed' ? 'open' : 'snoozed' })}><Clock size={15} /></IconBtn>
-          <button onClick={() => act.updateConversation(c.id, { status: c.status === 'done' ? 'open' : 'done' })} className={classNames('h-8 px-3 rounded-control text-[12.5px] font-semibold flex items-center gap-1.5', c.status === 'done' ? 'bg-control text-ink-3' : 'bg-accent-gradient text-white shadow-primary')}><Check size={14} />{c.status === 'done' ? 'Reopen' : 'Done'}</button>
+          <button onClick={() => act.updateConversation(c.id, { status: c.status === 'done' ? 'open' : 'done' })} className={classNames('h-9 px-3.5 rounded-[10px] text-[12.5px] font-semibold flex items-center gap-1.5', c.status === 'done' ? 'bg-control text-ink-3' : 'bg-[#15223B] text-white hover:bg-[#1E2F4E]')}><Check size={14} />{c.status === 'done' ? 'Reopen' : 'Done'}</button>
           <IconBtn title={rightOpen ? 'Hide customer panel' : 'Show customer panel'} on={rightOpen} onClick={toggleRight}><Person size={15} /></IconBtn>
         </div>
       </div>
@@ -378,11 +378,11 @@ function Thread({ c, rightOpen, toggleRight }: { c: Conversation; rightOpen: boo
               </div>
             </div>
           )}
-          <div className="rounded-xl border border-input-border focus-within:border-accent bg-white overflow-hidden">
+          <div className="rounded-[14px] border border-[#E1E6EC] focus-within:border-accent-400 bg-white overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.05)]">
             <div className="flex items-center gap-1 px-2 pt-2">
               <span className="text-[11.5px] text-muted-2 px-1">Reply via</span>
               {replyable.map((k) => (
-                <button key={k} onClick={() => setVia(k)} className={classNames('h-7 px-2.5 rounded-md text-[12px] font-semibold flex items-center gap-1.5 transition-colors', via === k ? 'text-white' : 'text-ink-3 hover:bg-control')} style={via === k ? { background: CH[k].color } : undefined}><SmallIcon k={k} />{CH[k].label}</button>
+                <button key={k} onClick={() => setVia(k)} className={classNames('h-7 px-2.5 rounded-md text-[12px] font-semibold flex items-center gap-1.5 transition-colors', via === k ? 'bg-[#15223B] text-white' : 'text-ink-3 hover:bg-control')}><SmallIcon k={k} />{CH[k].label}</button>
               ))}
               <button onClick={() => setVia('note')} className={classNames('h-7 px-2.5 rounded-md text-[12px] font-semibold flex items-center gap-1.5', via === 'note' ? 'bg-[#FEF3C7] text-[#92400E]' : 'text-ink-3 hover:bg-control')}><Note size={13} />Internal note</button>
             </div>
@@ -394,7 +394,7 @@ function Thread({ c, rightOpen, toggleRight }: { c: Conversation; rightOpen: boo
                 <Sparkle size={12} className={oviOpen ? 'text-[#62E4CC]' : ''} />{oviOpen ? 'Hide Ovi' : 'Ask Ovi for help'}
               </button>
               <span className="ml-auto text-[11px] text-muted-3 hidden lg:block">Ctrl+Enter to send</span>
-              <button onClick={send} disabled={!draft.trim()} className="h-8 px-3.5 rounded-control bg-accent-gradient text-white text-[12.5px] font-semibold flex items-center gap-1.5 disabled:opacity-40"><Send size={13} />{via === 'note' ? 'Add note' : 'Send'}</button>
+              <button onClick={send} disabled={!draft.trim()} className="h-9 px-4 rounded-[10px] bg-[#15223B] text-white hover:bg-[#1E2F4E] text-[12.5px] font-semibold flex items-center gap-1.5 disabled:opacity-40"><Send size={13} />{via === 'note' ? 'Add note' : 'Send'}</button>
             </div>
           </div>
         </div>
@@ -438,7 +438,7 @@ function Message({ m, name, open, toggle }: { m: CommsMessage; name: string; ope
     return (
       <div className={classNames('rounded-xl border px-4 py-3 max-w-[520px] bg-white', mine ? 'self-end' : 'self-start')} style={{ borderColor: missed ? '#FBCFD9' : '#E4E8EE' }}>
         <div className="flex items-center gap-2.5">
-          <span className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: missed ? '#FDECEF' : '#FDF3E3', color: missed ? '#B01B4F' : '#D97706' }}><Phone size={15} /></span>
+          <span className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: missed ? '#FDECEF' : '#EDF0F5', color: missed ? '#B01B4F' : '#4A5A78' }}><Phone size={15} /></span>
           <div className="flex-1"><div className="text-[13px] font-semibold text-ink-2">{missed ? 'Missed call' : mine ? `Outbound call by ${m.author}` : 'Inbound call'}</div><div className="text-[11.5px] text-muted-2">{missed ? 'No answer' : `${Math.floor((m.callSecs ?? 0) / 60)}m ${(m.callSecs ?? 0) % 60}s`} · {clock(m.at)}</div></div>
         </div>
         {m.voicemail && <div className="mt-2.5 rounded-lg bg-control px-3 py-2"><div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-3 mb-0.5">Voicemail · transcribed</div><div className="text-[13px] text-ink-2 italic">“{m.voicemail}”</div></div>}
@@ -457,7 +457,7 @@ function Message({ m, name, open, toggle }: { m: CommsMessage; name: string; ope
   // chat-style: WhatsApp, SMS, social, portal
   return (
     <div className={classNames('flex flex-col max-w-[520px]', mine ? 'self-end items-end' : 'self-start items-start')}>
-      <div className={classNames('rounded-2xl px-3.5 py-2.5 text-[13.5px] leading-snug whitespace-pre-wrap shadow-card', mine ? 'rounded-br-md text-white' : 'rounded-bl-md bg-white border border-border text-ink-2')} style={mine ? { background: m.author.startsWith('Ovi') ? 'linear-gradient(135deg,#1FAE94,#0E7A66)' : ch.color } : undefined}>{m.body}</div>
+      <div className={classNames('rounded-2xl px-3.5 py-2.5 text-[13.5px] leading-snug whitespace-pre-wrap shadow-card', mine ? 'rounded-br-md text-white' : 'rounded-bl-md bg-white border border-border text-ink-2')} style={mine ? { background: m.author.startsWith('Ovi') ? '#0E7A66' : '#15223B' } : undefined}>{m.body}</div>
       <div className="flex items-center gap-1.5 mt-1 text-[11px] text-muted-3"><span style={{ color: ch.color }} className="flex items-center gap-1 font-semibold"><SmallIcon k={m.channel} />{ch.label}</span>· {mine ? m.author : ''} {clock(m.at)}</div>
     </div>
   )
@@ -492,7 +492,7 @@ function ContextPanel({ c }: { c: Conversation }) {
         <div className="flex flex-col gap-1.5">
           {STAGES.map((s, i) => (
             <button key={s.id} onClick={() => act.updateConversation(c.id, { stage: s.id })} className="flex items-center gap-2.5 text-left group">
-              <span className={classNames('w-4 h-4 rounded-full flex items-center justify-center shrink-0', i < idx ? 'bg-accent text-white' : i === idx ? 'ring-4 ring-accent-wash bg-accent' : 'border-2 border-border')}>{i < idx && <Check size={9} />}</span>
+              <span className={classNames('w-4 h-4 rounded-full flex items-center justify-center shrink-0', i < idx ? 'bg-[#0E7A66] text-white' : i === idx ? 'ring-4 ring-[#62E4CC]/40 bg-[#15223B]' : 'border-2 border-border')}>{i < idx && <Check size={9} />}</span>
               <span className={classNames('text-[12.5px]', i === idx ? 'font-bold text-ink' : i < idx ? 'text-ink-3' : 'text-muted-3 group-hover:text-ink-3')}>{s.label}</span>
             </button>
           ))}
@@ -524,7 +524,7 @@ function Line({ icon: I, children }: { icon: Icon; children: ReactNode }) {
   return <div className="flex items-start gap-2.5 text-[12.5px] text-ink-3 py-1"><I size={14} className="text-muted-3 shrink-0 mt-0.5" /><span className="min-w-0">{children}</span></div>
 }
 function QA({ icon: I, label, onClick }: { icon: Icon; label: string; onClick: () => void }) {
-  return <button onClick={onClick} className="h-9 rounded-lg border border-border text-[12px] font-semibold text-ink-3 hover:border-accent hover:text-accent hover:bg-accent-wash flex items-center justify-center gap-1.5 transition-colors"><I size={13} />{label}</button>
+  return <button onClick={onClick} className="h-9 rounded-lg border border-border text-[12px] font-semibold text-ink-3 hover:border-[#15223B] hover:text-[#15223B] hover:bg-[#F1FBF8] flex items-center justify-center gap-1.5 transition-colors"><I size={13} />{label}</button>
 }
 function Mini({ v, l }: { v: string; l: string }) {
   return <div className="rounded-lg bg-control py-2"><div className="text-[15px] font-bold text-ink leading-none">{v}</div><div className="text-[10.5px] text-muted-2 mt-1">{l}</div></div>
