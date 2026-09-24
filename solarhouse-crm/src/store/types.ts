@@ -302,8 +302,33 @@ export interface Pipeline {
   stages: PipelineStage[]
 }
 
+/* ── Customer journey (Solar House) — the full lead→install→portal lifecycle on every deal ── */
+export type Showroom = 'cardiff' | 'cheltenham' | 'gloucester' | 'melksham'
+export type JourneyKey = 'enquiry' | 'contacted' | 'consultation' | 'proposal' | 'survey' | 'signed' | 'dno' | 'install' | 'handover'
+export interface JourneyStep {
+  key: JourneyKey
+  at: number // when the stage started (or is booked for, if in the future)
+  done?: number // when it was completed
+  by?: string // who did it
+  notes?: string
+  data?: Record<string, string | number>
+}
+export interface Journey {
+  showroom: Showroom
+  source: string
+  address: string
+  postcode: string
+  phone: string
+  email: string
+  property: { type: string; bedrooms: number; roofAspect: string; annualKwh: number; monthlyBill: number; heating: string; hasEv: boolean }
+  system?: { kwp: number; panels: number; panelModel: string; inverter: string; batteryKwh: number; evCharger: boolean; price: number; finance: string }
+  steps: JourneyStep[]
+  nextAction?: { label: string; due: number }
+}
+
 export interface Deal {
   id: ID
+  journey?: Journey // Solar House: the customer's full lifecycle
   name: string
   org: string
   orgId?: ID

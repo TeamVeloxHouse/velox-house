@@ -1,14 +1,14 @@
-import { createBrowserRouter } from 'react-router-dom'
+import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { Home } from './pages/Home'
 import { MyTasks } from './pages/MyTasks'
 import { DealsBoard } from './pages/DealsBoard'
 import { DealDetail } from './pages/DealDetail'
+import { CustomerRecord } from './pages/CustomerRecord'
 import { Leads } from './pages/Leads'
 import { People } from './pages/People'
 import { PersonDetail } from './pages/PersonDetail'
 import { Organisations } from './pages/Organisations'
-import { Activities } from './pages/Activities'
 import { Inbox } from './pages/Inbox'
 import { UnifiedInbox } from './pages/UnifiedInbox'
 import { Insights } from './pages/Insights'
@@ -108,12 +108,12 @@ export const router = createBrowserRouter([
       { path: 'meetings/live', element: <LiveMeeting /> },
       { path: 'calendar', element: <Calendar /> },
       { path: 'deals', element: <DealsBoard /> },
-      { path: 'deals/:id', element: <DealDetail /> },
+      { path: 'deals/:id', element: <CustomerRecord /> },
       { path: 'leads', element: <Leads /> },
       { path: 'people', element: <People /> },
       { path: 'people/:id', element: <PersonDetail /> },
       { path: 'organisations', element: <Organisations /> },
-      { path: 'activities', element: <Activities /> },
+      { path: 'activities', element: <Navigate to="/tasks" replace /> }, // merged into My Tasks
       { path: 'inbox', element: <UnifiedInbox /> },
       { path: 'linkedin', element: <LinkedInInbox /> },
       { path: 'insights', element: <Insights /> },

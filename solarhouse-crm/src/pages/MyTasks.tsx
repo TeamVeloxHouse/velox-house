@@ -11,6 +11,7 @@ import { YOU_MEMBER_ID } from '../store/types'
 import type { Activity, ID } from '../store/types'
 import { isTask, bucketOf, isYesterday, effectiveDueDate, BUCKET_META, fmtMins, type Bucket } from '../lib/tasks'
 import { classNames } from '../lib/format'
+import { CalendarView } from './Calendar'
 
 const typeIcon: Record<string, any> = { call: Phone, meeting: Meeting, task: TaskIcon, email: Envelope }
 const typeColor: Record<string, string> = { call: '#13927B', meeting: '#0E7C66', task: '#C2410C', email: '#13927B' }
@@ -25,13 +26,17 @@ export function MyTasks() {
   const [scope, setScope] = useState<ID>(YOU_MEMBER_ID) // whose tasks
   const [when, setWhen] = useState('today') // today | yesterday | all
   const [q, setQ] = useState('')
+  const [kind, setKind] = useState('all') // call | meeting | task | email — the old Activities filter
+  const [layout, setLayout] = useState<'list' | 'calendar'>('list')
   const [composerOpen, setComposerOpen] = useState(false)
   const [editId, setEditId] = useState<ID | undefined>(undefined)
 
   const memberById = (id: ID) => teamMembers.find((m) => m.id === id)
   const scopeMember = memberById(scope)
+  const scopeMemberYou = memberById(YOU_MEMBER_ID)?.name
   const assignedToScope = (a: Activity) => {
     if (scope === 'all') return true
+    if (scope.startsWith('name:')) return a.who === scope.slice(5) // an adviser picked by name
     if (a.assigneeIds?.length) return a.assigneeIds.includes(scope)
     // legacy fallback: match the free-text owner to the member name
     return scopeMember ? a.who === scopeMember.name : false
@@ -41,9 +46,10 @@ export function MyTasks() {
     () => activities
       .filter(isTask)
       .filter(assignedToScope)
+      .filter((a) => kind === 'all' || a.type === kind)
       .filter((a) => !q || a.subject.toLowerCase().includes(q.toLowerCase()) || (a.body ?? '').toLowerCase().includes(q.toLowerCase())),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activities, scope, q],
+    [activities, scope, q, kind],
   )
 
   const yesterday = tasks.filter(isYesterday)
@@ -126,7 +132,11 @@ export function MyTasks() {
       <TopBar title="My Tasks" actions={<Button variant="primary" icon={<Plus size={16} />} onClick={openNew}>New task</Button>} />
 
       <div className="shrink-0 bg-surface border-b border-border px-7 py-2.5 flex items-center gap-3 flex-wrap">
+        <div className="inline-flex bg-control rounded-control p-[3px] gap-0.5">
+          {(['list', 'calendar'] as const).map((l) => <button key={l} onClick={() => setLayout(l)} className={classNames('h-[30px] px-3 rounded-[7px] text-[12.5px] font-semibold capitalize', layout === l ? 'bg-white text-accent shadow-[0_1px_2px_rgba(11,18,32,0.08)]' : 'text-muted-b')}>{l}</button>)}
+        </div>
         <PillTabs value={when} onChange={setWhen} tabs={[{ id: 'today', label: 'To-do' }, { id: 'yesterday', label: 'Yesterday' }, { id: 'all', label: 'All' }]} />
+        <PillTabs value={kind} onChange={setKind} tabs={[{ id: 'all', label: 'Everything' }, { id: 'call', label: 'Calls', icon: Phone, color: typeColor.call }, { id: 'meeting', label: 'Meetings', icon: Meeting, color: typeColor.meeting }, { id: 'task', label: 'Tasks', icon: TaskIcon, color: typeColor.task }, { id: 'email', label: 'Emails', icon: Envelope, color: typeColor.email }]} />
         <div className="h-9 w-[220px] rounded-control border border-border bg-surface flex items-center gap-2 px-3">
           <Search size={15} className="text-muted-3" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search tasks" className="bg-transparent outline-none flex-1 text-[13px] text-ink-2 placeholder:text-muted-3" />
@@ -136,7 +146,7 @@ export function MyTasks() {
           <select value={scope} onChange={(e) => setScope(e.target.value)} className="h-9 px-2.5 rounded-control border border-input-border bg-white text-[13px] outline-none focus:border-accent">
             <option value={YOU_MEMBER_ID}>My tasks</option>
             <option value="all">Everyone</option>
-            {teamMembers.filter((m) => !m.you && !m.bot).map((m) => (<option key={m.id} value={m.id}>{m.name}</option>))}
+            {[...new Set(activities.map((a) => a.who))].filter((n) => n && n !== 'System' && n !== scopeMemberYou && !n.includes('team')).sort().map((n) => (<option key={n} value={`name:${n}`}>{n}</option>))}
           </select>
         </label>
         <div className="ml-auto flex items-center gap-2 text-[12.5px]">
@@ -145,7 +155,7 @@ export function MyTasks() {
         </div>
       </div>
 
-      <PageBody>
+      {layout === 'calendar' ? <CalendarView /> : <PageBody>
         {when === 'yesterday' ? (
           <div className="flex flex-col gap-3">
             <div className="text-[13px] text-muted-b">What {scope === YOU_MEMBER_ID ? 'you' : scope === 'all' ? 'the team' : scopeMember?.name.split(' ')[0]} worked yesterday — {yesterday.filter((a) => a.done).length} done, {yesterday.filter((a) => !a.done).length} rolled over.</div>
@@ -177,7 +187,7 @@ export function MyTasks() {
             )}
           </div>
         )}
-      </PageBody>
+      </PageBody>}
 
       <TaskComposer open={composerOpen} onClose={() => setComposerOpen(false)} editId={editId} />
     </>
