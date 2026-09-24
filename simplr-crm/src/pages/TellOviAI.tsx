@@ -1,11 +1,11 @@
 import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { TopBar } from '../components/TopBar'
-import { Button, Chip } from '../components/ui'
+import { Button } from '../components/ui'
 import { AiMessage, AiComposer, useChat } from '../components/AiChat'
 import { Sparkle, Bars, Envelope, Note, Robot, Bolt } from '../components/icons'
 import { starterPrompts } from '../lib/ai'
-import { useState_, useActions } from '../store/store'
+import { useState_ } from '../store/store'
 
 const capabilities = [
   { icon: Bars, title: 'Analyse your pipeline', sub: 'Risk, concentration, forecast — ask in plain English' },
@@ -18,7 +18,7 @@ export function TellOviAI() {
   const nav = useNavigate()
   const { turns, ask } = useChat()
   const { agents } = useState_()
-  const act = useActions()
+  const running = agents.filter((a) => a.on).length
   const scroller = useRef<HTMLDivElement>(null)
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: 'smooth' })
@@ -33,7 +33,16 @@ export function TellOviAI() {
         crumbs={['Your CRM copilot']}
         actions={
           <>
-            <Button icon={<Robot size={16} />} onClick={() => nav('/agents')}>Agents</Button>
+            <button
+              onClick={() => nav('/agents')}
+              title="Manage agents"
+              className="h-9 pl-3 pr-2.5 rounded-control border border-border bg-surface text-[13px] font-semibold text-ink-3 hover:bg-control flex items-center gap-2 transition-colors"
+            >
+              <Robot size={16} />Agents
+              <span className="flex items-center gap-1.5 text-[11.5px] font-semibold text-positive bg-positive-wash rounded-full px-2 py-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-positive animate-pulse" />{running} running
+              </span>
+            </button>
             <Button variant="primary" icon={<Sparkle size={16} />}>New chat</Button>
           </>
         }
@@ -101,34 +110,6 @@ export function TellOviAI() {
             </div>
           </div>
         </div>
-
-        {/* agents panel */}
-        <aside className="w-[300px] shrink-0 bg-surface border-l border-border overflow-y-auto p-4 flex flex-col gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <Robot size={17} className="text-accent" />
-              <div className="text-[14px] font-bold text-ink">Autonomous agents</div>
-            </div>
-            <div className="text-[12px] text-muted-2">Always-on workers running in the background across your CRM.</div>
-          </div>
-          <div className="flex flex-col gap-2">
-            {agents.map((a) => (
-              <div key={a.id} className="border border-border rounded-xl p-3">
-                <div className="flex items-center justify-between">
-                  <div className="text-[13px] font-semibold text-ink-2">{a.name}</div>
-                  <button onClick={() => act.toggleAgent(a.id, a.name, a.on)} className={'w-8 h-[18px] rounded-full flex items-center px-0.5 transition-colors ' + (a.on ? 'bg-accent justify-end' : 'bg-input-border justify-start')}>
-                    <span className="w-3.5 h-3.5 rounded-full bg-white" />
-                  </button>
-                </div>
-                <div className="text-[12px] text-muted-2 mt-1 leading-snug">{a.desc}</div>
-                <div className="mt-2"><Chip tone={a.on ? 'positive' : 'neutral'} dot>{a.runs}</Chip></div>
-              </div>
-            ))}
-          </div>
-          <button onClick={() => nav('/agents')} className="text-[13px] text-accent font-semibold flex items-center gap-1.5 justify-center border border-dashed border-border-blue rounded-xl py-2.5 hover:bg-accent-wash transition-colors">
-            <Sparkle size={15} /> Build a new agent
-          </button>
-        </aside>
       </div>
     </>
   )

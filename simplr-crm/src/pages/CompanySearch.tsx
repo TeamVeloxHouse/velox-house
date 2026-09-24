@@ -2,9 +2,8 @@ import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { TopBar } from '../components/TopBar'
 import { PageBody } from '../components/Page'
-import { Button, Segmented, Kpi } from '../components/ui'
-import { PillTabs } from '../components/chrome'
-import { Radar, Send, Sparkle, Person, Search, Building, Flow, Layers, Sun, Target, Check, Envelope, MapPin } from '../components/icons'
+import { Button, Segmented } from '../components/ui'
+import { Radar, Send, Sparkle, Person, Search, Building, Flow, Layers, Sun, Target, Check, Envelope, MapPin, ChevronRight } from '../components/icons'
 import { MapExplorer } from '../components/MapExplorer'
 import { MultiSelect, Stepper, AddressAutocomplete } from '../components/inputs'
 import { useActions, useState_ } from '../store/store'
@@ -139,7 +138,7 @@ export function CompanySearchTool() {
   const tabs = [
     { id: 'chat', label: 'Chat', icon: Sparkle },
     { id: 'map', label: 'Map view', icon: MapPin },
-    { id: 'companies', label: `Companies${currentProspects.length ? ` (${currentProspects.length})` : ''}`, icon: Building },
+    { id: 'companies', label: 'Companies', count: currentProspects.length, icon: Building },
     { id: 'pipeline', label: 'Pipeline', icon: Flow },
     { id: 'database', label: 'Database', icon: Layers },
   ]
@@ -147,7 +146,7 @@ export function CompanySearchTool() {
   return (
     <>
       <TopBar title="Company & People Search" crumbs={['Tools']}
-        center={<PillTabs tabs={tabs} value={tab} onChange={setTab} />}
+        tabs={{ items: tabs, value: tab, onChange: setTab }}
         actions={<Button variant="secondary" icon={<Radar size={15} />} onClick={() => nav('/tools')}>All tools</Button>} />
       <PageBody>
         {tab === 'chat' && <ChatTab {...{ mode, setMode, params, set, chat, draft, setDraft, sendChat, running, progress, runSearch, chatEndRef }} />}
@@ -277,36 +276,90 @@ function CompaniesTab({ prospects, running, progress, campaigns, campaignId, set
   prospects: SolarProspect[]; running: boolean; progress: EngineProgress | null
   campaigns: import('../store/types').SolarCampaign[]; campaignId: string | null; setCampaignId: (id: string | null) => void; onOpen: (id: string) => void; jobTitles?: string[]
 }) {
+  const [q, setQ] = useState('')
+  const [status, setStatus] = useState<'all' | SolarProspectStatus>('all')
+  const [sort, setSort] = useState<'score' | 'saving' | 'name'>('score')
+
   const withPeople = prospects.filter((p) => p.contactsRevealed).length
   const measured = prospects.filter((p) => !p.roofPending).length
+  const contacts = prospects.reduce((s, p) => s + (p.contactsRevealed ? p.contacts.length : 0), 0)
+  const avgScore = Math.round(prospects.reduce((s, p) => s + p.score, 0) / (prospects.length || 1))
+  const pipelineSaving = prospects.reduce((s, p) => s + (p.roofPending ? 0 : p.year1Saving || 0), 0)
+  const statusCounts = SOLAR_STATUSES.map((s) => [s, prospects.filter((p) => p.status === s).length] as const).filter(([, n]) => n > 0)
+
+  const rows = useMemo(() => {
+    const needle = q.trim().toLowerCase()
+    return prospects
+      .filter((p) => status === 'all' || p.status === status)
+      .filter((p) => !needle || [p.company, p.category, p.address, p.domain].some((v) => v?.toLowerCase().includes(needle)))
+      .sort((a, b) => sort === 'name' ? a.company.localeCompare(b.company) : sort === 'saving' ? (b.year1Saving || 0) - (a.year1Saving || 0) : b.score - a.score)
+  }, [prospects, q, status, sort])
+
+  if (prospects.length === 0 && !running) return <EmptyState />
+
   return (
-    <div className="flex flex-col gap-4 flex-1 min-h-0 overflow-y-auto">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="text-[15px] font-bold text-ink">{prospects.length} companies</div>
-          {running && <span className="text-[12.5px] text-accent flex items-center gap-1.5"><span className="w-3.5 h-3.5 rounded-full border-2 border-accent border-t-transparent animate-spin" />{progress?.message}</span>}
+    <div className="flex flex-col gap-4 flex-1 min-h-0">
+      {/* summary strip */}
+      <div className="rounded-card bg-surface border border-border shadow-card grid grid-cols-5 divide-x divide-divider">
+        <Stat label="Companies" value={String(prospects.length)} hint={running ? progress?.message : `${campaigns.length} ${campaigns.length === 1 ? 'search' : 'searches'}`} live={running} />
+        <Stat label="People revealed" value={`${withPeople}/${prospects.length}`} bar={withPeople / (prospects.length || 1)} hint={`${contacts} decision-makers`} />
+        <Stat label="Roofs measured" value={`${measured}/${prospects.length}`} bar={measured / (prospects.length || 1)} hint="Measured on demand" />
+        <Stat label="Avg. fit score" value={String(avgScore)} bar={avgScore / 100} barColor={scoreTone(avgScore)} hint="Across this search" />
+        <Stat label="Solar saving found" value={money(pipelineSaving, { compact: true })} hint="Per year, measured roofs" />
+      </div>
+
+      {/* toolbar */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-1 bg-surface border border-border rounded-control p-0.5">
+          <FilterPill on={status === 'all'} onClick={() => setStatus('all')} label="All" n={prospects.length} />
+          {statusCounts.map(([s, n]) => <FilterPill key={s} on={status === s} onClick={() => setStatus(s)} label={STATUS_META[s].label} n={n} dot={STATUS_META[s].tone} />)}
         </div>
-        <select value={campaignId ?? 'all'} onChange={(e) => setCampaignId(e.target.value === 'all' ? null : e.target.value)} className="h-9 px-3 rounded-control border border-input-border bg-white text-[13px] outline-none focus:border-accent">
+        <div className="relative ml-auto">
+          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-3" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter companies…" className="h-9 w-[220px] pl-8 pr-3 rounded-control border border-border bg-surface text-[13px] outline-none focus:border-accent" />
+        </div>
+        <select value={campaignId ?? 'all'} onChange={(e) => setCampaignId(e.target.value === 'all' ? null : e.target.value)} className="h-9 px-3 rounded-control border border-border bg-surface text-[13px] outline-none focus:border-accent max-w-[220px]">
           <option value="all">All searches</option>
           {campaigns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
+        <select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} className="h-9 px-3 rounded-control border border-border bg-surface text-[13px] outline-none focus:border-accent">
+          <option value="score">Sort: Best fit</option>
+          <option value="saving">Sort: Biggest saving</option>
+          <option value="name">Sort: A–Z</option>
+        </select>
       </div>
-      {prospects.length > 0 && (
-        <div className="grid grid-cols-4 gap-3">
-          <Kpi variant="deep" label="Companies" value={String(prospects.length)} delta={`${withPeople} with people`} />
-          <Kpi variant="blue" label="Roofs measured" value={String(measured)} delta="On demand" deltaTone="muted" />
-          <Kpi label="Contacts revealed" value={String(prospects.reduce((s, p) => s + (p.contactsRevealed ? p.contacts.length : 0), 0))} delta="Decision-makers" deltaTone="muted" />
-          <Kpi label="Avg. score" value={String(Math.round(prospects.reduce((s, p) => s + p.score, 0) / (prospects.length || 1)))} delta="Fit" deltaTone="muted" />
+
+      {/* results */}
+      <div className="rounded-card bg-surface border border-border shadow-card overflow-hidden flex flex-col min-h-0">
+        <div className="grid grid-cols-[minmax(240px,1.5fr)_minmax(230px,1.3fr)_minmax(220px,1.3fr)_70px_130px_28px] gap-4 px-4 h-10 items-center border-b border-divider bg-[#FAFBFC] text-[10.5px] font-semibold uppercase tracking-[0.07em] text-muted-3">
+          <span>Company</span><span>Roof & solar</span><span>Decision-makers</span><span>Fit</span><span>Stage</span><span />
         </div>
-      )}
-      {prospects.length === 0 && !running ? (
-        <EmptyState />
-      ) : (
-        <div className="grid grid-cols-3 gap-4 pb-4">
-          {[...prospects].sort((a, b) => b.score - a.score).map((p) => <CompanyCard key={p.id} p={p} jobTitles={jobTitles} onOpen={() => onOpen(p.id)} />)}
+        <div className="overflow-y-auto">
+          {rows.map((p) => <CompanyRow key={p.id} p={p} jobTitles={jobTitles} onOpen={() => onOpen(p.id)} />)}
+          {running && <div className="px-4 py-3.5 text-[12.5px] text-accent flex items-center gap-2 border-t border-divider-row"><span className="w-3.5 h-3.5 rounded-full border-2 border-accent border-t-transparent animate-spin" />{progress?.message ?? 'Finding more companies…'}</div>}
+          {!rows.length && !running && <div className="px-4 py-10 text-center text-[13px] text-muted-b">No companies match these filters.</div>}
         </div>
-      )}
+      </div>
     </div>
+  )
+}
+
+function Stat({ label, value, hint, bar, barColor = '#1FAE94', live }: { label: string; value: string; hint?: string; bar?: number; barColor?: string; live?: boolean }) {
+  return (
+    <div className="px-4 py-3.5 min-w-0">
+      <div className="text-[11.5px] font-medium text-muted-b flex items-center gap-1.5">{live && <span className="w-1.5 h-1.5 rounded-full bg-accent-500 animate-pulse" />}{label}</div>
+      <div className="text-[22px] font-bold text-ink tracking-[-0.02em] leading-tight mt-1">{value}</div>
+      {bar != null && <div className="h-1 rounded-full bg-control mt-2 overflow-hidden"><div className="h-full rounded-full transition-all" style={{ width: `${Math.round(Math.min(1, bar) * 100)}%`, background: barColor }} /></div>}
+      {hint && <div className="text-[11.5px] text-muted-2 mt-1.5 truncate">{hint}</div>}
+    </div>
+  )
+}
+
+function FilterPill({ on, onClick, label, n, dot }: { on: boolean; onClick: () => void; label: string; n: number; dot?: string }) {
+  return (
+    <button onClick={onClick} className={classNames('h-8 px-2.5 rounded-[7px] text-[12.5px] flex items-center gap-1.5 transition-colors', on ? 'bg-ink text-white font-semibold' : 'text-muted-b font-medium hover:text-ink-3 hover:bg-control')}>
+      {dot && <span className="w-1.5 h-1.5 rounded-full" style={{ background: dot }} />}{label}<span className={on ? 'text-white/60' : 'text-muted-3'}>{n}</span>
+    </button>
   )
 }
 
@@ -320,8 +373,8 @@ function EmptyState() {
   )
 }
 
-/* ─────────── Company-first card ─────────── */
-function CompanyCard({ p, onOpen, jobTitles }: { p: SolarProspect; onOpen: () => void; jobTitles?: string[] }) {
+/* ─────────── Company-first results row ─────────── */
+function CompanyRow({ p, onOpen, jobTitles }: { p: SolarProspect; onOpen: () => void; jobTitles?: string[] }) {
   const act = useActions()
   const [revealing, setRevealing] = useState(false)
   const [measuring, setMeasuring] = useState(false)
@@ -342,56 +395,92 @@ function CompanyCard({ p, onOpen, jobTitles }: { p: SolarProspect; onOpen: () =>
     finally { setMeasuring(false) }
   }
 
+  const [imgOk, setImgOk] = useState(true)
+  const meta = STATUS_META[p.status]
+  const place = p.address?.split(',').slice(-2).join(',').trim()
+  const named = p.company && p.company !== 'Selected building'
+
   return (
-    <div className="rounded-card bg-surface border border-border overflow-hidden flex flex-col hover:shadow-modal transition-shadow cursor-pointer group" onClick={onOpen}>
-      <div className="p-3.5 flex flex-col gap-3">
-        <div className="flex items-start gap-2.5">
-          <CompanyLogo domain={p.domain} name={p.company} />
-          <div className="min-w-0 flex-1">
-            <div className="font-bold text-[15px] leading-tight truncate text-ink">{p.company}</div>
-            <div className="text-[11.5px] text-muted-2 truncate">{p.category || p.address}</div>
+    <div onClick={onOpen} className="grid grid-cols-[minmax(240px,1.5fr)_minmax(230px,1.3fr)_minmax(220px,1.3fr)_70px_130px_28px] gap-4 px-4 py-3 items-center border-b border-divider-row last:border-b-0 hover:bg-[#FAFCFB] cursor-pointer group transition-colors">
+      {/* company */}
+      <div className="flex items-center gap-3 min-w-0">
+        <CompanyLogo domain={p.domain} name={p.company} size={38} />
+        <div className="min-w-0">
+          <div className="font-semibold text-[14px] text-ink truncate group-hover:text-accent transition-colors">{named ? p.company : place || 'Unnamed building'}</div>
+          <div className="text-[12px] text-muted-2 truncate">{[p.category, named ? place : null].filter(Boolean).join(' · ') || (p.center ? `${p.center.lat.toFixed(4)}, ${p.center.lng.toFixed(4)}` : '—')}</div>
+          <div className="text-[11.5px] text-muted-3 truncate flex items-center gap-1 mt-0.5">
+            {p.domain ? <><Envelope size={11} />{p.domain}</> : <span className="italic">No website found</span>}
           </div>
-          <span className="text-[12px] font-bold text-white px-2 py-0.5 rounded-full shrink-0" style={{ background: scoreTone(p.score) }}>{p.score}</span>
-        </div>
-
-        {/* Roof: measured strip, or a measure-on-demand CTA */}
-        {!p.roofPending ? (
-          <div className="relative rounded-lg overflow-hidden aspect-[16/7] bg-control">
-            {p.imageUrl && <img src={p.imageUrl} alt="" className="w-full h-full object-cover" />}
-            <RoofOverlay center={p.center} segments={p.roofSegments} footprint={p.roofFootprint} zoom={p.roofZoom} />
-            <div className="absolute bottom-1.5 left-1.5 right-1.5 flex items-center justify-between text-[10.5px] font-semibold text-white">
-              <span className="px-2 py-0.5 rounded backdrop-blur-sm" style={{ background: 'rgba(34,211,238,0.85)' }}>{Math.round(p.systemKwp)} kWp</span>
-              <span className="px-2 py-0.5 rounded bg-black/55 backdrop-blur-sm">{money(p.year1Saving, { compact: true })}/yr · {p.paybackYears}y</span>
-            </div>
-          </div>
-        ) : (
-          <button onClick={measure} disabled={measuring} className="h-9 rounded-lg border border-dashed border-border text-[12.5px] font-semibold text-ink-3 hover:border-accent hover:bg-accent-wash flex items-center justify-center gap-2 disabled:opacity-60">
-            {measuring ? <span className="w-4 h-4 rounded-full border-2 border-accent border-t-transparent animate-spin" /> : <Sun size={14} className="text-accent" />}{measuring ? 'Measuring roof…' : 'Measure roof'}
-          </button>
-        )}
-
-        {/* People */}
-        {p.contactsRevealed ? (
-          top ? (
-            <div className="flex items-center gap-2 text-[12px]">
-              <span className="w-7 h-7 rounded-full bg-accent-wash text-accent flex items-center justify-center text-[10.5px] font-bold shrink-0">{initials(top.name)}</span>
-              <span className="min-w-0 flex-1 truncate"><b className="font-semibold text-ink-2">{top.name}</b> <span className="text-muted-2">· {top.title}</span></span>
-              {p.contacts.length > 1 && <span className="text-[11px] text-muted-b shrink-0">+{p.contacts.length - 1} more</span>}
-            </div>
-          ) : <div className="text-[12px] text-muted-2 flex items-center gap-1.5"><Person size={13} />No contacts found</div>
-        ) : (
-          <button onClick={reveal} disabled={revealing} className="h-9 rounded-lg text-white text-[12.5px] font-semibold flex items-center justify-center gap-2 disabled:opacity-60" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}>
-            {revealing ? <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" /> : <Person size={14} />}{revealing ? 'Finding people…' : 'Reveal people (1 credit)'}
-          </button>
-        )}
-
-        <div className="flex items-center justify-between pt-0.5">
-          <span className="text-[11px] text-muted-2 truncate flex items-center gap-1"><Envelope size={12} />{p.domain || 'No website'}</span>
-          <select value={p.status} onClick={(e) => e.stopPropagation()} onChange={(e) => act.setSolarProspectStatus(p.id, e.target.value as SolarProspectStatus)} className="h-7 px-2 rounded-control border border-input-border bg-white text-[11.5px] outline-none focus:border-accent">
-            {SOLAR_STATUSES.map((s) => <option key={s} value={s}>{STATUS_META[s].label}</option>)}
-          </select>
         </div>
       </div>
+
+      {/* roof */}
+      {!p.roofPending ? (
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="relative w-[84px] h-[54px] rounded-lg overflow-hidden shrink-0 border border-border" style={{ background: 'repeating-linear-gradient(45deg,#EEF2F6 0 6px,#F6F8FA 6px 12px)' }}>
+            {p.imageUrl && imgOk && <img src={p.imageUrl} alt="" onError={() => setImgOk(false)} className="absolute inset-0 w-full h-full object-cover" />}
+            <RoofOverlay center={p.center} segments={p.roofSegments} footprint={p.roofFootprint} zoom={p.roofZoom} />
+          </div>
+          <div className="min-w-0">
+            <div className="text-[14px] font-bold text-ink leading-tight">{Math.round(p.systemKwp)} <span className="text-[11.5px] font-semibold text-muted-2">kWp</span></div>
+            <div className="text-[12px] text-positive font-semibold mt-0.5">{money(p.year1Saving, { compact: true })}/yr saving</div>
+            <div className="text-[11.5px] text-muted-2">{p.paybackYears}-year payback</div>
+          </div>
+        </div>
+      ) : (
+        <button onClick={measure} disabled={measuring} className="h-9 w-fit px-3 rounded-lg border border-dashed border-input-border text-[12.5px] font-semibold text-ink-3 hover:border-accent hover:text-accent hover:bg-accent-wash flex items-center gap-2 disabled:opacity-60 transition-colors">
+          {measuring ? <span className="w-3.5 h-3.5 rounded-full border-2 border-accent border-t-transparent animate-spin" /> : <Sun size={14} className="text-accent" />}{measuring ? 'Measuring roof…' : 'Measure roof'}
+        </button>
+      )}
+
+      {/* people */}
+      {p.contactsRevealed ? (
+        top ? (
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex -space-x-2 shrink-0">
+              {p.contacts.slice(0, 3).map((c, i) => (
+                <span key={i} className="w-7 h-7 rounded-full ring-2 ring-white flex items-center justify-center text-[10px] font-bold" style={{ background: ['#EAF6F2', '#EEF2FF', '#FDF1E7'][i], color: ['#0E7A66', '#4F46E5', '#C2410C'][i] }}>{initials(c.name)}</span>
+              ))}
+            </div>
+            <div className="min-w-0">
+              <div className="text-[13px] font-semibold text-ink-2 truncate">{top.name}</div>
+              <div className="text-[11.5px] text-muted-2 truncate">{top.title}{p.contacts.length > 1 ? ` · +${p.contacts.length - 1} more` : ''}</div>
+            </div>
+          </div>
+        ) : <div className="text-[12.5px] text-muted-2 flex items-center gap-1.5"><Person size={13} />No contacts found</div>
+      ) : (
+        <button onClick={reveal} disabled={revealing} className="h-9 w-fit px-3 rounded-lg text-white text-[12.5px] font-semibold flex items-center gap-2 disabled:opacity-60 bg-accent-gradient shadow-primary">
+          {revealing ? <span className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" /> : <Person size={14} />}{revealing ? 'Finding people…' : 'Reveal people'}
+          {!revealing && <span className="text-[10.5px] font-semibold bg-white/20 rounded px-1.5 py-px">1 credit</span>}
+        </button>
+      )}
+
+      {/* fit */}
+      <ScoreRing score={p.score} />
+
+      {/* stage */}
+      <div onClick={(e) => e.stopPropagation()} className="relative">
+        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full pointer-events-none" style={{ background: meta.tone }} />
+        <select value={p.status} onChange={(e) => act.setSolarProspectStatus(p.id, e.target.value as SolarProspectStatus)} className="h-8 w-full pl-6 pr-2 rounded-full border border-border bg-surface text-[12px] font-semibold text-ink-3 outline-none focus:border-accent hover:border-input-border cursor-pointer">
+          {SOLAR_STATUSES.map((s) => <option key={s} value={s}>{STATUS_META[s].label}</option>)}
+        </select>
+      </div>
+
+      <ChevronRight size={16} className="text-muted-3 group-hover:text-accent transition-colors" />
+    </div>
+  )
+}
+
+function ScoreRing({ score }: { score: number }) {
+  const r = 16, c = 2 * Math.PI * r
+  const tone = scoreTone(score)
+  return (
+    <div className="relative w-10 h-10" title={`Fit score ${score}/100`}>
+      <svg viewBox="0 0 40 40" className="w-10 h-10 -rotate-90">
+        <circle cx="20" cy="20" r={r} fill="none" stroke="#EEF1F4" strokeWidth="4" />
+        <circle cx="20" cy="20" r={r} fill="none" stroke={tone} strokeWidth="4" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - score / 100)} />
+      </svg>
+      <span className="absolute inset-0 flex items-center justify-center text-[12px] font-bold text-ink">{score}</span>
     </div>
   )
 }

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Outlet, useLocation } from 'react-router-dom'
+import { Outlet } from 'react-router-dom'
 import { Rail } from './Rail'
-import { SectionNav } from './SectionNav'
 import { CommandPalette } from './CommandPalette'
 import { Dock } from './Dock'
 import { Onboarding } from './Onboarding'
@@ -9,8 +8,6 @@ import { Toaster } from './overlays'
 
 export function Layout() {
   const [paletteOpen, setPaletteOpen] = useState(false)
-  const location = useLocation()
-  const showSectionNav = !location.pathname.startsWith('/settings')
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -32,7 +29,6 @@ export function Layout() {
     <div className="h-full flex bg-canvas overflow-hidden">
       <Rail />
       <div className="flex-1 flex flex-col min-w-0 bg-canvas-fade">
-        {showSectionNav && <SectionNav />}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           <Outlet context={{ openPalette: () => setPaletteOpen(true) }} />
         </div>

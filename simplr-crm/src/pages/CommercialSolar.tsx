@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { TopBar } from '../components/TopBar'
 import { PageBody } from '../components/Page'
 import { Button, Chip, Segmented, Kpi } from '../components/ui'
-import { PillTabs } from '../components/chrome'
 import { Sun, Radar, Send, Sparkle, Person, Bolt, Flow, Search, Building, Layers, Check, Target, Envelope } from '../components/icons'
 import { MultiSelect, Stepper, AddressAutocomplete } from '../components/inputs'
 import { useActions, useState_ } from '../store/store'
@@ -147,7 +146,7 @@ export function CommercialSolarTool() {
 
   const tabs = [
     { id: 'chat', label: 'Chat', icon: Sparkle },
-    { id: 'roofs', label: `Scanned roofs${currentProspects.length ? ` (${currentProspects.length})` : ''}`, icon: Sun },
+    { id: 'roofs', label: 'Scanned roofs', count: currentProspects.length, icon: Sun },
     { id: 'pipeline', label: 'Pipeline', icon: Flow },
     { id: 'database', label: 'Database', icon: Layers },
   ]
@@ -155,7 +154,7 @@ export function CommercialSolarTool() {
   return (
     <>
       <TopBar title="Commercial Solar Finder" crumbs={['Tools']}
-        center={<PillTabs tabs={tabs} value={tab} onChange={setTab} />}
+        tabs={{ items: tabs, value: tab, onChange: setTab }}
         actions={<Button variant="secondary" icon={<Radar size={15} />} onClick={() => nav('/tools')}>All tools</Button>} />
       <PageBody>
         {tab === 'chat' && (
