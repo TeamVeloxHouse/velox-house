@@ -264,6 +264,27 @@ function ConvRow({ c, on, onClick }: { c: Conversation; on: boolean; onClick: ()
   )
 }
 
+/* ─────────── Customer record link ─────────── */
+
+/** The CRM record behind a conversation: its linked deal, else a match on email / phone / name. */
+function useRecord(c: Conversation) {
+  const { deals } = useState_()
+  const act = useActions()
+  const nav = useNavigate()
+  const digits = (s?: string) => (s ?? '').replace(/\D/g, '').slice(-10)
+  const deal = deals.find((d) => d.id === c.dealId)
+    ?? deals.find((d) => d.journey && ((c.email && d.journey.email?.toLowerCase() === c.email.toLowerCase()) || (c.phone && digits(d.journey.phone) === digits(c.phone))))
+    ?? deals.find((d) => d.name.toLowerCase() === c.name.toLowerCase())
+  const open = () => {
+    if (deal) { if (!c.dealId) act.updateConversation(c.id, { dealId: deal.id }); nav(`/deals/${deal.id}`); return }
+    const d = act.addDeal({ name: c.name, org: c.address ?? c.name, subtitle: `From the inbox · ${c.source ?? 'enquiry'}`, value: c.valueHint ?? 0, stage: 'New enquiry', owner: c.assignee ?? ME, health: 'Healthy', chips: [], personIds: [] })
+    act.updateConversation(c.id, { dealId: d.id })
+    act.toast(`Customer record created for ${c.name}`)
+    nav(`/deals/${d.id}`)
+  }
+  return { deal, open }
+}
+
 /* ─────────── Thread ─────────── */
 
 function Thread({ c, rightOpen, toggleRight }: { c: Conversation; rightOpen: boolean; toggleRight: () => void }) {
@@ -276,6 +297,10 @@ function Thread({ c, rightOpen, toggleRight }: { c: Conversation; rightOpen: boo
   const [draft, setDraft] = useState('')
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [allOpen, setAllOpen] = useState(false)
+  // Ovi stays out of the way until asked; it can be closed again
+  const [oviOpen, setOviOpen] = useState(false)
+  useEffect(() => { setOviOpen(false) }, [c.id])
+  const record = useRecord(c)
   useEffect(() => { scroller.current?.scrollTo({ top: scroller.current.scrollHeight }) }, [c.messages.length])
 
   const lastEmailId = lastEmail?.id
@@ -299,8 +324,10 @@ function Thread({ c, rightOpen, toggleRight }: { c: Conversation; rightOpen: boo
       <div className="h-[68px] shrink-0 bg-surface border-b border-border px-5 flex items-center gap-3">
         <ChannelAvatar c={c} size={38} />
         <div className="min-w-[110px] flex-1">
-          <div className="flex items-center gap-2"><span className="text-[15.5px] font-bold text-ink truncate">{c.name}</span>
+          <div className="flex items-center gap-2">
+            <button onClick={record.open} title={record.deal ? `Open ${c.name}'s customer record` : 'Create a customer record'} className="text-[15.5px] font-bold text-ink truncate hover:underline decoration-2 underline-offset-4 decoration-[#62E4CC]">{c.name}</button>
             <button onClick={() => act.updateConversation(c.id, { starred: !c.starred })} title="Star"><Star size={15} className={c.starred ? 'text-[#F59E0B]' : 'text-muted-3 hover:text-ink-3'} /></button>
+            <button onClick={record.open} className="h-6 px-2 rounded-full bg-[#15223B] text-white text-[11px] font-semibold flex items-center gap-1 hover:bg-[#1E2F4E]"><Person size={11} className="text-[#62E4CC]" />{record.deal ? 'View record' : 'Create record'}</button>
           </div>
           <div className="text-[12px] text-muted-2 truncate flex items-center gap-1.5">{channelsOf(c).map((k) => <span key={k} className="flex items-center gap-1" style={{ color: CH[k].color }}><SmallIcon k={k} /></span>)}<span>· {c.address?.split(',').slice(-1)[0]?.trim()}</span></div>
         </div>
@@ -335,14 +362,22 @@ function Thread({ c, rightOpen, toggleRight }: { c: Conversation; rightOpen: boo
       {/* Ovi + composer */}
       <div className="shrink-0 bg-surface border-t border-border px-5 pt-3 pb-4">
         <div className="max-w-[760px] mx-auto">
-          <div className="rounded-xl bg-gradient-to-r from-[#EAF6F2] to-[#F4FBF9] border border-border-blue px-3.5 py-2.5 flex items-start gap-2.5 mb-3">
-            <span className="w-6 h-6 rounded-md bg-accent-gradient text-white flex items-center justify-center shrink-0 mt-0.5"><Sparkle size={13} /></span>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2"><span className="text-[12px] font-bold text-accent-700">Ovi</span><span className="text-[10.5px] font-semibold rounded px-1.5 py-px bg-white" style={{ color: read.tone }}>{read.intent}</span></div>
-              <div className="text-[12.5px] text-ink-3 leading-snug mt-0.5">{read.summary}</div>
+          {oviOpen && (
+            <div className="rounded-xl bg-[#F1FBF8] border border-[#BFEDE3] px-3.5 py-2.5 mb-3">
+              <div className="flex items-start gap-2.5">
+                <span className="w-6 h-6 rounded-md bg-[#15223B] text-[#62E4CC] flex items-center justify-center shrink-0 mt-0.5"><Sparkle size={13} /></span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2"><span className="text-[12px] font-bold text-[#15223B]">Ovi</span><span className="text-[10.5px] font-semibold rounded px-1.5 py-px bg-white" style={{ color: read.tone }}>{read.intent}</span></div>
+                  <div className="text-[12.5px] text-ink-3 leading-snug mt-0.5">{read.summary}</div>
+                </div>
+                <button onClick={() => setOviOpen(false)} title="Close Ovi" className="w-6 h-6 rounded-md text-muted-3 hover:text-ink hover:bg-white flex items-center justify-center shrink-0">✕</button>
+              </div>
+              <div className="flex items-center gap-1.5 mt-2 pl-[34px] flex-wrap">
+                <span className="text-[11px] font-semibold text-muted-b">Suggested replies:</span>
+                {read.replies.slice(0, 3).map((r, i) => <button key={i} onClick={() => setDraft(r)} className="h-7 max-w-[260px] px-2.5 rounded-full bg-white border border-[#BFEDE3] text-[11.5px] text-ink-2 truncate hover:border-[#15223B]">{r}</button>)}
+              </div>
             </div>
-            <button onClick={() => setDraft(read.replies[0])} className="h-7 px-2.5 rounded-md bg-white border border-border-blue text-[11.5px] font-semibold text-accent shrink-0 hover:bg-accent-wash">Use suggested reply</button>
-          </div>
+          )}
           <div className="rounded-xl border border-input-border focus-within:border-accent bg-white overflow-hidden">
             <div className="flex items-center gap-1 px-2 pt-2">
               <span className="text-[11.5px] text-muted-2 px-1">Reply via</span>
@@ -355,7 +390,9 @@ function Thread({ c, rightOpen, toggleRight }: { c: Conversation; rightOpen: boo
               placeholder={via === 'note' ? 'Add a note for the team, never sent to the customer…' : `Message ${c.name.split(' ')[0]} on ${CH[via as CommsChannel].label}…`}
               className={classNames('w-full px-3 py-2 text-[13.5px] outline-none resize-none', via === 'note' && 'bg-[#FFFBEB]')} />
             <div className="flex items-center gap-2 px-2 pb-2">
-              {read.replies.slice(0, 2).map((r, i) => <button key={i} onClick={() => setDraft(r)} className="h-7 max-w-[220px] px-2.5 rounded-full bg-control text-[11.5px] text-ink-3 truncate hover:bg-accent-wash hover:text-accent">{r}</button>)}
+              <button onClick={() => setOviOpen((o) => !o)} className={classNames('h-7 px-2.5 rounded-full text-[11.5px] font-semibold flex items-center gap-1.5 transition-colors', oviOpen ? 'bg-[#15223B] text-white' : 'bg-control text-ink-3 hover:bg-[#E6FAF6] hover:text-[#15223B]')}>
+                <Sparkle size={12} className={oviOpen ? 'text-[#62E4CC]' : ''} />{oviOpen ? 'Hide Ovi' : 'Ask Ovi for help'}
+              </button>
               <span className="ml-auto text-[11px] text-muted-3 hidden lg:block">Ctrl+Enter to send</span>
               <button onClick={send} disabled={!draft.trim()} className="h-8 px-3.5 rounded-control bg-accent-gradient text-white text-[12.5px] font-semibold flex items-center gap-1.5 disabled:opacity-40"><Send size={13} />{via === 'note' ? 'Add note' : 'Send'}</button>
             </div>
@@ -434,13 +471,17 @@ function ContextPanel({ c }: { c: Conversation }) {
   const idx = STAGES.findIndex((s) => s.id === c.stage)
   const firstAt = c.messages[0]?.at
   const inbound = c.messages.filter((x) => x.dir === 'in').length
+  const record = useRecord(c)
   return (
     <aside className="w-[312px] shrink-0 bg-surface border-l border-border overflow-y-auto">
       <div className="p-5 border-b border-divider text-center">
-        <span className="w-14 h-14 rounded-full mx-auto flex items-center justify-center text-[18px] font-bold bg-accent-wash text-accent">{initials(c.name)}</span>
-        <div className="text-[15px] font-bold text-ink mt-2">{c.name}</div>
+        <button onClick={record.open} className="w-14 h-14 rounded-full mx-auto flex items-center justify-center text-[18px] font-bold bg-[#15223B] text-[#62E4CC] hover:ring-4 hover:ring-[#62E4CC]/40 transition">{initials(c.name)}</button>
+        <button onClick={record.open} className="block mx-auto text-[15px] font-bold text-ink mt-2 hover:underline decoration-2 underline-offset-4 decoration-[#62E4CC]">{c.name}</button>
         <div className="text-[12px] text-muted-2">{c.source ? `Came in via ${c.source}` : 'Homeowner'}</div>
         {c.valueHint ? <div className="inline-flex mt-2 text-[12px] font-semibold text-positive bg-positive-wash rounded-full px-2.5 py-0.5">~{money(c.valueHint)} system</div> : null}
+        <button onClick={record.open} className="mt-3 w-full h-9 rounded-[10px] bg-[#15223B] text-white text-[12.5px] font-semibold flex items-center justify-center gap-1.5 hover:bg-[#1E2F4E]">
+          <Person size={14} className="text-[#62E4CC]" />{record.deal ? `Open customer record · ${record.deal.won ? 'Customer' : record.deal.stage}` : 'Create customer record'}
+        </button>
       </div>
       <Block title="Contact">
         {c.phone && <Line icon={Phone}><a href={`tel:${c.phone.replace(/\s/g, '')}`} className="hover:text-accent">{c.phone}</a></Line>}
