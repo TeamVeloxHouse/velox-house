@@ -1013,6 +1013,7 @@ export interface ShowroomSession {
   dealId?: ID
   portalId?: ID
   presenter?: string
+  designId?: ID // the Design Studio design this proposal was pushed from
   mockupImage?: string // data URL — "solar on your roof" showroom image for the Home slide
   mockupSource?: 'ai' | 'streetview' | 'illustrated'
   billFileName?: string // an attached energy bill, kept for reference — not parsed

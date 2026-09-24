@@ -16,6 +16,7 @@ import { fetchRgbOverlay, fetchBuildingOutline } from '../lib/dsm'
 import { parseDesignBrief } from '../lib/oviDesign'
 import { designIntentFromClaude } from '../lib/oviDesignAI'
 import { Design3D } from '../components/Design3D'
+import { PanelCanvasLayer } from '../components/PanelCanvas'
 import { DesignCopilot } from '../components/DesignCopilot'
 import { EnergyPanel } from '../components/EnergyPanel'
 import type { Design, DesignObstacle, DesignObstacleKind, DesignPanel, DesignPlane, PanelOrientation, RackingType } from '../store/types'
@@ -89,7 +90,7 @@ export function DesignEditor() {
   const { id } = useParams()
   const nav = useNavigate()
   const act = useActions()
-  const { designs } = useState_()
+  const { designs, deals, showroom } = useState_()
   const design = designs.find((d) => d.id === id)
 
   const mapEl = useRef<HTMLDivElement>(null)
@@ -109,6 +110,7 @@ export function DesignEditor() {
   const redoRef = useRef<() => void>(() => {})
   const onPinRef = useRef<(ll: LatLng) => void>(() => {})
   const panelRenderer = useRef<L.Canvas | null>(null)
+  const panelCanvas = useRef<PanelCanvasLayer | null>(null) // photoreal module renderer
   const obstacleLayer = useRef<L.LayerGroup | null>(null)
   const measureLayer = useRef<L.LayerGroup | null>(null)
   const editMeasureLayer = useRef<L.LayerGroup | null>(null) // live edge/area labels shown while dragging a vertex
@@ -166,6 +168,9 @@ export function DesignEditor() {
     boundaryLayer.current = L.layerGroup().addTo(m)
     // Dedicated pane for the Google high-res aerial overlay: above the base tiles, below the vectors.
     m.createPane('rgb'); const rp = m.getPane('rgb'); if (rp) { rp.style.zIndex = '250'; rp.style.pointerEvents = 'none' }
+    // Modules draw on their own canvas just above the roof faces, below ghosts/handles.
+    m.createPane('panels'); const pp = m.getPane('panels'); if (pp) { pp.style.zIndex = '405'; pp.style.pointerEvents = 'none' }
+    panelCanvas.current = new PanelCanvasLayer().addTo(m)
     m.pm.setGlobalOptions({ snappable: true, snapDistance: 16, allowSelfIntersection: false })
     m.pm.setPathOptions({ color: '#00E5FF', fillColor: '#22E0FF', fillOpacity: 0.24 })
     m.on('pm:create', (e: any) => {
@@ -216,8 +221,8 @@ export function DesignEditor() {
     // Ghost styling — draw intended modules as real panels (dark glass + a thin intent-coloured frame)
     // so the preview reads exactly like what will land. Purple = place, teal = move, red = clear.
     const GH: Record<string, { frame: string; glass: string; fill: number; weight: number }> = {
-      add: { frame: '#159C86', glass: '#0A0E17', fill: 0.82, weight: 1.6 },
-      move: { frame: '#17B890', glass: '#0A0E17', fill: 0.82, weight: 1.6 },
+      add: { frame: '#62E4CC', glass: '#15223B', fill: 0.78, weight: 1.6 },
+      move: { frame: '#62E4CC', glass: '#15223B', fill: 0.7, weight: 1.6 },
       remove: { frame: '#FF5A5A', glass: '#FF6B6B', fill: 0.34, weight: 1.6 },
       bad: { frame: '#FF5A5A', glass: '#FF6B6B', fill: 0.14, weight: 1.4 },
     }
@@ -229,10 +234,12 @@ export function DesignEditor() {
     const hasPanelAt = (p: DesignPlane, c: GridCell) => (p.panels ?? []).some((pn) => sameCell(panelCenter(pn), c.center))
     // Add-hover: faint outline of every open slot on the plane's grid (the Pylon "here's where panels
     // can go" hint) with the solid glass ghost snapping to the nearest slot under the cursor.
-    const GRID_HINT = { color: '#BFD0EC', weight: 0.7, opacity: 0.55, fill: false }
+    const GRID_HINT = { color: '#E6F2FF', weight: 0.8, opacity: 0.5, dashArray: '2 3', fill: false }
     const drawAddHover = (p: DesignPlane, grid: GridCell[], nearest: GridCell | null) => {
       const g = ghostLayer.current!; g.clearLayers()
-      grid.forEach((c) => { if (!hasPanelAt(p, c)) cellPoly(c, GRID_HINT).addTo(g) })
+      // only the open slots near the cursor — a quiet local hint, not a grid over the whole roof
+      const near = (c: GridCell) => !nearest || (Math.abs(c.center.lat - nearest.center.lat) * 110540 < 3.2 && Math.abs(c.center.lng - nearest.center.lng) * mLngAt(c.center.lat) < 3.2)
+      grid.forEach((c) => { if (!hasPanelAt(p, c) && near(c)) cellPoly(c, GRID_HINT).addTo(g) })
       if (nearest) { const s = GH.add; cellPoly(nearest, { color: s.frame, weight: s.weight, fillColor: s.glass, fillOpacity: s.fill }).addTo(g) }
     }
     const drawGhostSet = (sets: LatLng[][], kind: keyof typeof GH = 'move') => {
@@ -360,7 +367,8 @@ export function DesignEditor() {
       if (t === 'select' && !grpMode && !marqStart) { // idle hover → show a rotate cursor over nodes/handle, move cursor over the selection/panels
         const ll = { lat: e.latlng.lat, lng: e.latlng.lng }, box = selectionBox(); let cur = ''
         if (box) { const cp = m.latLngToContainerPoint(e.latlng); if (box.corners.some((c) => cp.distanceTo(m.latLngToContainerPoint([c.lat, c.lng])) < 12) || cp.distanceTo(boxHandlePt(box.corners)) < 16) cur = ROTATE_CURSOR; else if (selPanelRef.current.length && pointInRing(box.corners, ll)) cur = 'move' }
-        if (!cur && findPanelAt(ll)) cur = 'move'
+        const hovHit = findPanelAt(ll); panelCanvas.current?.setHover(hovHit?.panel.id ?? null)
+        if (!cur && hovHit) cur = 'move'
         m.getContainer().style.cursor = cur
         return
       }
@@ -526,40 +534,31 @@ export function DesignEditor() {
     const lyr = planeLayer.current, pl = panelLayer.current
     if (!lyr || !pl || !map.current || !mapReady || !design) return
     lyr.clearLayers(); pl.clearLayers()
+    const canvasPanels: { id: string; corners: LatLng[]; azimuthDeg: number }[] = []
     design.planes.forEach((p) => {
       const on = p.id === selId
       const ring = p.polygon.map((v) => [v.lat, v.lng]) as [number, number][]
-      L.polygon(ring, { pmIgnore: true, color: '#0A1B2B', weight: 6, opacity: 0.4, fill: false } as any).addTo(lyr)
-      const poly = L.polygon(ring, { color: on ? '#A97BF3' : '#00E5FF', weight: on ? 4 : 2.5, fillColor: on ? '#159C86' : '#22E0FF', fillOpacity: p.panels?.length ? 0.06 : (on ? 0.28 : 0.2) })
+      // Roof face: a fine teal line with a soft dark halo (reads on any imagery), a whisper of fill,
+      // brighter on hover, white + corner nodes when selected. No thick neon outlines.
+      L.polygon(ring, { pmIgnore: true, color: '#05111D', weight: 4.5, opacity: 0.28, fill: false, interactive: false } as any).addTo(lyr)
+      const base = { color: on ? '#FFFFFF' : '#62E4CC', weight: on ? 2.2 : 1.6, opacity: 0.95, fillColor: '#62E4CC', fillOpacity: p.panels?.length ? 0.05 : (on ? 0.16 : 0.1) }
+      const poly = L.polygon(ring, base as any)
       ;(poly as any)._planeId = p.id
       poly.on('click', (e) => { L.DomEvent.stopPropagation(e); if (toolRef.current !== 'pan') { setSelId(p.id); setSelObsId(null) } })
+      poly.on('mouseover', () => { if (!on) poly.setStyle({ weight: 2.2, fillOpacity: (p.panels?.length ? 0.08 : 0.18) }) })
+      poly.on('mouseout', () => poly.setStyle(base as any))
       poly.on('pm:edit', () => syncGeometry(p.id, poly))
-      // Empty plane → a permanent label at its top edge; a FILLED plane → hover-only, so it never covers panels.
+      // A compact label chip on the face's top edge: permanent while empty, on hover once filled.
       const topPt = p.polygon.reduce((a, v) => (v.lat > a.lat ? v : a), p.polygon[0])
-      const tip = poly.bindTooltip(`${compass(p.azimuthDeg)} · ${effTilt(p)}° · ${p.panels?.length ? `${p.panels.length} panels` : `${p.areaM2} m²`}`, { permanent: !p.panels?.length, direction: 'top', className: 'roof-label', offset: [0, -4] })
+      const tip = poly.bindTooltip(`${compass(p.azimuthDeg)} · ${effTilt(p)}° · ${p.panels?.length ? `${p.panels.length} panels · ${kwpOf(p.panels.length, moduleById(p.moduleId ?? moduleIdRef.current).watts).toFixed(2)} kWp` : `${p.areaM2} m²`}`, { permanent: !p.panels?.length, direction: 'top', className: 'roof-label', offset: [0, -4] })
       if (!p.panels?.length) tip.openTooltip([topPt.lat, topPt.lng])
       poly.addTo(lyr)
-      // Sleek black modules (OpenSolar look) — near-black glass with a thin cool frame.
-      // Hidden while a suggested layout is being previewed on this plane, so the amber ghosts read clearly.
-      if (!preview?.planes.some((pp) => pp.id === p.id)) {
-        p.panels?.forEach((pn) => {
-          L.polygon(pn.corners.map((v) => [v.lat, v.lng]) as [number, number][], { pmIgnore: true, renderer: panelRenderer.current!, color: '#3A4A6B', weight: 0.7, fillColor: '#0A0E17', fillOpacity: 0.94 } as any).addTo(pl)
-        })
-      }
-      // Facing arrow — one per filled array, pointing downslope (the way the panels face).
-      if (p.panels?.length) {
-        const c = p.polygon.reduce((a, v) => ({ lat: a.lat + v.lat / p.polygon.length, lng: a.lng + v.lng / p.polygon.length }), { lat: 0, lng: 0 })
-        const az = (p.azimuthDeg * Math.PI) / 180, len = 3.5
-        const dlat = (len * Math.cos(az)) / 110540, dlng = (len * Math.sin(az)) / (111320 * Math.cos((c.lat * Math.PI) / 180))
-        const tip: [number, number] = [c.lat + dlat, c.lng + dlng]
-        const back = az + Math.PI, wing = 0.5
-        const bl: [number, number] = [tip[0] + (1.4 * Math.cos(back + wing)) / 110540, tip[1] + (1.4 * Math.sin(back + wing)) / (111320 * Math.cos((c.lat * Math.PI) / 180))]
-        const br: [number, number] = [tip[0] + (1.4 * Math.cos(back - wing)) / 110540, tip[1] + (1.4 * Math.sin(back - wing)) / (111320 * Math.cos((c.lat * Math.PI) / 180))]
-        const arrowStyle = { color: '#EAF0FF', weight: 2.5, opacity: 0.9, pmIgnore: true, interactive: false } as any
-        L.polyline([[c.lat, c.lng], tip], arrowStyle).addTo(pl)
-        L.polyline([bl, tip, br], arrowStyle).addTo(pl)
-      }
+      if (on) p.polygon.forEach((v) => L.circleMarker([v.lat, v.lng], { radius: 3.5, color: '#FFFFFF', weight: 1.5, fillColor: '#15223B', fillOpacity: 1, pmIgnore: true, interactive: false } as any).addTo(lyr))
+      // Modules go to the photoreal canvas (hidden while a suggested layout is previewed on this plane).
+      if (!preview?.planes.some((pp) => pp.id === p.id)) p.panels?.forEach((pn) => canvasPanels.push({ id: pn.id, corners: pn.corners, azimuthDeg: p.azimuthDeg }))
     })
+    panelCanvas.current?.setPanels(canvasPanels)
+    panelCanvas.current?.setSelected(selPanelIds)
     // Selection — a dashed oriented box with corner nodes + a rotate handle. A lone panel's box sits on
     // its own corners; a joined array's box wraps the whole array (nodes at its ends). Drag a corner or
     // the handle to rotate, drag inside to move, Del to remove.
@@ -591,7 +590,7 @@ export function DesignEditor() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [design?.planes, selId, selPanelIds, mapReady, preview])
 
-  // ── Suggested-layout preview — amber ghosts from the last auto-layout run, click one to drop it
+  // ── Suggested-layout preview — teal-framed navy ghosts from the last auto-layout run, click one to drop it
   // before accepting. Nothing here is committed to the design until "Accept" is pressed. ──
   useEffect(() => {
     const lyr = previewLayer.current
@@ -603,7 +602,7 @@ export function DesignEditor() {
         if (preview.removed.has(pn.id)) return
         const poly = L.polygon(pn.corners.map((v) => [v.lat, v.lng]) as [number, number][], {
           renderer: panelRenderer.current!, pmIgnore: true, interactive: true,
-          color: '#F5A623', weight: 1.6, dashArray: '3 2', fillColor: '#F5A623', fillOpacity: 0.35,
+          color: '#62E4CC', weight: 1.4, dashArray: '3 2', fillColor: '#15223B', fillOpacity: 0.55,
         } as any)
         poly.on('click', (e) => { L.DomEvent.stopPropagation(e); setPreview((cur) => (cur ? { ...cur, removed: new Set(cur.removed).add(pn.id) } : cur)) })
         poly.addTo(lyr)
@@ -956,6 +955,31 @@ export function DesignEditor() {
   const kwp = Math.round(totals.kwp * 10) / 10
   const sel = design.planes.find((p) => p.id === selId)
 
+  /** Push this design into a showroom proposal — the customer-facing presentation. Re-pushing the
+   *  same design updates its proposal rather than creating a second one. */
+  function pushToProposal() {
+    if (!design || !totals.count) { act.toast('Add panels before creating a proposal', 'warning'); return }
+    const deal = deals.find((d) => d.id === design.dealId)
+    const j = deal?.journey
+    const batteryKwh = design.batteryKwh ?? j?.system?.batteryKwh ?? 0
+    const sdesign = { systemKwp: kwp, panels: totals.count, hasBattery: batteryKwh > 0, batteryKwh, hasEv: !!j?.property.hasEv, addEvCharger: !!j?.system?.evCharger }
+    const existing = showroom.find((s) => s.designId === design.id)
+    if (existing) {
+      act.updateShowroom(existing.id, { design: sdesign })
+      act.toast(`Proposal updated · ${kwp} kWp, ${totals.count} panels`)
+      nav(`/showroom/${existing.id}`)
+      return
+    }
+    const monthly = j?.property.monthlyBill ?? 140
+    const s = act.createShowroom({
+      name: deal?.name ?? design.name, email: j?.email ?? '', phone: j?.phone, address: j?.address ? `${j.address}, ${j.postcode}` : design.address, postcode: j?.postcode,
+      monthlySpend: monthly, annualKwh: j?.property.annualKwh ?? Math.round(((monthly - 12) * 12) / 0.245), tariffPence: 24.5, occupancy: 'in_half_day',
+      design: sdesign, dealId: deal?.id, presenter: deal?.owner, designId: design.id,
+      location: j ? ({ cardiff: 'Cardiff', cheltenham: 'Cheltenham', melksham: 'Melksham' } as const)[j.showroom] : undefined,
+    })
+    nav(`/showroom/${s.id}`)
+  }
+
   const tabs: { id: StudioTab; label: string; icon: any }[] = [
     { id: 'design', label: 'Design', icon: Sun },
     { id: 'array', label: 'Array', icon: Grid },
@@ -973,6 +997,7 @@ export function DesignEditor() {
           <Button variant="primary" icon={<Sparkle size={15} />} onClick={() => runAutoLayout({ kind: 'max' })} className={busy ? 'opacity-60 pointer-events-none' : ''}>Ovi auto-layout</Button>
           {totals.count > 0 && <Button variant="secondary" icon={<EraseIcon />} onClick={clearAllPanels}>Clear all</Button>}
           <Button variant="secondary" icon={<Check size={15} />} onClick={() => act.updateDesign(design.id, { status: design.status === 'confirmed' ? 'draft' : 'confirmed' })}>{design.status === 'confirmed' ? 'Confirmed' : 'Confirm'}</Button>
+          <Button variant="primary" icon={<File size={15} />} onClick={pushToProposal}>{showroom.some((s) => s.designId === design.id) ? 'Update proposal' : 'Create proposal'}</Button>
         </div>} />
 
       {/* OpenSolar-style tab row — navigation *inside* the tool, CRM rail stays put */}
@@ -1113,7 +1138,7 @@ export function DesignEditor() {
         </div>
 
         {tab === 'production' && <ProductionPane design={design} moduleId={moduleId} kwp={kwp} count={totals.count} annualKwh={Math.round(totals.kwh)} />}
-        {tab === 'proposal' && <ProposalPane design={design} kwp={kwp} count={totals.count} annualKwh={Math.round(totals.kwh)} onOpen={() => nav('/studio/proposals')} onConfirm={() => act.updateDesign(design.id, { status: 'confirmed', systemKwp: kwp, panels: totals.count, annualKwh: Math.round(totals.kwh) })} />}
+        {tab === 'proposal' && <ProposalPane design={design} kwp={kwp} count={totals.count} annualKwh={Math.round(totals.kwh)} onPush={pushToProposal} hasProposal={showroom.some((s) => s.designId === design.id)} onOpen={() => nav('/studio/proposals')} onConfirm={() => act.updateDesign(design.id, { status: 'confirmed', systemKwp: kwp, panels: totals.count, annualKwh: Math.round(totals.kwh) })} />}
         <DesignCopilot open={oviOpen} onClose={() => setOviOpen(false)} onExecute={oviExecute} />
       </div>
     </div>
@@ -1329,7 +1354,7 @@ function ProductionPane({ design, moduleId, kwp, count, annualKwh }: { design: D
 }
 
 /* ── Proposal tab: summary + handoff ── */
-function ProposalPane({ design, kwp, count, annualKwh, onOpen, onConfirm }: { design: Design; kwp: number; count: number; annualKwh: number; onOpen: () => void; onConfirm: () => void }) {
+function ProposalPane({ design, kwp, count, annualKwh, onOpen, onConfirm, onPush, hasProposal }: { design: Design; kwp: number; count: number; annualKwh: number; onOpen: () => void; onConfirm: () => void; onPush: () => void; hasProposal: boolean }) {
   return (
     <div className="absolute inset-0 overflow-y-auto px-5 py-5">
       <div className="max-w-[720px] mx-auto flex flex-col gap-4">
@@ -1344,10 +1369,11 @@ function ProposalPane({ design, kwp, count, annualKwh, onOpen, onConfirm }: { de
           </div>
           <div className="flex items-center gap-2 mt-4">
             <button onClick={onConfirm} className="h-10 px-4 rounded-control text-white text-[13px] font-semibold inline-flex items-center gap-2" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Check size={15} />Confirm design {design.status === 'confirmed' && '✓'}</button>
-            <button onClick={onOpen} className="h-10 px-4 rounded-control border border-border text-[13px] font-semibold text-ink-3 hover:bg-control inline-flex items-center gap-2"><File size={15} />Open proposals</button>
+            <button onClick={onPush} className="h-10 px-4 rounded-control bg-[#15223B] text-white text-[13px] font-semibold inline-flex items-center gap-2 hover:bg-[#1E2F4E]"><File size={15} className="text-[#62E4CC]" />{hasProposal ? 'Update showroom proposal' : 'Create showroom proposal'}</button>
+            <button onClick={onOpen} className="h-10 px-4 rounded-control border border-border text-[13px] font-semibold text-ink-3 hover:bg-control inline-flex items-center gap-2">Open proposals</button>
           </div>
         </div>
-        <div className="text-[11.5px] text-muted-b">Pricing, finance options and the branded PDF live in <b>Design → Proposals</b>. Confirming the design snapshots the kWp, module count and yield onto the deal.</div>
+        <div className="text-[11.5px] text-muted-b"><b>Create showroom proposal</b> turns this design into the customer presentation, with their bill, savings, finance and sign-off, and links it back here. Pushing again updates it.</div>
       </div>
     </div>
   )
