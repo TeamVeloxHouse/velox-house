@@ -82,41 +82,49 @@ export function DealsBoard() {
     <>
       <TopBar title="Deals" crumbs={['Sales']} actions={<Button variant="primary" icon={<Plus size={16} />} onClick={() => setShowNew(true)}>New enquiry</Button>} />
 
-      {/* showroom switcher + tools */}
-      <div className="sh-toolbar shrink-0 px-7 pt-3 pb-3 flex flex-col gap-3">
-        <div className="flex items-center gap-2 flex-wrap">
-          <ShowroomTab on={showroom === 'all'} onClick={() => setShowroom('all')} label="All showrooms" count={shDeals.filter((d) => !d.lost && !d.won).length} />
-          {SHOWROOMS.map((s) => (
-            <ShowroomTab key={s} on={showroom === s} onClick={() => setShowroom(s)} label={SHOWROOM_META[s].name} color={SHOWROOM_META[s].color}
-              count={shDeals.filter((d) => d.journey!.showroom === s && !d.lost && !d.won).length} />
-          ))}
-          <div className="ml-auto inline-flex bg-[#E9EDF2] border border-[#DDE3EA] rounded-control p-[3px] gap-0.5">
-            {([['board', Bars, 'Board'], ['table', Grid, 'Table'], ['queue', Flow, 'Work queue']] as const).map(([id, I, l]) => (
-              <button key={id} onClick={() => setView(id)} className={classNames('h-[30px] px-3 rounded-[7px] flex items-center gap-1.5 text-[12.5px] font-semibold transition-colors', view === id ? 'bg-white text-accent font-bold shadow-[0_1px_3px_rgba(11,18,32,0.14)]' : 'text-ink-3 hover:text-ink-3')}><I size={14} />{l}</button>
+      {/* Two tidy rows, everything 40px tall on one left edge:
+          1 — which showroom (one grouped control) · this month's headline numbers
+          2 — one combined filter bar · how to view it */}
+      <div className="sh-toolbar shrink-0 px-7 pb-2 flex flex-col gap-3">
+        <div className="flex items-center gap-4 min-w-0">
+          <div className="inline-flex items-center gap-0.5 p-1 rounded-[12px] bg-white border border-[#E1E6EC] shadow-[0_1px_2px_rgba(16,24,40,0.05)] shrink-0">
+            <ShowroomTab on={showroom === 'all'} onClick={() => setShowroom('all')} label="All showrooms" count={shDeals.filter((d) => !d.lost && !d.won).length} />
+            {SHOWROOMS.map((s) => (
+              <ShowroomTab key={s} on={showroom === s} onClick={() => setShowroom(s)} label={SHOWROOM_META[s].name} color={SHOWROOM_META[s].color}
+                count={shDeals.filter((d) => d.journey!.showroom === s && !d.lost && !d.won).length} />
             ))}
           </div>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="h-9 w-[250px] rounded-control border border-border bg-surface flex items-center gap-2 px-3">
-            <Search size={15} className="text-muted-3" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Name, street, postcode, phone…" className="bg-transparent outline-none flex-1 text-[13px] text-ink-2 placeholder:text-muted-3" />
-          </div>
-          <select value={owner} onChange={(e) => setOwner(e.target.value)} className="h-9 px-3 rounded-control border border-border bg-surface text-[13px] text-ink-3 outline-none focus:border-accent">
-            <option value="All">All advisers</option>{owners.map((o) => <option key={o}>{o}</option>)}
-          </select>
-          <button onClick={() => setOwner((o) => (o === ME ? 'All' : ME))} className={classNames('h-9 px-3 rounded-control border text-[12.5px] font-semibold transition-colors', owner === ME ? 'bg-accent text-white border-accent' : 'border-border text-ink-3 hover:bg-control')}>My deals</button>
-          <button onClick={() => setAttention((a) => !a)} className={classNames('h-9 px-3 rounded-control border text-[12.5px] font-semibold flex items-center gap-1.5 transition-colors', attention ? 'bg-[#B01B4F] text-white border-[#B01B4F]' : 'border-border text-ink-3 hover:bg-control')}><Clock size={13} />Needs attention</button>
-          {view !== 'table' && (
-            <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="h-9 px-3 rounded-control border border-border bg-surface text-[13px] text-ink-3 outline-none focus:border-accent">
-              <option value="oldest">Longest in stage first</option><option value="due">Next action due first</option><option value="value">Highest value first</option><option value="newest">Newest enquiry first</option>
-            </select>
-          )}
-          <div className="ml-auto flex items-center gap-5 text-[12px] text-muted-b">
+          <div className="ml-auto flex items-center min-w-0 overflow-x-auto no-scrollbar divide-x divide-[#DDE3EA] text-[12px] text-muted-b">
             <Stat v={String(enquiriesMonth)} l="enquiries this month" />
             <Stat v={String(signedMonth.length)} l={`signed · ${money(signedMonth.reduce((s, d) => s + d.value, 0), { compact: true })}`} />
             <Stat v={String(installsMonth)} l="installed" />
             <Stat v={`${conv}%`} l="win rate" />
             <Stat v={`${avgDaysToSign}d`} l="enquiry → signed" />
+          </div>
+        </div>
+        <div className="flex items-center gap-4 min-w-0">
+          <div className="flex-1 min-w-0 h-10 flex items-center rounded-[12px] bg-white border border-[#E1E6EC] shadow-[0_1px_2px_rgba(16,24,40,0.05)] divide-x divide-[#EDF0F4]">
+            <label className="flex-1 min-w-[180px] h-full flex items-center gap-2 px-3.5">
+              <Search size={15} className="text-muted-3 shrink-0" />
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Name, street, postcode, phone…" className="bg-transparent outline-none flex-1 min-w-0 text-[13px] text-ink-2 placeholder:text-muted-3" />
+            </label>
+            <select value={owner} onChange={(e) => setOwner(e.target.value)} className="h-full px-3.5 bg-transparent text-[13px] font-semibold text-ink-3 outline-none cursor-pointer hover:text-ink">
+              <option value="All">All advisers</option>{owners.map((o) => <option key={o}>{o}</option>)}
+            </select>
+            <div className="h-full flex items-center gap-1 px-1.5">
+              <FilterToggle on={owner === ME} onClick={() => setOwner((o) => (o === ME ? 'All' : ME))} label="My deals" />
+              <FilterToggle on={attention} onClick={() => setAttention((a) => !a)} label="Needs attention" icon={<Clock size={13} />} danger />
+            </div>
+            {view !== 'table' && (
+              <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="h-full px-3.5 bg-transparent text-[13px] font-semibold text-ink-3 outline-none cursor-pointer hover:text-ink rounded-r-[12px]">
+                <option value="oldest">Longest in stage first</option><option value="due">Next action due first</option><option value="value">Highest value first</option><option value="newest">Newest enquiry first</option>
+              </select>
+            )}
+          </div>
+          <div className="shrink-0 inline-flex items-center gap-0.5 p-1 h-10 rounded-[12px] bg-[#E9EDF2] border border-[#DDE3EA]">
+            {([['board', Bars, 'Board'], ['table', Grid, 'Table'], ['queue', Flow, 'Work queue']] as const).map(([id, I, l]) => (
+              <button key={id} onClick={() => setView(id)} className={classNames('h-full px-3 rounded-[9px] flex items-center gap-1.5 text-[12.5px] font-semibold transition-colors', view === id ? 'bg-white text-accent font-bold shadow-[0_1px_3px_rgba(11,18,32,0.14)]' : 'text-ink-3 hover:text-ink')}><I size={14} />{l}</button>
+            ))}
           </div>
         </div>
       </div>
@@ -138,13 +146,22 @@ export function DealsBoard() {
 
 function ShowroomTab({ on, onClick, label, count, color }: { on: boolean; onClick: () => void; label: string; count: number; color?: string }) {
   return (
-    <button onClick={onClick} className={classNames('h-9 pl-3 pr-2 rounded-full border flex items-center gap-2 text-[13px] font-semibold transition-colors', on ? 'chip-on' : 'bg-surface border-border text-ink-3 hover:border-input-border')}>
+    <button onClick={onClick} className={classNames('h-8 pl-3 pr-1.5 rounded-[9px] flex items-center gap-2 text-[13px] font-semibold whitespace-nowrap transition-colors', on ? 'chip-on' : 'text-ink-3 hover:bg-[#F1F4F7] hover:text-ink')}>
       {color && <span className="w-2 h-2 rounded-full" style={{ background: color }} />}{label}
-      <span className={classNames('text-[11px] rounded-full px-1.5 py-px font-bold', on ? 'chip-on-count' : 'bg-control text-muted-b')}>{count}</span>
+      <span className={classNames('text-[11px] rounded-full min-w-[22px] px-1.5 py-px font-bold text-center', on ? 'chip-on-count' : 'bg-[#EEF1F5] text-muted-b')}>{count}</span>
     </button>
   )
 }
-function Stat({ v, l }: { v: string; l: string }) { return <span><b className="text-[14px] text-ink font-bold">{v}</b> {l}</span> }
+/** A toggle filter living inside the combined filter bar — quiet until it's on. */
+function FilterToggle({ on, onClick, label, icon, danger }: { on: boolean; onClick: () => void; label: string; icon?: ReactNode; danger?: boolean }) {
+  return (
+    <button onClick={onClick} className={classNames('h-8 px-2.5 rounded-[8px] flex items-center gap-1.5 text-[12.5px] font-semibold whitespace-nowrap transition-colors',
+      on ? (danger ? 'bg-negative-wash text-negative' : 'bg-accent-wash text-accent') : 'text-ink-3 hover:bg-[#F1F4F7] hover:text-ink')}>
+      {icon}{label}
+    </button>
+  )
+}
+function Stat({ v, l }: { v: string; l: string }) { return <span className="px-3.5 first:pl-0 last:pr-0 whitespace-nowrap"><b className="text-[15px] text-ink font-bold tabular-nums">{v}</b> {l}</span> }
 
 /* ─────────── Board ─────────── */
 const COL_CAP = 30
@@ -156,9 +173,9 @@ function Board({ byStage, onOpen, onQueue, onDrop }: { byStage: Record<string, D
   const [drag, setDrag] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   return (
-    <main className="flex-1 min-h-0 overflow-x-auto p-5 pt-3 flex flex-col gap-2.5">
-      <div className="flex items-center gap-4 text-[11.5px] text-muted-b shrink-0">
-        <span className="font-semibold text-ink-3">Card edge = next action</span>
+    <main className="flex-1 min-h-0 overflow-x-auto px-7 pb-5 pt-2 flex flex-col gap-2.5">
+      <div className="flex items-center gap-4 text-[11.5px] text-muted-2 shrink-0">
+        <span className="font-semibold text-muted-b">Card edge = next action</span>
         {([['#DC2626', 'Overdue'], ['#F59E0B', 'Due today or tomorrow'], ['#34D399', 'On track'], ['#16A34A', 'Signed']] as const).map(([c, l]) => <span key={l} className="flex items-center gap-1.5"><span className="w-[3px] h-3.5 rounded-full" style={{ background: c }} />{l}</span>)}
         <span className="ml-auto">Badge = days in this stage</span>
       </div>
@@ -264,7 +281,7 @@ function TableView({ deals, onOpen }: { deals: Deal[]; onOpen: (d: Deal) => void
   const toggle = (id: string) => setSel((x) => (x.includes(id) ? x.filter((y) => y !== id) : [...x, id]))
 
   return (
-    <main className="flex-1 min-h-0 overflow-y-auto p-5 flex flex-col gap-3">
+    <main className="flex-1 min-h-0 overflow-y-auto px-7 pb-5 pt-2 flex flex-col gap-3">
       <div className="flex items-center gap-2">
         <div className="inline-flex bg-[#E9EDF2] border border-[#DDE3EA] rounded-control p-[3px]">
           {(['open', 'signed', 'all'] as const).map((s) => <button key={s} onClick={() => setStatus(s)} className={classNames('h-8 px-3 rounded-[7px] text-[12.5px] font-semibold capitalize', status === s ? 'bg-white text-accent font-bold shadow-[0_1px_3px_rgba(11,18,32,0.14)]' : 'text-muted-b hover:bg-control')}>{s}</button>)}
