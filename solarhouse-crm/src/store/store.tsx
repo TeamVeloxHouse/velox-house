@@ -1527,10 +1527,18 @@ export function useActions() {
       }
       dispatch({ type: 'UPDATE_TEAM_MESSAGE', id, patch: { reactions } })
     },
-    addChannel: (name: string, kind: import('./types').ChannelKind, topic?: string) => {
-      const channel: import('./types').TeamChannel = { id: uid('ch'), name, kind, topic, memberIds: [YOU_MEMBER_ID, AI_MEMBER_ID], ai: true, unread: 0 }
+    /** Create a channel, group chat or DM. `memberIds` are the people added (you're always in it);
+     *  `ai` puts Ovi in the conversation. A DM with someone you already DM just returns that one. */
+    addChannel: (name: string, kind: import('./types').ChannelKind, topic?: string, opts: { memberIds?: ID[]; ai?: boolean } = {}) => {
+      const people = [...new Set([YOU_MEMBER_ID, ...(opts.memberIds ?? [])])]
+      if (kind === 'dm') {
+        const existing = live.state?.teamChannels.find((c) => c.kind === 'dm' && c.memberIds.filter((m) => m !== AI_MEMBER_ID).length === people.length && people.every((p) => c.memberIds.includes(p)))
+        if (existing) return existing
+      }
+      const ai = opts.ai ?? kind !== 'dm'
+      const channel: import('./types').TeamChannel = { id: uid('ch'), name, kind, topic, memberIds: ai ? [...people, AI_MEMBER_ID] : people, ai, unread: 0 }
       dispatch({ type: 'ADD_TEAM_CHANNEL', channel })
-      toast(`${kind === 'group' ? 'Group' : 'Channel'} “${name}” created`)
+      if (kind !== 'dm') toast(`${kind === 'group' ? 'Group chat' : 'Channel'} “${name}” created`)
       return channel
     },
     markChannelRead: (id: ID) => dispatch({ type: 'MARK_CHANNEL_READ', id }),

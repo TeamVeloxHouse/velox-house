@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { TopBar } from '../components/TopBar'
 import { Button, Chip } from '../components/ui'
 import {
-  Sparkle, Send, Plus, Check, Megaphone, Star, Users, Robot, File, Video, Envelope, Target, Clock, Bolt,
+  Sparkle, Send, Plus, Check, Megaphone, Star, Users, Robot, File, Video, Envelope, Target, Clock, Bolt, Search,
 } from '../components/icons'
 import { classNames, initials, money } from '../lib/format'
 import { useState_, useActions } from '../store/store'
 import { AI_MEMBER_ID, YOU_MEMBER_ID } from '../store/types'
-import type { TeamAiBlock, TeamChannel, TeamMessage, TeamMember, Announcement, AnnouncementKind, TeamActionRef } from '../store/types'
+import type { TeamAiBlock, TeamChannel, TeamMessage, TeamMember, Announcement, AnnouncementKind, TeamActionRef, ChannelKind } from '../store/types'
+import { Modal, Field, Input } from '../components/overlays'
 import { useTeamChat } from '../components/useTeamChat'
 
 /* ---------- small helpers ---------- */
@@ -351,12 +352,16 @@ function AnnouncementsBoard() {
 }
 
 /* ================= Channel chat ================= */
-function ChannelView({ channel }: { channel: TeamChannel }) {
+function ChannelView({ channel, focusId }: { channel: TeamChannel; focusId?: string | null }) {
   const act = useActions()
   const scroller = useRef<HTMLDivElement>(null)
   const { msgs, members, work, send, handle } = useTeamChat(channel)
 
-  useEffect(() => { scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: 'smooth' }) }, [msgs.length, work])
+  // a message picked from search: scroll to it and flash it; otherwise stay pinned to the latest
+  useEffect(() => {
+    if (focusId) { document.getElementById(`msg-${focusId}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' }); return }
+    scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: 'smooth' })
+  }, [msgs.length, work, focusId])
 
   const kindLabel = channel.kind === 'dm' ? 'Direct message' : channel.kind === 'group' ? 'Group' : 'Channel'
   const heading = channel.kind === 'channel' ? `# ${channel.name}` : channel.name
@@ -381,7 +386,11 @@ function ChannelView({ channel }: { channel: TeamChannel }) {
             {msgs.length === 0 && (
               <div className="text-center text-muted-2 text-[13px] py-10">This is the start of your conversation.{channel.ai && ' @mention Ovi to get answers, visuals or have it action a request.'}</div>
             )}
-            {msgs.map((m) => <MessageRow key={m.id} msg={m} channel={channel} onHandle={() => handle(m)} onReact={(e) => act.reactToMessage(m.id, e)} />)}
+            {msgs.map((m) => (
+              <div key={m.id} id={`msg-${m.id}`} className={classNames('rounded-xl transition-colors duration-700', focusId === m.id && 'bg-[#62E4CC]/20 ring-1 ring-[#62E4CC] py-2')}>
+                <MessageRow msg={m} channel={channel} onHandle={() => handle(m)} onReact={(e) => act.reactToMessage(m.id, e)} />
+              </div>
+            ))}
             {work && <Working steps={work.steps} i={work.i} />}
           </div>
         </div>
@@ -398,11 +407,100 @@ function ChannelView({ channel }: { channel: TeamChannel }) {
   )
 }
 
+/* ================= New conversation ================= */
+function NewChatModal({ open, initialKind, onClose, onCreated }: { open: boolean; initialKind: ChannelKind; onClose: () => void; onCreated: (id: string) => void }) {
+  const { teamMembers } = useState_()
+  const act = useActions()
+  const [kind, setKind] = useState<ChannelKind>(initialKind)
+  const [name, setName] = useState('')
+  const [topic, setTopic] = useState('')
+  const [q, setQ] = useState('')
+  const [picked, setPicked] = useState<string[]>([])
+  const [ai, setAi] = useState(true)
+  useEffect(() => { if (open) { setKind(initialKind); setName(''); setTopic(''); setQ(''); setPicked([]); setAi(initialKind !== 'dm') } }, [open, initialKind])
+  if (!open) return null
+  const people = teamMembers.filter((m) => !m.you && !m.bot && (!q || `${m.name} ${m.role}`.toLowerCase().includes(q.toLowerCase())))
+  const toggle = (id: string) => setPicked((p) => (kind === 'dm' ? [id] : p.includes(id) ? p.filter((x) => x !== id) : [...p, id]))
+  const member = (id: string) => teamMembers.find((m) => m.id === id)
+  const valid = kind === 'dm' ? picked.length === 1 : kind === 'group' ? picked.length >= 2 : !!name.trim()
+  function create() {
+    if (!valid) return
+    const autoName = kind === 'dm' ? member(picked[0])!.name : name.trim() || picked.map((id) => member(id)!.name.split(' ')[0]).join(', ')
+    const c = act.addChannel(autoName.replace(/^#\s*/, ''), kind, topic.trim() || undefined, { memberIds: kind === 'channel' && picked.length === 0 ? teamMembers.filter((m) => !m.bot).map((m) => m.id) : picked, ai })
+    onCreated(c.id)
+  }
+  const KINDS: { id: ChannelKind; label: string; blurb: string }[] = [
+    { id: 'dm', label: 'Direct message', blurb: 'One-to-one with a colleague' },
+    { id: 'group', label: 'Group chat', blurb: 'A few people, no name needed' },
+    { id: 'channel', label: 'Channel', blurb: 'A named space for a topic or team' },
+  ]
+  return (
+    <Modal open onClose={onClose} title="New conversation" subtitle="Message a colleague, start a group chat or open a channel"
+      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" onClick={create}>{kind === 'dm' ? 'Start chat' : kind === 'group' ? 'Create group chat' : 'Create channel'}</Button></>}>
+      <div className="grid grid-cols-3 gap-2">
+        {KINDS.map((k) => (
+          <button key={k.id} onClick={() => { setKind(k.id); setPicked((p) => (k.id === 'dm' ? p.slice(0, 1) : p)); setAi(k.id !== 'dm') }}
+            className={classNames('rounded-[12px] border p-3 text-left transition-colors', kind === k.id ? 'border-[#15223B] bg-[#15223B] text-white' : 'border-[#E1E6EC] bg-white hover:border-[#C9D2DD]')}>
+            <div className="text-[13px] font-bold">{k.label}</div>
+            <div className={classNames('text-[11.5px] mt-0.5', kind === k.id ? 'text-white/70' : 'text-muted-2')}>{k.blurb}</div>
+          </button>
+        ))}
+      </div>
+      {kind !== 'dm' && (
+        <div className="grid grid-cols-2 gap-3">
+          <Field label={kind === 'channel' ? 'Channel name' : 'Name (optional)'}><Input value={name} onChange={(e) => setName(e.target.value)} placeholder={kind === 'channel' ? 'e.g. cardiff-showroom' : 'e.g. Install crew — Penarth'} /></Field>
+          <Field label="What's it for? (optional)"><Input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Topic" /></Field>
+        </div>
+      )}
+      <Field label={kind === 'dm' ? 'Who do you want to message?' : kind === 'group' ? 'Add people (2 or more)' : 'Add people (leave empty for everyone)'}>
+        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search people…" autoFocus />
+      </Field>
+      {picked.length > 0 && kind !== 'dm' && (
+        <div className="flex flex-wrap gap-1.5 -mt-1">
+          {picked.map((id) => <button key={id} onClick={() => toggle(id)} className="h-7 pl-1 pr-2 rounded-full bg-[#15223B] text-white text-[12px] font-semibold flex items-center gap-1.5"><MemberAvatar m={member(id)} size={20} />{member(id)?.name.split(' ')[0]} ✕</button>)}
+        </div>
+      )}
+      <div className="max-h-[240px] overflow-y-auto rounded-[12px] border border-[#E1E6EC] divide-y divide-[#EEF1F5]">
+        {people.map((m) => {
+          const on = picked.includes(m.id)
+          return (
+            <button key={m.id} onClick={() => toggle(m.id)} className={classNames('w-full px-3 py-2 flex items-center gap-2.5 text-left transition-colors', on ? 'bg-[#E6FAF6]' : 'hover:bg-[#F7F9FB]')}>
+              <MemberAvatar m={m} size={28} ring />
+              <span className="min-w-0 flex-1"><span className="block text-[13px] font-semibold text-ink-2">{m.name}</span><span className="block text-[11.5px] text-muted-2">{m.role}</span></span>
+              <span className={classNames('w-5 h-5 rounded-full border flex items-center justify-center', on ? 'bg-[#15223B] border-[#15223B] text-[#62E4CC]' : 'border-[#C9D2DD]')}>{on && <Check size={12} />}</span>
+            </button>
+          )
+        })}
+        {!people.length && <div className="px-3 py-4 text-[12.5px] text-muted-2">No one matches “{q}”.</div>}
+      </div>
+      <label className="flex items-center gap-2.5 text-[13px] text-ink-2 cursor-pointer">
+        <input type="checkbox" checked={ai} onChange={(e) => setAi(e.target.checked)} className="w-4 h-4 accent-[#15223B]" />
+        <span>Add <b>Ovi</b> — it can answer with live data and pick up requests</span>
+      </label>
+    </Modal>
+  )
+}
+
 /* ================= Page shell ================= */
+const snippet = (text: string, q: string) => {
+  const i = text.toLowerCase().indexOf(q.toLowerCase())
+  if (i < 0) return text.slice(0, 90)
+  const start = Math.max(0, i - 30)
+  return (start > 0 ? '…' : '') + text.slice(start, i + q.length + 60)
+}
+function Highlight({ text, q }: { text: string; q: string }) {
+  if (!q) return <>{text}</>
+  const parts = text.split(new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'ig'))
+  return <>{parts.map((p, i) => (p.toLowerCase() === q.toLowerCase() ? <mark key={i} className="bg-[#62E4CC]/50 text-ink rounded-sm px-px">{p}</mark> : <span key={i}>{p}</span>))}</>
+}
+
 export function Team() {
-  const { teamChannels, teamMembers } = useState_()
+  const { teamChannels, teamMembers, teamMessages } = useState_()
   const act = useActions()
   const [sel, setSel] = useState<string>('announcements')
+  const [q, setQ] = useState('')
+  const [focusMsg, setFocusMsg] = useState<string | null>(null)
+  const [newKind, setNewKind] = useState<ChannelKind | null>(null)
 
   // keep the open channel marked read
   useEffect(() => { if (sel !== 'announcements') act.markChannelRead(sel) }, [sel, teamChannels.find((c) => c.id === sel)?.unread])
@@ -410,79 +508,124 @@ export function Team() {
   const channels = teamChannels.filter((c) => c.kind === 'channel')
   const groups = teamChannels.filter((c) => c.kind === 'group')
   const dms = teamChannels.filter((c) => c.kind === 'dm')
-  const totalUnread = teamChannels.reduce((s, c) => s + c.unread, 0)
   const selChannel = teamChannels.find((c) => c.id === sel)
   const member = (id: string) => teamMembers.find((m) => m.id === id)
+  const chatName = (c: TeamChannel) => (c.kind === 'channel' ? `# ${c.name}` : c.name)
+
+  // one search box: people to message, chats by name, and every message you can see
+  const term = q.trim()
+  const hitPeople = term ? teamMembers.filter((m) => !m.you && `${m.name} ${m.role}`.toLowerCase().includes(term.toLowerCase())) : []
+  const hitChats = term ? teamChannels.filter((c) => `${c.name} ${c.topic ?? ''}`.toLowerCase().includes(term.toLowerCase())) : []
+  const hitMsgs = useMemo(() => (term.length < 2 ? [] : teamMessages.filter((m) => m.text.toLowerCase().includes(term.toLowerCase()) && teamChannels.some((c) => c.id === m.channelId)).sort((a, b) => b.createdAt - a.createdAt).slice(0, 30)), [term, teamMessages, teamChannels])
+
+  function openDm(memberId: string) {
+    const m = member(memberId)
+    if (!m) return
+    if (m.bot) { const withOvi = teamChannels.find((c) => c.kind === 'dm' && c.ai && c.memberIds.filter((x) => x !== YOU_MEMBER_ID && x !== AI_MEMBER_ID).length === 0); if (withOvi) { setSel(withOvi.id); setQ(''); return } }
+    const c = act.addChannel(m.name, 'dm', undefined, { memberIds: m.bot ? [] : [memberId], ai: !!m.bot })
+    setSel(c.id); setQ('')
+  }
 
   function NavBtn({ c }: { c: TeamChannel }) {
     const on = c.id === sel
-    const other = c.kind === 'dm' ? member(c.memberIds.find((id) => id !== YOU_MEMBER_ID) || '') : undefined
+    const other = c.kind === 'dm' ? member(c.memberIds.find((id) => id !== YOU_MEMBER_ID && id !== AI_MEMBER_ID) || AI_MEMBER_ID) : undefined
     return (
-      <button onClick={() => setSel(c.id)} className={classNames('w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] text-left transition-colors', on ? 'bg-accent-wash-2 text-accent-700 font-semibold' : 'text-ink-3 hover:bg-control')}>
-        {c.kind === 'dm' ? <MemberAvatar m={other} size={22} ring /> : <span className={classNames('w-[22px] text-center shrink-0', on ? 'text-accent' : 'text-muted-3')}>{c.kind === 'group' ? <Users size={16} className="inline" /> : '#'}</span>}
+      <button onClick={() => { setSel(c.id); setFocusMsg(null) }} className={classNames('w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] text-left transition-colors', on ? 'bg-[#15223B] text-white font-semibold' : 'text-ink-3 hover:bg-control')}>
+        {c.kind === 'dm' ? <MemberAvatar m={other} size={22} ring /> : <span className={classNames('w-[22px] text-center shrink-0', on ? 'text-[#62E4CC]' : 'text-muted-3')}>{c.kind === 'group' ? <Users size={16} className="inline" /> : '#'}</span>}
         <span className="flex-1 truncate">{c.name}</span>
-        {c.ai && <Sparkle size={12} className={on ? 'text-accent' : 'text-muted-3'} />}
-        {c.unread > 0 && <span className="text-[10px] font-bold text-white bg-accent rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">{c.unread}</span>}
+        {c.ai && <Sparkle size={12} className={on ? 'text-[#62E4CC]' : 'text-muted-3'} />}
+        {c.unread > 0 && <span className="text-[10px] font-bold text-[#15223B] bg-[#62E4CC] rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">{c.unread}</span>}
       </button>
     )
   }
-
-  function addChannel() {
-    const name = window.prompt('New channel name')?.trim()
-    if (name) { const c = act.addChannel(name.replace(/^#\s*/, ''), 'channel'); setSel(c.id) }
-  }
+  const Section = ({ label, kind, list }: { label: string; kind: ChannelKind; list: TeamChannel[] }) => (
+    <div>
+      <div className="eyebrow text-muted-3 px-2.5 mb-1.5 flex items-center"><span className="flex-1">{label}</span><button title={`New ${label.toLowerCase()}`} onClick={() => setNewKind(kind)} className="w-5 h-5 rounded-md text-muted-3 hover:text-ink hover:bg-control flex items-center justify-center"><Plus size={13} /></button></div>
+      <div className="flex flex-col gap-0.5">{list.map((c) => <NavBtn key={c.id} c={c} />)}{!list.length && <button onClick={() => setNewKind(kind)} className="text-left px-2.5 py-1.5 text-[12.5px] text-muted-3 hover:text-ink-3">+ Start one</button>}</div>
+    </div>
+  )
 
   return (
     <>
       <TopBar
-        title="Team"
+        title="Team chat"
         crumbs={['Your internal space']}
-        actions={<Button icon={<Plus size={16} />} onClick={addChannel}>New channel</Button>}
+        actions={<Button variant="primary" icon={<Plus size={16} />} onClick={() => setNewKind('dm')}>New chat</Button>}
       />
       <div className="flex-1 flex min-h-0">
-        {/* channel list */}
-        <aside className="w-[240px] shrink-0 bg-surface border-r border-border flex flex-col overflow-y-auto">
-          <div className="p-3 flex-1 flex flex-col gap-4">
-            <button onClick={() => setSel('announcements')} className={classNames('w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13.5px] font-semibold transition', sel === 'announcements' ? 'bg-accent-gradient text-white shadow-primary' : 'bg-accent-wash text-accent hover:bg-[#E4ECFB]')}>
-              <Megaphone size={17} /> <span className="flex-1 text-left">Announcements</span>
-            </button>
-
-            <div>
-              <div className="eyebrow text-muted-3 px-2.5 mb-1.5 flex items-center"><span className="flex-1">Channels</span><button onClick={addChannel} className="text-muted-3 hover:text-accent"><Plus size={13} /></button></div>
-              <div className="flex flex-col gap-0.5">{channels.map((c) => <NavBtn key={c.id} c={c} />)}</div>
-            </div>
-
-            {groups.length > 0 && (
-              <div>
-                <div className="eyebrow text-muted-3 px-2.5 mb-1.5">Groups</div>
-                <div className="flex flex-col gap-0.5">{groups.map((c) => <NavBtn key={c.id} c={c} />)}</div>
-              </div>
+        {/* conversations */}
+        <aside className="w-[270px] shrink-0 bg-surface border-r border-border flex flex-col min-h-0">
+          <div className="p-3 pb-2 shrink-0">
+            <label className="h-9 flex items-center gap-2 px-3 rounded-[10px] border border-[#E1E6EC] bg-[#F7F9FB] focus-within:bg-white focus-within:border-accent-400">
+              <Search size={14} className="text-muted-3 shrink-0" />
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search people, chats, messages" className="flex-1 min-w-0 bg-transparent outline-none text-[13px] text-ink-2 placeholder:text-muted-3" />
+              {q && <button onClick={() => setQ('')} className="text-muted-3 hover:text-ink text-[12px]">✕</button>}
+            </label>
+          </div>
+          <div className="flex-1 min-h-0 overflow-y-auto px-3 pb-3 flex flex-col gap-4">
+            {term ? (
+              <>
+                <div>
+                  <div className="eyebrow text-muted-3 px-2.5 mb-1.5">People</div>
+                  {hitPeople.map((m) => (
+                    <button key={m.id} onClick={() => openDm(m.id)} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left hover:bg-control">
+                      <MemberAvatar m={m} size={24} ring />
+                      <span className="min-w-0 flex-1"><span className="block text-[13px] font-semibold text-ink-2 truncate"><Highlight text={m.name} q={term} /></span><span className="block text-[11px] text-muted-2 truncate">{m.role}</span></span>
+                      <span className="text-[11px] font-semibold text-muted-b">Message</span>
+                    </button>
+                  ))}
+                  {!hitPeople.length && <div className="px-2.5 text-[12px] text-muted-3">No people</div>}
+                </div>
+                <div>
+                  <div className="eyebrow text-muted-3 px-2.5 mb-1.5">Chats</div>
+                  <div className="flex flex-col gap-0.5">{hitChats.map((c) => <NavBtn key={c.id} c={c} />)}</div>
+                  {!hitChats.length && <div className="px-2.5 text-[12px] text-muted-3">No chats</div>}
+                </div>
+                <div>
+                  <div className="eyebrow text-muted-3 px-2.5 mb-1.5">Messages {hitMsgs.length > 0 && `· ${hitMsgs.length}`}</div>
+                  {hitMsgs.map((m) => {
+                    const c = teamChannels.find((x) => x.id === m.channelId)!
+                    return (
+                      <button key={m.id} onClick={() => { setSel(c.id); setFocusMsg(m.id) }} className={classNames('w-full px-2.5 py-2 rounded-lg text-left hover:bg-control', focusMsg === m.id && 'bg-[#E6FAF6]')}>
+                        <div className="flex items-center gap-1.5 text-[11px] text-muted-2"><span className="font-bold text-ink-3 truncate">{member(m.authorId)?.name}</span><span>in {chatName(c)}</span><span className="ml-auto shrink-0">{ago(m.createdAt)}</span></div>
+                        <div className="text-[12.5px] text-ink-2 mt-0.5 line-clamp-2"><Highlight text={snippet(m.text, term)} q={term} /></div>
+                      </button>
+                    )
+                  })}
+                  {!hitMsgs.length && <div className="px-2.5 text-[12px] text-muted-3">{term.length < 2 ? 'Keep typing to search messages' : 'No messages'}</div>}
+                </div>
+              </>
+            ) : (
+              <>
+                <button onClick={() => setSel('announcements')} className={classNames('w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13.5px] font-semibold transition', sel === 'announcements' ? 'bg-[#15223B] text-white' : 'bg-[#E6FAF6] text-[#15223B] hover:bg-[#D6F7F0]')}>
+                  <Megaphone size={17} className={sel === 'announcements' ? 'text-[#62E4CC]' : ''} /> <span className="flex-1 text-left">Announcements</span>
+                </button>
+                <Section label="Channels" kind="channel" list={channels} />
+                <Section label="Group chats" kind="group" list={groups} />
+                <Section label="Direct messages" kind="dm" list={dms} />
+              </>
             )}
-
-            <div>
-              <div className="eyebrow text-muted-3 px-2.5 mb-1.5">Direct messages</div>
-              <div className="flex flex-col gap-0.5">{dms.map((c) => <NavBtn key={c.id} c={c} />)}</div>
-            </div>
           </div>
 
-          {/* roster */}
-          <div className="p-3 border-t border-divider">
+          {/* roster — click anyone to message them */}
+          <div className="shrink-0 max-h-[34%] overflow-y-auto p-3 border-t border-divider">
             <div className="eyebrow text-muted-3 px-1 mb-2">Team · {teamMembers.filter((m) => m.status === 'online').length} online</div>
-            <div className="flex flex-col gap-1.5">
-              {teamMembers.map((m) => (
-                <div key={m.id} className="flex items-center gap-2 px-1">
+            <div className="flex flex-col gap-0.5">
+              {teamMembers.filter((m) => !m.you).map((m) => (
+                <button key={m.id} onClick={() => openDm(m.id)} title={`Message ${m.name}`} className="flex items-center gap-2 px-1 py-1 rounded-lg hover:bg-control text-left group">
                   <MemberAvatar m={m} size={24} ring />
-                  <div className="min-w-0"><div className="text-[12.5px] font-medium text-ink-2 truncate leading-tight">{m.name}{m.you && ' (you)'}</div><div className="text-[11px] text-muted-3 truncate leading-tight">{m.role}</div></div>
-                </div>
+                  <div className="min-w-0 flex-1"><div className="text-[12.5px] font-medium text-ink-2 truncate leading-tight">{m.name}</div><div className="text-[11px] text-muted-3 truncate leading-tight">{m.role}</div></div>
+                  <Send size={12} className="text-muted-3 opacity-0 group-hover:opacity-100" />
+                </button>
               ))}
             </div>
           </div>
         </aside>
 
         {/* main */}
-        {sel === 'announcements' || !selChannel ? <AnnouncementsBoard /> : <ChannelView key={selChannel.id} channel={selChannel} />}
+        {sel === 'announcements' || !selChannel ? <AnnouncementsBoard /> : <ChannelView key={selChannel.id} channel={selChannel} focusId={focusMsg} />}
       </div>
-      {totalUnread > 0 && sel === 'announcements' && <span className="sr-only">{totalUnread} unread</span>}
+      <NewChatModal open={!!newKind} initialKind={newKind ?? 'dm'} onClose={() => setNewKind(null)} onCreated={(id) => { setNewKind(null); setSel(id); setQ('') }} />
     </>
   )
 }
