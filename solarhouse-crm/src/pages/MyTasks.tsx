@@ -2,8 +2,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { TopBar } from '../components/TopBar'
 import { PageBody } from '../components/Page'
-import { Button, Chip } from '../components/ui'
-import { PillTabs } from '../components/chrome'
+import { Button, Chip, Segmented } from '../components/ui'
 import { Plus, Check, Clock, Sparkle, File as FileIcon, Phone, Meeting, Task as TaskIcon, Envelope, Search } from '../components/icons'
 import { TaskComposer } from '../components/TaskComposer'
 import { useState_, useActions } from '../store/store'
@@ -15,10 +14,24 @@ import { CalendarView } from './Calendar'
 import { Dropdown } from '../components/Dropdown'
 
 const typeIcon: Record<string, any> = { call: Phone, meeting: Meeting, task: TaskIcon, email: Envelope }
-const typeColor: Record<string, string> = { call: '#13927B', meeting: '#0E7C66', task: '#C2410C', email: '#13927B' }
-const typeWash: Record<string, string> = { call: '#EAF6F2', meeting: '#E9F5F1', task: '#FDF1E7', email: '#EAF6F2' }
+const typeColor: Record<string, string> = { call: '#0E7A66', meeting: '#15223B', task: '#C2410C', email: '#0369A1' } // same as the calendar (EV)
+const typeWash: Record<string, string> = { call: '#E1F6F1', meeting: '#E9EDF4', task: '#FDF1E7', email: '#E6F2FA' }
 const prioTone: Record<string, 'negative' | 'warning' | 'neutral'> = { High: 'negative', Medium: 'warning', Low: 'neutral' }
-const ORDER: Bucket[] = ['overdue', 'today', 'tomorrow', 'upcoming', 'none']
+const TODAY_B: Bucket[] = ['overdue', 'today']
+const UPCOMING_B: Bucket[] = ['tomorrow', 'upcoming', 'none']
+const WHEN = [{ id: 'today', label: 'Today' }, { id: 'upcoming', label: 'Upcoming' }, { id: 'yesterday', label: 'Yesterday' }, { id: 'all', label: 'All' }]
+const KIND_LABEL: Record<string, string> = { call: 'Calls', meeting: 'Meetings', task: 'Tasks', email: 'Emails' }
+
+/** A filter pill: navy when on, with a live count so it's obvious what each click does. */
+function FilterPill({ on, onClick, label, count, icon: I, color }: { on: boolean; onClick: () => void; label: string; count: number; icon?: any; color?: string }) {
+  return (
+    <button onClick={onClick} className={classNames('h-8 pl-3 pr-1.5 rounded-full flex items-center gap-1.5 text-[12.5px] font-semibold transition-colors border',
+      on ? 'chip-on' : 'bg-white border-[#E1E6EC] text-ink-3 hover:border-[#C9D2DD] hover:text-ink')}>
+      {I && <span style={on ? undefined : { color }}><I size={13} /></span>}{label}
+      <span className={classNames('text-[11px] font-bold rounded-full min-w-[22px] px-1.5 py-px text-center', on ? 'chip-on-count' : 'bg-[#EEF1F5] text-muted-b')}>{count}</span>
+    </button>
+  )
+}
 
 export function MyTasks() {
   const nav = useNavigate()
@@ -43,15 +56,25 @@ export function MyTasks() {
     return scopeMember ? a.who === scopeMember.name : false
   }
 
-  const tasks = useMemo(
+  // everything in scope + search; the WHEN and TYPE pills then narrow it (and count against it)
+  const base = useMemo(
     () => activities
       .filter(isTask)
       .filter(assignedToScope)
-      .filter((a) => kind === 'all' || a.type === kind)
       .filter((a) => !q || a.subject.toLowerCase().includes(q.toLowerCase()) || (a.body ?? '').toLowerCase().includes(q.toLowerCase())),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activities, scope, q, kind],
+    [activities, scope, q],
   )
+  const inWhen = (a: Activity, w: string) => {
+    if (w === 'all') return true
+    if (w === 'yesterday') return isYesterday(a)
+    const b = bucketOf(a)
+    if (w === 'today') return b === 'overdue' || b === 'today' || (a.done && b === 'done')
+    return !a.done && (b === 'tomorrow' || b === 'upcoming' || b === 'none')
+  }
+  const whenCount = (w: string) => base.filter((a) => (kind === 'all' || a.type === kind) && inWhen(a, w) && (w === 'yesterday' || w === 'all' || !a.done)).length
+  const kindCount = (k: string) => base.filter((a) => (k === 'all' || a.type === k) && inWhen(a, when) && (when === 'yesterday' || when === 'all' || !a.done)).length
+  const tasks = useMemo(() => base.filter((a) => kind === 'all' || a.type === kind), [base, kind])
 
   const yesterday = tasks.filter(isYesterday)
   const openToday = tasks.filter((a) => !a.done && ['overdue', 'today'].includes(bucketOf(a)))
@@ -132,28 +155,37 @@ export function MyTasks() {
     <>
       <TopBar title="My Tasks" actions={<Button variant="primary" icon={<Plus size={16} />} onClick={openNew}>New task</Button>} />
 
-      <div className="sh-toolbar shrink-0 px-7 py-2.5 flex items-center gap-3 flex-wrap">
-        <div className="inline-flex bg-[#E9EDF2] border border-[#DDE3EA] rounded-control p-[3px] gap-0.5">
-          {(['list', 'calendar'] as const).map((l) => <button key={l} onClick={() => setLayout(l)} className={classNames('h-[30px] px-3 rounded-[7px] text-[12.5px] font-semibold capitalize', layout === l ? 'bg-white text-accent font-bold shadow-[0_1px_3px_rgba(11,18,32,0.14)]' : 'text-ink-3')}>{l}</button>)}
-        </div>
-        <PillTabs value={when} onChange={setWhen} tabs={[{ id: 'today', label: 'To-do' }, { id: 'yesterday', label: 'Yesterday' }, { id: 'all', label: 'All' }]} />
-        <PillTabs value={kind} onChange={setKind} tabs={[{ id: 'all', label: 'Everything' }, { id: 'call', label: 'Calls', icon: Phone, color: typeColor.call }, { id: 'meeting', label: 'Meetings', icon: Meeting, color: typeColor.meeting }, { id: 'task', label: 'Tasks', icon: TaskIcon, color: typeColor.task }, { id: 'email', label: 'Emails', icon: Envelope, color: typeColor.email }]} />
-        <div className="h-9 w-[220px] rounded-control border border-border bg-surface flex items-center gap-2 px-3">
-          <Search size={15} className="text-muted-3" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search tasks" className="bg-transparent outline-none flex-1 text-[13px] text-ink-2 placeholder:text-muted-3" />
-        </div>
-        <label className="flex items-center gap-2 text-[12.5px] text-ink-3">
-          <span className="text-muted-2">Whose</span>
-          <Dropdown value={scope} onChange={(e) => setScope(e.target.value)} className="h-9 px-2.5 rounded-control border border-input-border bg-white text-[13px] outline-none focus:border-accent">
+      {/* Two rows. Row 1: list/calendar + whose + search. Row 2 (list only): WHEN and WHAT filters as
+          clear pills with live counts, so every click visibly changes what you're looking at. */}
+      <div className="sh-toolbar shrink-0 px-7 pb-3 flex flex-col gap-2.5">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <Segmented options={['List', 'Calendar']} value={layout === 'list' ? 'List' : 'Calendar'} onChange={(v) => setLayout(v === 'List' ? 'list' : 'calendar')} />
+          <Dropdown value={scope} onChange={(e) => setScope(e.target.value)} className="h-9 px-3 rounded-[10px] border border-[#E1E6EC] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.05)] text-[13px] font-semibold text-ink-3 outline-none">
             <option value={YOU_MEMBER_ID}>My tasks</option>
-            <option value="all">Everyone</option>
+            <option value="all">Everyone's tasks</option>
             {[...new Set(activities.map((a) => a.who))].filter((n) => n && n !== 'System' && n !== scopeMemberYou && !n.includes('team')).sort().map((n) => (<option key={n} value={`name:${n}`}>{n}</option>))}
           </Dropdown>
-        </label>
-        <div className="ml-auto flex items-center gap-2 text-[12.5px]">
-          <Chip tone="accent" dot>{openToday.length} due today</Chip>
-          {todayMins > 0 && <span className="inline-flex items-center gap-1 text-muted-2"><Clock size={13} /> {fmtMins(todayMins)} planned</span>}
+          {layout === 'list' && (
+            <label className="h-9 w-[240px] rounded-[10px] border border-[#E1E6EC] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.05)] flex items-center gap-2 px-3 focus-within:border-accent-400">
+              <Search size={15} className="text-muted-3" />
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search tasks" className="bg-transparent outline-none flex-1 min-w-0 text-[13px] text-ink-2 placeholder:text-muted-3" />
+            </label>
+          )}
+          <div className="ml-auto flex items-center gap-2 text-[12.5px]">
+            <span className="h-8 px-3 rounded-full bg-[#15223B] text-white font-semibold flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#62E4CC]" />{openToday.length} due today</span>
+            {todayMins > 0 && <span className="inline-flex items-center gap-1 text-muted-b font-semibold"><Clock size={13} /> {fmtMins(todayMins)} planned</span>}
+          </div>
         </div>
+        {layout === 'list' && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="eyebrow text-muted-3 mr-0.5">When</span>
+            {WHEN.map((w) => <FilterPill key={w.id} on={when === w.id} onClick={() => setWhen(w.id)} label={w.label} count={whenCount(w.id)} />)}
+            <span className="w-px h-6 bg-[#DDE3EA] mx-2" />
+            <span className="eyebrow text-muted-3 mr-0.5">Type</span>
+            <FilterPill on={kind === 'all'} onClick={() => setKind('all')} label="Everything" count={kindCount('all')} />
+            {(['call', 'meeting', 'task', 'email'] as const).map((k) => <FilterPill key={k} on={kind === k} onClick={() => setKind(k)} label={KIND_LABEL[k]} icon={typeIcon[k]} color={typeColor[k]} count={kindCount(k)} />)}
+          </div>
+        )}
       </div>
 
       {layout === 'calendar' ? <CalendarView /> : <PageBody>
@@ -174,9 +206,9 @@ export function MyTasks() {
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {ORDER.every((b) => grouped[b].length === 0) && doneToday.length === 0 && <Empty label="You're all clear. Create a task to get going." />}
-            {ORDER.map((b) => <Section key={b} b={b} />)}
-            {doneToday.length > 0 && (
+            {(when === 'today' ? TODAY_B : UPCOMING_B).every((b) => grouped[b].length === 0) && (when !== 'today' || doneToday.length === 0) && <Empty label={when === 'today' ? "You're all clear for today." : 'Nothing coming up.'} />}
+            {(when === 'today' ? TODAY_B : UPCOMING_B).map((b) => <Section key={b} b={b} />)}
+            {when === 'today' && doneToday.length > 0 && (
               <details className="bg-surface border border-border rounded-card overflow-hidden">
                 <summary className="flex items-center gap-2 px-4 py-2.5 cursor-pointer list-none">
                   <span className="w-2 h-2 rounded-full" style={{ background: BUCKET_META.done.tone }} />

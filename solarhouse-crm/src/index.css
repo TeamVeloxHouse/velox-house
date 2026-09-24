@@ -209,6 +209,23 @@ body {
 .sh-hdr-ctrls .bg-accent-gradient:hover { background: #1E2F4E; filter: none; }
 .sh-hdr-ctrls label, .sh-hdr-ctrls > span { color: var(--hdr-muted); }
 
+/* Readability on teal: any control a page hand-rolls into the header (bordered search triggers etc.)
+   gets the same material, and every grey/white text colour is pulled to navy or a lighter navy. */
+.sh-hdr-ctrls button.border-border,
+.sh-hdr-ctrls button.border-input-border {
+  background: var(--hdr-ctl) !important;
+  border-color: var(--hdr-ctl-border) !important;
+  color: var(--hdr-fg) !important;
+}
+.sh-hdr-ctrls button.border-border:hover,
+.sh-hdr-ctrls button.border-input-border:hover { background: var(--hdr-ctl-hover) !important; }
+.sh-topbar :is(.text-muted, .text-muted-b, .text-muted-2, .text-muted-2b, .text-muted-3, .text-ink-3, .text-rail-idle, .text-white\/70, .text-white\/60) { color: var(--hdr-muted) !important; }
+.sh-topbar :is(.text-ink, .text-ink-2) { color: var(--hdr-fg) !important; }
+.sh-topbar .sh-hdr-ctrls kbd { background: rgba(21, 34, 59, 0.1) !important; color: var(--hdr-fg) !important; }
+.sh-topbar ::placeholder { color: var(--hdr-muted); }
+/* white text/badges a page puts in the header would vanish on teal — make them navy */
+.sh-topbar .sh-hdr-ctrls .text-white:not([class*="bg-"]):not([class*="bg-"] *) { color: var(--hdr-fg) !important; }
+
 /* segmented controls in the header */
 .sh-topbar .seg-track { background: var(--hdr-ctl); border-color: var(--hdr-ctl-border); border-radius: 12px; padding: 4px; }
 .sh-topbar .seg-track > button { border-radius: 9px; }

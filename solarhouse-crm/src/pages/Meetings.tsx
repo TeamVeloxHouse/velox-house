@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { TopBar } from '../components/TopBar'
-import { Button, Avatar, Chip } from '../components/ui'
+import { Button, Avatar, Chip, Segmented } from '../components/ui'
+import { CalendarView } from './Calendar'
 import { Plus, Video, Robot, Sparkle, Check, Waveform, Play, Note, Task, Envelope, Link as LinkIcon, Mic } from '../components/icons'
 import { Modal, Field, Input, Select } from '../components/overlays'
 import { useState_, useActions } from '../store/store'
@@ -34,6 +35,7 @@ export function Meetings() {
   const act = useActions()
   const [sel, setSel] = useState('mtg1')
   const [schedOpen, setSchedOpen] = useState(false)
+  const [mode, setMode] = useState<'Notes' | 'Calendar'>('Notes')
   const active = meetings.find((m) => m.id === sel) ?? meetings[0]
   const meetingConns = connections.filter((c) => c.kind === 'meeting')
 
@@ -42,10 +44,11 @@ export function Meetings() {
       <TopBar
         title="Meetings"
         crumbs={['AI notetaker']}
+        center={<Segmented options={['Notes', 'Calendar']} value={mode} onChange={(v) => setMode(v as 'Notes' | 'Calendar')} />}
         actions={<><Button icon={<LinkIcon size={16} />} onClick={() => act.toast('Manage connections in Settings', 'accent')}>Connections</Button><button onClick={() => nav('/meetings/live')} className="h-9 inline-flex items-center gap-2 px-3.5 rounded-control bg-[#B01B4F] text-white text-[13px] font-semibold shadow-primary hover:brightness-95 active:translate-y-px transition"><Mic size={16} /> Record live meeting</button><Button variant="primary" icon={<Plus size={16} />} onClick={() => setSchedOpen(true)}>Schedule</Button></>}
       />
       <ScheduleMeetingModal open={schedOpen} onClose={() => setSchedOpen(false)} onScheduled={(id) => setSel(id)} />
-      <div className="flex-1 flex min-h-0">
+      {mode === 'Calendar' ? <CalendarView only={['meeting']} /> : <div className="flex-1 flex min-h-0">
         <div className="w-[360px] shrink-0 bg-surface border-r border-border overflow-y-auto">
           <div className="p-3.5 border-b border-border flex items-center gap-2">
             {meetingConns.map((c) => (
@@ -140,7 +143,7 @@ export function Meetings() {
             </div>
           )}
         </main>
-      </div>
+      </div>}
     </>
   )
 }

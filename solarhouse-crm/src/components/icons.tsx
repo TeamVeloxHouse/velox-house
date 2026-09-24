@@ -166,11 +166,13 @@ export const Star = (p: IconProps) => (
     <path d="M12 3l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.8 6.2 21l1.1-6.5L2.6 9.8l6.5-.9z" />
   </Base>
 )
+// UK business — the money icon is a pound sign (kept under the old name so every use switches at once)
 export const Dollar = (p: IconProps) => (
   <Base {...p}>
-    <path d="M12 2v20M17 6.5C17 4.6 14.8 3.5 12 3.5S7 4.8 7 6.9c0 4.6 10 2.6 10 7.2 0 2.1-2.2 3.4-5 3.4s-5-1.2-5-3.1" />
+    <path d="M16.5 7.2A3.8 3.8 0 0 0 9.4 5.6C8.7 6.6 8.6 7.8 8.6 9.4v4.1c0 2-.9 3.7-2.6 4.5h12M6 12.2h7.6" />
   </Base>
 )
+export const Pound = Dollar
 export const Command = (p: IconProps) => (
   <Base {...p}>
     <path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3" />

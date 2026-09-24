@@ -2,7 +2,8 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { TopBar } from '../components/TopBar'
 import { PageBody } from '../components/Page'
-import { Button, Kpi, Chip, Avatar } from '../components/ui'
+import { Button, Kpi, Chip, Avatar, Segmented } from '../components/ui'
+import { MonthGrid, type GridEvent } from '../components/MonthGrid'
 import { Modal, Field, Input, Select } from '../components/overlays'
 import { Plus, Sun, Bolt, Check, ChevronRight, Star, Wrench, Building, Sparkle, Robot, Play, MapPin, Camera, Upload, Lock, Dollar, Calendar } from '../components/icons'
 import { useState_, useActions } from '../store/store'
@@ -34,6 +35,10 @@ export function ShowroomHome() {
   const [loc, setLoc] = useState<(typeof SHOWROOM_TABS)[number]>(() => { try { return (localStorage.getItem('shc.showroom.tab') as never) || 'Cardiff' } catch { return 'Cardiff' } })
   useEffect(() => { try { localStorage.setItem('shc.showroom.tab', loc) } catch { /* ignore */ } }, [loc])
   const [week, setWeek] = useState(() => mondayOf(new Date()))
+  const [view, setView] = useState<'Week' | 'Day' | 'Month' | 'Bookings'>(() => { try { return (localStorage.getItem('shc.showroom.view') as never) || 'Week' } catch { return 'Week' } })
+  useEffect(() => { try { localStorage.setItem('shc.showroom.view', view) } catch { /* ignore */ } }, [view])
+  const [day, setDay] = useState(() => new Date())
+  const [month, setMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1) })
   const [book, setBook] = useState<{ date: string; time: string } | null>(null)
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'won' | 'presented' | 'lost' | 'no-show'>('all')
   const [q, setQ] = useState('')
@@ -43,6 +48,20 @@ export function ShowroomHome() {
   const days = Array.from({ length: 6 }, (_, i) => { const d = new Date(week); d.setDate(d.getDate() + i); return d })
   const todayIso = isoD(new Date())
   const slot = (date: string, time: string) => here.find((s) => s.scheduledDate === date && s.scheduledTime === time && s.bookingStatus !== 'cancelled')
+  const stepCal = (dir: -1 | 1) => {
+    if (view === 'Week') setWeek((w) => { const d = new Date(w); d.setDate(d.getDate() + dir * 7); return d })
+    else if (view === 'Day') setDay((w) => { const d = new Date(w); d.setDate(d.getDate() + dir); return d })
+    else setMonth((m) => new Date(m.getFullYear(), m.getMonth() + dir, 1))
+  }
+  const monthEvents = useMemo(() => {
+    const m: Record<string, GridEvent[]> = {}
+    here.filter((s) => s.scheduledDate && s.bookingStatus !== 'cancelled').sort((a, b) => (a.scheduledTime ?? '').localeCompare(b.scheduledTime ?? '')).forEach((s) => {
+      const t = toneOf(s)
+      ;(m[s.scheduledDate!] ??= []).push({ id: s.id, label: `${s.scheduledTime ?? ''} ${s.name}`, title: `${s.name} · ${t.label}`, color: t.color, wash: t.bg, onClick: () => nav(`/showroom/${s.id}`) })
+    })
+    return m
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showroom, loc])
   const weekBookings = here.filter((s) => s.scheduledDate && s.scheduledDate >= isoD(days[0]) && s.scheduledDate <= isoD(days[5]) && s.bookingStatus !== 'cancelled').length
 
   const list = here
@@ -64,25 +83,38 @@ export function ShowroomHome() {
           </>
         }
       />
-      <PageBody>
-        {/* diary */}
-        <section className="rounded-card bg-surface border border-border shadow-card overflow-hidden">
-          <div className="px-4 py-3 border-b border-divider flex items-center gap-2">
-            <MapPin size={15} className="text-accent" /><span className="text-[14px] font-bold text-ink">{loc} diary</span>
-            <span className="text-[12px] text-muted-2 ml-1">{weekBookings} visits this week</span>
-            <div className="ml-auto flex items-center gap-1.5">
-              <button onClick={() => setWeek((w) => { const d = new Date(w); d.setDate(d.getDate() - 7); return d })} className="w-8 h-8 rounded-lg border border-border grid place-items-center hover:bg-control"><ChevronRight size={14} className="rotate-180" /></button>
-              <button onClick={() => setWeek(mondayOf(new Date()))} className="h-8 px-3 rounded-lg border border-border text-[12.5px] font-semibold text-ink-2 hover:bg-control">This week</button>
-              <button onClick={() => setWeek((w) => { const d = new Date(w); d.setDate(d.getDate() + 7); return d })} className="w-8 h-8 rounded-lg border border-border grid place-items-center hover:bg-control"><ChevronRight size={14} /></button>
-              <span className="text-[13px] font-semibold text-ink-2 ml-1">{days[0].toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} – {days[5].toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
+      {/* Views: the diary gets the whole screen (Week / Day / Month), and the bookings list is its own view */}
+      <div className="sh-toolbar shrink-0 px-7 pb-3 flex items-center gap-3 flex-wrap">
+        <Segmented options={['Week', 'Day', 'Month', 'Bookings']} value={view} onChange={(v) => setView(v as typeof view)} />
+        {view !== 'Bookings' && (
+          <>
+            <div className="flex items-center gap-1">
+              <button onClick={() => stepCal(-1)} className="w-9 h-9 rounded-[10px] border border-[#E1E6EC] bg-white grid place-items-center hover:bg-control"><ChevronRight size={14} className="rotate-180" /></button>
+              <button onClick={() => { setWeek(mondayOf(new Date())); setDay(new Date()); setMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1)) }} className="h-9 px-3.5 rounded-[10px] border border-[#E1E6EC] bg-white text-[13px] font-semibold text-ink-3 hover:bg-control">Today</button>
+              <button onClick={() => stepCal(1)} className="w-9 h-9 rounded-[10px] border border-[#E1E6EC] bg-white grid place-items-center hover:bg-control"><ChevronRight size={14} /></button>
             </div>
-          </div>
-          <div className="grid" style={{ gridTemplateColumns: '64px repeat(6, minmax(0,1fr))' }}>
+            <div className="text-[17px] font-bold text-ink tracking-[-0.01em]">
+              {view === 'Week' ? `${days[0].toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} – ${days[5].toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
+                : view === 'Day' ? day.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
+                : month.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
+            </div>
+          </>
+        )}
+        <div className="ml-auto flex items-center gap-2 text-[12.5px]">
+          <span className="h-8 px-3 rounded-full bg-[#15223B] text-white font-semibold flex items-center gap-1.5"><MapPin size={12} className="text-[#62E4CC]" />{loc}</span>
+          {view === 'Week' && <span className="text-muted-b font-semibold">{weekBookings} of {days.length * SLOTS.length} slots booked</span>}
+        </div>
+      </div>
+
+      {view === 'Week' && (
+        <main className="flex-1 min-h-0 px-7 pb-5 flex flex-col">
+          <div className="flex-1 min-h-0 grid rounded-card bg-white border border-[#E1E6EC] shadow-card overflow-hidden" style={{ gridTemplateColumns: '64px repeat(6, minmax(0,1fr))', gridTemplateRows: `auto repeat(${SLOTS.length}, minmax(0,1fr))` }}>
             <div className="border-b border-r border-divider bg-[#FAFBFC]" />
             {days.map((d) => { const iso = isoD(d); return (
-              <div key={iso} className={classNames('border-b border-r border-divider last:border-r-0 px-2.5 py-2 bg-[#FAFBFC]', iso === todayIso && 'bg-accent-wash-4')}>
-                <div className={classNames('text-[12px] font-bold', iso === todayIso ? 'text-accent' : 'text-ink-2')}>{d.toLocaleDateString('en-GB', { weekday: 'short' })} {d.getDate()}</div>
-              </div>
+              <button key={iso} onClick={() => { setDay(d); setView('Day') }} className={classNames('border-b border-r border-divider last:border-r-0 px-2.5 py-2 text-left', iso === todayIso ? 'bg-[#15223B]' : 'bg-[#FAFBFC] hover:bg-control')}>
+                <div className={classNames('text-[12.5px] font-bold', iso === todayIso ? 'text-white' : 'text-ink-2')}>{d.toLocaleDateString('en-GB', { weekday: 'short' })} {d.getDate()}</div>
+                <div className={classNames('text-[10.5px] font-semibold', iso === todayIso ? 'text-[#62E4CC]' : 'text-muted-2')}>{here.filter((s) => s.scheduledDate === iso && s.bookingStatus !== 'cancelled').length} booked</div>
+              </button>
             ) })}
             {SLOTS.map((t) => (
               <Fragment key={t}>
@@ -91,14 +123,15 @@ export function ShowroomHome() {
                   const iso = isoD(d), s = slot(iso, t), past = `${iso}T${t}` < new Date().toISOString().slice(0, 16)
                   const tone = s ? toneOf(s) : null
                   return (
-                    <div key={iso + t} className="border-b border-r border-divider last:border-r-0 p-1 min-h-[54px]">
+                    <div key={iso + t} className="min-h-0 border-b border-r border-divider last:border-r-0 p-1">
                       {s ? (
-                        <button onClick={() => nav(`/showroom/${s.id}`)} className="w-full h-full rounded-md px-2 py-1.5 text-left hover:brightness-95" style={{ background: tone!.bg }}>
-                          <div className="text-[12px] font-semibold text-ink-2 truncate">{s.name}</div>
+                        <button onClick={() => nav(`/showroom/${s.id}`)} className="w-full h-full rounded-md px-2 py-1.5 text-left hover:brightness-95 border-l-[3px] overflow-hidden" style={{ background: tone!.bg, borderLeftColor: tone!.color }}>
+                          <div className="text-[12.5px] font-semibold text-ink-2 truncate">{s.name}</div>
                           <div className="text-[10.5px] font-semibold truncate" style={{ color: tone!.color }}>{tone!.label} · {s.presenter?.split(' ')[0]}</div>
+                          <div className="text-[10.5px] text-muted-2 truncate">{s.postcode ?? s.address}</div>
                         </button>
                       ) : !past ? (
-                        <button onClick={() => setBook({ date: iso, time: t })} className="w-full h-full rounded-md border border-dashed border-transparent hover:border-accent hover:bg-accent-wash text-transparent hover:text-accent text-[11px] font-semibold flex items-center justify-center gap-1"><Plus size={12} />Book</button>
+                        <button onClick={() => setBook({ date: iso, time: t })} className="w-full h-full rounded-md border border-dashed border-transparent hover:border-accent-400 hover:bg-accent-wash-4 text-transparent hover:text-ink-3 text-[11px] font-semibold flex items-center justify-center gap-1"><Plus size={12} />Book</button>
                       ) : null}
                     </div>
                   )
@@ -106,14 +139,58 @@ export function ShowroomHome() {
               </Fragment>
             ))}
           </div>
-        </section>
+        </main>
+      )}
 
+      {view === 'Day' && (
+        <main className="flex-1 min-h-0 px-7 pb-5 flex flex-col">
+          <div className="flex-1 min-h-0 grid gap-2" style={{ gridTemplateRows: `repeat(${SLOTS.length}, minmax(0,1fr))` }}>
+            {SLOTS.map((t) => {
+              const iso = isoD(day), s = slot(iso, t), past = `${iso}T${t}` < new Date().toISOString().slice(0, 16)
+              const tone = s ? toneOf(s) : null
+              const m = s ? showroomModel(s) : null
+              return (
+                <div key={t} className="min-h-0 flex items-stretch gap-3">
+                  <div className="w-[64px] shrink-0 pt-2 text-[13px] font-bold text-ink-3">{t}</div>
+                  {s ? (
+                    <button onClick={() => nav(`/showroom/${s.id}`)} className="flex-1 min-w-0 rounded-card bg-white border border-[#E1E6EC] border-l-[4px] shadow-card px-4 flex items-center gap-4 text-left hover:shadow-md transition-shadow" style={{ borderLeftColor: tone!.color }}>
+                      <Avatar name={s.name} size={36} />
+                      <div className="min-w-0 flex-1"><div className="text-[14px] font-bold text-ink truncate">{s.name}</div><div className="text-[12px] text-muted-2 truncate">{s.address}{s.phone ? ` · ${s.phone}` : ''}</div></div>
+                      <div className="hidden lg:block text-right"><div className="text-[12.5px] font-semibold text-ink-2">{s.design.systemKwp} kWp{s.design.hasBattery ? ` + ${s.design.batteryKwh} kWh` : ''}</div><div className="text-[11px] text-muted-2">{money(m!.price, { compact: true })} · £{s.monthlySpend}/mo bill</div></div>
+                      <div className="text-[12px] text-muted-b w-[110px] truncate">{s.presenter}</div>
+                      <span className="text-[11px] font-semibold rounded-full px-2.5 py-1" style={{ color: tone!.color, background: tone!.bg }}>{tone!.label}</span>
+                    </button>
+                  ) : past ? (
+                    <div className="flex-1 rounded-card border border-dashed border-[#E1E6EC] flex items-center px-4 text-[12px] text-muted-3">No visit</div>
+                  ) : (
+                    <button onClick={() => setBook({ date: iso, time: t })} className="flex-1 rounded-card border border-dashed border-[#CFD7E1] bg-white/50 hover:bg-white hover:border-accent-400 flex items-center justify-center gap-1.5 text-[12.5px] font-semibold text-muted-b hover:text-ink"><Plus size={14} />Book this slot</button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </main>
+      )}
+
+      {view === 'Month' && (
+        <main className="flex-1 min-h-0 px-7 pb-5 flex flex-col">
+          <MonthGrid
+            year={month.getFullYear()} month0={month.getMonth()}
+            events={monthEvents}
+            onDay={(d) => { setDay(new Date(`${d}T12:00`)); setView('Day') }}
+            onMore={(d) => { setDay(new Date(`${d}T12:00`)); setView('Day') }}
+            dayBadge={(d) => { const n = here.filter((s) => s.scheduledDate === d && s.bookingStatus !== 'cancelled').length; return n ? <span className="text-[10px] font-bold text-muted-b">{n}/{SLOTS.length}</span> : null }}
+          />
+        </main>
+      )}
+
+      {view === 'Bookings' && <PageBody>
         {/* presentations */}
         <section className="rounded-card bg-surface border border-border shadow-card overflow-hidden">
           <div className="px-4 py-3 border-b border-divider flex items-center gap-2 flex-wrap">
-            <Play size={15} className="text-accent" /><span className="text-[14px] font-bold text-ink">{loc} presentations</span>
+            <Play size={15} className="text-accent" /><span className="text-[14px] font-bold text-ink">{loc} bookings &amp; presentations</span>
             <div className="flex items-center gap-1 ml-3 bg-[#E9EDF2] border border-[#DDE3EA] rounded-control p-[3px]">
-              {(['all', 'upcoming', 'won', 'presented', 'lost', 'no-show'] as const).map((f) => <button key={f} onClick={() => { setFilter(f); setLimit(25) }} className={classNames('h-7 px-2.5 rounded-[6px] text-[12px] font-semibold capitalize flex items-center gap-1', filter === f ? 'bg-white text-accent font-bold shadow-[0_1px_3px_rgba(11,18,32,0.14)]' : 'text-ink-3')}>{f === 'all' ? 'All' : f}<span className="text-[10.5px] text-muted-3">{count(f)}</span></button>)}
+              {(['all', 'upcoming', 'won', 'presented', 'lost', 'no-show'] as const).map((f) => <button key={f} onClick={() => { setFilter(f); setLimit(25) }} className={classNames('h-7 px-2.5 rounded-[6px] text-[12px] font-semibold capitalize flex items-center gap-1', filter === f ? 'bg-white text-ink font-bold shadow-[0_1px_3px_rgba(11,18,32,0.14)]' : 'text-ink-3')}>{f === 'all' ? 'All' : f}<span className="text-[10.5px] text-muted-3">{count(f)}</span></button>)}
             </div>
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name or postcode…" className="ml-auto h-8 w-[220px] px-3 rounded-control border border-border text-[12.5px] outline-none focus:border-accent" />
           </div>
@@ -133,7 +210,7 @@ export function ShowroomHome() {
           {!list.length && <div className="p-8 text-center text-[13px] text-muted-2">No presentations match.</div>}
           {list.length > limit && <button onClick={() => setLimit((l) => l + 50)} className="w-full py-2.5 text-[12.5px] font-semibold text-accent hover:bg-accent-wash">Show more ({list.length - limit} remaining)</button>}
         </section>
-      </PageBody>
+      </PageBody>}
       <NewSessionModal open={open} onClose={() => setOpen(false)} onCreated={(id) => { setOpen(false); nav(`/showroom/${id}`) }} />
       {book && <BookSlotModal date={book.date} time={book.time} location={loc} onClose={() => setBook(null)} onBooked={() => setBook(null)} />}
     </>

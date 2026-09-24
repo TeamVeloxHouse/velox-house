@@ -55,7 +55,6 @@ export const STAGES: Stage[] = [
         { to: '/', icon: Grid, label: 'My Day', end: true },
         { to: '/tasks', icon: Check, label: 'My Tasks' },
         { to: '/meetings', icon: Video, label: 'Meetings', roles: NOT_INSTALLER },
-        { to: '/calendar', icon: Calendar, label: 'Calendar' },
         { to: '/team', icon: Users, label: 'Team chat' },
       ] },
     ],
@@ -81,7 +80,6 @@ export const STAGES: Stage[] = [
     groups: [
       { label: 'Leads', items: [
         { to: '/leads', icon: Bolt, label: 'Lead inbox', badge: 8 },
-        { to: '/tools/home-finder', icon: Home, label: 'Home Finder', feature: 'reach' },
         { to: '/tools/database', icon: Layers, label: 'All prospects', feature: 'reach' },
         { to: '/tools', icon: Grid, label: 'Lead tools', feature: 'reach', end: true },
       ] },

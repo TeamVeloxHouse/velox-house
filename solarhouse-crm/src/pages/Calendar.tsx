@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { TopBar } from '../components/TopBar'
-import { Button } from '../components/ui'
+import { Button, Segmented } from '../components/ui'
+import { MonthGrid, type GridEvent } from '../components/MonthGrid'
 import { Modal, Field, Input, Select } from '../components/overlays'
 import { Plus, Phone, Meeting as MeetingIcon, Task as TaskIcon, Envelope, Wrench, Note } from '../components/icons'
 import { useState_, useActions } from '../store/store'
@@ -12,31 +13,19 @@ import { classNames } from '../lib/format'
 type EvType = 'task' | 'call' | 'email' | 'meeting' | 'job' | 'note'
 type CalEvent = { id: string; date: string; start?: string; title: string; sub: string; type: EvType; to?: string; done?: boolean }
 
-const EV: Record<EvType, { color: string; wash: string; icon: any; label: string }> = {
+// one distinct colour per kind (they used to share near-identical greens)
+export const EV: Record<EvType, { color: string; wash: string; icon: any; label: string }> = {
+  meeting: { color: '#15223B', wash: '#E9EDF4', icon: MeetingIcon, label: 'Meeting' },
+  call: { color: '#0E7A66', wash: '#E1F6F1', icon: Phone, label: 'Call' },
   task: { color: '#C2410C', wash: '#FDF1E7', icon: TaskIcon, label: 'Task' },
-  call: { color: '#13927B', wash: '#EAF6F2', icon: Phone, label: 'Call' },
-  email: { color: '#13927B', wash: '#EAF6F2', icon: Envelope, label: 'Email' },
-  meeting: { color: '#0E7C66', wash: '#E9F5F1', icon: MeetingIcon, label: 'Meeting' },
-  job: { color: '#0891B2', wash: '#E6F5F9', icon: Wrench, label: 'Job' },
+  email: { color: '#0369A1', wash: '#E6F2FA', icon: Envelope, label: 'Email' },
+  job: { color: '#7C3AED', wash: '#F1ECFE', icon: Wrench, label: 'Job' },
   note: { color: '#7A8494', wash: '#F1F3F7', icon: Note, label: 'Note' },
 }
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
-function monthMatrix(cursor: string): string[][] {
-  const [y, m] = cursor.split('-').map(Number)
-  const first = new Date(y, m - 1, 1)
-  const lead = (first.getDay() + 6) % 7 // Monday = 0
-  const start = new Date(y, m - 1, 1 - lead)
-  const weeks: string[][] = []
-  for (let w = 0; w < 6; w++) {
-    const row: string[] = []
-    for (let d = 0; d < 7; d++) { const dt = new Date(start); dt.setDate(start.getDate() + w * 7 + d); row.push(isoDay(dt)) }
-    weeks.push(row)
-  }
-  return weeks
-}
 function weekDays(cursor: string): string[] {
   const [y, m, d] = cursor.split('-').map(Number)
   const dt = new Date(y, m - 1, d)
@@ -66,10 +55,11 @@ export function useCalendarEvents(): CalEvent[] {
   }, [activities, meetings, jobs, deals])
 }
 
-export function CalendarView() {
+export function CalendarView({ only }: { only?: EvType[] } = {}) {
   const nav = useNavigate()
-  const events = useCalendarEvents()
-  const [view, setView] = useState<'month' | 'week'>('month')
+  const all = useCalendarEvents()
+  const events = only ? all.filter((e) => only.includes(e.type)) : all
+  const [view, setView] = useState<'month' | 'week' | 'day'>('month')
   const [cursor, setCursor] = useState(todayISO())
   const [newFor, setNewFor] = useState<string | null>(null)
   const today = todayISO()
@@ -82,95 +72,78 @@ export function CalendarView() {
   }, [events])
 
   const [cy, cm] = cursor.split('-').map(Number)
-  const label = view === 'month' ? `${MONTHS[cm - 1]} ${cy}` : (() => { const w = weekDays(cursor); return `${humanDay(w[0])} – ${humanDay(w[6])}, ${cy}` })()
-  const go = (dir: -1 | 1) => setCursor((c) => (view === 'month' ? shiftMonth(c, dir) : shift(c, dir * 7)))
+  const label = view === 'month' ? `${MONTHS[cm - 1]} ${cy}` : view === 'day' ? PRETTY(cursor)
+    : (() => { const w = weekDays(cursor); return `${humanDay(w[0])} – ${humanDay(w[6])}, ${cy}` })()
+  const go = (dir: -1 | 1) => setCursor((c) => (view === 'month' ? shiftMonth(c, dir) : shift(c, dir * (view === 'week' ? 7 : 1))))
+  const gridEvents = useMemo(() => {
+    const m: Record<string, GridEvent[]> = {}
+    Object.entries(byDay).forEach(([d, list]) => {
+      m[d] = list.map((e) => ({ id: e.id, label: `${e.start ? `${e.start} ` : ''}${e.title}`, title: `${EV[e.type].label}: ${e.title}${e.sub ? ` · ${e.sub}` : ''}`, color: EV[e.type].color, wash: EV[e.type].wash, done: e.done, onClick: () => e.to && nav(e.to) }))
+    })
+    return m
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [byDay])
+  const EventCard = ({ e }: { e: CalEvent }) => (
+    <button onClick={() => e.to && nav(e.to)} className="w-full text-left rounded-[10px] p-2.5 border-l-[3px] bg-white border border-[#E6EAF0] hover:shadow-card transition-shadow" style={{ borderLeftColor: EV[e.type].color }}>
+      <div className="flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-wide" style={{ color: EV[e.type].color }}>{EV[e.type].label}{e.start && <span className="text-ink-3 normal-case tracking-normal font-semibold">· {e.start}</span>}</div>
+      <div className={classNames('text-[12.5px] font-semibold mt-0.5 leading-snug', e.done ? 'text-muted-3 line-through' : 'text-ink-2')}>{e.title}</div>
+      {e.sub && <div className="text-[11px] text-muted-2 truncate mt-0.5">{e.sub}</div>}
+    </button>
+  )
 
   return (
     <>
-      <div className="sh-toolbar shrink-0 px-7 py-2.5 flex items-center gap-3">
+      <div className="sh-toolbar shrink-0 px-7 pb-3 flex items-center gap-3 flex-wrap">
         <div className="flex items-center gap-1">
-          <button onClick={() => go(-1)} className="w-8 h-8 rounded-lg border border-border text-muted-b hover:bg-control flex items-center justify-center">‹</button>
-          <button onClick={() => setCursor(today)} className="h-8 px-3 rounded-lg border border-border text-[13px] font-medium text-ink-3 hover:bg-control">Today</button>
-          <button onClick={() => go(1)} className="w-8 h-8 rounded-lg border border-border text-muted-b hover:bg-control flex items-center justify-center">›</button>
+          <button onClick={() => go(-1)} className="w-9 h-9 rounded-[10px] border border-[#E1E6EC] bg-white text-ink-3 hover:bg-control flex items-center justify-center text-[16px]">‹</button>
+          <button onClick={() => setCursor(today)} className="h-9 px-3.5 rounded-[10px] border border-[#E1E6EC] bg-white text-[13px] font-semibold text-ink-3 hover:bg-control">Today</button>
+          <button onClick={() => go(1)} className="w-9 h-9 rounded-[10px] border border-[#E1E6EC] bg-white text-ink-3 hover:bg-control flex items-center justify-center text-[16px]">›</button>
         </div>
-        <div className="text-[16px] font-bold text-ink">{label}</div>
+        <div className="text-[17px] font-bold text-ink tracking-[-0.01em]">{label}</div>
+        <div className="flex items-center gap-3.5 text-[11.5px] text-muted-b ml-2">
+          {(['meeting', 'call', 'task', 'email', 'job'] as EvType[]).filter((t) => !only || only.includes(t)).map((t) => (
+            <span key={t} className="inline-flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background: EV[t].color }} />{EV[t].label}</span>
+          ))}
+        </div>
         <div className="ml-auto flex items-center gap-3">
-          <div className="inline-flex bg-[#E9EDF2] border border-[#DDE3EA] rounded-control p-[3px] gap-0.5">
-            {(['month', 'week'] as const).map((v) => (
-              <button key={v} onClick={() => setView(v)} className={classNames('h-[30px] px-3 rounded-[7px] text-[12.5px] font-medium capitalize transition-colors', view === v ? 'bg-white text-accent font-bold shadow-[0_1px_3px_rgba(11,18,32,0.14)]' : 'text-ink-3 hover:text-ink-3')}>{v}</button>
-            ))}
-          </div>
-          <Button variant="primary" icon={<Plus size={16} />} onClick={() => setNewFor(today)}>New event</Button>
+          <Segmented options={['Month', 'Week', 'Day']} value={view[0].toUpperCase() + view.slice(1)} onChange={(v) => setView(v.toLowerCase() as 'month' | 'week' | 'day')} />
+          <Button variant="primary" icon={<Plus size={16} />} onClick={() => setNewFor(view === 'day' ? cursor : today)}>New event</Button>
         </div>
       </div>
 
-      {/* legend */}
-      <div className="shrink-0 bg-surface-tint border-b border-border px-7 py-1.5 flex items-center gap-4 text-[11.5px] text-muted-b">
-        {(['meeting', 'call', 'task', 'email', 'job'] as EvType[]).map((t) => (
-          <span key={t} className="inline-flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background: EV[t].color }} />{EV[t].label}</span>
-        ))}
-      </div>
-
-      {view === 'month' ? (
-        <main className="flex-1 overflow-y-auto p-4">
-          <div className="grid grid-cols-7 gap-px bg-border rounded-t-lg overflow-hidden">
-            {DOW.map((d) => (<div key={d} className="bg-surface text-[11px] font-semibold uppercase tracking-wide text-muted-2 text-center py-2">{d}</div>))}
-          </div>
-          <div className="grid grid-cols-7 gap-px bg-border rounded-b-lg overflow-hidden" style={{ gridAutoRows: 'minmax(112px, 1fr)' }}>
-            {monthMatrix(cursor).flat().map((iso) => {
-              const inMonth = Number(iso.split('-')[1]) === cm
-              const isToday = iso === today
-              const list = byDay[iso] ?? []
-              return (
-                <div key={iso} onClick={() => setNewFor(iso)} className={classNames('bg-surface p-1.5 flex flex-col gap-1 cursor-pointer hover:bg-[#FBFCFF] transition-colors', !inMonth && 'bg-surface-tint')}>
-                  <div className="flex items-center justify-between">
-                    <span className={classNames('text-[12px] font-semibold w-6 h-6 flex items-center justify-center rounded-full', isToday ? 'bg-accent text-white' : inMonth ? 'text-ink-3' : 'text-muted-3')}>{Number(iso.split('-')[2])}</span>
-                  </div>
-                  {list.slice(0, 3).map((e) => (
-                    <button key={e.id} onClick={(ev) => { ev.stopPropagation(); e.to && nav(e.to) }} className="flex items-center gap-1.5 rounded px-1.5 py-0.5 text-left hover:brightness-95" style={{ background: EV[e.type].wash }}>
-                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: EV[e.type].color }} />
-                      <span className={classNames('text-[11px] truncate', e.done ? 'text-muted-3 line-through' : 'text-ink-2')}>{e.start ? `${e.start} ` : ''}{e.title}</span>
-                    </button>
-                  ))}
-                  {list.length > 3 && <button onClick={(ev) => { ev.stopPropagation(); setCursor(iso); setView('week') }} className="text-[10.5px] text-accent font-medium text-left pl-1.5">+{list.length - 3} more</button>}
-                </div>
-              )
-            })}
-          </div>
-        </main>
-      ) : (
-        <main className="flex-1 overflow-y-auto p-4">
-          <div className="grid grid-cols-7 gap-2">
+      {/* every view fills the screen — the whole month is visible without scrolling */}
+      <main className="flex-1 min-h-0 px-7 pb-5 flex flex-col">
+        {view === 'month' ? (
+          <MonthGrid year={cy} month0={cm - 1} events={gridEvents} onDay={(d) => setNewFor(d)} onMore={(d) => { setCursor(d); setView('day') }} />
+        ) : view === 'week' ? (
+          <div className="flex-1 min-h-0 grid grid-cols-7 gap-2">
             {weekDays(cursor).map((iso) => {
               const isToday = iso === today
               const list = byDay[iso] ?? []
               const [, , dd] = iso.split('-').map(Number)
               const dow = DOW[(new Date(Number(iso.split('-')[0]), Number(iso.split('-')[1]) - 1, dd).getDay() + 6) % 7]
               return (
-                <div key={iso} className="flex flex-col gap-2 min-h-[60vh]">
-                  <button onClick={() => setNewFor(iso)} className={classNames('rounded-lg py-2 text-center border', isToday ? 'border-accent bg-accent-wash' : 'border-border bg-surface hover:bg-control')}>
-                    <div className="text-[11px] uppercase tracking-wide text-muted-2">{dow}</div>
-                    <div className={classNames('text-[16px] font-bold', isToday ? 'text-accent' : 'text-ink-2')}>{dd}</div>
+                <div key={iso} className="min-h-0 flex flex-col rounded-card bg-[#F7F9FB] border border-[#E6EAF0] overflow-hidden">
+                  <button onClick={() => { setCursor(iso); setView('day') }} className={classNames('shrink-0 py-2 text-center border-b border-[#E6EAF0]', isToday ? 'bg-[#15223B]' : 'bg-white hover:bg-control')}>
+                    <div className={classNames('text-[10.5px] font-bold uppercase tracking-wide', isToday ? 'text-[#62E4CC]' : 'text-muted-2')}>{dow}</div>
+                    <div className={classNames('text-[17px] font-bold leading-tight', isToday ? 'text-white' : 'text-ink-2')}>{dd}</div>
                   </button>
-                  <div className="flex flex-col gap-1.5">
-                    {list.length === 0 && <div className="text-[11px] text-muted-3 text-center py-3">—</div>}
-                    {list.map((e) => (
-                      <button key={e.id} onClick={() => e.to && nav(e.to)} className="text-left rounded-lg p-2 border hover:brightness-[0.98]" style={{ background: EV[e.type].wash, borderColor: EV[e.type].color + '33' }}>
-                        <div className="flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: EV[e.type].color }} />
-                          {e.start && <span className="text-[10.5px] font-semibold text-ink-3">{e.start}</span>}
-                        </div>
-                        <div className={classNames('text-[12px] font-medium mt-0.5 leading-tight', e.done ? 'text-muted-3 line-through' : 'text-ink-2')}>{e.title}</div>
-                        {e.sub && <div className="text-[10.5px] text-muted-2 truncate">{e.sub}</div>}
-                      </button>
-                    ))}
+                  <div className="flex-1 min-h-0 overflow-y-auto p-1.5 flex flex-col gap-1.5">
+                    {list.length === 0 && <button onClick={() => setNewFor(iso)} className="text-[11px] text-muted-3 hover:text-ink-3 text-center py-3">+ Add</button>}
+                    {list.map((e) => <EventCard key={e.id} e={e} />)}
                   </div>
                 </div>
               )
             })}
           </div>
-        </main>
-      )}
+        ) : (
+          <div className="flex-1 min-h-0 overflow-y-auto rounded-card bg-white border border-[#E1E6EC] shadow-card p-4">
+            {(byDay[cursor] ?? []).length === 0 ? <div className="py-16 text-center text-[13px] text-muted-2">Nothing on {PRETTY(cursor)}. <button onClick={() => setNewFor(cursor)} className="font-semibold text-ink underline">Add something</button></div> : (
+              <div className="grid gap-2 max-w-[760px]">{(byDay[cursor] ?? []).map((e) => <EventCard key={e.id} e={e} />)}</div>
+            )}
+          </div>
+        )}
+      </main>
 
       <NewEventModal date={newFor} onClose={() => setNewFor(null)} />
     </>
