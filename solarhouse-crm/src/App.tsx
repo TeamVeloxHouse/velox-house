@@ -51,6 +51,7 @@ import { StudioPricing } from './pages/StudioPricing'
 import { Delivery, ProjectDetail } from './pages/Delivery'
 import { DnoQueue } from './pages/DnoQueue'
 import { SurveysList, SurveyReport, SurveyCapture } from './pages/SiteSurvey'
+import { SurveysOps, SurveysAnalytics } from './pages/Surveys'
 import { EvCalculator } from './pages/EvCalculator'
 import { WholeHome } from './pages/WholeHome'
 import { PeopleFinder } from './pages/PeopleFinder'
@@ -161,7 +162,9 @@ export const router = createBrowserRouter([
       { path: 'installs/analytics', element: <DeliveryAnalytics /> },
       { path: 'studio/delivery/:id', element: <ProjectDetail /> },
       { path: 'studio/dno', element: <DnoQueue /> },
-      { path: 'studio/surveys', element: <SurveysList /> },
+      { path: 'studio/surveys', element: <SurveysOps /> },
+      { path: 'studio/surveys/analytics', element: <SurveysAnalytics /> },
+      { path: 'studio/surveys/forms', element: <SurveysList /> },
       { path: 'studio/surveys/:id', element: <SurveyReport /> },
       // Solar House Customers — showroom, portals & aftercare
       { path: 'showroom', element: <ShowroomHome /> },

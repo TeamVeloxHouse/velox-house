@@ -54,7 +54,7 @@ const ADVISERS: Record<Showroom, string[]> = {
 }
 // Advisers genuinely close at different rates — the leaderboard should show it.
 const ADV_PULL: Record<string, number> = { 'Jordan Miles': 1.02, 'Amy Price': 0.9, 'Beth Collins': 1.1, 'Tom Hale': 0.96, 'Rhys Evans': 0.88, 'Kate Morris': 1.08, 'Sophie Grant': 0.94 }
-const SURVEYORS = ['Mark Lewis', 'Ieuan Davies', 'Sam Turner']
+export const SURVEYORS = ['Mark Lewis', 'Ieuan Davies', 'Sam Turner']
 const TEAMS: Record<Showroom, string> = { cardiff: 'Install team A (Cardiff)', cheltenham: 'Install team B (Glos)', melksham: 'Install team C (Wilts)' }
 const SOURCES: [string, number][] = [['Website enquiry', 26], ['Facebook lead ad', 22], ['Showroom walk-in', 14], ['Google search', 12], ['Referral', 10], ['Instagram', 6], ['Leekes in-store', 5], ['Phone call', 5]]
 const LOST_REASONS = ['Went with a cheaper quote', 'Not the right time', 'Roof not suitable', 'Couldn’t get finance', 'Stopped responding', 'Moving house', 'Partner not keen']
