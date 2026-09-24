@@ -136,38 +136,72 @@ export function Card({ children, className, pad = true }: { children: ReactNode;
 }
 
 /* ---------- KPI card ---------- */
+/* Variants give a row hierarchy: `navy` (the sidebar's colour) for the headline number, `teal`
+ * (brand gradient) for the win/outcome, `plain` for supporting figures. `deep` and `blue` are kept
+ * for older pages. Optional icon chip and a 0–100 `meter` line add depth without clutter. */
+type KpiVariant = 'plain' | 'blue' | 'deep' | 'navy' | 'teal'
 export function Kpi({
   label,
   value,
   delta,
   deltaTone = 'positive',
   variant = 'plain',
+  icon: I,
+  meter,
+  meterMark,
 }: {
   label: string
   value: string
   delta?: string
   deltaTone?: 'positive' | 'negative' | 'muted'
-  variant?: 'plain' | 'blue' | 'deep'
+  variant?: KpiVariant
+  icon?: IconT
+  /** 0–100 fill for a slim progress line under the value */
+  meter?: number
+  /** 0–100 position of a threshold tick on the meter */
+  meterMark?: number
 }) {
-  const isDeep = variant === 'deep'
-  const deltaColor = isDeep ? '#57C9B4' : deltaTone === 'positive' ? '#0E7C66' : deltaTone === 'negative' ? '#B01B4F' : '#7A8494'
+  const dark = variant === 'deep' || variant === 'navy'
+  const teal = variant === 'teal' // the logo teal with navy type — light, so it has its own palette
+  const deltaColor = dark ? '#62E4CC' : teal ? '#15223B'
+    : deltaTone === 'positive' ? '#0E7C66' : deltaTone === 'negative' ? '#B01B4F' : '#7A8494'
+  const bg: Partial<Record<KpiVariant, string>> = {
+    navy: 'radial-gradient(260px 160px at 100% 0%, rgba(98,228,204,0.22) 0%, transparent 70%), linear-gradient(150deg, #1B2B48 0%, #15223B 60%, #111C31 100%)',
+    teal: '#62E4CC',
+  }
   return (
     <div
       className={classNames(
-        'rounded-card p-[18px]',
+        'tile-hover relative overflow-hidden rounded-card p-[18px] min-w-0',
         variant === 'blue' && 'bg-kpi-blue border border-border-blue shadow-card',
         variant === 'plain' && 'bg-surface border border-[#E1E6EC] shadow-card',
-        isDeep && 'bg-deep-panel shadow-lift',
+        variant === 'deep' && 'bg-deep-panel shadow-lift',
+        variant === 'navy' && 'text-white shadow-[0_10px_28px_-12px_rgba(21,34,59,0.55)]',
+        teal && 'text-[#15223B] shadow-[0_10px_24px_-14px_rgba(14,122,102,0.6)]',
       )}
+      style={bg[variant] ? { background: bg[variant] } : undefined}
     >
-      <div className="text-[12px] font-medium" style={{ color: isDeep ? '#93A0B4' : variant === 'blue' ? '#5D7091' : '#7A8494' }}>
-        {label}
+      <div className="flex items-center gap-2.5">
+        {I && (
+          <span className={classNames('w-8 h-8 rounded-[10px] flex items-center justify-center shrink-0',
+            dark ? 'bg-white/10 text-[#62E4CC] ring-1 ring-inset ring-white/15' : teal ? 'bg-[#15223B] text-[#62E4CC]' : 'text-accent ring-1 ring-inset ring-accent/10')}
+            style={dark || teal ? undefined : { background: 'linear-gradient(145deg, #F4FBF9 0%, #DDF2EB 100%)' }}>
+            <I size={15} />
+          </span>
+        )}
+        <div className="text-[12.5px] font-semibold" style={{ color: dark ? 'rgba(255,255,255,0.72)' : teal ? 'rgba(21,34,59,0.72)' : variant === 'blue' ? '#5D7091' : '#6B7585' }}>{label}</div>
       </div>
-      <div className="text-[30px] font-bold mt-2 tracking-[-0.02em]" style={{ color: isDeep ? '#fff' : '#0B1220' }}>
+      <div className="text-[32px] font-extrabold mt-3 tracking-[-0.03em] leading-none tabular-nums" style={{ color: dark ? '#fff' : teal ? '#15223B' : '#0B1220' }}>
         {value}
       </div>
+      {meter != null && (
+        <div className="relative mt-3 h-1.5 rounded-full" style={{ background: dark ? 'rgba(255,255,255,0.16)' : '#EEF1F5' }}>
+          <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.max(0, meter))}%`, background: dark ? '#62E4CC' : 'linear-gradient(90deg,#57C9B4,#0E7A66)' }} />
+          {meterMark != null && <span className="absolute -top-1 w-0.5 h-3.5 rounded-full" style={{ left: `${meterMark}%`, background: dark ? '#fff' : '#15223B' }} />}
+        </div>
+      )}
       {delta && (
-        <div className="text-[12px] mt-1.5 font-semibold" style={{ color: deltaColor }}>
+        <div className="text-[12px] mt-2.5 font-semibold" style={{ color: deltaColor }}>
           {delta}
         </div>
       )}

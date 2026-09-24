@@ -28,11 +28,10 @@ export function TopBar({
   const nav = useNavigate()
   const loc = useLocation()
   const canBack = loc.key !== 'default' // false only on a cold-loaded first page
-  const glassBtn =
-    'w-9 h-9 shrink-0 rounded-[10px] bg-white/60 backdrop-blur border border-white/80 shadow-[0_1px_2px_rgba(10,59,52,0.08)] flex items-center justify-center text-[#2F5A50] hover:bg-white hover:text-accent-700 transition-colors'
+  const glassBtn = 'sh-hdr-btn w-9 shrink-0 flex items-center justify-center'
   return (
-    // The header is a soft mint band: it separates the dark sidebar from the grey/white page body
-    // and makes "where am I, and which view of this page" the most obvious thing on screen.
+    // The header is one solid band (colours in index.css .sh-topbar): it frames the grey page with
+    // the sidebar and makes "where am I, and which view of this page" the most obvious thing.
     <header className="sh-topbar shrink-0 relative z-10 px-7">
       <div className="h-[64px] flex items-center gap-3.5 relative">
         <button onClick={() => (canBack ? nav(-1) : nav('/'))} title="Back" aria-label="Back" className={classNames(glassBtn, '-ml-1')}>
@@ -40,20 +39,18 @@ export function TopBar({
         </button>
         <div className="flex items-center gap-2.5 min-w-0">
           {identity && (
-            <span
-              className="w-9 h-9 rounded-[11px] flex items-center justify-center text-white shrink-0 ring-1 ring-white/40"
-              style={{ background: `linear-gradient(140deg, ${identity.accent}CC 0%, ${identity.accent} 60%)`, boxShadow: `0 6px 14px -6px ${identity.accent}AA, inset 0 1px 0 rgba(255,255,255,0.35)` }}
-            >
+            // one identity tile for every page: navy with the teal icon — echoes the sidebar's active tile
+            <span className="w-9 h-9 rounded-[11px] flex items-center justify-center shrink-0 bg-[#15223B] text-[#62E4CC] shadow-[0_4px_12px_-4px_rgba(21,34,59,0.5)]">
               <identity.icon size={18} />
             </span>
           )}
-          <h1 className="text-[19px] font-bold text-[#0B2A24] tracking-[-0.015em] truncate">{title}</h1>
+          <h1 className="sh-hdr-title text-[19px] font-bold tracking-[-0.015em] truncate">{title}</h1>
           {crumbs && crumbs.length > 0 && (
-            <div className="flex items-center gap-2 text-[13px] text-[#4E7A70]">
+            <div className="sh-hdr-muted flex items-center gap-2 text-[13px]">
               {crumbs.map((c, i) => (
                 <span key={i} className="flex items-center gap-2">
-                  <ChevronRight size={13} className="text-[#8DB8AD]" />
-                  <span className={i === crumbs.length - 1 ? 'text-[#2F5A50] font-medium' : ''}>{c}</span>
+                  <ChevronRight size={13} className="opacity-60" />
+                  <span className={i === crumbs.length - 1 ? 'sh-hdr-crumb-on font-medium' : ''}>{c}</span>
                 </span>
               ))}
             </div>
@@ -80,17 +77,17 @@ export function TopBar({
                   key={t.id}
                   onClick={() => tabs.onChange(t.id)}
                   className={classNames(
-                    'group relative h-11 px-3.5 flex items-center gap-2 text-[13.5px] whitespace-nowrap transition-colors duration-150',
-                    on ? 'text-[#0B2A24] font-bold' : 'text-[#4E7A70] font-semibold hover:text-[#0B2A24]',
+                    'relative h-11 px-3.5 flex items-center gap-2 text-[13.5px] whitespace-nowrap transition-colors duration-150',
+                    on ? 'sh-tab sh-tab-on font-bold' : 'sh-tab font-semibold',
                   )}
                 >
-                  <span className={classNames('absolute inset-x-1 top-1.5 bottom-1.5 rounded-[9px] transition-colors', on ? 'bg-white/70 shadow-[0_1px_2px_rgba(10,59,52,0.06)]' : 'group-hover:bg-white/45')} />
-                  {t.icon && <span className={classNames('relative', on ? 'text-accent' : '')}><t.icon size={16} /></span>}
+                  <span className="sh-tab-bg absolute inset-x-1 top-1.5 bottom-1.5 rounded-[9px] transition-colors" />
+                  {t.icon && <span className="sh-tab-icon relative"><t.icon size={16} /></span>}
                   <span className="relative">{t.label}</span>
                   {t.count != null && t.count > 0 && (
-                    <span className={classNames('relative text-[11px] font-bold rounded-full min-w-[20px] h-[20px] px-1.5 flex items-center justify-center', on ? 'bg-accent text-white' : 'bg-white/70 text-[#2F5A50]')}>{t.count}</span>
+                    <span className="sh-tab-count relative text-[11px] font-bold rounded-full min-w-[20px] h-[20px] px-1.5 flex items-center justify-center">{t.count}</span>
                   )}
-                  <span className={classNames('absolute left-2 right-2 bottom-0 h-[3px] rounded-t-full transition-all', on ? 'bg-accent-gradient opacity-100' : 'opacity-0')} />
+                  <span className={classNames('sh-tab-bar absolute left-2 right-2 bottom-0 h-[3px] rounded-t-full transition-all', on ? 'opacity-100' : 'opacity-0')} />
                 </button>
               )
             })}

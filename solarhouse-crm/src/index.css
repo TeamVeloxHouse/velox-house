@@ -168,56 +168,64 @@ body {
 .sh-portal .no-sb::-webkit-scrollbar { display: none; }
 .sh-portal .no-sb { scrollbar-width: none; }
 
-/* Page header band — a light mint gradient with two soft glows, a hairline highlight on top and
-   a teal-tinted edge underneath, so the header clearly belongs to the brand and separates the
-   navy sidebar from the neutral page body. */
+/* Page header — ONE solid colour, the Solar House logo teal (#62E4CC), with the logo's navy for
+   text: exactly the brand pairing, so header + navy sidebar + teal active nav read as one system.
+   Everything in it is driven by these variables. */
 .sh-topbar {
-  background:
-    radial-gradient(560px 160px at 10% -30%, rgba(98, 228, 204, 0.55) 0%, transparent 70%),
-    radial-gradient(680px 200px at 94% -40%, rgba(31, 174, 148, 0.30) 0%, transparent 70%),
-    linear-gradient(100deg, #D3F2E8 0%, #E6F8F1 48%, #D8F1E9 100%);
-  border-bottom: 1px solid #BCE2D6;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 8px 20px -14px rgba(10, 90, 76, 0.28);
+  --hdr-bg: #62E4CC;          /* Solar House teal (the logo) */
+  --hdr-edge: #4FCFB8;        /* hairline under the header */
+  --hdr-fg: #15223B;          /* sidebar navy */
+  --hdr-muted: rgba(21, 34, 59, 0.66);
+  --hdr-ctl: rgba(255, 255, 255, 0.42);
+  --hdr-ctl-border: rgba(255, 255, 255, 0.65);
+  --hdr-ctl-hover: rgba(255, 255, 255, 0.7);
+  --hdr-accent: #15223B;      /* active tab bar/count — navy on teal */
+  background: var(--hdr-bg);
+  border-bottom: 1px solid var(--hdr-edge);
+  box-shadow: 0 6px 18px -12px rgba(11, 18, 32, 0.45);
+  color: var(--hdr-fg);
 }
+.sh-hdr-title { color: var(--hdr-fg); }
+.sh-hdr-muted { color: var(--hdr-muted); }
+.sh-hdr-crumb-on { color: rgba(255, 255, 255, 0.85); }
 
-/* Frosted-glass controls in the header — same material as the back / search / bell buttons. */
-.sh-topbar .seg-track {
-  background: rgba(255, 255, 255, 0.42);
-  backdrop-filter: blur(10px) saturate(140%);
-  -webkit-backdrop-filter: blur(10px) saturate(140%);
-  border-color: rgba(255, 255, 255, 0.85);
-  border-radius: 12px;
-  padding: 4px;
-  box-shadow: 0 1px 2px rgba(10, 59, 52, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.7);
-}
-.sh-topbar .seg-track > button { border-radius: 9px; }
-.sh-topbar .seg-off { color: #2F5A50; }
-.sh-topbar .seg-off:hover { background: rgba(255, 255, 255, 0.55); color: #0B2A24; }
-.sh-topbar .seg-on {
-  background: rgba(255, 255, 255, 0.95);
-  color: #0A5A4C;
-  box-shadow: 0 1px 2px rgba(10, 59, 52, 0.1), 0 4px 10px -4px rgba(10, 59, 52, 0.22);
-}
-
-/* ONE material for every control a page drops into the header (secondary buttons, selects,
-   hand-rolled white buttons): frosted glass, 36px tall, 10px radius — matching back/search/bell.
-   Primary (gradient) buttons are deliberately left solid as the one call to action. */
+/* icon buttons (back / search / bell) and every control a page drops into the header share one
+   translucent-white material: 36px tall, 10px radius. The gradient primary stays the one CTA. */
+.sh-hdr-btn,
 .sh-hdr-ctrls :is(.btn-secondary, .sh-select, button.bg-white, button.bg-surface, select, a.bg-white, a.bg-surface):not(.seg-on) {
   height: 36px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(10px) saturate(140%);
-  -webkit-backdrop-filter: blur(10px) saturate(140%);
-  border: 1px solid rgba(255, 255, 255, 0.85);
-  color: #1F4A40;
+  background: var(--hdr-ctl) !important;
+  border: 1px solid var(--hdr-ctl-border) !important;
+  color: var(--hdr-fg) !important;
   font-weight: 600;
-  box-shadow: 0 1px 2px rgba(10, 59, 52, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transition: background .15s ease;
 }
-.sh-hdr-ctrls :is(.btn-secondary, button.bg-white, button.bg-surface, a.bg-white, a.bg-surface):not(.seg-on):hover,
-.sh-hdr-ctrls select:hover { background: rgba(255, 255, 255, 0.95); color: #0A5A4C; }
-.sh-hdr-ctrls .bg-accent-gradient { height: 36px; border-radius: 10px; }
-/* labels like "Viewing as" read as part of the band */
-.sh-hdr-ctrls label, .sh-hdr-ctrls > span { color: #2F5A50; }
+.sh-hdr-btn:hover,
+.sh-hdr-ctrls :is(.btn-secondary, .sh-select, button.bg-white, button.bg-surface, select, a.bg-white, a.bg-surface):not(.seg-on):hover { background: var(--hdr-ctl-hover) !important; }
+/* the page's main action is navy on the teal band — no second green competing with the brand teal */
+.sh-hdr-ctrls .bg-accent-gradient { height: 36px; border-radius: 10px; background: #15223B; box-shadow: 0 4px 12px -4px rgba(21, 34, 59, 0.45); }
+.sh-hdr-ctrls .bg-accent-gradient:hover { background: #1E2F4E; filter: none; }
+.sh-hdr-ctrls label, .sh-hdr-ctrls > span { color: var(--hdr-muted); }
+
+/* segmented controls in the header */
+.sh-topbar .seg-track { background: var(--hdr-ctl); border-color: var(--hdr-ctl-border); border-radius: 12px; padding: 4px; }
+.sh-topbar .seg-track > button { border-radius: 9px; }
+.sh-topbar .seg-off { color: var(--hdr-muted); }
+.sh-topbar .seg-off:hover { background: var(--hdr-ctl); color: var(--hdr-fg); }
+.sh-topbar .seg-on { background: #FFFFFF; color: #15223B; box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.3); }
+
+/* page tabs on the header's bottom edge */
+.sh-tab { color: var(--hdr-muted); }
+.sh-tab:hover { color: var(--hdr-fg); }
+.sh-tab:hover .sh-tab-bg { background: var(--hdr-ctl); }
+.sh-tab-on { color: var(--hdr-fg); }
+.sh-tab-on .sh-tab-bg { background: var(--hdr-ctl-hover); }
+.sh-tab-on .sh-tab-icon { color: var(--hdr-accent); }
+.sh-tab-bar { background: var(--hdr-accent); }
+.sh-tab-count { background: var(--hdr-ctl-hover); color: var(--hdr-fg); }
+.sh-tab-on .sh-tab-count { background: var(--hdr-accent); color: #62E4CC; }
 
 /* Page toolbars (filters/search/view switch) sit ON the canvas rather than in a third white
    strip — so the page reads header → canvas → cards, with nothing sandwiched in between. */

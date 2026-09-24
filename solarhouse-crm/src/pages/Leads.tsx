@@ -3,7 +3,7 @@ import { TopBar } from '../components/TopBar'
 import { Button, Segmented, Kpi, Avatar } from '../components/ui'
 import { Table, Row, Cell } from '../components/Table'
 import { Modal, Field, Input, Textarea } from '../components/overlays'
-import { Plus, Download, Check, ArrowUpRight, Search, Phone, Envelope, Note, Sparkle } from '../components/icons'
+import { Plus, Download, Check, ArrowUpRight, Search, Phone, Envelope, Note, Sparkle, Target } from '../components/icons'
 import { ScorePill } from '../components/ai-widgets'
 import { leadScore, leadNextAction } from '../lib/intelligence'
 import { useState_, useActions, useSelectors } from '../store/store'
@@ -65,6 +65,8 @@ export function Leads() {
     { label: 'Archived', count: leads.filter((l) => l.archived).length, active: view === 'Archived' },
   ]
   const sources = [...new Set(leads.map((l) => l.source))].map((s) => ({ label: s, count: leads.filter((l) => l.source === s && !l.archived).length })).filter((s) => s.count > 0)
+  const openLeads = leads.filter((l) => !l.archived)
+  const avgScore = Math.round(openLeads.reduce((s, l) => s + l.score, 0) / Math.max(1, openLeads.length))
 
   function toggle(id: string) {
     setSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
@@ -92,8 +94,8 @@ export function Leads() {
             <div className="eyebrow text-muted-3 mb-2">Saved filters</div>
             <div className="flex flex-col gap-0.5">
               {filters.map((f) => (
-                <button key={f.label} onClick={() => { if (f.label === 'Archived') { setView('Archived') } else if (f.label === 'High score (≥75)') { setView('Inbox'); setMinScore(75) } else { setView('Inbox'); setMinScore(0) } }} className={classNames('flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[13px]', f.active ? 'bg-accent-wash-2 text-accent-700 font-semibold' : 'text-ink-3 hover:bg-control')}>
-                  <span>{f.label}</span><span className={f.active ? 'text-accent-700' : 'text-muted-3'}>{f.count}</span>
+                <button key={f.label} onClick={() => { if (f.label === 'Archived') { setView('Archived') } else if (f.label === 'High score (≥75)') { setView('Inbox'); setMinScore(75) } else { setView('Inbox'); setMinScore(0) } }} className={classNames('flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[13px]', f.active ? 'bg-[#D6F7F0] text-[#15223B] font-semibold' : 'text-ink-3 hover:bg-control')}>
+                  <span>{f.label}</span><span className={f.active ? 'text-[#15223B]' : 'text-muted-3'}>{f.count}</span>
                 </button>
               ))}
             </div>
@@ -101,10 +103,10 @@ export function Leads() {
           <div>
             <div className="eyebrow text-muted-3 mb-2">Sources</div>
             <div className="flex flex-col gap-0.5">
-              <button onClick={() => setSource('All sources')} className={classNames('flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[13px]', source === 'All sources' ? 'bg-accent-wash-2 text-accent-700 font-semibold' : 'text-ink-3 hover:bg-control')}><span>All sources</span><span className={source === 'All sources' ? 'text-accent-700' : 'text-muted-3'}>{leads.filter((l) => !l.archived).length}</span></button>
+              <button onClick={() => setSource('All sources')} className={classNames('flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[13px]', source === 'All sources' ? 'bg-[#D6F7F0] text-[#15223B] font-semibold' : 'text-ink-3 hover:bg-control')}><span>All sources</span><span className={source === 'All sources' ? 'text-[#15223B]' : 'text-muted-3'}>{leads.filter((l) => !l.archived).length}</span></button>
               {sources.map((s) => (
-                <button key={s.label} onClick={() => setSource(s.label)} className={classNames('flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[13px]', source === s.label ? 'bg-accent-wash-2 text-accent-700 font-semibold' : 'text-ink-3 hover:bg-control')}>
-                  <span className="truncate">{s.label}</span><span className={source === s.label ? 'text-accent-700' : 'text-muted-3'}>{s.count}</span>
+                <button key={s.label} onClick={() => setSource(s.label)} className={classNames('flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[13px]', source === s.label ? 'bg-[#D6F7F0] text-[#15223B] font-semibold' : 'text-ink-3 hover:bg-control')}>
+                  <span className="truncate">{s.label}</span><span className={source === s.label ? 'text-[#15223B]' : 'text-muted-3'}>{s.count}</span>
                 </button>
               ))}
             </div>
@@ -113,28 +115,33 @@ export function Leads() {
 
         <main className="flex-1 overflow-y-auto p-7 flex flex-col gap-5">
           <div className="grid grid-cols-3 gap-4">
-            <Kpi label="Open leads" value={String(leads.filter((l) => !l.archived).length)} delta="In your inbox" deltaTone="muted" />
-            <Kpi label="Avg. lead score" value={String(Math.round(leads.filter((l) => !l.archived).reduce((s, l) => s + l.score, 0) / Math.max(1, leads.filter((l) => !l.archived).length)))} delta="Qualified threshold 60" deltaTone="muted" />
-            <Kpi variant="blue" label="Converted" value={String(leads.filter((l) => l.converted).length)} delta="To deals + contacts" />
+            {/* hierarchy: navy = the headline, plain = the quality read, teal = the outcome */}
+            <Kpi variant="navy" icon={Envelope} label="Open leads" value={String(leads.filter((l) => !l.archived).length)} delta="Waiting in your inbox" />
+            <Kpi icon={Target} label="Avg. lead score" value={String(avgScore)} meter={avgScore} meterMark={60} delta={avgScore >= 60 ? 'Above the qualified line (60)' : 'Below the qualified line (60)'} deltaTone={avgScore >= 60 ? 'positive' : 'negative'} />
+            <Kpi variant="teal" icon={ArrowUpRight} label="Converted" value={String(leads.filter((l) => l.converted).length)} delta="Now deals + contacts" />
           </div>
 
-          {/* filter bar */}
-          <div className="flex items-center gap-2 flex-wrap bg-surface border border-border rounded-card px-3 py-2.5">
-            <div className="relative">
-              <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-3" />
-              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search name, company…" className="h-8 pl-8 pr-3 rounded-control border border-input-border bg-white text-[12.5px] text-ink-2 outline-none focus:border-accent w-52" />
-            </div>
-            <Dropdown value={source} onChange={(e) => setSource(e.target.value)} className="h-8 px-2.5 rounded-control border border-input-border bg-white text-[12.5px] text-ink-2 outline-none focus:border-accent">
+          {/* filter bar — one row: search + pickers on the left, time and score switches grouped with labels */}
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <label className="h-9 flex-1 min-w-[220px] max-w-[340px] flex items-center gap-2 px-3 rounded-[10px] border border-[#E1E6EC] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.05)] focus-within:border-accent-400">
+              <Search size={15} className="text-muted-3 shrink-0" />
+              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search name, company…" className="flex-1 min-w-0 bg-transparent outline-none text-[13px] text-ink-2 placeholder:text-muted-3" />
+            </label>
+            <Dropdown value={source} onChange={(e) => setSource(e.target.value)} className="h-9 px-3 rounded-[10px] border border-[#E1E6EC] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.05)] text-[13px] font-semibold text-ink-3 outline-none">
               <option>All sources</option>
               {sources.map((s) => (<option key={s.label}>{s.label}</option>))}
             </Dropdown>
-            <Dropdown value={owner} onChange={(e) => setOwner(e.target.value)} className="h-8 px-2.5 rounded-control border border-input-border bg-white text-[12.5px] text-ink-2 outline-none focus:border-accent">
+            <Dropdown value={owner} onChange={(e) => setOwner(e.target.value)} className="h-9 px-3 rounded-[10px] border border-[#E1E6EC] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.05)] text-[13px] font-semibold text-ink-3 outline-none">
               <option>All owners</option>
               {owners.map((o) => (<option key={o}>{o}</option>))}
             </Dropdown>
-            <Segmented options={['All time', '24 hours', '7 days', '30 days']} value={timeframe} onChange={setTimeframe} />
-            <Segmented options={['Any', '60+', '75+']} value={minScore === 0 ? 'Any' : minScore === 60 ? '60+' : '75+'} onChange={(v) => setMinScore(v === 'Any' ? 0 : v === '60+' ? 60 : 75)} />
-            {activeFilterCount > 0 && <button onClick={clearFilters} className="ml-auto text-[12.5px] text-accent font-semibold">Clear filters ({activeFilterCount})</button>}
+            <div className="flex items-center gap-2 ml-auto">
+              <span className="eyebrow text-muted-3">Created</span>
+              <Segmented options={['All time', '24 hours', '7 days', '30 days']} value={timeframe} onChange={setTimeframe} />
+              <span className="eyebrow text-muted-3 ml-2">Score</span>
+              <Segmented options={['Any', '60+', '75+']} value={minScore === 0 ? 'Any' : minScore === 60 ? '60+' : '75+'} onChange={(v) => setMinScore(v === 'Any' ? 0 : v === '60+' ? 60 : 75)} />
+            </div>
+            {activeFilterCount > 0 && <button onClick={clearFilters} className="text-[12.5px] text-accent font-semibold">Clear filters ({activeFilterCount})</button>}
           </div>
 
           {sel.size > 0 && (

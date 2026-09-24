@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { Gear, ChevronRight, ChevronDown, Search } from './icons'
 import { classNames } from '../lib/format'
 import { useState_, useActions } from '../store/store'
-import { STAGES, stageForPath, BRAND_GRAD, type Stage, type NavGroup } from './nav-config'
+import { STAGES, stageForPath, type Stage, type NavGroup } from './nav-config'
 import { ROLES, roleByKey } from '../lib/roles'
 import type { UserRole } from '../store/types'
 import { Dropdown } from './Dropdown'
@@ -132,11 +132,13 @@ export function Rail() {
 
 type BadgeFor = (to: string, badge?: number) => number | undefined
 
+// Active navigation is always the Solar House logo teal — one brand colour, not a colour per area.
+const SH_TEAL = '#62E4CC'
 function AreaTile({ s, active, size = 26 }: { s: Stage; active: boolean; size?: number }) {
   return (
     <span
-      className={classNames('rounded-[8px] flex items-center justify-center shrink-0 transition-colors', active ? 'text-white' : 'text-rail-idle group-hover:text-white')}
-      style={{ width: size, height: size, background: active ? (s.id === 'ovi' ? BRAND_GRAD : s.accent) : 'transparent' }}
+      className={classNames('rounded-[8px] flex items-center justify-center shrink-0 transition-colors', active ? 'text-[#15223B]' : 'text-rail-idle group-hover:text-white')}
+      style={{ width: size, height: size, background: active ? SH_TEAL : 'transparent' }}
     >
       <s.icon size={size > 30 ? 19 : 16} />
     </span>
@@ -195,7 +197,7 @@ function PageList({ s, groups, badgeFor, indent }: { s: Stage; groups: NavGroup[
               >
                 {({ isActive }) => (
                   <>
-                    {isActive && indent && <span className="absolute -left-[13px] top-1.5 bottom-1.5 w-[2px] rounded-full" style={{ background: s.id === 'ovi' ? '#1FAE94' : s.accent }} />}
+                    {isActive && indent && <span className="absolute -left-[13px] top-1.5 bottom-1.5 w-[2px] rounded-full" style={{ background: SH_TEAL }} />}
                     <it.icon size={15} className="shrink-0 opacity-80" />
                     <span className="flex-1 truncate">{it.label}</span>
                     {badge != null && <span className="text-[10px] font-bold rounded-full min-w-[17px] h-[17px] px-1 flex items-center justify-center bg-white/[0.1] text-white">{badge}</span>}

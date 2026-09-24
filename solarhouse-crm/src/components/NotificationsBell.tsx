@@ -38,7 +38,7 @@ export function NotificationsBell() {
 
   return (
     <div ref={ref} className="relative">
-      <button onClick={() => setOpen((o) => !o)} className="w-9 h-9 rounded-[10px] bg-white/60 backdrop-blur border border-white/80 shadow-[0_1px_2px_rgba(10,59,52,0.08)] flex items-center justify-center text-[#2F5A50] hover:bg-white hover:text-accent-700 transition-colors relative" title="Notifications">
+      <button onClick={() => setOpen((o) => !o)} className="sh-hdr-btn w-9 flex items-center justify-center relative" title="Notifications">
         <Bell size={17} />
         {count > 0 && <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-negative text-white text-[10px] font-bold flex items-center justify-center">{count}</span>}
       </button>
