@@ -1,0 +1,169 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #f6f7f9;
+  color: #1b2534;
+  font-family: 'Instrument Sans', system-ui, sans-serif;
+  font-size: 13px;
+}
+
+/* thin, unobtrusive scrollbars to match the dense data UI */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: #d7dce4;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #c3cbd8;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@keyframes slideup {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@layer components {
+  /* Modernise every card at once: the standard flat card pattern used across
+     the app gains soft layered elevation + a barely-there top sheen, so the
+     whole product reads as lit and dimensional without touching each page. */
+  .bg-surface.border.border-border.rounded-card,
+  .bg-white.border.border-border.rounded-card {
+    box-shadow: 0 1px 2px -1px rgba(16, 24, 40, 0.06), 0 3px 8px -2px rgba(16, 24, 40, 0.06);
+    background-image: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+    border-color: #e9edf3;
+  }
+  /* Depth hierarchy: a card nested inside another card sits flat and inset,
+     so only the top-level surface lifts — no floaty "cards inside cards". */
+  .bg-surface.border.border-border.rounded-card .bg-surface.border.border-border.rounded-card,
+  .bg-surface.border.border-border.rounded-card .bg-white.border.border-border.rounded-card,
+  .bg-white.border.border-border.rounded-card .bg-surface.border.border-border.rounded-card,
+  .bg-white.border.border-border.rounded-card .bg-white.border.border-border.rounded-card {
+    box-shadow: none;
+    background-image: none;
+  }
+}
+
+@layer utilities {
+  .eyebrow {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+  }
+  /* horizontal tab strips (SectionNav) scroll without a visible bar */
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ── Map Explorer (Leaflet) ─────────────────────────────────────────────── */
+.leaflet-container { font: inherit; background: #0b1220; }
+/* Pulsing "measuring this roof" marker */
+.roof-measuring { position: relative; }
+.roof-measuring span {
+  position: absolute; inset: 0; margin: auto; width: 18px; height: 18px; border-radius: 9999px;
+  background: #00E5FF; box-shadow: 0 0 0 3px rgba(0,229,255,0.35);
+}
+.roof-measuring::before, .roof-measuring::after {
+  content: ''; position: absolute; inset: 0; margin: auto; width: 18px; height: 18px; border-radius: 9999px;
+  background: rgba(0,229,255,0.45); animation: roofPulse 1.4s ease-out infinite;
+}
+.roof-measuring::after { animation-delay: 0.7s; }
+@keyframes roofPulse { 0% { transform: scale(1); opacity: 0.7; } 100% { transform: scale(3.6); opacity: 0; } }
+/* Building name labels */
+.roof-label {
+  background: rgba(11,18,32,0.82); color: #fff; border: none; border-radius: 6px;
+  padding: 2px 7px; font-size: 11px; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+  white-space: nowrap; backdrop-filter: blur(2px);
+}
+.roof-label::before { display: none; } /* hide tooltip arrow */
+.biz-label { background: rgba(255,255,255,0.94); color: #1B2436; }
+.biz-label::before { display: none; }
+/* Aiming: crosshair over the map so you place the measurement precisely */
+.leaflet-container, .leaflet-container .leaflet-interactive, .leaflet-grab { cursor: crosshair; }
+.leaflet-container.leaflet-dragging, .leaflet-dragging .leaflet-grab { cursor: crosshair; }
+
+/* ============================================================
+   The Solar House — customer portal glassmorphism system
+   Scoped under .sh-portal so it never touches the CRM.
+   ============================================================ */
+.sh-portal {
+  font-family: 'Outfit', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  color: #10241C;
+  background:
+    radial-gradient(1100px 680px at 8% -10%, rgba(98,228,204,0.55) 0%, transparent 55%),
+    radial-gradient(900px 620px at 104% -6%, rgba(31,174,148,0.45) 0%, transparent 52%),
+    radial-gradient(1000px 820px at 50% 118%, rgba(14,122,102,0.38) 0%, transparent 60%),
+    linear-gradient(180deg, #F2FBF8 0%, #E7F5F0 60%, #E2F2EC 100%);
+}
+.sh-portal .glass {
+  background: rgba(255,255,255,0.55);
+  backdrop-filter: blur(22px) saturate(150%);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  border: 1px solid rgba(255,255,255,0.65);
+  box-shadow: 0 14px 40px -18px rgba(12,48,38,0.30), inset 0 1px 0 rgba(255,255,255,0.6);
+}
+.sh-portal .glass-soft {
+  background: rgba(255,255,255,0.40);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid rgba(255,255,255,0.55);
+}
+.sh-portal .glass-tint {
+  background: rgba(98,228,204,0.16);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid rgba(98,228,204,0.40);
+}
+.sh-portal .glass-dark {
+  background: linear-gradient(150deg, rgba(21,34,59,0.90) 0%, rgba(10,59,52,0.92) 100%);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid rgba(255,255,255,0.14);
+  box-shadow: 0 20px 50px -20px rgba(5,26,20,0.55);
+}
+.sh-portal .glass-hover { transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+.sh-portal .glass-hover:hover { transform: translateY(-2px); border-color: rgba(14,122,102,0.35); box-shadow: 0 22px 48px -20px rgba(12,48,38,0.38); }
+@keyframes shFlow { to { stroke-dashoffset: -24; } }
+.sh-portal .flow-line { stroke-dasharray: 6 8; animation: shFlow 1.1s linear infinite; }
+.sh-portal .flow-slow { animation-duration: 1.9s; }
+@keyframes shRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.sh-portal .rise { animation: shRise .5s cubic-bezier(.22,.8,.3,1) both; }
+.sh-portal .no-sb::-webkit-scrollbar { display: none; }
+.sh-portal .no-sb { scrollbar-width: none; }
