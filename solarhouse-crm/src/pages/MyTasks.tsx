@@ -131,7 +131,7 @@ export function MyTasks() {
     <>
       <TopBar title="My Tasks" actions={<Button variant="primary" icon={<Plus size={16} />} onClick={openNew}>New task</Button>} />
 
-      <div className="shrink-0 bg-surface border-b border-border px-7 py-2.5 flex items-center gap-3 flex-wrap">
+      <div className="sh-toolbar shrink-0 px-7 py-2.5 flex items-center gap-3 flex-wrap">
         <div className="inline-flex bg-[#E9EDF2] border border-[#DDE3EA] rounded-control p-[3px] gap-0.5">
           {(['list', 'calendar'] as const).map((l) => <button key={l} onClick={() => setLayout(l)} className={classNames('h-[30px] px-3 rounded-[7px] text-[12.5px] font-semibold capitalize', layout === l ? 'bg-white text-accent font-bold shadow-[0_1px_3px_rgba(11,18,32,0.14)]' : 'text-ink-3')}>{l}</button>)}
         </div>

@@ -433,9 +433,9 @@ function Results({ homes, all, campaigns, campaignId, setCampaignId, running, pr
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
-        <div className="flex items-center gap-1 bg-surface border border-border rounded-control p-0.5">
+        <div className="flex items-center gap-1 bg-[#E9EDF2] border border-[#DDE3EA] rounded-control p-[3px]">
           {(['all', ...SOLAR_STATUSES.filter((s) => homes.some((h) => h.status === s))] as ('all' | SolarProspectStatus)[]).map((s) => (
-            <button key={s} onClick={() => setStatus(s)} className={classNames('h-8 px-2.5 rounded-[7px] text-[12.5px] flex items-center gap-1.5', status === s ? 'bg-ink text-white font-semibold' : 'text-muted-b font-medium hover:bg-control')}>
+            <button key={s} onClick={() => setStatus(s)} className={classNames('h-8 px-2.5 rounded-[7px] text-[12.5px] flex items-center gap-1.5', status === s ? 'bg-white text-accent font-bold shadow-[0_1px_3px_rgba(11,18,32,0.14)]' : 'text-muted-b font-medium hover:bg-control')}>
               {s !== 'all' && <span className="w-1.5 h-1.5 rounded-full" style={{ background: STATUS_META[s].tone }} />}{s === 'all' ? 'All' : STATUS_META[s].label}
               <span className={status === s ? 'text-white/60' : 'text-muted-3'}>{s === 'all' ? homes.length : homes.filter((h) => h.status === s).length}</span>
             </button>

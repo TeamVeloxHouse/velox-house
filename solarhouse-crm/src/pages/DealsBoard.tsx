@@ -83,7 +83,7 @@ export function DealsBoard() {
       <TopBar title="Deals" crumbs={['Sales']} actions={<Button variant="primary" icon={<Plus size={16} />} onClick={() => setShowNew(true)}>New enquiry</Button>} />
 
       {/* showroom switcher + tools */}
-      <div className="shrink-0 bg-surface border-b border-border px-7 pt-3 pb-3 flex flex-col gap-3">
+      <div className="sh-toolbar shrink-0 px-7 pt-3 pb-3 flex flex-col gap-3">
         <div className="flex items-center gap-2 flex-wrap">
           <ShowroomTab on={showroom === 'all'} onClick={() => setShowroom('all')} label="All showrooms" count={shDeals.filter((d) => !d.lost && !d.won).length} />
           {SHOWROOMS.map((s) => (
@@ -138,9 +138,9 @@ export function DealsBoard() {
 
 function ShowroomTab({ on, onClick, label, count, color }: { on: boolean; onClick: () => void; label: string; count: number; color?: string }) {
   return (
-    <button onClick={onClick} className={classNames('h-9 pl-3 pr-2 rounded-full border flex items-center gap-2 text-[13px] font-semibold transition-colors', on ? 'bg-ink text-white border-ink' : 'bg-surface border-border text-ink-3 hover:border-input-border')}>
+    <button onClick={onClick} className={classNames('h-9 pl-3 pr-2 rounded-full border flex items-center gap-2 text-[13px] font-semibold transition-colors', on ? 'chip-on' : 'bg-surface border-border text-ink-3 hover:border-input-border')}>
       {color && <span className="w-2 h-2 rounded-full" style={{ background: color }} />}{label}
-      <span className={classNames('text-[11px] rounded-full px-1.5 py-px font-bold', on ? 'bg-white/15 text-white' : 'bg-control text-muted-b')}>{count}</span>
+      <span className={classNames('text-[11px] rounded-full px-1.5 py-px font-bold', on ? 'chip-on-count' : 'bg-control text-muted-b')}>{count}</span>
     </button>
   )
 }
@@ -266,14 +266,14 @@ function TableView({ deals, onOpen }: { deals: Deal[]; onOpen: (d: Deal) => void
   return (
     <main className="flex-1 min-h-0 overflow-y-auto p-5 flex flex-col gap-3">
       <div className="flex items-center gap-2">
-        <div className="inline-flex bg-surface border border-border rounded-control p-0.5">
-          {(['open', 'signed', 'all'] as const).map((s) => <button key={s} onClick={() => setStatus(s)} className={classNames('h-8 px-3 rounded-[7px] text-[12.5px] font-semibold capitalize', status === s ? 'bg-ink text-white' : 'text-muted-b hover:bg-control')}>{s}</button>)}
+        <div className="inline-flex bg-[#E9EDF2] border border-[#DDE3EA] rounded-control p-[3px]">
+          {(['open', 'signed', 'all'] as const).map((s) => <button key={s} onClick={() => setStatus(s)} className={classNames('h-8 px-3 rounded-[7px] text-[12.5px] font-semibold capitalize', status === s ? 'bg-white text-accent font-bold shadow-[0_1px_3px_rgba(11,18,32,0.14)]' : 'text-muted-b hover:bg-control')}>{s}</button>)}
         </div>
         <label className="flex items-center gap-2 text-[12.5px] text-ink-3 ml-2"><input type="checkbox" checked={group} onChange={(e) => setGroup(e.target.checked)} style={{ accentColor: '#0E7A66' }} />Group by stage</label>
         <span className="ml-auto text-[12.5px] text-muted-2">{rows.length} deals · {money(rows.reduce((s, d) => s + d.value, 0), { compact: true })}</span>
       </div>
       {sel.length > 0 && (
-        <div className="sticky top-0 z-10 rounded-card bg-ink text-white px-4 py-2.5 flex items-center gap-3 text-[13px] shadow-lift">
+        <div className="sticky top-0 z-10 rounded-card bg-[#15223B] text-white px-4 py-2.5 flex items-center gap-3 text-[13px] shadow-lift">
           <b>{sel.length} selected</b>
           <select onChange={(e) => { if (!e.target.value) return; sel.forEach((id) => act.moveStage(id, e.target.value)); act.toast(`Moved ${sel.length} to ${e.target.value}`); setSel([]); e.target.value = '' }} className="h-8 px-2 rounded-md bg-white/10 border border-white/20 text-white text-[12.5px] outline-none">
             <option value="">Move to stage…</option>{SH_STAGES.map((s) => <option key={s} value={s} className="text-ink">{s}</option>)}

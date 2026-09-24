@@ -58,7 +58,7 @@ export function PortalAnalytics() {
   return (
     <>
       <TopBar title="Portal analytics" crumbs={['Customers', 'Portals']} identity={{ icon: Pie, accent: '#0E7A66' }} />
-      <div className="shrink-0 bg-surface border-b border-border px-7 py-3 flex items-center gap-3 flex-wrap">
+      <div className="sh-toolbar shrink-0 px-7 py-3 flex items-center gap-3 flex-wrap">
         <div className="flex items-center gap-1 bg-[#E9EDF2] border border-[#DDE3EA] rounded-control p-[3px]">
           {PRESETS.map((p) => <button key={p.id} onClick={() => setPreset(p.id)} className={classNames('h-[30px] px-2.5 rounded-[7px] text-[12px] font-semibold', preset === p.id ? 'bg-white text-accent font-bold shadow-[0_1px_3px_rgba(11,18,32,0.14)]' : 'text-ink-3 hover:text-ink-3')}>{p.label}</button>)}
         </div>

@@ -87,7 +87,7 @@ export function CalendarView() {
 
   return (
     <>
-      <div className="shrink-0 bg-surface border-b border-border px-7 py-2.5 flex items-center gap-3">
+      <div className="sh-toolbar shrink-0 px-7 py-2.5 flex items-center gap-3">
         <div className="flex items-center gap-1">
           <button onClick={() => go(-1)} className="w-8 h-8 rounded-lg border border-border text-muted-b hover:bg-control flex items-center justify-center">‹</button>
           <button onClick={() => setCursor(today)} className="h-8 px-3 rounded-lg border border-border text-[13px] font-medium text-ink-3 hover:bg-control">Today</button>

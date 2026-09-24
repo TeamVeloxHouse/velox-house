@@ -39,7 +39,7 @@ export function Activities() {
     <>
       <TopBar title="Activities" actions={<><Button icon={<Filter size={16} />}>Filter</Button><Button variant="primary" icon={<Plus size={16} />} onClick={() => setShowNew(true)}>Activity</Button></>} />
 
-      <div className="shrink-0 bg-surface border-b border-border px-7 py-2.5 flex flex-col gap-2.5">
+      <div className="sh-toolbar shrink-0 px-7 py-2.5 flex flex-col gap-2.5">
         <div className="flex items-center gap-3">
           <ViewSwitch tabs={[{ id: 'list', icon: Bars, label: 'List' }, { id: 'week', icon: Calendar, label: 'Calendar' }]} value={view} onChange={setView} />
           <PillTabs value={type} onChange={setType} tabs={[{ id: 'all', label: 'All' }, { id: 'call', label: 'Call', icon: Phone, color: typeColor.call }, { id: 'meeting', label: 'Meeting', icon: Meeting, color: typeColor.meeting }, { id: 'task', label: 'Task', icon: Task, color: typeColor.task }, { id: 'email', label: 'Email', icon: Envelope, color: typeColor.email }]} />

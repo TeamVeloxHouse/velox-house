@@ -38,12 +38,12 @@ export function Installs() {
     <>
       <TopBar title="Installs" crumbs={['Delivery']} identity={{ icon: Wrench, accent: '#0A8F79' }}
         actions={<Button icon={<Pie size={15} />} onClick={() => nav('/installs/analytics')}>Delivery analytics</Button>} />
-      <div className="shrink-0 bg-surface border-b border-border px-7 py-3 flex flex-col gap-3">
+      <div className="sh-toolbar shrink-0 px-7 py-3 flex flex-col gap-3">
         <div className="flex items-center gap-2 flex-wrap">
           {(['all', ...SHOWROOMS] as (Showroom | 'all')[]).map((s) => {
             const n = all.filter((d) => (s === 'all' || d.journey!.showroom === s) && installStage(d) !== 'Complete').length
-            return <button key={s} onClick={() => setShowroom(s)} className={classNames('h-9 pl-3 pr-2 rounded-full border flex items-center gap-2 text-[13px] font-semibold', showroom === s ? 'bg-ink text-white border-ink' : 'bg-surface border-border text-ink-3 hover:border-input-border')}>
-              {s !== 'all' && <span className="w-2 h-2 rounded-full" style={{ background: SHOWROOM_META[s].color }} />}{s === 'all' ? 'All showrooms' : SHOWROOM_META[s].name}<span className={classNames('text-[11px] rounded-full px-1.5 font-bold', showroom === s ? 'bg-white/15' : 'bg-control text-muted-b')}>{n}</span></button>
+            return <button key={s} onClick={() => setShowroom(s)} className={classNames('h-9 pl-3 pr-2 rounded-full border flex items-center gap-2 text-[13px] font-semibold', showroom === s ? 'chip-on' : 'bg-surface border-border text-ink-3 hover:border-input-border')}>
+              {s !== 'all' && <span className="w-2 h-2 rounded-full" style={{ background: SHOWROOM_META[s].color }} />}{s === 'all' ? 'All showrooms' : SHOWROOM_META[s].name}<span className={classNames('text-[11px] rounded-full px-1.5 font-bold', showroom === s ? 'chip-on-count' : 'bg-control text-muted-b')}>{n}</span></button>
           })}
           <div className="ml-auto inline-flex bg-[#E9EDF2] border border-[#DDE3EA] rounded-control p-[3px] gap-0.5">
             {([['board', Bars, 'Board'], ['table', Grid, 'Table']] as const).map(([id, I, l]) => <button key={id} onClick={() => setView(id)} className={classNames('h-[30px] px-3 rounded-[7px] flex items-center gap-1.5 text-[12.5px] font-semibold', view === id ? 'bg-white text-accent font-bold shadow-[0_1px_3px_rgba(11,18,32,0.14)]' : 'text-ink-3')}><I size={14} />{l}</button>)}

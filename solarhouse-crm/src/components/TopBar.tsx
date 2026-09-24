@@ -59,8 +59,8 @@ export function TopBar({
             </div>
           )}
         </div>
-        {center && <div className="ml-4">{center}</div>}
-        <div className="ml-auto flex items-center gap-2.5">
+        {center && <div className="sh-hdr-ctrls ml-4 flex items-center gap-2.5">{center}</div>}
+        <div className="sh-hdr-ctrls ml-auto flex items-center gap-2.5">
           {actions}
           <button onClick={() => window.dispatchEvent(new CustomEvent('simplr-open-palette'))} className={glassBtn} title="Search (⌘K)">
             <Search size={17} />

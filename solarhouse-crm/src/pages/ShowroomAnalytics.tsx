@@ -39,7 +39,7 @@ export function ShowroomAnalytics() {
         tabs={viewer === 'md' ? { items: [{ id: 'all', label: 'All showrooms' }, ...SHOWROOMS.map((s) => ({ id: s, label: SHOWROOM_META[s].name }))], value: tab, onChange: (v) => setTab(v as Showroom | 'all') } : undefined} />
 
       {/* filters — one row above everything */}
-      <div className="shrink-0 bg-surface border-b border-border px-7 py-3 flex items-center gap-3 flex-wrap">
+      <div className="sh-toolbar shrink-0 px-7 py-3 flex items-center gap-3 flex-wrap">
         <label className="flex items-center gap-2 text-[12.5px] text-muted-b">Viewing as
           <select value={viewer} onChange={(e) => setViewer(e.target.value as Viewer)} className="h-9 px-3 rounded-control border border-border bg-surface text-[13px] font-semibold text-ink-2 outline-none focus:border-accent">
             <option value="md">Managing director (all showrooms)</option>

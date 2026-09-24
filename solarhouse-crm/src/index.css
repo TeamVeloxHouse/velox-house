@@ -199,15 +199,35 @@ body {
   box-shadow: 0 1px 2px rgba(10, 59, 52, 0.1), 0 4px 10px -4px rgba(10, 59, 52, 0.22);
 }
 
-.sh-topbar .btn-secondary:not([style]) {
+/* ONE material for every control a page drops into the header (secondary buttons, selects,
+   hand-rolled white buttons): frosted glass, 36px tall, 10px radius — matching back/search/bell.
+   Primary (gradient) buttons are deliberately left solid as the one call to action. */
+.sh-hdr-ctrls :is(.btn-secondary, button.bg-white, button.bg-surface, select, a.bg-white, a.bg-surface):not(.seg-on) {
+  height: 36px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(10px) saturate(140%);
   -webkit-backdrop-filter: blur(10px) saturate(140%);
-  border-color: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.85);
   color: #1F4A40;
+  font-weight: 600;
   box-shadow: 0 1px 2px rgba(10, 59, 52, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
-.sh-topbar .btn-secondary:not([style]):hover { background: rgba(255, 255, 255, 0.95); color: #0A5A4C; }
+.sh-hdr-ctrls :is(.btn-secondary, button.bg-white, button.bg-surface, a.bg-white, a.bg-surface):not(.seg-on):hover,
+.sh-hdr-ctrls select:hover { background: rgba(255, 255, 255, 0.95); color: #0A5A4C; }
+.sh-hdr-ctrls .bg-accent-gradient { height: 36px; border-radius: 10px; }
+/* labels like "Viewing as" read as part of the band */
+.sh-hdr-ctrls label, .sh-hdr-ctrls > span { color: #2F5A50; }
+
+/* Page toolbars (filters/search/view switch) sit ON the canvas rather than in a third white
+   strip — so the page reads header → canvas → cards, with nothing sandwiched in between. */
+.sh-toolbar { background: transparent; padding-top: 16px; padding-bottom: 4px; }
+.sh-toolbar button.border-border:not([class*=" bg-"]),
+.sh-toolbar .bg-surface.border-border { background: #fff; border-color: #E1E6EC; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05); }
+
+/* Selected filter chip — the sidebar's navy with a mint count, tying the page back to the nav. */
+.chip-on { background: #15223B !important; border-color: #15223B !important; color: #fff; box-shadow: 0 4px 12px -5px rgba(21, 34, 59, 0.55); }
+.chip-on-count { background: #62E4CC; color: #0B2A24; }
 
 /* Modern interactive tiles: a gentle lift on hover for anything marked .tile-hover. */
 .tile-hover { transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }

@@ -90,8 +90,8 @@ export function PortalBuilder() {
         <main className="min-w-0 bg-[#EEF1F5] overflow-y-auto p-6 flex flex-col items-center gap-3">
           <div className="flex items-center gap-2 self-stretch">
             <span className="text-[12px] font-semibold text-muted-b">Draft preview</span>
-            <div className="ml-auto inline-flex bg-white rounded-control p-[3px] border border-border">
-              {(['desktop', 'phone'] as const).map((v) => <button key={v} onClick={() => setDevice(v)} className={classNames('h-[28px] px-3 rounded-[7px] text-[12px] font-semibold capitalize', device === v ? 'bg-ink text-white' : 'text-muted-b')}>{v}</button>)}
+            <div className="ml-auto inline-flex bg-[#E9EDF2] rounded-control p-[3px] border border-[#DDE3EA]">
+              {(['desktop', 'phone'] as const).map((v) => <button key={v} onClick={() => setDevice(v)} className={classNames('h-[28px] px-3 rounded-[7px] text-[12px] font-semibold capitalize', device === v ? 'bg-white text-accent font-bold shadow-[0_1px_3px_rgba(11,18,32,0.14)]' : 'text-muted-b')}>{v}</button>)}
             </div>
             <button onClick={() => portals[0] && nav(`/customers/${portals[0].id}`)} className="text-[12px] font-semibold text-accent">Open the live portal →</button>
           </div>
