@@ -91,7 +91,6 @@ export const STAGES: Stage[] = [
     groups: [
       { label: 'Sales', items: [
         { to: '/deals', icon: Bars, label: 'Deals' },
-        { to: '/people', icon: Person, label: 'Contacts' },
         { to: '/forecast', icon: Target, label: 'Forecast', roles: MGMT },
         { to: '/insights', icon: Pie, label: 'Insights', roles: MGMT },
       ] },

@@ -166,47 +166,42 @@ function Stat({ v, l, hide }: { v: string; l: string; hide?: boolean }) { return
 
 /* ─────────── Board ─────────── */
 const COL_CAP = 30
-// One distinct colour per stage (validated for colour-blind separation); always shown with the label.
+// Stage identity = one brand ramp, pale teal → deep teal → navy, so progress reads left to right
+// in keeping with the rest of the app. Always shown with the numbered label, never colour alone.
 export const STAGE_COLOR: Record<string, string> = {
-  'New enquiry': '#0284C7', Contacted: '#7C3AED', Consultation: '#DB2777', 'Proposal sent': '#D97706', Survey: '#0891B2', Signed: '#16A34A',
+  'New enquiry': '#A8EDDF', Contacted: '#62E4CC', Consultation: '#2FBFA5', 'Proposal sent': '#169C85', Survey: '#0E7A66', Signed: '#15223B',
 }
+/** text colour that stays readable on a stage colour */
+export const stageInk = (c: string) => (['#A8EDDF', '#62E4CC'].includes(c) ? '#15223B' : '#FFFFFF')
 function Board({ byStage, onOpen, onQueue, onDrop }: { byStage: Record<string, Deal[]>; onOpen: (d: Deal) => void; onQueue: (s: string) => void; onDrop: (id: string, s: string) => void }) {
   const [drag, setDrag] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   return (
-    <main className="flex-1 min-h-0 overflow-x-auto px-7 pb-5 pt-2 flex flex-col gap-2.5">
-      <div className="flex items-center gap-4 text-[11.5px] text-muted-2 shrink-0">
-        <span className="font-semibold text-muted-b">Card edge = next action</span>
-        {([['#DC2626', 'Overdue'], ['#F59E0B', 'Due today or tomorrow'], ['#34D399', 'On track'], ['#16A34A', 'Signed']] as const).map(([c, l]) => <span key={l} className="flex items-center gap-1.5"><span className="w-[3px] h-3.5 rounded-full" style={{ background: c }} />{l}</span>)}
-        <span className="ml-auto">Badge = days in this stage</span>
-      </div>
-      <div className="grid gap-3 flex-1 min-h-0" style={{ gridTemplateColumns: `repeat(${SH_STAGES.length}, minmax(236px, 1fr))` }}>
+    <main className="flex-1 min-h-0 overflow-x-auto px-7 pb-5 pt-1 flex flex-col">
+      <div className="grid gap-5 flex-1 min-h-0" style={{ gridTemplateColumns: `repeat(${SH_STAGES.length}, minmax(272px, 1fr))` }}>
         {SH_STAGES.map((stage, i) => {
           const col = byStage[stage] ?? []
-          const late = col.filter((d) => stageAge(d).tone === 'late').length
           const shown = expanded[stage] ? col : col.slice(0, COL_CAP)
           const value = col.reduce((s, d) => s + d.value, 0)
           const avgDays = col.length ? Math.round(col.reduce((s, d) => s + stageAge(d).days, 0) / col.length) : 0
           const c = STAGE_COLOR[stage]
           return (
             <div key={stage} onDragOver={(e) => e.preventDefault()} onDrop={() => { if (drag) onDrop(drag, stage); setDrag(null) }}
-              className={classNames('flex flex-col min-h-0 rounded-xl border overflow-hidden', drag ? 'border-dashed border-accent-400' : 'border-[#E1E6EC]')}
-              style={{ background: `color-mix(in srgb, ${c} 5%, #F3F5F8)` }}>
-              {/* Stage header: its own colour (identity), numbered, so the flow reads left → right */}
-              <div className="px-3 pt-0 pb-2.5 bg-white border-b border-[#E6EAF0]">
-                <div className="h-[4px] -mx-3 mb-2.5" style={{ background: c }} />
+              className={classNames('flex flex-col min-h-0 rounded-xl border overflow-hidden bg-[#F3F5F8]', drag ? 'border-dashed border-accent-400' : 'border-[#E1E6EC]')}>
+              {/* Stage header: numbered + a shade of the brand ramp, so the flow reads left → right */}
+              <div className="px-3.5 pt-0 pb-3 bg-white border-b border-[#E6EAF0]">
+                <div className="h-[4px] -mx-3.5 mb-3" style={{ background: c }} />
                 <div className="flex items-center gap-2">
-                  <span className="w-5 h-5 rounded-md text-[10.5px] font-extrabold text-white flex items-center justify-center shrink-0" style={{ background: c }}>{i + 1}</span>
+                  <span className="w-5 h-5 rounded-md text-[10.5px] font-extrabold flex items-center justify-center shrink-0" style={{ background: c, color: stageInk(c) }}>{i + 1}</span>
                   <span className="text-[13.5px] font-extrabold text-ink truncate">{stage}</span>
-                  <span className="text-[11px] font-bold rounded-full px-1.5 min-w-[22px] text-center" style={{ color: c, background: `color-mix(in srgb, ${c} 12%, white)` }}>{col.length}</span>
-                  {col.length > 0 && <button onClick={() => onQueue(stage)} title="Work through this stage one by one" className="ml-auto h-6 px-2 rounded-md bg-white border border-[#CDD5DF] text-[11px] font-bold text-ink-2 hover:border-accent hover:text-accent flex items-center gap-1 shadow-[0_1px_2px_rgba(16,24,40,0.06)]"><Flow size={11} />Work</button>}
+                  <span className="text-[11px] font-bold rounded-full px-1.5 min-w-[22px] text-center bg-[#EEF1F5] text-ink-3">{col.length}</span>
+                  {col.length > 0 && <button onClick={() => onQueue(stage)} title="Work through this stage one by one" className="ml-auto h-6 px-2 rounded-md bg-white border border-[#CDD5DF] text-[11px] font-bold text-ink-2 hover:border-[#15223B] flex items-center gap-1 shadow-[0_1px_2px_rgba(16,24,40,0.06)]"><Flow size={11} />Work</button>}
                 </div>
                 <div className="flex items-center gap-2 mt-1.5 text-[11.5px] text-muted-b">
-                  <span className="font-bold text-ink-2">{money(value, { compact: true })}</span><span>·</span><span>avg {avgDays}d here</span>
-                  {late > 0 && <span className="ml-auto text-[#B01B4F] font-bold">{late} overdue</span>}
+                  <span className="font-bold text-ink-2">{money(value, { compact: true })}</span><span>·</span><span>avg {avgDays} days in stage</span>
                 </div>
               </div>
-              <div className="flex-1 overflow-y-auto px-2 py-2 flex flex-col gap-1.5">
+              <div className="flex-1 overflow-y-auto px-2.5 py-2.5 flex flex-col gap-2">
                 {shown.map((d) => <DealCard key={d.id} d={d} onOpen={() => onOpen(d)} onDragStart={() => setDrag(d.id)} onDragEnd={() => setDrag(null)} />)}
                 {col.length > COL_CAP && (
                   <button onClick={() => setExpanded((e) => ({ ...e, [stage]: !e[stage] }))} className="h-8 rounded-lg border border-dashed border-input-border text-[12px] font-semibold text-muted-b hover:text-accent hover:border-accent">
@@ -225,33 +220,39 @@ function Board({ byStage, onOpen, onQueue, onDrop }: { byStage: Record<string, D
 
 function DealCard({ d, onOpen, onDragStart, onDragEnd }: { d: Deal; onOpen: () => void; onDragStart: () => void; onDragEnd: () => void }) {
   const age = stageAge(d)
-  const na = d.journey?.nextAction
+  const j = d.journey!
+  const na = j.nextAction
   const due = na ? dueLabel(na.due) : null
-  const sr = SHOWROOM_META[d.journey!.showroom]
-  // Urgency, not stage, colours the card's left edge — driven by the NEXT ACTION so it stays a real
-  // triage signal: red = action overdue, amber = due today/tomorrow, green = fine. (Time in stage has its own badge.)
-  const dueSoon = !!na && na.due - Date.now() < 2 * 86_400_000
-  const edge = d.won ? '#16A34A' : due?.overdue ? '#DC2626' : dueSoon ? '#F59E0B' : '#34D399'
+  const sr = SHOWROOM_META[j.showroom]
+  const street = (j.address || d.org).split(',')[0]
+  const sys = j.system ? `${j.system.kwp} kWp${j.system.batteryKwh ? ` + ${j.system.batteryKwh} kWh` : ''}${j.system.evCharger ? ' + EV' : ''}` : null
+  // No urgency colour-coding (it was noise). The card leads with what identifies the household:
+  // name, street + postcode, phone — then the system, what happens next and who owns it.
   return (
     <div draggable onDragStart={onDragStart} onDragEnd={onDragEnd} onClick={onOpen}
-      className="bg-white rounded-lg border border-[#E1E6EC] border-l-[3px] pl-2.5 pr-3 py-2.5 cursor-pointer shadow-[0_1px_2px_rgba(16,24,40,0.05)] hover:shadow-[0_4px_12px_-4px_rgba(16,24,40,0.16)] hover:-translate-y-px transition-all"
-      style={{ borderLeftColor: edge }}>
+      className="bg-white rounded-[10px] border border-[#E1E6EC] px-3 py-2.5 cursor-pointer shadow-[0_1px_2px_rgba(16,24,40,0.05)] hover:shadow-[0_6px_16px_-6px_rgba(16,24,40,0.18)] hover:border-[#C9D2DD] hover:-translate-y-px transition-all">
       <div className="flex items-center gap-2">
-        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: sr.color }} title={`${sr.name} showroom`} />
-        <span className="text-[13px] font-semibold text-ink-2 truncate flex-1">{d.name}</span>
-        <span className="text-[12.5px] font-bold text-ink shrink-0">{money(d.value, { compact: true })}</span>
+        <span className="text-[13.5px] font-bold text-ink truncate flex-1">{d.name}</span>
+        <span className="text-[12.5px] font-bold text-ink shrink-0 tabular-nums">{money(d.value, { compact: true })}</span>
       </div>
-      <div className="flex items-center gap-1.5 mt-1 text-[11.5px] text-muted-2">
-        <span className="truncate flex-1">{town(d)}</span>
-        {d.won ? <span className="text-positive font-semibold">Signed</span> : <span className="font-semibold rounded px-1 py-px" style={{ color: age.color, background: age.bg }}>{age.days}d</span>}
+      <div className="text-[12px] text-ink-3 truncate mt-0.5">{street} · <span className="font-semibold text-ink-2">{j.postcode}</span></div>
+      <div className="flex items-center gap-2 mt-1 text-[11.5px] text-muted-2">
+        <span className="tabular-nums truncate">{j.phone}</span>
+        <span className="ml-auto flex items-center gap-1 shrink-0" title={`${sr.name} showroom`}><span className="w-1.5 h-1.5 rounded-full" style={{ background: sr.color }} />{sr.name}</span>
       </div>
-      {na && !d.won && (
-        <div className="flex items-center gap-1.5 mt-1.5 text-[11.5px]">
-          <span className={classNames('truncate flex-1', due!.overdue ? 'text-[#B01B4F] font-semibold' : 'text-ink-3')}>{na.label}</span>
-          <span className={classNames('shrink-0', due!.overdue ? 'text-[#B01B4F]' : 'text-muted-3')}>{due!.text}</span>
-          <span className="w-5 h-5 rounded-full bg-[#E8ECF3] text-[#15223B] text-[9px] font-bold flex items-center justify-center shrink-0" title={d.owner}>{initials(d.owner)}</span>
+      {(sys || j.source) && (
+        <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+          {sys && <span className="text-[11px] font-semibold rounded-md px-1.5 py-0.5 bg-[#E6FAF6] text-[#0A5A4C]">{sys}</span>}
+          {j.source && <span className="text-[11px] font-medium rounded-md px-1.5 py-0.5 bg-[#F1F3F7] text-muted-b truncate max-w-[140px]">{j.source}</span>}
         </div>
       )}
+      <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-[#F0F2F5] text-[11.5px]">
+        {d.won ? <span className="font-semibold text-[#15223B] flex-1">Signed — handing to delivery</span> : na ? (
+          <><span className="truncate flex-1 text-ink-3">{na.label}</span><span className="shrink-0 text-muted-3">{due!.text}</span></>
+        ) : <span className="flex-1 text-muted-3">No next step set</span>}
+        {!d.won && <span className="shrink-0 rounded px-1 py-px text-[10.5px] font-semibold bg-[#F1F3F7] text-muted-b" title="Days in this stage">{age.days}d</span>}
+        <span className="w-5 h-5 rounded-full bg-[#15223B] text-[#62E4CC] text-[9px] font-bold flex items-center justify-center shrink-0" title={d.owner}>{initials(d.owner)}</span>
+      </div>
     </div>
   )
 }
@@ -324,9 +325,9 @@ function TableView({ deals, onOpen }: { deals: Deal[]; onOpen: (d: Deal) => void
                   <div className="min-w-0"><div className="font-semibold text-ink-2 truncate">{d.name}</div><div className="text-[11.5px] text-muted-2 truncate">{d.org}</div></div>
                   <span className="flex items-center gap-1.5 text-ink-3"><span className="w-1.5 h-1.5 rounded-full" style={{ background: sr.color }} />{sr.name}</span>
                   <span className="text-ink-3">{d.won ? <span className="text-positive font-semibold">{labelOf(currentStep(d)!.key)}</span> : d.stage}</span>
-                  <span className="font-semibold rounded px-1.5 py-px w-fit" style={{ color: age.color, background: age.bg }}>{age.days}d</span>
+                  <span className="font-semibold rounded px-1.5 py-px w-fit" style={{ color: "#5D6878", background: "#F1F3F7" }}>{age.days}d</span>
                   <span className="font-semibold text-ink-2">{money(d.value, { compact: true })}</span>
-                  <span className="min-w-0 truncate">{na ? <><span className={due!.overdue ? 'text-[#B01B4F] font-semibold' : 'text-ink-3'}>{na.label}</span> <span className="text-muted-3">· {due!.text}</span></> : <span className="text-muted-3">—</span>}</span>
+                  <span className="min-w-0 truncate">{na ? <><span className={'text-ink-3'}>{na.label}</span> <span className="text-muted-3">· {due!.text}</span></> : <span className="text-muted-3">—</span>}</span>
                   <span className="text-ink-3 truncate">{d.owner}</span>
                   <span className="text-muted-b truncate">{d.journey!.source}</span>
                   <span className="text-muted-2">{new Date(enquiredAt(d)).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
@@ -397,8 +398,8 @@ function WorkQueue({ byStage, stage, setStage }: { byStage: Record<string, Deal[
               return (
                 <button key={x.id} onClick={() => setIdx(i)} className={classNames('w-full text-left px-3.5 py-2.5 border-b border-divider-row flex items-center gap-2.5', x.id === d.id ? 'bg-accent-wash-4' : 'hover:bg-[#FAFBFC]')}>
                   <span className={classNames('w-4 h-4 rounded-full flex items-center justify-center shrink-0', reviewed.includes(x.id) ? 'bg-positive text-white' : 'border-2 border-border')}>{reviewed.includes(x.id) && <Check size={9} />}</span>
-                  <div className="min-w-0 flex-1"><div className="text-[13px] font-semibold text-ink-2 truncate">{x.name}</div><div className={classNames('text-[11.5px] truncate', due?.overdue ? 'text-[#B01B4F]' : 'text-muted-2')}>{na?.label ?? '—'} · {due?.text}</div></div>
-                  <span className="text-[11px] font-semibold rounded px-1 py-px" style={{ color: age.color, background: age.bg }}>{age.days}d</span>
+                  <div className="min-w-0 flex-1"><div className="text-[13px] font-semibold text-ink-2 truncate">{x.name}</div><div className={classNames('text-[11.5px] truncate', 'text-muted-2')}>{na?.label ?? '—'} · {due?.text}</div></div>
+                  <span className="text-[11px] font-semibold rounded px-1 py-px" style={{ color: "#5D6878", background: "#F1F3F7" }}>{age.days}d</span>
                 </button>
               )
             })}
@@ -428,7 +429,7 @@ function QueueCard({ d, note, setNote, onLog, onAdvance, onSnooze, onOpen, onNex
           <div className="text-[17px] font-bold text-ink">{d.name}</div>
           <div className="text-[12.5px] text-muted-b">{j.address}</div>
           <div className="flex items-center gap-2 mt-1.5 text-[12px]">
-            <span className="font-semibold rounded px-1.5 py-px" style={{ color: age.color, background: age.bg }}>{age.days} days in {d.stage}</span>
+            <span className="font-semibold rounded px-1.5 py-px" style={{ color: "#5D6878", background: "#F1F3F7" }}>{age.days} days in {d.stage}</span>
             <span className="text-muted-2">Adviser {d.owner}</span><span className="text-muted-2">· {money(d.value)}</span>
           </div>
         </div>

@@ -16,7 +16,9 @@ import { Dropdown } from '../components/Dropdown'
 
 const SHOWROOMS = Object.keys(SHOWROOM_META) as Showroom[]
 // Distinct stage colours (same validated set as Sales), always paired with the stage name.
-const SHADES = ['#16A34A', '#D97706', '#DB2777', '#7C3AED', '#0284C7', '#0891B2', '#64748B']
+// one brand ramp, pale teal → navy, so the delivery flow reads left to right (no rainbow)
+const SHADES = ['#C9F3EA', '#A8EDDF', '#62E4CC', '#2FBFA5', '#169C85', '#0E7A66', '#15223B']
+const shadeInk = (c: string) => (['#C9F3EA', '#A8EDDF', '#62E4CC'].includes(c) ? '#15223B' : '#FFFFFF')
 
 export function Installs() {
   const nav = useNavigate()
@@ -64,20 +66,20 @@ export function Installs() {
       </div>
 
       {view === 'board' ? (
-        <main className="flex-1 min-h-0 overflow-x-auto p-5">
-          <div className="grid gap-3 h-full" style={{ gridTemplateColumns: `repeat(${stages.length}, minmax(228px, 1fr))` }}>
+        <main className="flex-1 min-h-0 overflow-x-auto px-7 pb-5 pt-1">
+          <div className="grid gap-5 h-full" style={{ gridTemplateColumns: `repeat(${stages.length}, minmax(260px, 1fr))` }}>
             {stages.map((s, i) => { const col = by(s); return (
-              <div key={s} className="flex flex-col min-h-0 rounded-xl border border-[#E1E6EC] overflow-hidden" style={{ background: `color-mix(in srgb, ${SHADES[i]} 5%, #F3F5F8)` }}>
+              <div key={s} className="flex flex-col min-h-0 rounded-xl border border-[#E1E6EC] overflow-hidden bg-[#F3F5F8]">
                 <div className="px-3 pb-2.5 bg-white border-b border-[#E6EAF0]" title={INSTALL_STAGE_HELP[s]}>
                   <div className="h-[4px] -mx-3 mb-2.5" style={{ background: SHADES[i] }} />
                   <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-md text-[10.5px] font-extrabold text-white flex items-center justify-center shrink-0" style={{ background: SHADES[i] }}>{i + 1}</span>
+                    <span className="w-5 h-5 rounded-md text-[10.5px] font-extrabold flex items-center justify-center shrink-0" style={{ background: SHADES[i], color: shadeInk(SHADES[i]) }}>{i + 1}</span>
                     <span className="text-[13.5px] font-extrabold text-ink truncate">{s}</span>
-                    <span className="text-[11px] font-bold rounded-full px-1.5 min-w-[22px] text-center" style={{ color: SHADES[i], background: `color-mix(in srgb, ${SHADES[i]} 12%, white)` }}>{col.length}</span>
+                    <span className="text-[11px] font-bold rounded-full px-1.5 min-w-[22px] text-center bg-[#EEF1F5] text-ink-3">{col.length}</span>
                   </div>
                   <div className="text-[11px] text-muted-b mt-1 truncate">{INSTALL_STAGE_HELP[s]}</div>
                 </div>
-                <div className="flex-1 overflow-y-auto px-2 py-2 flex flex-col gap-1.5">
+                <div className="flex-1 overflow-y-auto px-2.5 py-2.5 flex flex-col gap-2">
                   {col.slice(0, 40).map((d) => <Card key={d.id} d={d} onOpen={() => open(d)} flag={hasIssue(d)} />)}
                   {col.length > 40 && <button onClick={() => { setView('table') }} className="h-8 rounded-lg border border-dashed border-input-border text-[12px] font-semibold text-muted-b">See all {col.length} in the table</button>}
                   {!col.length && <div className="text-[12px] text-muted-3 text-center py-6">Nothing here</div>}
@@ -102,12 +104,17 @@ function Card({ d, onOpen, flag }: { d: Deal; onOpen: () => void; flag: boolean 
       : `Signed ${daysSince(signedAt(d))}d ago`
   const kit = del.orders.every((o) => o.status === 'delivered') ? 'Kit in' : del.orders.some((o) => o.status === 'ordered') ? 'Kit ordered' : 'Kit to order'
   return (
-    <button onClick={onOpen} className="bg-white rounded-lg border border-[#E1E6EC] border-l-[3px] pl-2.5 pr-3 py-2.5 text-left shadow-[0_1px_2px_rgba(16,24,40,0.05)] hover:shadow-[0_4px_12px_-4px_rgba(16,24,40,0.16)] hover:-translate-y-px transition-all" style={{ borderLeftColor: flag ? '#DC2626' : kit === 'Kit to order' && (st === 'Install booked' || st === 'Ready to book') ? '#F59E0B' : '#34D399' }}>
-      <div className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: sr.color }} /><span className="text-[13px] font-semibold text-ink-2 truncate flex-1">{d.name}</span>{flag && <span className="w-2 h-2 rounded-full bg-negative shrink-0" title="Has an issue" />}</div>
-      <div className="text-[11.5px] text-muted-2 mt-0.5 truncate">{d.journey!.system?.kwp} kWp{d.journey!.system?.batteryKwh ? ` + ${d.journey!.system.batteryKwh} kWh` : ''} · {d.org.split(',').slice(-1)[0]}</div>
-      <div className="flex items-center gap-1.5 mt-1.5 text-[11px]">
+    // no urgency colour-coding — a calm card led by who and where, with the kit state as a quiet tag
+    <button onClick={onOpen} className="bg-white rounded-[10px] border border-[#E1E6EC] px-3 py-2.5 text-left shadow-[0_1px_2px_rgba(16,24,40,0.05)] hover:shadow-[0_6px_16px_-6px_rgba(16,24,40,0.18)] hover:border-[#C9D2DD] hover:-translate-y-px transition-all">
+      <div className="flex items-center gap-2"><span className="text-[13.5px] font-bold text-ink truncate flex-1">{d.name}</span>{flag && <span className="text-[10.5px] font-semibold rounded px-1.5 py-px bg-[#F1F3F7] text-ink-3 shrink-0" title="Has an open issue">Issue</span>}</div>
+      <div className="text-[12px] text-ink-3 mt-0.5 truncate">{(d.journey!.address || d.org).split(',')[0]} · <span className="font-semibold text-ink-2">{d.journey!.postcode}</span></div>
+      <div className="flex items-center gap-2 mt-1 text-[11.5px] text-muted-2">
+        <span className="font-semibold text-[#0A5A4C] bg-[#E6FAF6] rounded-md px-1.5 py-px">{d.journey!.system?.kwp} kWp{d.journey!.system?.batteryKwh ? ` + ${d.journey!.system.batteryKwh} kWh` : ''}</span>
+        <span className="ml-auto flex items-center gap-1 shrink-0"><span className="w-1.5 h-1.5 rounded-full" style={{ background: sr.color }} />{sr.name}</span>
+      </div>
+      <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-[#F0F2F5] text-[11.5px]">
         <span className="text-ink-3 font-medium flex-1 truncate">{info}</span>
-        <span className={classNames('rounded px-1.5 py-px font-semibold', kit === 'Kit in' ? 'bg-positive-wash text-positive' : kit === 'Kit ordered' ? 'bg-[#E7F0FA] text-[#0A64AD]' : 'bg-[#FDF3E3] text-[#B45309]')}>{kit}</span>
+        <span className="rounded px-1.5 py-px font-semibold bg-[#F1F3F7] text-muted-b">{kit}</span>
       </div>
     </button>
   )
