@@ -15,6 +15,7 @@ import {
 } from '../lib/homeFinder'
 
 const ACCENT = '#13927B'
+const MAPBOX = (import.meta as unknown as { env: Record<string, string | undefined> }).env.VITE_MAPBOX_TOKEN || ''
 const LS_KEY = 'shc.homefinder.criteria.v1'
 const placeSuggest = async (q: string) => { try { const r = await fetch('/api/autocomplete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ input: q }) }); const j = await r.json(); return (j.suggestions || []).map((s: { text: string }) => s.text) } catch { return [] } }
 
@@ -102,13 +103,13 @@ function Builder({ c, set, setC, run, running, progress, error }: {
         <Section id="where" n={1} icon={MapPin} title="Where to look" open={open} onToggle={tog} badge={<DataBadge kind="live">Geocoding + OpenStreetMap</DataBadge>}
           summary={`${whereCount ? [...SHOWROOMS.filter((s) => c.showrooms.includes(s.id)).map((s) => s.name.replace(' showroom', '')), ...c.areas].join(', ') : 'No area yet'} · ${c.radiusKm} km radius · measure ${c.maxHomes} homes`}>
           <Field label="Start from a showroom">
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {SHOWROOMS.map((s) => {
                 const on = c.showrooms.includes(s.id)
                 return (
-                  <button key={s.id} onClick={() => set({ showrooms: toggleIn(c.showrooms, s.id) })} className={classNames('h-14 rounded-xl border px-3 flex items-center gap-2.5 text-left transition-colors', on ? 'border-accent bg-accent-wash' : 'border-border bg-surface hover:border-input-border')}>
+                  <button key={s.id} onClick={() => set({ showrooms: toggleIn(c.showrooms, s.id) })} title={s.address} className={classNames('h-14 rounded-xl border px-3 flex items-center gap-2.5 text-left transition-colors', on ? 'border-accent bg-accent-wash' : 'border-border bg-surface hover:border-input-border')}>
                     <span className={classNames('w-8 h-8 rounded-lg flex items-center justify-center shrink-0', on ? 'bg-accent text-white' : 'bg-control text-muted-b')}><Home size={15} /></span>
-                    <span className="min-w-0"><span className="block text-[13px] font-semibold text-ink truncate">{s.name.replace(' showroom', '')}</span><span className="block text-[11px] text-muted-2">Showroom</span></span>
+                    <span className="min-w-0"><span className="block text-[13px] font-semibold text-ink truncate">{s.name.replace(' showroom', '')}</span><span className={classNames('block text-[11px] truncate', s.confirmed ? 'text-muted-2' : 'text-warning')}>{s.address}</span></span>
                     {on && <Check size={15} className="ml-auto text-accent" />}
                   </button>
                 )
@@ -477,7 +478,7 @@ function HomeRow({ h }: { h: SolarProspect }) {
     <div className="border-b border-divider-row last:border-0">
       <div onClick={() => setOpen((o) => !o)} className="grid grid-cols-[minmax(250px,1.6fr)_minmax(170px,1fr)_minmax(150px,0.9fr)_minmax(150px,0.9fr)_56px_140px_110px] gap-4 px-4 py-3 items-center hover:bg-[#FAFCFB] cursor-pointer group">
         <div className="flex items-center gap-3 min-w-0">
-          <Footprint ring={h.roofFootprint} />
+          <RoofThumb ring={h.roofFootprint} center={h.center} />
           <div className="min-w-0">
             <div className="text-[14px] font-semibold text-ink truncate group-hover:text-accent">{street}</div>
             <div className="text-[12px] text-muted-2 truncate">{rest.join(',').trim() || '—'}</div>
@@ -522,6 +523,17 @@ function HomeRow({ h }: { h: SolarProspect }) {
   )
 }
 
+/** Mapbox satellite thumbnail of the actual roof, with the OSM outline drawn on top. */
+function RoofThumb({ ring, center }: { ring?: { lat: number; lng: number }[]; center?: { lat: number; lng: number } }) {
+  const [ok, setOk] = useState(true)
+  if (!MAPBOX || !center || !ok) return <Footprint ring={ring} />
+  const overlay = ring?.length
+    ? `geojson(${encodeURIComponent(JSON.stringify({ type: 'Feature', properties: { stroke: '#62E4CC', 'stroke-width': 2, fill: '#62E4CC', 'fill-opacity': 0.18 }, geometry: { type: 'Polygon', coordinates: [ring.map((p) => [+p.lng.toFixed(6), +p.lat.toFixed(6)])] } }))})/`
+    : ''
+  const src = `https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static/${overlay}${center.lng.toFixed(6)},${center.lat.toFixed(6)},19.2,0/112x88@2x?attribution=false&logo=false&access_token=${MAPBOX}`
+  return <img src={src} onError={() => setOk(false)} alt="" className="w-14 h-11 rounded-lg object-cover shrink-0 border border-border bg-control" loading="lazy" />
+}
+
 function Footprint({ ring }: { ring?: { lat: number; lng: number }[] }) {
   if (!ring?.length) return <span className="w-11 h-11 rounded-lg bg-accent-wash text-accent flex items-center justify-center shrink-0"><Home size={18} /></span>
   const lats = ring.map((p) => p.lat), lngs = ring.map((p) => p.lng)
@@ -559,7 +571,16 @@ function ResultsMap({ homes }: { homes: SolarProspect[] }) {
   useEffect(() => {
     if (!el.current || map.current) return
     map.current = L.map(el.current, { zoomControl: true }).setView([51.7, -2.6], 9)
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 20, attribution: 'Esri' }).addTo(map.current)
+    if (MAPBOX) {
+      L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/512/{z}/{x}/{y}@2x?access_token=${MAPBOX}`, { tileSize: 512, zoomOffset: -1, maxZoom: 21, attribution: '© Mapbox © OpenStreetMap' }).addTo(map.current)
+    } else {
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 20, attribution: 'Esri' }).addTo(map.current)
+    }
+    // Showroom pins, so every search reads against where the team actually is.
+    for (const s of SHOWROOMS) {
+      L.marker([s.center.lat, s.center.lng], { icon: L.divIcon({ className: '', html: `<div style="background:#15223B;color:#62E4CC;font:600 11px Instrument Sans,sans-serif;padding:4px 8px;border-radius:999px;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.3)">${s.name.replace(' showroom', '')}${s.confirmed ? '' : ' (approx.)'}</div>`, iconAnchor: [30, 12] }) })
+        .bindPopup(`<b>${s.name}</b><br/>${s.address}`).addTo(map.current)
+    }
     return () => { map.current?.remove(); map.current = null }
   }, [])
   useEffect(() => {

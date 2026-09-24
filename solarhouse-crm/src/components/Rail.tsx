@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { Gear, ChevronRight, ChevronDown, Search, Sun } from './icons'
+import { Gear, ChevronRight, ChevronDown, Search } from './icons'
 import { classNames } from '../lib/format'
 import { useState_ } from '../store/store'
 import { STAGES, stageForPath, BRAND_GRAD, type Stage, type NavGroup } from './nav-config'
@@ -50,7 +50,7 @@ export function Rail() {
     >
       {/* brand + collapse */}
       <div className={classNames('flex items-center mb-4', expanded ? 'gap-2.5 px-1.5' : 'flex-col')}>
-        <span className="w-[34px] h-[34px] rounded-[10px] flex items-center justify-center text-[#15223B] shrink-0" style={{ background: '#62E4CC' }}><Sun size={19} /></span>
+        <img src="/solar-house-logo.png" alt="The Solar House" className={classNames('shrink-0 object-contain drop-shadow-[0_4px_10px_rgba(98,228,204,0.25)]', expanded ? 'w-[42px] h-[42px]' : 'w-[40px] h-[40px]')} />
         {expanded && (
           <span className="min-w-0 flex-1">
             <span className="block text-white font-bold text-[15px] tracking-[-0.01em] leading-tight">The Solar House</span>

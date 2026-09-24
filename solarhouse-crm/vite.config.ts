@@ -10,6 +10,7 @@ import { aiSolarMockup } from './server/imageGenProvider.mjs'
 import { placesSearch, placesRadiusScan, placesAutocomplete } from './server/placesProvider.mjs'
 import { pvgisHourly } from './server/pvgisProvider.mjs'
 import { callOvi } from './server/oviProvider.mjs'
+import { mapboxGeocode, mapboxReverse, mapboxSuggest } from './server/mapboxProvider.mjs'
 
 /** Dev-only backend for the real Ovi operator — keeps the Anthropic key server-side.
  *  Set ANTHROPIC_API_KEY in .env to go live; without it, /api/ovi returns
@@ -271,6 +272,7 @@ function placesApi(env: Record<string, string>): Plugin {
 /** Dev-only Places autocomplete proxy — Google-Maps-style address/place typeahead. */
 function autocompleteApi(env: Record<string, string>): Plugin {
   const key = env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || ''
+  const mbToken = env.MAPBOX_TOKEN || process.env.MAPBOX_TOKEN || ''
   return {
     name: 'autocomplete-api',
     configureServer(server) {
@@ -280,22 +282,36 @@ function autocompleteApi(env: Record<string, string>): Plugin {
         req.on('data', (c) => (body += c))
         req.on('end', async () => {
           res.setHeader('Content-Type', 'application/json')
-          try {
-            const { input } = JSON.parse(body || '{}')
-            if (!key) return res.end(JSON.stringify({ suggestions: [] }))
-            res.end(JSON.stringify({ suggestions: await placesAutocomplete(input, key) }))
-          } catch (e) {
-            res.end(JSON.stringify({ suggestions: [], reason: String((e as Error)?.message || e) }))
+          const { input } = JSON.parse(body || '{}')
+          const reasons: string[] = []
+          if (key) {
+            try {
+              const s = await placesAutocomplete(input, key)
+              if (s?.length) return res.end(JSON.stringify({ suggestions: s, source: 'google' }))
+            } catch (e) { reasons.push(String((e as Error)?.message || e)) }
           }
+          try { return res.end(JSON.stringify({ suggestions: await mapboxSuggest(input, mbToken), source: 'mapbox' })) }
+          catch (e) { reasons.push(String((e as Error)?.message || e)) }
+          res.end(JSON.stringify({ suggestions: [], reason: reasons.join(' | ') }))
         })
       })
     },
   }
 }
 
-/** Dev-only geocoding proxy — turns a typed location into a pin (lat/lng) for radius/single-site. */
+/** Dev-only geocoding proxy — turns a typed location into a pin (lat/lng), or (with lat/lng) a pin
+ *  into a street address. Google first; Mapbox when Google is missing or failing (e.g. billing off). */
 function geocodeApi(env: Record<string, string>): Plugin {
   const key = env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || ''
+  const mbToken = env.MAPBOX_TOKEN || process.env.MAPBOX_TOKEN || ''
+  async function googleReverse(lat: number, lng: number) {
+    const r = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&result_type=street_address|premise&key=${key}`)
+    const j = await r.json()
+    const hit = j.results?.[0]
+    if (!hit) throw new Error(`google reverse ${j.status}`)
+    const pc = hit.address_components?.find((c: { types: string[] }) => c.types.includes('postal_code'))?.long_name
+    return { formatted: hit.formatted_address, postcode: pc }
+  }
   return {
     name: 'geocode-api',
     configureServer(server) {
@@ -305,22 +321,18 @@ function geocodeApi(env: Record<string, string>): Plugin {
         req.on('data', (c) => (body += c))
         req.on('end', async () => {
           res.setHeader('Content-Type', 'application/json')
-          try {
-            const { address, lat, lng } = JSON.parse(body || '{}')
-            if (!key) return res.end(JSON.stringify({ fallback: true, reason: 'no-key' }))
-            if (typeof lat === 'number' && typeof lng === 'number') {
-              // Reverse: a home's pin → its street address (rooftop result preferred).
-              const r = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&result_type=street_address|premise&key=${key}`)
-              const j = await r.json()
-              const hit = j.results?.[0]
-              if (!hit) return res.end(JSON.stringify({ fallback: true, reason: j.status }))
-              const pc = hit.address_components?.find((c: { types: string[] }) => c.types.includes('postal_code'))?.long_name
-              return res.end(JSON.stringify({ formatted: hit.formatted_address, postcode: pc }))
-            }
-            res.end(JSON.stringify(await geocode(address, key)))
-          } catch (e) {
-            res.end(JSON.stringify({ fallback: true, reason: String((e as Error)?.message || e) }))
+          const { address, lat, lng } = JSON.parse(body || '{}')
+          const reverse = typeof lat === 'number' && typeof lng === 'number'
+          const reasons: string[] = []
+          if (key) {
+            try { return res.end(JSON.stringify({ ...(reverse ? await googleReverse(lat, lng) : await geocode(address, key)), source: 'google' })) }
+            catch (e) { reasons.push(String((e as Error)?.message || e)) }
           }
+          if (mbToken) {
+            try { return res.end(JSON.stringify({ ...(reverse ? await mapboxReverse(lat, lng, mbToken) : await mapboxGeocode(address, mbToken)), source: 'mapbox' })) }
+            catch (e) { reasons.push(String((e as Error)?.message || e)) }
+          }
+          res.end(JSON.stringify({ fallback: true, reason: reasons.join(' | ') || 'no-key' }))
         })
       })
     },
