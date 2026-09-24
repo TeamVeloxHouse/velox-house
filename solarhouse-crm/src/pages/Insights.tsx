@@ -1,155 +1,149 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { TopBar } from '../components/TopBar'
-import { Button } from '../components/ui'
-import { Modal, Select, Field } from '../components/overlays'
-import { Plus, Sparkle, Grid } from '../components/icons'
-import { useActions, useState_ } from '../store/store'
-import type { Deal, DashboardWidget, WidgetMetric, WidgetGroup, WidgetChart } from '../store/types'
-import { money } from '../lib/format'
+import { Kpi, Panel } from '../components/ui'
+import { HBars, DataTable } from '../components/charts'
+import { Sparkle, Send, Pie, Bars, Clock, MapPin, Sun, Users, Target, Megaphone, Bolt } from '../components/icons'
+import { useState_ } from '../store/store'
+import { money, classNames } from '../lib/format'
+import { buildDataset, fallbackInsight, askOviInsight, type Insight, type InsightBlock, type Row } from '../lib/insightsData'
 
-const PALETTE = ['#13927B', '#13927B', '#57C9B4', '#57C9B4', '#0E7C66', '#159C86', '#C79A3A', '#B01B4F']
-const METRIC_LABEL: Record<WidgetMetric, string> = { open: 'Open value', weighted: 'Weighted value', won: 'Won value', count: 'Deal count' }
-const GROUP_LABEL: Record<WidgetGroup, string> = { stage: 'Stage', owner: 'Owner', health: 'Health' }
+/* Insights — Ovi answers questions with charts and tables built from live CRM data, above a set of
+ * built-in analyses. Ovi uses the real model when it's connected and a deterministic engine otherwise. */
 
-type Datum = { label: string; val: number; color: string }
-function computeWidget(deals: Deal[], w: DashboardWidget): Datum[] {
-  const open = deals.filter((d) => !d.lost)
-  const key = (d: Deal) => (w.groupBy === 'stage' ? d.stage : w.groupBy === 'owner' ? d.owner : d.health)
-  const buckets = [...new Set(open.map(key))]
-  return buckets.map((b, i) => {
-    const rows = open.filter((d) => key(d) === b)
-    const val =
-      w.metric === 'count' ? rows.length :
-      w.metric === 'won' ? rows.filter((d) => d.won).reduce((s, d) => s + d.value, 0) :
-      w.metric === 'weighted' ? Math.round(rows.reduce((s, d) => s + d.value * (d.probability / 100), 0)) :
-      rows.reduce((s, d) => s + d.value, 0)
-    return { label: String(b), val, color: PALETTE[i % PALETTE.length] }
-  }).filter((d) => d.val > 0 || w.metric === 'count')
-}
-const fmtVal = (v: number, metric: WidgetMetric) => (metric === 'count' ? String(v) : money(v, { compact: true }))
+const EXAMPLES = [
+  'Which lead sources give us the best return?',
+  'How is each showroom performing?',
+  'What are customers buying — batteries, EV chargers, system sizes?',
+  'Where is the sales process slowest?',
+  'Which advisers convert best?',
+  'Which postcode areas should we target?',
+]
+const fmtUnit = (unit: string) => (n: number) => unit === 'money' ? money(n, { compact: true }) : unit === 'percent' ? `${n}%` : unit === 'days' ? `${n}d` : String(n)
+const fmtK = (n: number) => money(n, { compact: true })
 
-export function Insights() {
-  const { deals, dashboardWidgets } = useState_()
-  const act = useActions()
-  const [builder, setBuilder] = useState(false)
+function InsightView({ ins }: { ins: Insight }) {
   return (
-    <>
-      <TopBar
-        title="Insights"
-        crumbs={['Your dashboard']}
-        actions={<><Button variant="primary" icon={<Plus size={16} />} onClick={() => setBuilder(true)}>Add widget</Button></>}
-      />
-      <main className="flex-1 overflow-y-auto p-7">
-        {dashboardWidgets.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center gap-3 py-16">
-            <span className="w-14 h-14 rounded-full bg-control text-muted-2 flex items-center justify-center"><Grid size={26} /></span>
-            <div className="text-[18px] font-semibold text-ink-2">Build your dashboard</div>
-            <div className="text-[13px] text-muted-b max-w-[42ch]">Add widgets computed live from your pipeline — value by stage, weighted by owner, deal counts, and more.</div>
-            <Button variant="primary" icon={<Plus size={16} />} onClick={() => setBuilder(true)}>Add your first widget</Button>
-          </div>
-        ) : (
-          <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))' }}>
-            {dashboardWidgets.map((w) => (
-              <WidgetCard key={w.id} w={w} data={computeWidget(deals, w)} onRemove={() => act.removeWidget(w.id)} />
-            ))}
-            <button onClick={() => setBuilder(true)} className="rounded-card border border-dashed border-input-border min-h-[260px] flex flex-col items-center justify-center gap-2 text-muted-2 hover:border-accent hover:text-accent transition-colors">
-              <Plus size={22} /> <span className="text-[13px] font-semibold">Add widget</span>
-            </button>
-          </div>
-        )}
-      </main>
-      <WidgetBuilder open={builder} onClose={() => setBuilder(false)} />
-    </>
-  )
-}
-
-function WidgetCard({ w, data, onRemove }: { w: DashboardWidget; data: Datum[]; onRemove: () => void }) {
-  const total = data.reduce((s, d) => s + d.val, 0)
-  const max = Math.max(1, ...data.map((d) => d.val))
-  return (
-    <div className="bg-surface border border-border rounded-card p-5 flex flex-col group relative">
-      <div className="flex items-start justify-between mb-4">
-        <div>
-          <div className="text-[14px] font-semibold text-ink">{w.title}</div>
-          <div className="text-[11.5px] text-muted-2 mt-0.5">{METRIC_LABEL[w.metric]} · by {GROUP_LABEL[w.groupBy].toLowerCase()}</div>
-        </div>
-        <button onClick={onRemove} title="Remove widget" className="opacity-0 group-hover:opacity-100 transition-opacity w-7 h-7 rounded-lg flex items-center justify-center text-muted-2 hover:text-negative hover:bg-negative-wash text-[16px] leading-none">×</button>
-      </div>
-      {data.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center text-[12.5px] text-muted-3 min-h-[140px]">No data yet.</div>
-      ) : w.chart === 'bar' ? (
-        <div className="flex items-end gap-3 h-[170px]">
-          {data.map((d) => (
-            <div key={d.label} className="flex-1 flex flex-col items-center gap-2 justify-end min-w-0">
-              <div className="text-[11px] font-semibold text-ink-2 tabular-nums">{fmtVal(d.val, w.metric)}</div>
-              <div className="w-full rounded-t" style={{ height: `${(d.val / max) * 120}px`, background: d.color, minHeight: 3 }} />
-              <div className="text-[10.5px] text-muted-2 text-center leading-tight truncate w-full" title={d.label}>{d.label}</div>
-            </div>
-          ))}
-        </div>
-      ) : w.chart === 'donut' ? (
-        <div className="flex items-center gap-5">
-          <Donut data={data} total={total} />
-          <div className="flex flex-col gap-1.5 min-w-0 flex-1">
-            {data.map((d) => (
-              <div key={d.label} className="flex items-center gap-2 text-[12px]"><span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: d.color }} /><span className="text-ink-3 flex-1 truncate">{d.label}</span><span className="font-semibold text-ink-2 tabular-nums">{fmtVal(d.val, w.metric)}</span></div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className="flex flex-col">
-          {data.map((d) => (
-            <div key={d.label} className="flex items-center justify-between py-1.5 border-b border-divider last:border-0 text-[13px]"><span className="flex items-center gap-2 min-w-0"><span className="w-2 h-2 rounded-sm shrink-0" style={{ background: d.color }} /><span className="truncate">{d.label}</span></span><span className="font-semibold text-ink-2 tabular-nums">{fmtVal(d.val, w.metric)}</span></div>
-          ))}
-          <div className="flex items-center justify-between pt-2 mt-1 text-[13px] font-bold text-ink"><span>Total</span><span className="tabular-nums">{fmtVal(total, w.metric)}</span></div>
-        </div>
-      )}
+    <div className="flex flex-col gap-4">
+      <div><div className="text-[16px] font-bold text-ink">{ins.title}</div><p className="text-[13.5px] text-ink-3 mt-1 leading-relaxed max-w-[900px]">{ins.summary}</p></div>
+      {ins.blocks.map((b, i) => <Block key={i} b={b} />)}
     </div>
   )
 }
-
-const METRIC_OPTS: [string, WidgetMetric][] = [['Open value', 'open'], ['Weighted value', 'weighted'], ['Won value', 'won'], ['Deal count', 'count']]
-const GROUP_OPTS: [string, WidgetGroup][] = [['Stage', 'stage'], ['Owner', 'owner'], ['Health', 'health']]
-const CHART_OPTS: [string, WidgetChart][] = [['Bar', 'bar'], ['Donut', 'donut'], ['Table', 'table']]
-
-function WidgetBuilder({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { deals } = useState_()
-  const act = useActions()
-  const [metric, setMetric] = useState<WidgetMetric>('open')
-  const [groupBy, setGroupBy] = useState<WidgetGroup>('stage')
-  const [chart, setChart] = useState<WidgetChart>('bar')
-  const title = `${METRIC_LABEL[metric]} by ${GROUP_LABEL[groupBy].toLowerCase()}`
-  const preview: DashboardWidget = { id: 'preview', title, metric, groupBy, chart }
-
-  return (
-    <Modal open={open} onClose={onClose} title="Add a widget" subtitle="Live from your pipeline — pick a metric, dimension and chart" width={640}
-      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" onClick={() => { act.addWidget({ title, metric, groupBy, chart }); onClose() }}>Add to dashboard</Button></>}>
-      <div className="grid grid-cols-3 gap-3">
-        <Field label="Metric"><Select value={metric} onChange={(e) => setMetric(e.target.value as WidgetMetric)}>{METRIC_OPTS.map(([l, v]) => (<option key={v} value={v}>{l}</option>))}</Select></Field>
-        <Field label="Group by"><Select value={groupBy} onChange={(e) => setGroupBy(e.target.value as WidgetGroup)}>{GROUP_OPTS.map(([l, v]) => (<option key={v} value={v}>{l}</option>))}</Select></Field>
-        <Field label="Chart"><Select value={chart} onChange={(e) => setChart(e.target.value as WidgetChart)}>{CHART_OPTS.map(([l, v]) => (<option key={v} value={v}>{l}</option>))}</Select></Field>
-      </div>
-      <div className="rounded-card border border-border bg-surface-tint p-1">
-        <div className="flex items-center gap-1.5 text-[12px] font-semibold text-accent-700 px-3 pt-2"><Sparkle size={13} /> Live preview</div>
-        <div className="p-2"><WidgetCard w={preview} data={computeWidget(deals, preview)} onRemove={() => {}} /></div>
-      </div>
-    </Modal>
+function Block({ b }: { b: InsightBlock }) {
+  if (b.type === 'text') return <p className="text-[13.5px] text-ink-3">{b.text}</p>
+  if (b.type === 'stats') return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {(b.items ?? []).map((s, i) => <div key={i} className="rounded-[12px] bg-[#F7F9FB] border border-[#E6EAF0] px-4 py-3"><div className="text-[12px] font-semibold text-muted-b">{s.label}</div><div className={classNames("font-extrabold text-ink mt-1 tabular-nums leading-tight", String(s.value).length > 12 ? "text-[15px]" : "text-[22px]")}>{String(s.value)}</div></div>)}
+    </div>
   )
+  if (b.type === 'bars') return (
+    <div>{b.title && <div className="eyebrow text-muted-3 mb-2">{b.title}</div>}<HBars data={(b.items ?? []).map((x) => ({ label: x.label, value: Number(x.value) || 0 }))} fmt={fmtUnit(b.unit ?? 'count')} /></div>
+  )
+  if (b.type === 'table') return (
+    <div>{b.title && <div className="eyebrow text-muted-3 mb-2">{b.title}</div>}
+      <DataTable cols={(b.columns ?? []).map((c, i) => ({ label: c, align: i === 0 ? 'left' as const : 'right' as const }))} rows={(b.rows ?? []).map((r) => r.map((c, i) => (i === 0 ? <b key={i}>{String(c)}</b> : String(c))))} />
+    </div>
+  )
+  return null
 }
 
-function Donut({ data, total }: { data: Datum[]; total: number }) {
-  let acc = 0
-  const r = 42, c = 2 * Math.PI * r
+export function Insights() {
+  const { deals } = useState_()
+  const ds = useMemo(() => buildDataset(deals), [deals])
+  const [q, setQ] = useState('')
+  const [asked, setAsked] = useState<{ q: string; ins: Insight | null; live: boolean; working: boolean }[]>([])
+
+  async function ask(question: string) {
+    const text = question.trim(); if (!text) return
+    setQ('')
+    setAsked((a) => [{ q: text, ins: null, live: false, working: true }, ...a])
+    const live = await askOviInsight(text, ds)
+    const ins = live ?? fallbackInsight(text, ds)
+    setAsked((a) => a.map((x, i) => (i === 0 ? { q: text, ins, live: !!live, working: false } : x)))
+  }
+
+  const t = ds.totals
+  const table = (rows: Row[], label: string) => (
+    <DataTable cols={[{ label, w: 'minmax(120px,1.5fr)' }, { label: 'Enquiries', align: 'right' }, { label: 'Open', align: 'right' }, { label: 'Signed', align: 'right' }, { label: 'Win rate', align: 'right' }, { label: 'Signed £', align: 'right' }]}
+      rows={rows.map((r) => [<b key="k">{r.key}</b>, r.enquiries, r.open, r.signed, `${r.conv}%`, fmtK(r.value)])} />
+  )
+
   return (
-    <svg width="110" height="110" viewBox="0 0 110 110" className="shrink-0">
-      <circle cx="55" cy="55" r={r} fill="none" stroke="#EEF0F4" strokeWidth="16" />
-      {data.map((d) => {
-        const frac = total > 0 ? d.val / total : 0
-        const dash = frac * c
-        const el = <circle key={d.label} cx="55" cy="55" r={r} fill="none" stroke={d.color} strokeWidth="16" strokeDasharray={`${dash} ${c - dash}`} strokeDashoffset={-acc * c} transform="rotate(-90 55 55)" />
-        acc += frac
-        return el
-      })}
-    </svg>
+    <>
+      <TopBar title="Insights" crumbs={['Sales']} identity={{ icon: Pie, accent: '#15223B' }} />
+      <main className="flex-1 overflow-y-auto">
+        <div className="px-7 py-6 flex flex-col gap-5 max-w-[1500px]">
+          {/* Ask Ovi */}
+          <section className="rounded-card overflow-hidden shadow-[0_10px_28px_-12px_rgba(21,34,59,0.45)]" style={{ background: 'linear-gradient(150deg, #1B2B48 0%, #15223B 70%)' }}>
+            <div className="px-6 pt-5 pb-5">
+              <div className="flex items-center gap-2.5"><span className="w-8 h-8 rounded-[10px] bg-white/10 text-[#62E4CC] flex items-center justify-center"><Sparkle size={16} /></span><div><div className="text-[16px] font-bold text-white">Ask Ovi for an insight</div><div className="text-[12.5px] text-white/65">Ovi reads your live CRM data and answers with charts and tables</div></div></div>
+              <form onSubmit={(e) => { e.preventDefault(); void ask(q) }} className="mt-4 h-12 rounded-[12px] bg-white flex items-center gap-2 pl-4 pr-1.5">
+                <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="e.g. Which lead sources give us the best return this quarter?" className="flex-1 min-w-0 bg-transparent outline-none text-[14px] text-ink-2 placeholder:text-muted-3" />
+                <button type="submit" disabled={!q.trim()} className="h-9 px-4 rounded-[9px] bg-[#62E4CC] text-[#15223B] text-[13px] font-bold flex items-center gap-1.5 disabled:opacity-40"><Send size={14} />Ask</button>
+              </form>
+              <div className="flex flex-wrap gap-2 mt-3">
+                {EXAMPLES.map((e) => <button key={e} onClick={() => void ask(e)} className="h-8 px-3 rounded-full bg-white/10 hover:bg-white/20 text-white/90 text-[12px] font-medium transition-colors">{e}</button>)}
+              </div>
+            </div>
+          </section>
+
+          {asked.map((a, i) => (
+            <section key={asked.length - i} className="rounded-card bg-white border border-[#E1E6EC] shadow-card overflow-hidden">
+              <div className="px-5 py-3 border-b border-[#EEF1F5] flex items-center gap-2.5 bg-[#FAFBFC]">
+                <span className="w-7 h-7 rounded-full bg-[#15223B] text-[#62E4CC] flex items-center justify-center"><Sparkle size={13} /></span>
+                <span className="text-[13px] font-semibold text-ink-2 flex-1 truncate">“{a.q}”</span>
+                {!a.working && <span className="text-[11px] font-semibold rounded-full px-2 py-0.5 bg-[#F1F3F7] text-muted-b">{a.live ? 'Answered by Ovi (live model)' : 'Answered by Ovi (built-in analysis)'}</span>}
+                <button onClick={() => setAsked((x) => x.filter((_, j) => j !== i))} className="text-muted-3 hover:text-ink text-[13px] w-6 h-6">✕</button>
+              </div>
+              <div className="p-5">
+                {a.working ? (
+                  <div className="flex flex-col gap-2 text-[13px] text-ink-3">
+                    {['Reading enquiries, deals and installs', 'Working out the numbers', 'Building the chart and table'].map((s, k) => <div key={k} className="flex items-center gap-2.5"><span className="w-4 h-4 rounded-full border-2 border-[#15223B] border-t-transparent animate-spin" />{s}…</div>)}
+                  </div>
+                ) : a.ins && <InsightView ins={a.ins} />}
+              </div>
+            </section>
+          ))}
+
+          {/* built-in insights */}
+          <div className="grid grid-cols-4 gap-4">
+            <Kpi variant="navy" icon={Target} label="Win rate (decided deals)" value={`${t.winRate}%`} delta={`${t.signed} signed · ${t.lost} lost · ${t.open} open`} />
+            <Kpi icon={Bolt} label="Average system" value={fmtK(t.avgValue)} delta={`${t.avgKwp} kWp on average`} deltaTone="muted" />
+            <Kpi icon={Sun} label="Battery attach" value={`${t.batteryAttach}%`} meter={t.batteryAttach} delta="of signed homes add a battery" deltaTone="muted" />
+            <Kpi variant="teal" icon={Sparkle} label="EV charger attach" value={`${t.evAttach}%`} delta="of signed homes add an EV charger" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-5">
+            <Panel title="Lead sources — volume vs return" sub="Win rate and signed value by where the enquiry came from" icon={Megaphone} pad={false}>
+              <div className="p-4 flex flex-col gap-4">
+                <HBars data={ds.bySource.map((r) => ({ label: r.key, value: r.value, tip: `${r.enquiries} enquiries · ${r.conv}% win rate` }))} fmt={fmtK} />
+                {table(ds.bySource, 'Source')}
+              </div>
+            </Panel>
+            <Panel title="Speed through the funnel" sub="Median days between each step — where deals wait longest" icon={Clock}>
+              <HBars data={ds.speed.map((r) => ({ label: r.key, value: r.days }))} fmt={(n) => `${n} days`} color="#15223B" />
+              <div className="mt-4 rounded-[12px] bg-[#F7F9FB] border border-[#E6EAF0] px-4 py-3 text-[12.5px] text-ink-3">
+                <b className="text-ink">Biggest wait:</b> {[...ds.speed].sort((a, b) => b.days - a.days)[0]?.key.toLowerCase()} — {[...ds.speed].sort((a, b) => b.days - a.days)[0]?.days} days median.
+              </div>
+            </Panel>
+          </div>
+
+          <div className="grid grid-cols-2 gap-5">
+            <Panel title="Showrooms" sub="Enquiries handled, win rate and signed value" icon={Sun} pad={false}><div className="p-4">{table(ds.byShowroom, 'Showroom')}</div></Panel>
+            <Panel title="Advisers" sub="Who converts — and where coaching would help" icon={Users} pad={false}><div className="p-4">{table(ds.byAdviser, 'Adviser')}</div></Panel>
+          </div>
+
+          <div className="grid grid-cols-2 gap-5">
+            <Panel title="System sizes signed" sub="Count and value by kWp band" icon={Bars}>
+              <HBars data={ds.bySize.map((r) => ({ label: r.key, value: r.value, sub: `${r.signed}` }))} fmt={fmtK} />
+            </Panel>
+            <Panel title="Top postcode areas" sub="Enquiries by district — where to put leaflets and ads" icon={MapPin} pad={false}>
+              <div className="p-4">{table(ds.byArea.slice(0, 8), 'Area')}</div>
+            </Panel>
+          </div>
+          <div className={classNames('text-[11.5px] text-muted-3')}>All figures are computed live from every enquiry's journey in the CRM.</div>
+        </div>
+      </main>
+    </>
   )
 }
