@@ -9,7 +9,7 @@ import { surveyRef, photoSlotsFor, surveyToDnoSite, surveyFlags, completeness } 
 import { AI_MEMBER_ID, YOU_MEMBER_ID } from './types'
 import type { StageName } from '../data/mock'
 
-const KEY = 'simplr.state.v24'
+const KEY = 'simplr.state.v25'
 let idc = 1000
 export const uid = (p = 'x') => `${p}${Date.now().toString(36)}${idc++}`
 
@@ -24,6 +24,7 @@ type Action =
   | { type: 'UPDATE_DEAL'; id: ID; patch: Partial<Deal> }
   | { type: 'MOVE_STAGE'; id: ID; stage: StageName }
   | { type: 'MARK_WON'; id: ID }
+  | { type: 'SET_PORTAL_TEMPLATE'; template: import('./types').PortalTemplate }
   | { type: 'UPDATE_CONVERSATION'; id: ID; patch: Partial<import('./types').Conversation> }
   | { type: 'ADD_COMMS_MESSAGE'; id: ID; message: import('./types').CommsMessage }
   | { type: 'MARK_LOST'; id: ID; reason?: string }
@@ -307,6 +308,8 @@ function reducer(state: State, action: Action): State {
       return { ...state, emails: state.emails.filter((e) => e.id !== action.id) }
     case 'SET_AUTO_REPLY':
       return { ...state, inboxAutoReply: action.mode }
+    case 'SET_PORTAL_TEMPLATE':
+      return { ...state, portalTemplate: action.template }
     case 'UPDATE_CONVERSATION':
       return { ...state, conversations: state.conversations.map((c) => (c.id === action.id ? { ...c, ...action.patch } : c)) }
     case 'ADD_COMMS_MESSAGE':
@@ -994,6 +997,28 @@ export function useActions() {
       return full
     },
     markRead: (id: ID) => dispatch({ type: 'MARK_READ', id }),
+    // ── Portal builder: edit a draft, publish it live, keep a restorable history ──
+    updatePortalDraft: (patch: Partial<import('./types').PortalConfig>) => {
+      const t = live.state!.portalTemplate
+      dispatch({ type: 'SET_PORTAL_TEMPLATE', template: { ...t, draft: { ...t.draft, ...patch }, draftUpdatedAt: Date.now() } })
+    },
+    publishPortal: (note: string, by: string) => {
+      const t = live.state!.portalTemplate
+      const v = { id: uid('pv'), at: Date.now(), by, note: note || 'Published changes', config: t.draft }
+      dispatch({ type: 'SET_PORTAL_TEMPLATE', template: { ...t, live: t.draft, versions: [v, ...t.versions], draftUpdatedAt: undefined } })
+      toast('Published: every customer portal now shows this version')
+    },
+    discardPortalDraft: () => {
+      const t = live.state!.portalTemplate
+      dispatch({ type: 'SET_PORTAL_TEMPLATE', template: { ...t, draft: t.live, draftUpdatedAt: undefined } })
+      toast('Draft discarded', 'warning')
+    },
+    restorePortalVersion: (versionId: ID) => {
+      const t = live.state!.portalTemplate
+      const v = t.versions.find((x) => x.id === versionId); if (!v) return
+      dispatch({ type: 'SET_PORTAL_TEMPLATE', template: { ...t, draft: v.config, draftUpdatedAt: Date.now() } })
+      toast('Version loaded into your draft: review it, then publish', 'accent')
+    },
     updateConversation: (id: ID, patch: Partial<import('./types').Conversation>) => dispatch({ type: 'UPDATE_CONVERSATION', id, patch }),
     addCommsMessage: (id: ID, message: import('./types').CommsMessage) => dispatch({ type: 'ADD_COMMS_MESSAGE', id, message }),
     setAutoReply: (mode: import('./types').AutoReplyMode) => {

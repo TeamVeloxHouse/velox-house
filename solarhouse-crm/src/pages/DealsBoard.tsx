@@ -437,7 +437,7 @@ function NewEnquiryModal({ open, onClose, onCreate }: { open: boolean; onClose: 
   function create() {
     if (!f.name.trim()) return
     const now = Date.now()
-    const owner = { cardiff: 'Jordan Miles', cheltenham: 'Beth Collins', gloucester: 'Rhys Evans', melksham: 'Kate Morris' }[f.showroom]
+    const owner = { cardiff: 'Jordan Miles', cheltenham: 'Beth Collins', melksham: 'Kate Morris' }[f.showroom]
     const d = act.addDeal({
       name: f.name.trim(), org: `${f.address || 'Address TBC'}${f.postcode ? `, ${f.postcode}` : ''}`, value: 12000, stage: SH_STAGES[0], probability: 10, owner, subtitle: `${f.type}`,
       journey: { showroom: f.showroom, source: f.source, address: `${f.address}${f.postcode ? `, ${f.postcode}` : ''}`, postcode: f.postcode, phone: f.phone, email: f.email,

@@ -90,7 +90,7 @@ export function buildConversations(): Conversation[] {
     },
     {
       id: 'cv10', name: 'Emma Clarke', phone: '+44 7700 900432', email: 'emmaclarke@gmail.com', address: '2 Rowan Close, Gloucester GL3 4PG',
-      stage: 'customer', source: 'Gloucester showroom', assignee: 'Jordan Miles', status: 'done', unread: false, valueHint: 0,
+      stage: 'customer', source: 'Cheltenham showroom', assignee: 'Jordan Miles', status: 'done', unread: false, valueHint: 0,
       messages: [
         m('email', 'in', 'Emma Clarke', 'Just wanted to say thank you — the install team were brilliant and so tidy. We generated 28 kWh yesterday!', 9000, { subject: 'Thank you!' }),
         m('email', 'out', 'Jordan Miles', 'That\'s wonderful to hear Emma, thank you! If you have 2 minutes, a Google review would mean the world to the team: https://g.page/r/thesolarhouse/review', 8900, { subject: 'Re: Thank you!' }),

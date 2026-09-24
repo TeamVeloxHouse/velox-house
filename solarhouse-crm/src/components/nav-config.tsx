@@ -134,7 +134,10 @@ export const STAGES: Stage[] = [
       { label: 'Sell & onboard', items: [
         { to: '/showroom', icon: Sun, label: 'Showroom', end: true },
         { to: '/showroom/calendar', icon: Calendar, label: 'Booking calendar' },
-        { to: '/customers', icon: Users, label: 'Customer portals' },
+        { to: '/showroom/analytics', icon: Pie, label: 'Showroom analytics' },
+        { to: '/customers', icon: Users, label: 'Customer portals', end: true },
+        { to: '/customers/analytics', icon: Pie, label: 'Portal analytics' },
+        { to: '/customers/builder', icon: Sliders, label: 'Portal builder' },
       ] },
       { label: 'Aftercare', items: [
         { to: '/customers/support', icon: Wrench, label: 'Support requests' },

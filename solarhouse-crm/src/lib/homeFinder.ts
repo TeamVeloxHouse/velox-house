@@ -19,12 +19,10 @@ export type Aspect = 'S' | 'SE' | 'SW' | 'E' | 'W' | 'N' | 'NE' | 'NW'
 export type ProductFocus = 'solar' | 'solar-battery' | 'battery-ev'
 
 // Addresses from thesolarhouse.co.uk/our-showrooms (checked 2026-09-24), pinned via Mapbox.
-// The website doesn't list Gloucester yet, so that pin is the city centre until the address is confirmed.
 export const SHOWROOMS: { id: string; name: string; address: string; center: LatLng; confirmed: boolean }[] = [
   { id: 'cardiff', name: 'Cardiff showroom', address: '11 Penlline Rd, Cardiff CF14 2AA', center: { lat: 51.51364, lng: -3.22066 }, confirmed: true },
   { id: 'cheltenham', name: 'Cheltenham showroom', address: 'Unit 11, The Courtyard, Montpellier St, Cheltenham GL50 1SR', center: { lat: 51.896348, lng: -2.081946 }, confirmed: true },
   { id: 'melksham', name: 'Melksham showroom', address: 'Leekes, Benacre Road, Melksham SN12 8AG', center: { lat: 51.380462, lng: -2.142861 }, confirmed: true },
-  { id: 'gloucester', name: 'Gloucester showroom', address: 'Address to confirm — using city centre', center: { lat: 51.8642, lng: -2.2382 }, confirmed: false },
 ]
 
 export const PROPERTY_LABEL: Record<PropertyType, string> = {

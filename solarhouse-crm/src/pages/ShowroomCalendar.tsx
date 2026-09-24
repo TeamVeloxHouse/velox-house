@@ -112,8 +112,30 @@ export function ShowroomCalendar() {
   )
 }
 
-function BookSlotModal({ date, location, time, onClose, onBooked }: { date: string; location: string; time: string; onClose: () => void; onBooked: (id: string) => void }) {
+export function BookSlotModal({ date, location, time, onClose, onBooked }: { date: string; location: string; time: string; onClose: () => void; onBooked: (id: string) => void }) {
   const act = useActions()
+  const { deals } = useState_()
+  // Search-first: most visits are for people already in the CRM, so find them before typing anything.
+  const [q, setQ] = useState('')
+  const [picked, setPicked] = useState<string | null>(null)
+  const [mode, setMode] = useState<'search' | 'new'>('search')
+  const matches = q.trim().length < 2 ? [] : deals.filter((d) => d.journey && !d.lost && `${d.name} ${d.org} ${d.journey.postcode} ${d.journey.phone} ${d.journey.email}`.toLowerCase().includes(q.toLowerCase())).slice(0, 8)
+  const existing = deals.find((d) => d.id === picked)
+  function bookExisting() {
+    if (!existing?.journey) return
+    const j = existing.journey
+    const design = existing.journey.system
+      ? { systemKwp: j.system!.kwp, panels: j.system!.panels, hasBattery: j.system!.batteryKwh > 0, batteryKwh: j.system!.batteryKwh, hasEv: j.property.hasEv, addEvCharger: j.system!.evCharger }
+      : starterDesign(j.property.annualKwh)
+    const session = act.createShowroom({
+      name: existing.name, email: j.email, phone: j.phone, address: existing.org, postcode: j.postcode, monthlySpend: j.property.monthlyBill, annualKwh: j.property.annualKwh, tariffPence: 24.5,
+      occupancy: 'in_half_day', design, presenter: existing.owner, dealId: existing.id, location: loc, scheduledDate: date, scheduledTime: time, bookingStatus: 'scheduled',
+    })
+    act.updateDeal(existing.id, { journey: { ...j, nextAction: { label: `Showroom visit · ${loc} ${formatDateLabel(date)} ${time}`, due: new Date(`${date}T${time}`).getTime() } } })
+    act.logActivity({ type: 'meeting', subject: `Showroom visit booked — ${loc}`, body: `${formatDateLabel(date)} at ${time}`, dealId: existing.id, done: false, dueDate: date }, undefined)
+    act.toast(`${existing.name} booked into ${loc} · ${time}`)
+    onBooked(session.id)
+  }
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
@@ -152,15 +174,36 @@ function BookSlotModal({ date, location, time, onClose, onBooked }: { date: stri
 
   return (
     <Modal open onClose={onClose} title="Book a showroom slot" subtitle={`${loc} · ${formatDateLabel(date)} · ${time}`}
-      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" onClick={book}>Book &amp; send confirmation</Button></>}>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Showroom location">
-          <Select value={loc} onChange={(e) => setLoc(e.target.value)}>
-            {SHOWROOM_LOCATIONS.map((l) => <option key={l} value={l}>{l}</option>)}
-          </Select>
-        </Field>
-        <Field label="Customer name"><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" autoFocus /></Field>
-      </div>
+      footer={<><Button onClick={onClose}>Cancel</Button>{mode === 'search' ? <Button variant="primary" onClick={bookExisting}>{existing ? `Book ${existing.name.split(' ')[0]} in` : 'Pick a customer'}</Button> : <Button variant="primary" onClick={book}>Book &amp; send confirmation</Button>}</>}>
+      <Field label="Showroom location">
+        <Select value={loc} onChange={(e) => setLoc(e.target.value)}>
+          {SHOWROOM_LOCATIONS.map((l) => <option key={l} value={l}>{l}</option>)}
+        </Select>
+      </Field>
+      {mode === 'search' ? (
+        <>
+          <Field label="Find the customer">
+            <Input value={q} onChange={(e) => { setQ(e.target.value); setPicked(null) }} placeholder="Name, postcode, phone or email…" autoFocus />
+          </Field>
+          <div className="flex flex-col gap-1 max-h-[260px] overflow-y-auto">
+            {matches.map((d) => (
+              <button key={d.id} onClick={() => setPicked(d.id)} className={classNames('text-left rounded-lg border px-3 py-2 flex items-center gap-3 transition-colors', picked === d.id ? 'border-accent bg-accent-wash' : 'border-border hover:border-input-border')}>
+                <Avatar name={d.name} size={28} />
+                <span className="min-w-0 flex-1"><span className="block text-[13px] font-semibold text-ink-2 truncate">{d.name}</span><span className="block text-[11.5px] text-muted-2 truncate">{d.org} · {d.journey!.phone}</span></span>
+                <span className="text-[11px] font-semibold text-muted-b shrink-0">{d.won ? 'Customer' : d.stage}</span>
+              </button>
+            ))}
+            {q.trim().length >= 2 && !matches.length && <div className="text-[12.5px] text-muted-2 px-1">No one matches “{q}”.</div>}
+          </div>
+          <button onClick={() => { setMode('new'); setName(q) }} className="text-[12.5px] font-semibold text-accent self-start">+ Not in the system? Add a new customer</button>
+        </>
+      ) : (
+        <>
+          <button onClick={() => setMode('search')} className="text-[12.5px] font-semibold text-accent self-start">← Search existing customers instead</button>
+          <Field label="Customer name"><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" autoFocus /></Field>
+        </>
+      )}
+      {mode === 'new' && (<>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Email"><Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@email.com" /></Field>
         <Field label="Phone"><Input value={phone} onChange={(e) => setPhone(e.target.value)} /></Field>
@@ -174,6 +217,7 @@ function BookSlotModal({ date, location, time, onClose, onBooked }: { date: stri
         <Field label="Unit rate (p)"><Input type="number" value={tariff} onChange={(e) => setTariff(e.target.value)} /></Field>
         <Field label="At home during the day?"><Select value={occ} onChange={(e) => setOcc(e.target.value as ShowroomSession['occupancy'])}><option value="home_all_day">Home most of the day</option><option value="in_half_day">In part of the day</option><option value="out_all_day">Out all day</option></Select></Field>
       </div>
+      </>)}
     </Modal>
   )
 }

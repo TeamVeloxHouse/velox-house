@@ -1,11 +1,11 @@
 /* Solar House demo data generator — realistic domestic volume so the CRM can be felt at scale.
  *
- * ~100 enquiries a month for four months across the four showrooms, each flowing through the real
+ * ~100 enquiries a month for four months across the three showrooms, each flowing through the real
  * lifecycle (enquiry → contacted → consultation → proposal → survey → signed → DNO → install →
  * handover), with drop-off at each step, so ~50 sign and ~50 installs land a month. Deterministic
  * (seeded PRNG) so the demo looks the same on every machine. */
 
-import type { Deal, Person, Lead, Activity, Journey, JourneyStep, JourneyKey, Showroom, Pipeline } from '../store/types'
+import type { Deal, Person, Lead, Activity, Journey, JourneyStep, JourneyKey, Showroom, Pipeline, ShowroomSession, CustomerPortal, PortalEvent, PortalConfig } from '../store/types'
 import { makeStages } from './pipelines'
 
 // ── Pipeline — the sales half of the journey lives on the board ────────────────────────────
@@ -27,11 +27,13 @@ export const JOURNEY: { key: JourneyKey; label: string; stage: string }[] = [
 ]
 
 export const SHOWROOM_META: Record<Showroom, { name: string; color: string }> = {
-  cardiff: { name: 'Cardiff', color: '#0E7A66' },
+  cardiff: { name: 'Cardiff', color: '#0A9B7C' },
   cheltenham: { name: 'Cheltenham', color: '#4F46E5' },
-  gloucester: { name: 'Gloucester', color: '#D97706' },
-  melksham: { name: 'Melksham', color: '#DB2777' },
+  melksham: { name: 'Melksham', color: '#D97706' },
 }
+
+// Each showroom is run by one manager — they only see their own showroom's analytics.
+export const SHOWROOM_MANAGER: Record<Showroom, string> = { cardiff: 'Jordan Miles', cheltenham: 'Beth Collins', melksham: 'Kate Morris' }
 
 // ── deterministic randomness ────────────────────────────────────────────────────────────────
 function prng(seed: number) {
@@ -44,21 +46,22 @@ const LAST = ['Jones', 'Williams', 'Davies', 'Evans', 'Thomas', 'Roberts', 'Hugh
 const STREETS = ['Church Road', 'Station Road', 'Park Avenue', 'Mill Lane', 'The Crescent', 'Victoria Road', 'Orchard Close', 'Meadow Way', 'Queens Road', 'Highfield Road', 'Manor Drive', 'Oak Tree Close', 'Beech Grove', 'Heol Y Coed', 'Kings Road', 'Rowan Way', 'Willow Close', 'The Paddocks', 'Hawthorn Drive', 'Cedar Avenue', 'Brookside', 'Hillcrest', 'Chestnut Road', 'Vicarage Lane', 'Elm Grove', 'St Marys Road', 'Priory Road', 'Castle View', 'Riverside', 'Lansdown Road']
 const AREAS: Record<Showroom, [string, string][]> = {
   cardiff: [['Cardiff', 'CF14'], ['Cardiff', 'CF23'], ['Cardiff', 'CF5'], ['Penarth', 'CF64'], ['Caerphilly', 'CF83'], ['Pontypridd', 'CF37'], ['Barry', 'CF62'], ['Radyr', 'CF15']],
-  cheltenham: [['Cheltenham', 'GL50'], ['Cheltenham', 'GL51'], ['Cheltenham', 'GL52'], ['Charlton Kings', 'GL53'], ['Bishops Cleeve', 'GL52'], ['Tewkesbury', 'GL20'], ['Winchcombe', 'GL54']],
-  gloucester: [['Gloucester', 'GL1'], ['Gloucester', 'GL2'], ['Gloucester', 'GL4'], ['Quedgeley', 'GL2'], ['Stroud', 'GL5'], ['Stonehouse', 'GL10']],
+  cheltenham: [['Cheltenham', 'GL50'], ['Cheltenham', 'GL51'], ['Cheltenham', 'GL52'], ['Charlton Kings', 'GL53'], ['Bishops Cleeve', 'GL52'], ['Tewkesbury', 'GL20'], ['Winchcombe', 'GL54'], ['Gloucester', 'GL1'], ['Gloucester', 'GL2'], ['Gloucester', 'GL4'], ['Quedgeley', 'GL2'], ['Stroud', 'GL5']],
   melksham: [['Melksham', 'SN12'], ['Chippenham', 'SN15'], ['Trowbridge', 'BA14'], ['Devizes', 'SN10'], ['Corsham', 'SN13'], ['Bradford-on-Avon', 'BA15']],
 }
 const ADVISERS: Record<Showroom, string[]> = {
-  cardiff: ['Jordan Miles', 'Amy Price'], cheltenham: ['Beth Collins', 'Tom Hale'], gloucester: ['Rhys Evans'], melksham: ['Kate Morris'],
+  cardiff: ['Jordan Miles', 'Amy Price'], cheltenham: ['Beth Collins', 'Tom Hale', 'Rhys Evans'], melksham: ['Kate Morris', 'Sophie Grant'],
 }
+// Advisers genuinely close at different rates — the leaderboard should show it.
+const ADV_PULL: Record<string, number> = { 'Jordan Miles': 1.02, 'Amy Price': 0.9, 'Beth Collins': 1.1, 'Tom Hale': 0.96, 'Rhys Evans': 0.88, 'Kate Morris': 1.08, 'Sophie Grant': 0.94 }
 const SURVEYORS = ['Mark Lewis', 'Ieuan Davies', 'Sam Turner']
-const TEAMS: Record<Showroom, string> = { cardiff: 'Install team A (Cardiff)', cheltenham: 'Install team B (Glos)', gloucester: 'Install team B (Glos)', melksham: 'Install team C (Wilts)' }
+const TEAMS: Record<Showroom, string> = { cardiff: 'Install team A (Cardiff)', cheltenham: 'Install team B (Glos)', melksham: 'Install team C (Wilts)' }
 const SOURCES: [string, number][] = [['Website enquiry', 26], ['Facebook lead ad', 22], ['Showroom walk-in', 14], ['Google search', 12], ['Referral', 10], ['Instagram', 6], ['Leekes in-store', 5], ['Phone call', 5]]
 const LOST_REASONS = ['Went with a cheaper quote', 'Not the right time', 'Roof not suitable', 'Couldn’t get finance', 'Stopped responding', 'Moving house', 'Partner not keen']
 
 const DAY = 86_400_000
 
-export type SolarHouseData = { deals: Deal[]; people: Person[]; leads: Lead[]; activities: Activity[] }
+export type SolarHouseData = { deals: Deal[]; people: Person[]; leads: Lead[]; activities: Activity[]; sessions: ShowroomSession[]; portals: CustomerPortal[]; portalEvents: PortalEvent[] }
 
 export function generateSolarHouse(now = Date.now(), months = 4): SolarHouseData {
   const r = prng(20260924)
@@ -67,13 +70,14 @@ export function generateSolarHouse(now = Date.now(), months = 4): SolarHouseData
   const weighted = <T,>(opts: [T, number][]) => { const tot = opts.reduce((s, [, w]) => s + w, 0); let x = r() * tot; for (const [v, w] of opts) { if ((x -= w) <= 0) return v } return opts[0][0] }
 
   const deals: Deal[] = [], people: Person[] = [], leads: Lead[] = [], activities: Activity[] = []
+  const sessions: ShowroomSession[] = [], portals: CustomerPortal[] = [], events: PortalEvent[] = []
   const total = Math.round(100 * months * 1.02)
   const span = months * 30 * DAY
   // Enquiries arrive through the window, a little busier recently (marketing ramp).
   const arrivals = Array.from({ length: total }, () => now - span * Math.pow(r(), 1.08)).sort((a, b) => a - b)
 
   arrivals.forEach((t0, i) => {
-    const showroom = weighted<Showroom>([['cardiff', 35], ['cheltenham', 30], ['gloucester', 20], ['melksham', 15]])
+    const showroom = weighted<Showroom>([['cardiff', 40], ['cheltenham', 40], ['melksham', 20]])
     const [town, district] = pick(AREAS[showroom])
     const first = pick(FIRST), surname = pick(LAST)
     const couple = r() < 0.35
@@ -96,7 +100,14 @@ export function generateSolarHouse(now = Date.now(), months = 4): SolarHouseData
     const batteryKwh = r() < 0.82 ? pick([5, 9.5, 10, 13.5, 15]) : 0
     const evCharger = hasEv && r() < 0.6
     const price = Math.round((3400 + kwp * 980 + batteryKwh * 520 + (evCharger ? 1050 : 0)) / 50) * 50
-    const system = { kwp, panels, panelModel: pick(['Aiko Neostar 2P 450W', 'JA Solar 445W Black', 'Trina Vertex S+ 450W']), inverter: batteryKwh ? pick(['Sigenergy SigenStor', 'GivEnergy All-in-One', 'SolarEdge Home Hub']) : pick(['SolarEdge HD-Wave', 'GivEnergy Gen 3']), batteryKwh, evCharger, price, finance: weighted([['Cash', 55], ['0% over 5 yrs', 20], ['9.9% APR over 10 yrs', 25]]) }
+    const panelModel = weighted([['Aiko Neostar 2P 450W', 42], ['JA Solar 445W Black', 30], ['Trina Vertex S+ 450W', 18], ['LONGi Hi-MO 6 440W', 10]])
+    const inverter = batteryKwh
+      ? weighted([['Sigenergy SigenStor', 30], ['GivEnergy All-in-One', 26], ['GoodWe ET Plus + Lynx', 24], ['SolarEdge Home Hub', 20]])
+      : weighted([['GoodWe DNS G3', 40], ['SolarEdge HD-Wave', 32], ['GivEnergy Gen 3', 28]])
+    const batteryModel = !batteryKwh ? undefined : inverter.startsWith('Sigenergy') ? 'Sigenergy SigenStor' : inverter.startsWith('GivEnergy') ? 'GivEnergy All-in-One' : inverter.startsWith('GoodWe') ? 'GoodWe Lynx Home F' : 'SolarEdge Home Battery'
+    const system = { kwp, panels, panelModel, inverter, batteryKwh, batteryModel, evCharger, price, finance: weighted([['Cash', 55], ['0% over 5 yrs', 20], ['9.9% APR over 10 yrs', 25]]) }
+    // Products genuinely sell differently — this is what the proposal analytics should surface.
+    const brandPull = ({ Aiko: 1.1, JA: 0.97, Trina: 0.9, LONGi: 0.95 } as Record<string, number>)[panelModel.split(' ')[0]] * ({ Sigenergy: 1.08, GivEnergy: 1.0, GoodWe: 1.02, SolarEdge: 0.92 } as Record<string, number>)[inverter.split(' ')[0]]
 
     // ── walk the journey ──
     const steps: JourneyStep[] = []
@@ -124,7 +135,7 @@ export function generateSolarHouse(now = Date.now(), months = 4): SolarHouseData
         if (n3 && n3 <= now) {
           done(n3); t = n3
           add('proposal', t, { version: r() < 0.3 ? 'v2' : 'v1', system: `${kwp} kWp · ${panels} panels${batteryKwh ? ` · ${batteryKwh} kWh battery` : ''}${evCharger ? ' · EV charger' : ''}`, price: `£${price.toLocaleString()}`, finance: system.finance, views: Math.floor(between(1, 9)), saving: `£${Math.round(annualKwh * 0.62 * 0.245 + 90)}/yr` }, owner)
-          const n4 = reach(0.8, 7, 30)
+          const n4 = reach(Math.min(0.95, 0.78 * brandPull * (ADV_PULL[owner] ?? 1)), 7, 30)
           if (n4 && n4 <= now) {
             done(n4); t = n4
             const surveyor = pick(SURVEYORS)
@@ -200,9 +211,85 @@ export function generateSolarHouse(now = Date.now(), months = 4): SolarHouseData
     steps.filter((s) => s.done).slice(-2).forEach((s, k) => {
       activities.push({ id: `h${i + 1}-${k}`, type: s.key === 'contacted' ? 'call' : s.key === 'consultation' ? 'meeting' : 'task', subject: `${JOURNEY.find((j) => j.key === s.key)!.label} — ${name}`, dealId: id, personId: pid, done: true, completedAt: s.done, who: s.by && !s.by.includes('team') ? s.by : owner, createdAt: s.at, source: 'manual' })
     })
+
+    // ── Showroom diary: every showroom consultation is a booked presentation (plus no-shows & upcoming) ──
+    const consult = steps.find((s) => s.key === 'consultation')
+    const design = { systemKwp: kwp, panels, hasBattery: batteryKwh > 0, batteryKwh, hasEv, addEvCharger: evCharger }
+    const baseSession = { name, email, phone, address: `${street}, ${town}`, postcode, monthlySpend: property.monthlyBill, annualKwh, tariffPence: 24.5, occupancy: pick(['home_all_day', 'in_half_day', 'out_all_day'] as const), design, dealId: id, presenter: owner, location: SHOWROOM_META[showroom].name }
+    if (consult && consult.data?.type === 'Showroom visit') {
+      const dt = new Date(consult.at)
+      sessions.push({ ...baseSession, id: `ss${i + 1}`, createdAt: consult.at, status: signed ? 'won' : lost ? 'lost' : reachedProposal ? 'presented' : 'draft', scheduledDate: isoDay(dt), scheduledTime: pick(SLOTS), bookingStatus: 'completed' })
+      if (r() < 0.09) sessions.push({ ...baseSession, id: `ns${i + 1}`, createdAt: consult.at - 3 * DAY, status: 'draft', scheduledDate: isoDay(new Date(consult.at - between(3, 8) * DAY)), scheduledTime: pick(SLOTS), bookingStatus: 'no-show' })
+    } else if (!lost && (last.key === 'contacted' || last.key === 'enquiry') && r() < 0.55) {
+      // Upcoming visits over the next fortnight — what each showroom's diary looks like ahead.
+      const d = new Date(now + Math.floor(between(0, 14)) * DAY)
+      if (d.getDay() !== 0) sessions.push({ ...baseSession, id: `up${i + 1}`, createdAt: last.at, status: 'draft', scheduledDate: isoDay(d), scheduledTime: pick(SLOTS), bookingStatus: 'scheduled' })
+    }
+
+    // ── Customer portal for everyone who has signed, with realistic engagement ──
+    const signedStep = steps.find((s) => s.key === 'signed')
+    if (signedStep) {
+      const has = (k: JourneyKey) => steps.find((s) => s.key === k)
+      const handed = has('handover'), installed = has('install')?.done, dno = has('dno')
+      const active = !!handed || r() < 0.78
+      const pidP = `pt${i + 1}`
+      const milestones = [
+        ['accepted', 'Proposal accepted', 'You signed off your system design and pricing.', signedStep.at],
+        ['survey', 'Technical survey', 'We checked your roof, loft and consumer unit.', has('survey')?.done],
+        ['design', 'System design signed off', 'Final panel layout confirmed after the survey.', has('survey')?.done],
+        ['dno-submitted', 'Grid (DNO) application submitted', 'We apply to your network operator to connect your system.', dno?.at],
+        ['dno-approved', 'Grid application approved', 'Your network operator has approved the connection.', dno?.done],
+        ['scheduled', 'Installation booked', 'Your install date is confirmed with our crew.', has('install')?.at && dno?.done ? dno.done : undefined],
+        ['installed', 'Installation complete', 'Panels, inverter and battery fitted.', installed],
+        ['commissioned', 'System switched on', 'We commissioned the system and set up your app.', installed],
+        ['handover', 'Handover & warranty pack', 'MCS certificate, DNO sign-off and all warranties issued.', handed?.at],
+      ] as const
+      const lastActive = active ? now - Math.pow(r(), 2) * (handed ? 40 : 10) * DAY : undefined
+      portals.push({
+        id: pidP, dealId: id, customer: name, email, address, systemKwp: kwp, systemCost: price, annualSavings: Math.round(annualKwh * 0.62 * 0.245 + 90), installDate: has('install') ? isoDay(new Date(has('install')!.at)) : undefined,
+        status: active ? 'active' : 'invited', invitedAt: signedStep.at, lastActiveAt: lastActive, hasBattery: batteryKwh > 0, hasEv: evCharger,
+        monitoringPlatform: inverter.split(' ')[0] === 'Sigenergy' ? 'mySigen' : inverter.split(' ')[0], monitoringUrl: undefined,
+        journey: milestones.map(([key, label, blurb, at]) => ({ key, label, blurb, done: !!at && at <= now, at: at && at <= now ? at : undefined })) as never,
+      })
+      if (active) {
+        // Logins cluster around what's happening: waiting for install → Progress; live → Energy & Savings.
+        const liveSince = handed?.at ?? installed
+        const start = signedStep.at, end = lastActive ?? now
+        const logins = Math.max(1, Math.round(between(2, handed ? 16 : 9)))
+        for (let L = 0; L < logins; L++) {
+          const at = start + (end - start) * Math.pow(r(), 0.7)
+          const isLive = liveSince && at > liveSince
+          events.push({ id: `pe${pidP}-${L}`, portalId: pidP, section: 'Login', label: pick(['Magic link from email', 'Magic link from email', 'Saved login', 'App home-screen']), kind: 'login', at })
+          const views = Math.floor(between(1, 5))
+          for (let v = 0; v < views; v++) {
+            const section = isLive ? weighted([['Energy', 34], ['Savings', 20], ['Overview', 16], ['Documents', 8], ['Refer a friend', 7], ['Community', 5], ['Support', 5], ['Ask Ovi', 5]]) : weighted([['Progress', 38], ['Overview', 22], ['Documents', 14], ['Ask Ovi', 9], ['Resources', 9], ['Support', 4], ['Savings', 4]])
+            const label = ({ Energy: 'Live energy flow', Savings: 'Savings to date', Overview: 'Home', Documents: pick(['Proposal PDF', 'Contract', 'MCS certificate', 'Warranty pack']), 'Refer a friend': 'Referral link', Community: 'Customer stories', Support: 'Report a problem', 'Ask Ovi': pick(['How does export work?', 'When is my install?', 'Battery settings']), Progress: 'Install timeline', Resources: pick(['Battery explainer video', 'App setup guide', 'Your inverter manual']) } as Record<string, string>)[section]
+            events.push({ id: `pe${pidP}-${L}-${v}`, portalId: pidP, section, label, kind: section === 'Ask Ovi' ? 'chat' : section === 'Documents' ? 'download' : section === 'Resources' ? 'video' : 'view', at: at + (v + 1) * 40_000, dwellMs: Math.round(between(15, 240)) * 1000 })
+          }
+        }
+      }
+    }
   })
 
-  return { deals: deals.reverse(), people, leads: leads.reverse(), activities }
+  return { deals: deals.reverse(), people, leads: leads.reverse(), activities, sessions, portals, portalEvents: events }
+}
+
+const SLOTS = ['09:00', '10:30', '12:00', '13:30', '15:00', '16:30']
+const isoDay = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
+/** The portal a new account starts with — everything the builder can change. */
+export function defaultPortalConfig(): PortalConfig {
+  return {
+    brandColor: '#0E7A66',
+    welcomeTitle: 'Welcome home, {first}',
+    welcomeBody: 'Everything about your solar system in one place: your install progress, live energy, savings and documents.',
+    sections: [
+      { id: 'Overview', label: 'Overview', visible: true }, { id: 'Progress', label: 'Progress', visible: true }, { id: 'Energy', label: 'Energy', visible: true },
+      { id: 'Savings', label: 'Savings', visible: true }, { id: 'Documents', label: 'Documents', visible: true }, { id: 'Community', label: 'Community', visible: true },
+      { id: 'Support', label: 'Support', visible: true }, { id: 'Resources', label: 'Resources', visible: true }, { id: 'Refer a friend', label: 'Refer a friend', visible: true },
+    ],
+    askOvi: true, referralReward: 100, supportPhone: '02922 710022', supportEmail: 'team@thesolarhouse.co.uk', reviewLink: 'https://g.page/r/thesolarhouse/review',
+  }
 }
 
 function relWhen(ms: number) { const h = ms / 3_600_000; return h < 1 ? 'Just now' : h < 24 ? `${Math.round(h)}h ago` : h < 48 ? 'Yesterday' : `${Math.round(h / 24)} days ago` }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { TopBar } from '../components/TopBar'
 import { PageBody } from '../components/Page'
@@ -9,65 +9,133 @@ import { useState_, useActions } from '../store/store'
 import type { ShowroomSession } from '../store/types'
 import { showroomModel, panelsFor, starterDesign, kwhFromSpend, monthlyGeneration, dailyGenerationCurve, cashFlowSeries, priceBreakdown } from '../lib/showroom'
 import { generateMockupForAddress } from '../lib/mockup'
+import { BookSlotModal } from './ShowroomCalendar'
 import { money, classNames } from '../lib/format'
 
 const ACCENT = '#0E7A66'
 const NAVY = '#15223B'
 
 /* ============================ Home — sessions list ============================ */
+const SHOWROOM_TABS = ['Cardiff', 'Cheltenham', 'Melksham'] as const
+const SLOTS = ['09:00', '10:30', '12:00', '13:30', '15:00', '16:30']
+const isoD = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+const mondayOf = (d: Date) => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x }
+const SESSION_TONE: Record<string, { label: string; color: string; bg: string }> = {
+  scheduled: { label: 'Booked', color: '#0A64AD', bg: '#E7F0FA' }, 'no-show': { label: 'No-show', color: '#B45309', bg: '#FDF3E3' }, cancelled: { label: 'Cancelled', color: '#7A8494', bg: '#F1F3F7' },
+  won: { label: 'Won', color: '#0E7C66', bg: '#E9F5F1' }, presented: { label: 'Presented', color: '#4F46E5', bg: '#EEF0FD' }, lost: { label: 'Lost', color: '#B01B4F', bg: '#FDECEF' }, draft: { label: 'Held', color: '#3D4757', bg: '#F1F3F7' },
+}
+const toneOf = (s: ShowroomSession) => SESSION_TONE[s.bookingStatus === 'completed' || !s.bookingStatus ? s.status : s.bookingStatus]
+
+/* ============================ Home — per-showroom diary + presentations ============================ */
 export function ShowroomHome() {
   const nav = useNavigate()
   const { showroom } = useState_()
   const [open, setOpen] = useState(false)
-  const won = showroom.filter((s) => s.status === 'won').length
-  const conv = showroom.length ? Math.round((won / showroom.length) * 100) : 0
-  const statusTone: Record<string, 'positive' | 'accent' | 'warning' | 'neutral'> = { won: 'positive', presented: 'accent', draft: 'warning', lost: 'neutral' }
+  const [loc, setLoc] = useState<(typeof SHOWROOM_TABS)[number]>(() => { try { return (localStorage.getItem('shc.showroom.tab') as never) || 'Cardiff' } catch { return 'Cardiff' } })
+  useEffect(() => { try { localStorage.setItem('shc.showroom.tab', loc) } catch { /* ignore */ } }, [loc])
+  const [week, setWeek] = useState(() => mondayOf(new Date()))
+  const [book, setBook] = useState<{ date: string; time: string } | null>(null)
+  const [filter, setFilter] = useState<'all' | 'upcoming' | 'won' | 'presented' | 'lost' | 'no-show'>('all')
+  const [q, setQ] = useState('')
+  const [limit, setLimit] = useState(25)
+
+  const here = showroom.filter((s) => s.location === loc)
+  const days = Array.from({ length: 6 }, (_, i) => { const d = new Date(week); d.setDate(d.getDate() + i); return d })
+  const todayIso = isoD(new Date())
+  const slot = (date: string, time: string) => here.find((s) => s.scheduledDate === date && s.scheduledTime === time && s.bookingStatus !== 'cancelled')
+  const weekBookings = here.filter((s) => s.scheduledDate && s.scheduledDate >= isoD(days[0]) && s.scheduledDate <= isoD(days[5]) && s.bookingStatus !== 'cancelled').length
+
+  const list = here
+    .filter((s) => filter === 'all' ? true : filter === 'upcoming' ? s.bookingStatus === 'scheduled' : filter === 'no-show' ? s.bookingStatus === 'no-show' : s.bookingStatus !== 'no-show' && s.bookingStatus !== 'scheduled' && s.status === filter)
+    .filter((s) => !q || `${s.name} ${s.address} ${s.postcode}`.toLowerCase().includes(q.toLowerCase()))
+    .sort((a, b) => `${b.scheduledDate}${b.scheduledTime}`.localeCompare(`${a.scheduledDate}${a.scheduledTime}`))
+  const count = (f: typeof filter) => here.filter((s) => f === 'all' ? true : f === 'upcoming' ? s.bookingStatus === 'scheduled' : f === 'no-show' ? s.bookingStatus === 'no-show' : s.bookingStatus !== 'no-show' && s.bookingStatus !== 'scheduled' && s.status === f).length
+
   return (
     <>
       <TopBar
         title="Showroom"
         crumbs={['Customers']}
+        tabs={{ items: SHOWROOM_TABS.map((l) => ({ id: l, label: l, count: showroom.filter((s) => s.location === l && s.bookingStatus === 'scheduled').length })), value: loc, onChange: (v) => setLoc(v as never) }}
         actions={
           <>
-            <Button icon={<Calendar size={16} />} onClick={() => nav('/showroom/calendar')}>Booking calendar</Button>
-            <Button variant="primary" icon={<Plus size={16} />} onClick={() => setOpen(true)}>New session (walk-in)</Button>
+            <Button icon={<Calendar size={16} />} onClick={() => nav('/showroom/analytics')}>Analytics</Button>
+            <Button variant="primary" icon={<Plus size={16} />} onClick={() => setOpen(true)}>Walk-in session</Button>
           </>
         }
       />
       <PageBody>
-        <div className="grid grid-cols-4 gap-4">
-          <Kpi variant="deep" label="Sessions" value={String(showroom.length)} delta="All time" />
-          <Kpi label="Won in room" value={String(won)} delta="Closed on the spot" deltaTone={won ? 'positive' : 'muted'} />
-          <Kpi variant="blue" label="Conversion" value={`${conv}%`} delta="Sessions → sale" />
-          <Kpi label="Drafts" value={String(showroom.filter((s) => s.status === 'draft').length)} delta="In progress" deltaTone="muted" />
-        </div>
-        <div className="bg-surface border border-border rounded-card p-5">
-          <div className="flex items-center gap-2 mb-1"><Play size={16} className="text-accent" /><span className="text-[15px] font-semibold text-ink">The Showroom Experience</span></div>
-          <div className="text-[13px] text-muted-b mb-4">A guided, in-person presentation that designs a customer's system with them, shows their new bill live, and closes the sale — provisioning their portal the moment they say yes.</div>
-          {showroom.length === 0 ? (
-            <div className="text-[13px] text-muted-2">No sessions yet — start one when a customer walks in.</div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {showroom.map((s) => {
-                const m = showroomModel(s)
-                return (
-                  <button key={s.id} onClick={() => nav(`/showroom/${s.id}`)} className="bg-canvas border border-border rounded-card px-4 py-3 flex items-center gap-3 text-left hover:border-[#8FD3C2] transition-colors">
-                    <Avatar name={s.name} size={34} />
-                    <div className="min-w-0 flex-1">
-                      <div className="text-[13.5px] font-semibold text-ink-2 truncate">{s.name}</div>
-                      <div className="text-[12px] text-muted-2 truncate">{s.address}</div>
-                    </div>
-                    <div className="hidden sm:block text-right"><div className="text-[13px] font-semibold text-ink-2">{s.design.systemKwp} kWp{s.design.hasBattery ? ' + battery' : ''}</div><div className="text-[11.5px] text-muted-2">{money(m.price, { compact: true })} · save {money(m.annualSaving, { compact: true })}/yr</div></div>
-                    <Chip tone={statusTone[s.status]} dot>{s.status === 'won' ? 'Won 🎉' : s.status}</Chip>
-                    <span className="text-accent font-semibold text-[13px]">Present →</span>
-                  </button>
-                )
-              })}
+        {/* diary */}
+        <section className="rounded-card bg-surface border border-border shadow-card overflow-hidden">
+          <div className="px-4 py-3 border-b border-divider flex items-center gap-2">
+            <MapPin size={15} className="text-accent" /><span className="text-[14px] font-bold text-ink">{loc} diary</span>
+            <span className="text-[12px] text-muted-2 ml-1">{weekBookings} visits this week</span>
+            <div className="ml-auto flex items-center gap-1.5">
+              <button onClick={() => setWeek((w) => { const d = new Date(w); d.setDate(d.getDate() - 7); return d })} className="w-8 h-8 rounded-lg border border-border grid place-items-center hover:bg-control"><ChevronRight size={14} className="rotate-180" /></button>
+              <button onClick={() => setWeek(mondayOf(new Date()))} className="h-8 px-3 rounded-lg border border-border text-[12.5px] font-semibold text-ink-2 hover:bg-control">This week</button>
+              <button onClick={() => setWeek((w) => { const d = new Date(w); d.setDate(d.getDate() + 7); return d })} className="w-8 h-8 rounded-lg border border-border grid place-items-center hover:bg-control"><ChevronRight size={14} /></button>
+              <span className="text-[13px] font-semibold text-ink-2 ml-1">{days[0].toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} – {days[5].toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
             </div>
-          )}
-        </div>
+          </div>
+          <div className="grid" style={{ gridTemplateColumns: '64px repeat(6, minmax(0,1fr))' }}>
+            <div className="border-b border-r border-divider bg-[#FAFBFC]" />
+            {days.map((d) => { const iso = isoD(d); return (
+              <div key={iso} className={classNames('border-b border-r border-divider last:border-r-0 px-2.5 py-2 bg-[#FAFBFC]', iso === todayIso && 'bg-accent-wash-4')}>
+                <div className={classNames('text-[12px] font-bold', iso === todayIso ? 'text-accent' : 'text-ink-2')}>{d.toLocaleDateString('en-GB', { weekday: 'short' })} {d.getDate()}</div>
+              </div>
+            ) })}
+            {SLOTS.map((t) => (
+              <Fragment key={t}>
+                <div className="border-b border-r border-divider px-2 py-2 text-[11px] font-semibold text-muted-2">{t}</div>
+                {days.map((d) => {
+                  const iso = isoD(d), s = slot(iso, t), past = `${iso}T${t}` < new Date().toISOString().slice(0, 16)
+                  const tone = s ? toneOf(s) : null
+                  return (
+                    <div key={iso + t} className="border-b border-r border-divider last:border-r-0 p-1 min-h-[54px]">
+                      {s ? (
+                        <button onClick={() => nav(`/showroom/${s.id}`)} className="w-full h-full rounded-md px-2 py-1.5 text-left hover:brightness-95" style={{ background: tone!.bg }}>
+                          <div className="text-[12px] font-semibold text-ink-2 truncate">{s.name}</div>
+                          <div className="text-[10.5px] font-semibold truncate" style={{ color: tone!.color }}>{tone!.label} · {s.presenter?.split(' ')[0]}</div>
+                        </button>
+                      ) : !past ? (
+                        <button onClick={() => setBook({ date: iso, time: t })} className="w-full h-full rounded-md border border-dashed border-transparent hover:border-accent hover:bg-accent-wash text-transparent hover:text-accent text-[11px] font-semibold flex items-center justify-center gap-1"><Plus size={12} />Book</button>
+                      ) : null}
+                    </div>
+                  )
+                })}
+              </Fragment>
+            ))}
+          </div>
+        </section>
+
+        {/* presentations */}
+        <section className="rounded-card bg-surface border border-border shadow-card overflow-hidden">
+          <div className="px-4 py-3 border-b border-divider flex items-center gap-2 flex-wrap">
+            <Play size={15} className="text-accent" /><span className="text-[14px] font-bold text-ink">{loc} presentations</span>
+            <div className="flex items-center gap-1 ml-3 bg-control rounded-control p-[3px]">
+              {(['all', 'upcoming', 'won', 'presented', 'lost', 'no-show'] as const).map((f) => <button key={f} onClick={() => { setFilter(f); setLimit(25) }} className={classNames('h-7 px-2.5 rounded-[6px] text-[12px] font-semibold capitalize flex items-center gap-1', filter === f ? 'bg-white text-accent shadow-[0_1px_2px_rgba(11,18,32,0.08)]' : 'text-muted-b')}>{f === 'all' ? 'All' : f}<span className="text-[10.5px] text-muted-3">{count(f)}</span></button>)}
+            </div>
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name or postcode…" className="ml-auto h-8 w-[220px] px-3 rounded-control border border-border text-[12.5px] outline-none focus:border-accent" />
+          </div>
+          {list.slice(0, limit).map((s) => {
+            const m = showroomModel(s), tone = toneOf(s)
+            return (
+              <button key={s.id} onClick={() => nav(`/showroom/${s.id}`)} className="w-full px-4 py-2.5 border-b border-divider-row flex items-center gap-3 text-left hover:bg-[#FAFCFB]">
+                <div className="w-[88px] shrink-0"><div className="text-[12.5px] font-semibold text-ink-2">{s.scheduledDate ? new Date(`${s.scheduledDate}T12:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}</div><div className="text-[11px] text-muted-2">{s.scheduledTime ?? ''}</div></div>
+                <Avatar name={s.name} size={30} />
+                <div className="min-w-0 flex-1"><div className="text-[13px] font-semibold text-ink-2 truncate">{s.name}</div><div className="text-[11.5px] text-muted-2 truncate">{s.address}</div></div>
+                <div className="hidden md:block text-right w-[170px]"><div className="text-[12.5px] font-semibold text-ink-2">{s.design.systemKwp} kWp{s.design.hasBattery ? ` + ${s.design.batteryKwh} kWh` : ''}</div><div className="text-[11px] text-muted-2">{money(m.price, { compact: true })} · save {money(m.annualSaving, { compact: true })}/yr</div></div>
+                <span className="w-[110px] text-[12px] text-muted-b truncate">{s.presenter}</span>
+                <span className="text-[11px] font-semibold rounded-full px-2 py-0.5 w-[82px] text-center" style={{ color: tone.color, background: tone.bg }}>{tone.label}</span>
+              </button>
+            )
+          })}
+          {!list.length && <div className="p-8 text-center text-[13px] text-muted-2">No presentations match.</div>}
+          {list.length > limit && <button onClick={() => setLimit((l) => l + 50)} className="w-full py-2.5 text-[12.5px] font-semibold text-accent hover:bg-accent-wash">Show more ({list.length - limit} remaining)</button>}
+        </section>
       </PageBody>
       <NewSessionModal open={open} onClose={() => setOpen(false)} onCreated={(id) => { setOpen(false); nav(`/showroom/${id}`) }} />
+      {book && <BookSlotModal date={book.date} time={book.time} location={loc} onClose={() => setBook(null)} onBooked={() => setBook(null)} />}
     </>
   )
 }

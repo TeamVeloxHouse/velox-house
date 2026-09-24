@@ -303,7 +303,7 @@ export interface Pipeline {
 }
 
 /* ── Customer journey (Solar House) — the full lead→install→portal lifecycle on every deal ── */
-export type Showroom = 'cardiff' | 'cheltenham' | 'gloucester' | 'melksham'
+export type Showroom = 'cardiff' | 'cheltenham' | 'melksham'
 export type JourneyKey = 'enquiry' | 'contacted' | 'consultation' | 'proposal' | 'survey' | 'signed' | 'dno' | 'install' | 'handover'
 export interface JourneyStep {
   key: JourneyKey
@@ -321,7 +321,7 @@ export interface Journey {
   phone: string
   email: string
   property: { type: string; bedrooms: number; roofAspect: string; annualKwh: number; monthlyBill: number; heating: string; hasEv: boolean }
-  system?: { kwp: number; panels: number; panelModel: string; inverter: string; batteryKwh: number; evCharger: boolean; price: number; finance: string }
+  system?: { kwp: number; panels: number; panelModel: string; inverter: string; batteryKwh: number; batteryModel?: string; evCharger: boolean; price: number; finance: string }
   steps: JourneyStep[]
   nextAction?: { label: string; due: number }
 }
@@ -911,7 +911,24 @@ export interface PortalOffer {
   createdAt: number
   status: 'active' | 'interested' | 'dismissed'
 }
-export type PortalEventKind = 'view' | 'click' | 'download' | 'chat' | 'video' | 'login'
+/* ── Portal builder — the customer portal is configured, drafted and published in-app ── */
+export type PortalSectionId = 'Overview' | 'Progress' | 'Energy' | 'Savings' | 'Documents' | 'Community' | 'Support' | 'Resources' | 'Refer a friend'
+export interface PortalSectionConfig { id: PortalSectionId; label: string; visible: boolean; blurb?: string }
+export interface PortalConfig {
+  brandColor: string
+  welcomeTitle: string // {first} is replaced with the customer's first name
+  welcomeBody: string
+  sections: PortalSectionConfig[] // order = nav order
+  askOvi: boolean
+  referralReward: number // £ per referral that goes ahead
+  supportPhone: string
+  supportEmail: string
+  reviewLink: string
+}
+export interface PortalVersion { id: ID; at: number; by: string; note: string; config: PortalConfig }
+export interface PortalTemplate { live: PortalConfig; draft: PortalConfig; versions: PortalVersion[]; draftUpdatedAt?: number }
+
+export type PortalEventKind ='view' | 'click' | 'download' | 'chat' | 'video' | 'login'
 export interface PortalEvent {
   id: ID
   portalId: ID
@@ -1189,6 +1206,7 @@ export interface State {
   activities: Activity[]
   emails: EmailMsg[]
   conversations: Conversation[] // unified inbox (Solar House)
+  portalTemplate: PortalTemplate // portal builder: live + draft + history
   inboxAutoReply: AutoReplyMode
   meetings: Meeting[]
   agents: Agent[]

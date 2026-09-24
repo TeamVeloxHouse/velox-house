@@ -161,7 +161,11 @@ const ICON: Record<Tab, any> = Object.fromEntries(TABS.map((t) => [t.id, t.icon]
 export function CustomerPortal() {
   const { id } = useParams()
   const nav = useNavigate()
-  const { portals } = useState_()
+  const { portals, portalTemplate } = useState_()
+  // The live portal config (Portal builder) decides which sections show, their order, names and colour.
+  const cfg = portalTemplate.live
+  const navTabs = cfg.sections.filter((s) => s.visible).map((s) => s.id as Tab)
+  const labelOf = (t: Tab) => cfg.sections.find((s) => s.id === t)?.label ?? t
   const portal = portals.find((p) => p.id === id)
   const [tab, setTab] = useState<Tab>('Overview')
   const [clientView, setClientView] = useState(false)
@@ -178,13 +182,13 @@ export function CustomerPortal() {
         <div className="glass-soft border-b border-white/40 px-4 sm:px-6 h-[62px] flex items-center gap-3">
           <button onClick={() => setTab('Overview')} className="shrink-0"><SolarHouseMark size={30} /></button>
           <nav className="hidden md:flex items-center gap-1 overflow-x-auto no-sb ml-2 flex-1">
-            {CUST_TABS.map((t) => { const Ic = ICON[t]; const on = tab === t; return (
-              <button key={t} onClick={() => go(t)} className={classNames('shrink-0 inline-flex items-center gap-1.5 px-3 h-9 rounded-full text-[13px] font-semibold transition-colors', on ? 'text-white shadow-primary' : 'text-[#2b5045] hover:bg-white/50')} style={on ? { background: CUSTOMER_ACCENT } : undefined}><Ic size={15} />{t}</button>
+            {navTabs.map((t) => { const Ic = ICON[t]; const on = tab === t; return (
+              <button key={t} onClick={() => go(t)} className={classNames('shrink-0 inline-flex items-center gap-1.5 px-3 h-9 rounded-full text-[13px] font-semibold transition-colors', on ? 'text-white shadow-primary' : 'text-[#2b5045] hover:bg-white/50')} style={on ? { background: cfg.brandColor } : undefined}><Ic size={15} />{labelOf(t)}</button>
             ) })}
           </nav>
           <div className="flex-1 md:hidden" />
           <div className="flex items-center gap-2 shrink-0">
-            <button onClick={() => setChatOpen(true)} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full text-[13px] font-semibold text-white" style={{ background: SH.scrim }}><Robot size={15} /><span className="hidden sm:inline">Ask Ovi</span></button>
+            {cfg.askOvi && <button onClick={() => setChatOpen(true)} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full text-[13px] font-semibold text-white" style={{ background: SH.scrim }}><Robot size={15} /><span className="hidden sm:inline">Ask Ovi</span></button>}
             {!clientView && (<>
               <button onClick={() => setClientView(true)} className="hidden sm:inline-flex items-center gap-1.5 h-9 px-3 rounded-full text-[13px] font-semibold glass text-[#0a5a4a]"><Play size={13} /> Client view</button>
               <button onClick={() => nav('/customers')} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full text-[12.5px] font-semibold text-[#3D4757] hover:text-ink" title="Back to the CRM"><ChevronRight size={14} className="rotate-180" /><span className="hidden lg:inline">Return to Solar House</span></button>
@@ -222,7 +226,7 @@ export function CustomerPortal() {
       {/* ---- mobile bottom dock ---- */}
       <div className="md:hidden fixed bottom-0 inset-x-0 z-40 px-3 pb-3 pointer-events-none">
         <div className="glass rounded-2xl px-2 py-1.5 flex items-center justify-around pointer-events-auto">
-          {DOCK_TABS.map((t) => { const Ic = ICON[t]; const on = tab === t; return (
+          {DOCK_TABS.filter((t) => navTabs.includes(t)).map((t) => { const Ic = ICON[t]; const on = tab === t; return (
             <button key={t} onClick={() => go(t)} className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl" style={on ? { color: CUSTOMER_ACCENT } : { color: '#5b6f68' }}><Ic size={20} /><span className="text-[9.5px] font-semibold">{t}</span></button>
           ) })}
           <button onClick={() => setMoreOpen(true)} className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl" style={{ color: '#5b6f68' }}><Grid size={20} /><span className="text-[9.5px] font-semibold">More</span></button>
@@ -274,7 +278,11 @@ function MoreSheet({ tab, onGo, onClose, clientView, onChat }: { tab: Tab; onGo:
 export function PortalWelcome() {
   const { id } = useParams()
   const nav = useNavigate()
-  const { portals } = useState_()
+  const { portals, portalTemplate } = useState_()
+  // The live portal config (Portal builder) decides which sections show, their order, names and colour.
+  const cfg = portalTemplate.live
+  const navTabs = cfg.sections.filter((s) => s.visible).map((s) => s.id as Tab)
+  const labelOf = (t: Tab) => cfg.sections.find((s) => s.id === t)?.label ?? t
   const act = useActions()
   const portal = portals.find((p) => p.id === id)
   const [email, setEmail] = useState(portal?.email ?? '')
@@ -573,6 +581,7 @@ function EnergyFlowHero({ portal }: { portal: Portal }) {
 }
 
 function OverviewTab({ portal, onGo }: { portal: Portal; onGo: (t: Tab) => void }) {
+  const cfg = useState_().portalTemplate.live
   const { portalOffers } = useState_()
   const payback = portal.annualSavings ? Math.round((portal.systemCost / portal.annualSavings) * 10) / 10 : 0
   const w = warranties(portal)
@@ -589,7 +598,8 @@ function OverviewTab({ portal, onGo }: { portal: Portal; onGo: (t: Tab) => void 
     <div className="flex flex-col gap-4">
       <div className="pt-1">
         <div className="text-[12px] font-extrabold uppercase tracking-wide" style={{ color: CUSTOMER_ACCENT }}>The Solar House</div>
-        <h1 className="text-[26px] sm:text-[34px] font-extrabold leading-[1.05] mt-0.5" style={{ color: '#12271f' }}>Welcome to your solar portal, {first} <span className="inline-block">👋</span></h1>
+        <h1 className="text-[26px] sm:text-[34px] font-extrabold leading-[1.05] mt-0.5" style={{ color: "#12271f" }}>{cfg.welcomeTitle.replace("{first}", first)} <span className="inline-block">👋</span></h1>
+        {cfg.welcomeBody && <p className="text-[14px] text-[#2f423b] mt-1.5 max-w-[640px]">{cfg.welcomeBody}</p>}
         <p className="text-[13.5px] text-[#4a5a54] mt-1">{portal.systemKwp} kWp{portal.hasBattery ? ' + battery' : ''}{portal.hasEv ? ' + EV' : ''} · {portal.address}</p>
       </div>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.6fr_1fr] items-start">
@@ -712,7 +722,7 @@ function ReferTab({ portal }: { portal: Portal }) {
     <div className="max-w-[640px] flex flex-col gap-4">
       <div className="rounded-card p-6 text-white" style={{ background: SH_HERO }}>
         <div className="text-[22px] font-bold">Love your solar? Share it.</div>
-        <div className="text-[13.5px] mt-1.5" style={{ color: '#C7EFE4' }}>Refer a friend or neighbour — when they go solar with us, <b className="text-white">you both get £150</b>. There's no limit.</div>
+        <div className="text-[13.5px] mt-1.5" style={{ color: '#C7EFE4' }}>Refer a friend or neighbour — when they go solar with us, <b className="text-white">you both get £{useState_().portalTemplate.live.referralReward}</b>. There's no limit.</div>
       </div>
       <div className="bg-surface border border-border rounded-card p-5 flex flex-col gap-3">
         <div className="text-[14px] font-semibold text-ink">Who should we talk to?</div>

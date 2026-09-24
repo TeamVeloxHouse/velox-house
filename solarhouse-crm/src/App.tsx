@@ -24,9 +24,13 @@ import { TellOviAI } from './pages/TellOviAI'
 import { Meetings } from './pages/Meetings'
 import { LiveMeeting } from './pages/LiveMeeting'
 import { Calendar } from './pages/Calendar'
-import { CustomerPortals, CustomerPortal, SupportRequests, ResourceLibrary, PortalWelcome } from './pages/CustomerPortal'
+import { CustomerPortal, SupportRequests, ResourceLibrary, PortalWelcome } from './pages/CustomerPortal'
 import { ShowroomHome, ShowroomExperience } from './pages/Showroom'
 import { ShowroomCalendar } from './pages/ShowroomCalendar'
+import { ShowroomAnalytics } from './pages/ShowroomAnalytics'
+import { PortalList } from './pages/PortalList'
+import { PortalAnalytics } from './pages/PortalAnalytics'
+import { PortalBuilder } from './pages/PortalBuilder'
 import { Agents } from './pages/Agents'
 import { Prospector } from './pages/Prospector'
 import { LinkedInInbox } from './pages/LinkedInInbox'
@@ -158,8 +162,11 @@ export const router = createBrowserRouter([
       // Solar House Customers — showroom, portals & aftercare
       { path: 'showroom', element: <ShowroomHome /> },
       { path: 'showroom/calendar', element: <ShowroomCalendar /> },
+      { path: 'showroom/analytics', element: <ShowroomAnalytics /> },
       { path: 'showroom/:id', element: <ShowroomExperience /> },
-      { path: 'customers', element: <CustomerPortals /> },
+      { path: 'customers', element: <PortalList /> },
+      { path: 'customers/analytics', element: <PortalAnalytics /> },
+      { path: 'customers/builder', element: <PortalBuilder /> },
       { path: 'customers/support', element: <SupportRequests /> },
       { path: 'customers/resources', element: <ResourceLibrary /> },
       { path: 'customers/:id', element: <CustomerPortal /> },

@@ -4,7 +4,7 @@ import { MILESTONES } from '../lib/delivery'
 import { buildApplication } from '../lib/dno'
 import { tradeByKey } from '../lib/trades'
 import { buildConversations } from './commsSeed' // unified-inbox demo threads
-import { generateSolarHouse, solarHousePipeline } from '../lib/solarHouseData'
+import { generateSolarHouse, solarHousePipeline, defaultPortalConfig } from '../lib/solarHouseData'
 import { pipelineFromTemplate, templateByKey } from '../lib/pipelines'
 import { money } from '../lib/format'
 import { AI_MEMBER_ID, YOU_MEMBER_ID } from './types'
@@ -828,5 +828,5 @@ export function buildSeed(): State {
   ]
 
   const sh = generateSolarHouse()
-  return { deals: sh.deals, pipelines: [solarHousePipeline()], activePipelineId, dashboardWidgets, portals, portalEvents, portalResources, portalOffers, showroom, people: sh.people, orgs, leads: sh.leads, activities: sh.activities, emails, conversations: buildConversations(), inboxAutoReply: 'off' as const, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, linkedinThreads, enrolments, reachCampaigns, scheduledTasks, studioConfig, projects, playbooks, brandKit, docTemplates, brandDocs, products: mProducts, documents, emailCampaigns, customFields, activeTrade, features, onboarded: true, engineers, jobs, currentRole: 'owner', teamMembers, teamChannels, teamMessages, announcements, employees, leaveRequests, policies, certifications, expenses, stock, reviews, brandAssets, messaging, mediaAssets, contentItems, mktRequests, mktConnectors, solarCampaigns: [], solarProspects: [], designs: [], surveys, toasts: [], railExpanded: true }
+  return { deals: sh.deals, pipelines: [solarHousePipeline()], activePipelineId, dashboardWidgets, portals: [...sh.portals, ...portals], portalEvents: [...sh.portalEvents, ...portalEvents], portalResources, portalOffers, showroom: [...sh.sessions, ...showroom], portalTemplate: { live: defaultPortalConfig(), draft: defaultPortalConfig(), versions: [{ id: 'pv0', at: now - 30 * 86_400_000, by: 'Jordan Miles', note: 'First version of the customer portal', config: defaultPortalConfig() }] }, people: sh.people, orgs, leads: sh.leads, activities: sh.activities, emails, conversations: buildConversations(), inboxAutoReply: 'off' as const, meetings, agents, agentRuns, connections, webhooks, apiKeys, integrations, socialPosts, sequences, automations, linkedinThreads, enrolments, reachCampaigns, scheduledTasks, studioConfig, projects, playbooks, brandKit, docTemplates, brandDocs, products: mProducts, documents, emailCampaigns, customFields, activeTrade, features, onboarded: true, engineers, jobs, currentRole: 'owner', teamMembers, teamChannels, teamMessages, announcements, employees, leaveRequests, policies, certifications, expenses, stock, reviews, brandAssets, messaging, mediaAssets, contentItems, mktRequests, mktConnectors, solarCampaigns: [], solarProspects: [], designs: [], surveys, toasts: [], railExpanded: true }
 }
