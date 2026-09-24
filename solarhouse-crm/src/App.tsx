@@ -52,6 +52,7 @@ import { Delivery, ProjectDetail } from './pages/Delivery'
 import { DnoQueue } from './pages/DnoQueue'
 import { SurveysList, SurveyReport, SurveyCapture } from './pages/SiteSurvey'
 import { SurveysOps, SurveysAnalytics } from './pages/Surveys'
+import { DnoOps, DnoAnalytics } from './pages/Dno'
 import { EvCalculator } from './pages/EvCalculator'
 import { WholeHome } from './pages/WholeHome'
 import { PeopleFinder } from './pages/PeopleFinder'
@@ -161,7 +162,9 @@ export const router = createBrowserRouter([
       { path: 'installs', element: <Installs /> },
       { path: 'installs/analytics', element: <DeliveryAnalytics /> },
       { path: 'studio/delivery/:id', element: <ProjectDetail /> },
-      { path: 'studio/dno', element: <DnoQueue /> },
+      { path: 'studio/dno', element: <DnoOps /> },
+      { path: 'studio/dno/analytics', element: <DnoAnalytics /> },
+      { path: 'studio/dno/projects', element: <DnoQueue /> },
       { path: 'studio/surveys', element: <SurveysOps /> },
       { path: 'studio/surveys/analytics', element: <SurveysAnalytics /> },
       { path: 'studio/surveys/forms', element: <SurveysList /> },
