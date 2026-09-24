@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { ChevronRight, Search } from './icons'
 import { NotificationsBell } from './NotificationsBell'
+import { AskOviButton, MessagesButton } from './HeaderComms'
 import { classNames } from '../lib/format'
 
 type SVGIcon = (p: { size?: number; className?: string }) => JSX.Element
@@ -62,7 +63,9 @@ export function TopBar({
           <button onClick={() => window.dispatchEvent(new CustomEvent('simplr-open-palette'))} className={glassBtn} title="Search (⌘K)">
             <Search size={17} />
           </button>
+          <MessagesButton />
           <NotificationsBell />
+          <AskOviButton />
         </div>
       </div>
       {tabs && (

@@ -54,43 +54,17 @@ export function Dock() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const totalUnread = teamChannels.reduce((s, c) => s + c.unread, 0)
   const chanOf = (id: string) => teamChannels.find((c) => c.id === id)
+  void picker; void setPicker // launchers now live in the header (HeaderComms)
 
+  // Windows drop down from under the header on the right — nothing floats over the page until opened.
   return (
-    <div className="fixed bottom-0 right-0 z-[80] flex items-end gap-3 p-4 pointer-events-none">
-      {/* open windows */}
+    <div className="fixed top-[72px] right-4 z-[80] flex flex-row-reverse items-start gap-3 pointer-events-none">
       {wins.map((w) =>
         w.kind === 'ovi'
           ? <OviWindow key={w.key} min={!!min[w.key]} onMin={() => toggleMin(w.key)} onClose={() => close(w.key)} />
           : (() => { const c = chanOf(w.channelId); return c ? <ChatWindow key={w.key} channel={c} min={!!min[w.key]} onMin={() => toggleMin(w.key)} onClose={() => close(w.key)} /> : null })(),
       )}
-
-      {/* launchers */}
-      <div className="relative pointer-events-auto flex items-center gap-2">
-        {picker && (
-          <div className="absolute bottom-14 right-0 w-[260px] bg-surface rounded-2xl shadow-modal border border-border overflow-hidden">
-            <div className="px-3 py-2 eyebrow text-muted-3 border-b border-divider">Open a conversation</div>
-            <div className="max-h-[320px] overflow-y-auto py-1">
-              {teamChannels.filter((c) => c.kind !== 'channel' || true).map((c) => (
-                <button key={c.id} onClick={() => openChat(c.id)} className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-control">
-                  <span className="w-6 text-center text-muted-3 shrink-0">{c.kind === 'group' ? <Users size={15} className="inline" /> : c.kind === 'dm' ? '@' : '#'}</span>
-                  <span className="flex-1 truncate text-[13px] text-ink-2">{c.name}</span>
-                  {c.ai && <Sparkle size={12} className="text-accent" />}
-                  {c.unread > 0 && <span className="text-[10px] font-bold text-white bg-accent rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">{c.unread}</span>}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-        <button onClick={() => setPicker((p) => !p)} className="relative h-12 w-12 rounded-full bg-surface border border-border shadow-card flex items-center justify-center text-ink-3 hover:border-border-blue transition-colors">
-          <Users size={20} />
-          {totalUnread > 0 && <span className="absolute -top-1 -right-1 text-[10px] font-bold text-white bg-accent rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">{totalUnread}</span>}
-        </button>
-        <button onClick={openOvi} className="h-12 pl-3.5 pr-4 rounded-full bg-accent-gradient text-white shadow-primary flex items-center gap-2 font-semibold text-[13.5px] hover:brightness-[0.97] active:translate-y-px transition-all">
-          <Sparkle size={19} /> Ask Ovi
-        </button>
-      </div>
     </div>
   )
 }
@@ -98,7 +72,7 @@ export function Dock() {
 /* ---------- shared window shell ---------- */
 function Shell({ title, icon, min, onMin, onClose, onExpand, children, footer }: { title: React.ReactNode; icon: React.ReactNode; min: boolean; onMin: () => void; onClose: () => void; onExpand?: () => void; children: React.ReactNode; footer: React.ReactNode }) {
   return (
-    <div className={classNames('pointer-events-auto bg-canvas rounded-2xl shadow-modal border border-border flex flex-col overflow-hidden transition-all', min ? 'w-[240px] h-12' : 'w-[340px] h-[480px] max-h-[calc(100vh-40px)]')}>
+    <div className={classNames('pointer-events-auto bg-canvas rounded-2xl shadow-[0_24px_50px_-16px_rgba(21,34,59,0.45)] border border-border flex flex-col overflow-hidden transition-all', min ? 'w-[240px] h-12' : 'w-[360px] h-[520px] max-h-[calc(100vh-96px)]')}>
       <button onClick={onMin} className="h-12 shrink-0 bg-surface border-b border-border flex items-center gap-2.5 px-3.5 text-left">
         {icon}
         <div className="text-[13.5px] font-bold text-ink flex-1 truncate">{title}</div>
@@ -120,7 +94,7 @@ function OviWindow({ min, onMin, onClose }: { min: boolean; onMin: () => void; o
   return (
     <Shell
       min={min} onMin={onMin} onClose={onClose} onExpand={() => nav('/ai')}
-      icon={<span className="w-7 h-7 rounded-lg bg-accent-gradient text-white flex items-center justify-center shadow-primary shrink-0"><Sparkle size={15} /></span>}
+      icon={<span className="w-7 h-7 rounded-lg bg-[#15223B] text-[#62E4CC] flex items-center justify-center shrink-0"><Sparkle size={15} /></span>}
       title="Ask Ovi"
       footer={<div className="p-3 border-t border-border bg-surface"><AiComposer onSend={ask} compact /></div>}
     >
@@ -165,7 +139,7 @@ function ChatWindow({ channel, min, onMin, onClose }: { channel: TeamChannel; mi
       footer={
         <div className="p-2.5 border-t border-border bg-surface flex items-center gap-2">
           <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submit() } }} placeholder={`Message ${channel.kind === 'dm' ? channel.name : heading}…`} className="flex-1 h-9 px-3 rounded-full border border-input-border bg-white text-[13px] outline-none focus:border-accent" />
-          <button onClick={submit} className="w-9 h-9 rounded-full bg-accent-gradient text-white flex items-center justify-center shrink-0 shadow-primary"><Send size={15} /></button>
+          <button onClick={submit} className="w-9 h-9 rounded-full bg-[#15223B] text-white flex items-center justify-center shrink-0"><Send size={15} /></button>
         </div>
       }
     >
@@ -189,7 +163,7 @@ function DockMessage({ m, member }: { m: TeamMessage; member: (id: string) => { 
       {!mine && <span className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[9px] font-bold shrink-0 mt-0.5" style={{ background: who?.color ?? '#8A93A3' }}>{isAi ? <Sparkle size={12} /> : who?.name.split(' ').map((w) => w[0]).slice(0, 2).join('')}</span>}
       <div className={classNames('min-w-0 max-w-[80%]', mine && 'items-end flex flex-col')}>
         {!mine && <div className="text-[11px] font-semibold text-ink-3 mb-0.5">{who?.name}</div>}
-        <div className={classNames('rounded-2xl px-3 py-2 text-[12.5px] leading-relaxed', mine ? 'bg-accent text-white' : 'bg-surface border border-border text-ink-2')}>{m.text}</div>
+        <div className={classNames('rounded-2xl px-3 py-2 text-[12.5px] leading-relaxed', mine ? 'bg-[#15223B] text-white' : 'bg-surface border border-border text-ink-2')}>{m.text}</div>
         {m.ai && m.ai.map((b, i) => <DockBlock key={i} b={b} />)}
         {m.actions && m.actions.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-1.5">{m.actions.map((a, i) => <span key={i} className="inline-flex items-center gap-1 text-[11px] font-semibold text-accent bg-accent-wash rounded-lg px-2 py-1"><Check size={11} /> {a.label}</span>)}</div>

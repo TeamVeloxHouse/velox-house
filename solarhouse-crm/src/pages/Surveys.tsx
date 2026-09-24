@@ -61,6 +61,30 @@ export function SurveysOps() {
         : []
   const surveyors = surveyor === 'all' ? SURVEYORS : [surveyor]
 
+  // Week diary item — one tidy row: time · name · postcode, with small icon actions (no cramped buttons)
+  const WeekChip = ({ r }: { r: SurveyRow }) => {
+    const done = r.status === 'completed'
+    return (
+      <div className={classNames('group relative shrink-0 rounded-[9px] border px-2 py-1.5 transition-colors', done ? 'bg-[#F7F9FB] border-[#EEF1F5]' : 'bg-white border-[#E1E6EC] hover:border-[#15223B]')}>
+        <button onClick={() => nav(`/deals/${r.deal.id}`)} className="w-full text-left leading-tight">
+          <span className="flex items-center gap-1.5">
+            <span className={classNames('text-[10.5px] font-bold rounded px-1 py-px tabular-nums shrink-0', done ? 'bg-[#E1F6F1] text-[#0A5A4C]' : 'bg-[#15223B] text-white')}>{fmtTime(r.visit!)}</span>
+            <span className={classNames('text-[12px] font-bold truncate', done ? 'text-muted-b' : 'text-ink')}>{r.deal.name}</span>
+            {done && <Check size={13} className="text-[#0E7A66] shrink-0 ml-auto" />}
+          </span>
+          <span className="block text-[10.5px] text-muted-2 truncate mt-0.5">{r.deal.journey!.postcode} · {street(r.deal)}</span>
+        </button>
+        {!done && (
+          // actions appear on hover so the name gets the full width
+          <span className="absolute right-1 top-1 hidden group-hover:flex items-center gap-0.5 bg-white rounded-[7px] shadow-[0_2px_8px_rgba(16,24,40,0.15)] p-0.5">
+            <button onClick={() => setCompleting(r)} title="Mark complete" className="w-6 h-6 rounded-[6px] bg-[#15223B] text-[#62E4CC] flex items-center justify-center"><Check size={13} /></button>
+            <button onClick={() => setBooking(r)} title="Reschedule" className="w-6 h-6 rounded-[6px] hover:bg-control text-ink-3 flex items-center justify-center"><Calendar size={12} /></button>
+          </span>
+        )}
+      </div>
+    )
+  }
+
   const VisitCard = ({ r, compact }: { r: SurveyRow; compact?: boolean }) => (
     <div className={classNames('rounded-[10px] bg-white border border-[#E1E6EC] shadow-[0_1px_2px_rgba(16,24,40,0.05)]', compact ? 'p-2' : 'p-3')}>
       <div className="flex items-center gap-2">
@@ -142,10 +166,10 @@ export function SurveysOps() {
               ))}
               {surveyors.map((s) => (
                 <Fragment key={s}>
-                  <div className="border-b border-r border-[#EEF1F5] px-3 py-2 text-[12.5px] font-bold text-ink-2">{s}</div>
+                  <div className="border-b border-r border-[#EEF1F5] px-3 py-2 flex items-start gap-2"><span className="w-7 h-7 rounded-full bg-[#15223B] text-[#62E4CC] text-[10px] font-bold flex items-center justify-center shrink-0">{s.split(' ').map((w) => w[0]).join('')}</span><span className="text-[12.5px] font-bold text-ink-2 leading-tight">{s}</span></div>
                   {Array.from({ length: 6 }, (_, i) => week + i * DAY).map((t) => {
                     const cell = filtered.filter((r) => r.surveyor === s && r.visit && d0(r.visit) === t).sort((a, b) => a.visit! - b.visit!)
-                    return <div key={s + t} className="min-h-0 overflow-y-auto border-b border-r border-[#EEF1F5] last:border-r-0 p-1.5 flex flex-col gap-1.5">{cell.map((r) => <VisitCard key={r.deal.id} r={r} compact />)}</div>
+                    return <div key={s + t} className={classNames("min-h-0 overflow-hidden border-b border-r border-[#EEF1F5] last:border-r-0 p-1.5 flex flex-col gap-1", d0() === t && "bg-[#F1FBF8]")}>{cell.slice(0, 3).map((r) => <WeekChip key={r.deal.id} r={r} />)}{cell.length > 3 && <span className="text-[10.5px] font-bold text-muted-b pl-1">+{cell.length - 3} more</span>}{!cell.length && <span className="m-auto text-[11px] text-muted-3">Free</span>}</div>
                   })}
                 </Fragment>
               ))}

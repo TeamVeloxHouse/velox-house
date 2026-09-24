@@ -43,7 +43,7 @@ export function surveyOf(d: Deal, now = Date.now()): SurveyRow | null {
     if (base.getDay() === 0) base.setDate(base.getDate() + 1)
     visit = base.getTime()
   }
-  if (completedAt && visit == null) visit = completedAt - 2 * 3600_000
+  if (completedAt && visit == null) { const v = new Date(completedAt); v.setHours([9, 11, 14][h % 3], [0, 30, 0][h % 3], 0, 0); visit = v.getTime() } // snap to a real slot
   const surveyor = (data.surveyor as string) || (completedAt || visit ? SURVEYORS[h % SURVEYORS.length] : undefined)
   const status: SurveyStatus = completedAt ? 'completed' : visit == null ? 'to-book' : sameDay(visit, now) ? 'today' : visit < now ? 'overdue' : 'booked'
   return {

@@ -35,7 +35,7 @@ export function ShowroomHome() {
   const [loc, setLoc] = useState<(typeof SHOWROOM_TABS)[number]>(() => { try { return (localStorage.getItem('shc.showroom.tab') as never) || 'Cardiff' } catch { return 'Cardiff' } })
   useEffect(() => { try { localStorage.setItem('shc.showroom.tab', loc) } catch { /* ignore */ } }, [loc])
   const [week, setWeek] = useState(() => mondayOf(new Date()))
-  const [view, setView] = useState<'Week' | 'Day' | 'Month' | 'Bookings'>(() => { try { return (localStorage.getItem('shc.showroom.view') as never) || 'Week' } catch { return 'Week' } })
+  const [view, setView] = useState<'Week' | 'Day' | 'Month' | 'List'>(() => { try { const v = localStorage.getItem('shc.showroom.view'); return (v === 'Bookings' ? 'List' : v as never) || 'Week' } catch { return 'Week' } })
   useEffect(() => { try { localStorage.setItem('shc.showroom.view', view) } catch { /* ignore */ } }, [view])
   const [day, setDay] = useState(() => new Date())
   const [month, setMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1) })
@@ -85,8 +85,8 @@ export function ShowroomHome() {
       />
       {/* Views: the diary gets the whole screen (Week / Day / Month), and the bookings list is its own view */}
       <div className="sh-toolbar shrink-0 px-7 pb-3 flex items-center gap-3 flex-wrap">
-        <Segmented options={['Week', 'Day', 'Month', 'Bookings']} value={view} onChange={(v) => setView(v as typeof view)} />
-        {view !== 'Bookings' && (
+        <Segmented options={['List', 'Week', 'Day', 'Month']} value={view} onChange={(v) => setView(v as typeof view)} />
+        {view !== 'List' && (
           <>
             <div className="flex items-center gap-1">
               <button onClick={() => stepCal(-1)} className="w-9 h-9 rounded-[10px] border border-[#E1E6EC] bg-white grid place-items-center hover:bg-control"><ChevronRight size={14} className="rotate-180" /></button>
@@ -184,11 +184,11 @@ export function ShowroomHome() {
         </main>
       )}
 
-      {view === 'Bookings' && <PageBody>
+      {view === 'List' && <PageBody>
         {/* presentations */}
         <section className="rounded-card bg-surface border border-border shadow-card overflow-hidden">
           <div className="px-4 py-3 border-b border-divider flex items-center gap-2 flex-wrap">
-            <Play size={15} className="text-accent" /><span className="text-[14px] font-bold text-ink">{loc} bookings &amp; presentations</span>
+            <Play size={15} className="text-accent" /><span className="text-[14px] font-bold text-ink">{loc} — every booking &amp; proposal</span><span className="text-[12px] text-muted-2 ml-1">{here.length} in total</span>
             <div className="flex items-center gap-1 ml-3 bg-[#E9EDF2] border border-[#DDE3EA] rounded-control p-[3px]">
               {(['all', 'upcoming', 'won', 'presented', 'lost', 'no-show'] as const).map((f) => <button key={f} onClick={() => { setFilter(f); setLimit(25) }} className={classNames('h-7 px-2.5 rounded-[6px] text-[12px] font-semibold capitalize flex items-center gap-1', filter === f ? 'bg-white text-ink font-bold shadow-[0_1px_3px_rgba(11,18,32,0.14)]' : 'text-ink-3')}>{f === 'all' ? 'All' : f}<span className="text-[10.5px] text-muted-3">{count(f)}</span></button>)}
             </div>
