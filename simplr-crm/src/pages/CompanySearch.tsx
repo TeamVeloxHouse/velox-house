@@ -147,7 +147,7 @@ export function CompanySearchTool() {
     <>
       <TopBar title="Company & People Search" crumbs={['Tools']}
         tabs={{ items: tabs, value: tab, onChange: setTab }}
-        actions={<Button variant="secondary" icon={<Radar size={15} />} onClick={() => nav('/tools')}>All tools</Button>} />
+        identity={{ icon: Building, accent: '#13927B' }} />
       <PageBody>
         {tab === 'chat' && <ChatTab {...{ mode, setMode, params, set, chat, draft, setDraft, sendChat, running, progress, runSearch, chatEndRef }} />}
         {tab === 'map' && <MapExplorer onOpenProspect={setDetailId} />}

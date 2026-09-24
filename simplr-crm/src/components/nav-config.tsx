@@ -1,6 +1,6 @@
 import {
   Grid, Bars, Bolt, Person, Building, Calendar, Envelope, Pie, Box, Flow, Megaphone, Sparkle,
-  Video, Robot, Target, Layers, File, Sun, Radar, Search, Send, Check, Clock, Dollar, Wrench,
+  Video, Robot, Target, Layers, File, Sun, Radar, Send, Check, Clock, Dollar, Wrench,
   Users, Sliders, Star, MapPin,
 } from './icons'
 import type { FeatureKey } from '../store/types'
@@ -59,13 +59,10 @@ export const STAGES: Stage[] = [
     accent: '#1FAE94', wash: '#E6F8F2', feature: 'reach',
     groups: [
       { label: 'Prospect', items: [
-        { to: '/tools', icon: Grid, label: 'Tools', feature: 'reach', end: true },
+        { to: '/tools', icon: Grid, label: 'Overview', feature: 'reach', end: true },
         { to: '/tools/company-search', icon: Building, label: 'Company & People', feature: 'reach' },
         { to: '/tools/commercial-solar', icon: Sun, label: 'Commercial Solar', feature: 'reach' },
         { to: '/tools/database', icon: Layers, label: 'All prospects', feature: 'reach' },
-        { to: '/reach/finders', icon: Radar, label: 'Finders', feature: 'reach' },
-        { to: '/reach/people-finder', icon: Person, label: 'People finder', feature: 'reach' },
-        { to: '/reach/prospects', icon: Search, label: 'B2B prospects', feature: 'reach' },
       ] },
     ],
   },
@@ -75,7 +72,6 @@ export const STAGES: Stage[] = [
     groups: [
       { label: 'Outreach', items: [
         { to: '/reach/outreach', icon: Send, label: 'Outreach', feature: 'reach' },
-        { to: '/reach/campaigns', icon: Megaphone, label: 'Campaigns', feature: 'reach' },
         { to: '/reach/email', icon: Envelope, label: 'Email', feature: 'reach' },
         { to: '/reach/linkedin', icon: Person, label: 'LinkedIn', feature: 'reach' },
         { to: '/reach/schedules', icon: Clock, label: 'Scheduled tasks', feature: 'reach' },

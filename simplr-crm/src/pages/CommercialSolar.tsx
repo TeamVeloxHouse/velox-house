@@ -155,7 +155,7 @@ export function CommercialSolarTool() {
     <>
       <TopBar title="Commercial Solar Finder" crumbs={['Tools']}
         tabs={{ items: tabs, value: tab, onChange: setTab }}
-        actions={<Button variant="secondary" icon={<Radar size={15} />} onClick={() => nav('/tools')}>All tools</Button>} />
+        identity={{ icon: Sun, accent: '#D97706' }} />
       <PageBody>
         {tab === 'chat' && (
           <ChatTab {...{ mode, setMode, params, set, chat, draft, setDraft, sendChat, running, progress, runScan, chatEndRef }} />

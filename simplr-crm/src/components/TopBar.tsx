@@ -15,7 +15,10 @@ export function TopBar({
   center,
   actions,
   tabs,
+  identity,
 }: {
+  /** Coloured icon tile beside the title — gives each tool a recognisable identity. */
+  identity?: { icon: SVGIcon; accent: string }
   title: string
   crumbs?: string[]
   center?: ReactNode
@@ -37,6 +40,11 @@ export function TopBar({
           <ChevronRight size={17} className="rotate-180" />
         </button>
         <div className="flex items-center gap-2 min-w-0">
+          {identity && (
+            <span className="w-9 h-9 rounded-[10px] flex items-center justify-center text-white shrink-0 mr-0.5" style={{ background: identity.accent, boxShadow: `0 4px 12px -4px ${identity.accent}88` }}>
+              <identity.icon size={18} />
+            </span>
+          )}
           <h1 className="text-[18px] font-bold text-ink truncate">{title}</h1>
           {crumbs && crumbs.length > 0 && (
             <div className="flex items-center gap-2 text-[13px] text-muted-2b">
@@ -72,13 +80,14 @@ export function TopBar({
                 onClick={() => tabs.onChange(t.id)}
                 className={classNames(
                   'h-11 px-3 flex items-center gap-2 text-[13px] whitespace-nowrap border-b-2 transition-colors',
-                  on ? 'border-accent text-accent font-semibold' : 'border-transparent text-muted-b font-medium hover:text-ink-3',
+                  on ? 'font-semibold' : 'border-transparent text-muted-b font-medium hover:text-ink-3',
                 )}
+                style={on ? { borderColor: identity?.accent ?? '#0E7A66', color: identity?.accent ?? '#0E7A66' } : undefined}
               >
                 {t.icon && <t.icon size={15} />}
                 {t.label}
                 {t.count != null && t.count > 0 && (
-                  <span className={classNames('text-[10.5px] font-bold rounded-full min-w-[18px] h-[18px] px-1.5 flex items-center justify-center', on ? 'bg-accent text-white' : 'bg-control text-muted-b')}>{t.count}</span>
+                  <span className={classNames('text-[10.5px] font-bold rounded-full min-w-[18px] h-[18px] px-1.5 flex items-center justify-center', on ? 'text-white' : 'bg-control text-muted-b')} style={on ? { background: identity?.accent ?? '#0E7A66' } : undefined}>{t.count}</span>
                 )}
               </button>
             )

@@ -30,7 +30,7 @@ export function LinkedInInbox() {
         title="LinkedIn"
         crumbs={['Social selling']}
         center={<Segmented options={['All', 'Unread', 'Requests', 'Accepted']} value={view} onChange={setView} />}
-        actions={<><Button icon={<Person size={16} />} onClick={() => nav('/reach/people-finder')}>Find people</Button><Button variant="primary" icon={<Plus size={16} />} onClick={() => setCompose(true)}>Message</Button></>}
+        actions={<><Button icon={<Person size={16} />} onClick={() => nav('/tools/company-search')}>Find people</Button><Button variant="primary" icon={<Plus size={16} />} onClick={() => setCompose(true)}>Message</Button></>}
       />
       <ComposeLiModal open={compose} onClose={() => setCompose(false)} onSend={(name, company, msg) => { const t = act.addLinkedInThread(name, company, msg); setSel(t.id); setCompose(false) }} />
       <div className="flex-1 flex min-h-0">
