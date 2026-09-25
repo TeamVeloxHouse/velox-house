@@ -51,7 +51,7 @@ export function useDesignProposal(design: Design | undefined, session: ShowroomS
 }
 
 /** Top-down roof plan: roof faces, every module, obstacles and the Land Registry title boundary. */
-export function RoofPlan({ design }: { design: Design }) {
+export function RoofPlan({ design, strings, light, notes }: { design: Design; strings?: { id: string; panelIds: string[]; color: string }[]; light?: boolean; notes?: boolean }) {
   const [parcel, setParcel] = useState<{ lat: number; lng: number }[] | null>(null)
   useEffect(() => {
     if (!design.center) return
@@ -68,24 +68,46 @@ export function RoofPlan({ design }: { design: Design }) {
   const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1])
   const pad = 2.5, minX = Math.min(...xs) - pad, minY = Math.min(...ys) - pad, w = Math.max(...xs) - minX + pad, h = Math.max(...ys) - minY + pad
   const path = (ring: { lat: number; lng: number }[]) => ring.map((p, i) => `${i ? 'L' : 'M'}${xy(p)[0].toFixed(2)},${xy(p)[1].toFixed(2)}`).join('') + 'Z'
+  const colorOf = new Map<string, string>(), panelById = new Map(design.planes.flatMap((p) => (p.panels ?? []).map((pn) => [pn.id, pn] as const)))
+  for (const s of strings ?? []) for (const id of s.panelIds) colorOf.set(id, s.color)
+  const mid = (pn: { corners: { lat: number; lng: number }[] }) => { const a = xy(pn.corners[0]), b = xy(pn.corners[2]); return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2] }
+  const scaleM = w > 40 ? 10 : 5
+  const ink = light ? '#15223B' : '#ffffff'
   return (
-    <div className="relative rounded-[12px] overflow-hidden" style={{ background: 'linear-gradient(160deg,#0E1A2E,#15223B)' }}>
-      <svg viewBox={`${minX} ${minY} ${w} ${h}`} className="w-full h-auto max-h-[380px] block">
+    <div className="relative rounded-[12px] overflow-hidden" style={{ background: light ? '#F7F9FB' : 'linear-gradient(160deg,#0E1A2E,#15223B)', border: light ? '1px solid #DEE3EA' : undefined }}>
+      <svg viewBox={`${minX} ${minY} ${w} ${h}`} className="w-full h-auto max-h-[420px] block">
         <defs>
           <linearGradient id="pvglass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#2B3F66" /><stop offset="1" stopColor="#101B30" /></linearGradient>
-          <pattern id="grid1m" width="1" height="1" patternUnits="userSpaceOnUse"><path d="M1 0H0V1" fill="none" stroke="#ffffff" strokeOpacity="0.04" strokeWidth="0.03" /></pattern>
+          <pattern id="grid1m" width="1" height="1" patternUnits="userSpaceOnUse"><path d="M1 0H0V1" fill="none" stroke={ink} strokeOpacity={light ? 0.06 : 0.04} strokeWidth="0.03" /></pattern>
         </defs>
         <rect x={minX} y={minY} width={w} height={h} fill="url(#grid1m)" />
-        {parcel && <path d={path(parcel)} fill="#62E4CC" fillOpacity={0.05} stroke="#62E4CC" strokeWidth={0.18} />}
-        {design.planes.map((p) => <path key={p.id} d={path(p.polygon)} fill="#3A4A63" fillOpacity={0.55} stroke="#A8EDDF" strokeOpacity={0.6} strokeWidth={0.08} />)}
-        {(design.obstacles ?? []).map((o) => <path key={o.id} d={path(o.polygon)} fill="#98A1B0" fillOpacity={0.5} stroke="#fff" strokeOpacity={0.4} strokeWidth={0.05} />)}
-        {design.planes.flatMap((p) => (p.panels ?? []).map((pn) => <path key={pn.id} d={path(pn.corners)} fill="url(#pvglass)" stroke="#62E4CC" strokeOpacity={0.85} strokeWidth={0.05} />))}
+        {parcel && <path d={path(parcel)} fill="#62E4CC" fillOpacity={0.05} stroke={light ? '#0E7A66' : '#62E4CC'} strokeWidth={0.18} />}
+        {design.planes.map((p) => <path key={p.id} d={path(p.polygon)} fill={light ? '#E3E8EF' : '#3A4A63'} fillOpacity={light ? 1 : 0.55} stroke={light ? '#98A1B0' : '#A8EDDF'} strokeOpacity={0.6} strokeWidth={0.08} />)}
+        {(design.obstacles ?? []).map((o) => <path key={o.id} d={path(o.polygon)} fill="#98A1B0" fillOpacity={0.5} stroke={ink} strokeOpacity={0.4} strokeWidth={0.05} />)}
+        {design.planes.flatMap((p) => (p.panels ?? []).map((pn) => <path key={pn.id} d={path(pn.corners)} fill="url(#pvglass)" stroke={colorOf.get(pn.id) ?? '#62E4CC'} strokeOpacity={0.95} strokeWidth={colorOf.has(pn.id) ? 0.12 : 0.05} />))}
+        {(strings ?? []).map((s, si) => {
+          const pts = s.panelIds.map((id) => panelById.get(id)).filter(Boolean).map((pn) => mid(pn!))
+          if (!pts.length) return null
+          return (
+            <g key={s.id}>
+              <polyline points={pts.map((p) => p.join(',')).join(' ')} fill="none" stroke={s.color} strokeWidth={0.1} strokeLinejoin="round" strokeDasharray="0.35 0.2" />
+              <circle cx={pts[0][0]} cy={pts[0][1]} r={0.42} fill={s.color} />
+              <text x={pts[0][0]} y={pts[0][1] + 0.2} fontSize={0.55} fontWeight={700} textAnchor="middle" fill="#15223B">{si + 1}</text>
+            </g>
+          )
+        })}
+        {notes && (design.notes ?? []).map((n, i) => { const [x, y] = xy(n); return <g key={n.id}><circle cx={x} cy={y} r={0.5} fill="#F59E0B" stroke="#fff" strokeWidth={0.08} /><text x={x} y={y + 0.2} fontSize={0.55} fontWeight={700} textAnchor="middle" fill="#15223B">{i + 1}</text></g> })}
+        <g transform={`translate(${minX + w - scaleM - 1.2},${minY + h - 1.2})`}>
+          <rect width={scaleM} height={0.18} fill={ink} fillOpacity={0.8} />
+          <text x={scaleM / 2} y={-0.35} fontSize={0.7} textAnchor="middle" fill={ink} fillOpacity={0.8}>{scaleM} m</text>
+        </g>
       </svg>
-      <div className="absolute left-3 bottom-3 flex gap-3 text-[10.5px] font-semibold text-white/75">
+      <div className={`absolute left-3 bottom-3 flex gap-3 text-[10.5px] font-semibold ${light ? 'text-ink-3' : 'text-white/75'}`}>
         <span className="inline-flex items-center gap-1.5"><span className="w-3 h-2 rounded-[2px] bg-[#1E2F4E] border border-[#62E4CC]" />Solar modules</span>
         {parcel && <span className="inline-flex items-center gap-1.5"><span className="w-3 h-0.5 bg-[#62E4CC]" />Title boundary</span>}
+        {strings?.length ? <span>Numbered dot = string start (+)</span> : null}
       </div>
-      <div className="absolute right-3 top-3 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-[10px] font-bold text-white">N↑</div>
+      <div className={`absolute right-3 top-3 w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold ${light ? 'bg-white border border-border text-ink' : 'bg-white/10 text-white'}`}>N↑</div>
     </div>
   )
 }

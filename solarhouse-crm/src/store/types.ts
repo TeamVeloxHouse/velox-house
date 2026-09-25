@@ -1174,6 +1174,13 @@ export interface Design {
   shadeOverrides?: Record<ID, number> // per-plane shade factor set by the surveyor
   finance?: Record<string, number> // per-design overrides of lib/finance DEFAULT_FINANCE (price rise, SEG, discount rate…)
   priceOverride?: number // quoted price (£) when the adviser sets one, instead of the Studio pricing formula
+  // Electrical design (lib/electrical.ts): inverter, strings per MPPT, AC/DC cable runs for voltage rise
+  electrical?: {
+    inverterId: string
+    strings: { id: ID; planeId: ID; mppt: number; panelIds: ID[] }[]
+    acCableM?: number; acCableMm2?: number; dcCableM?: number; dcCableMm2?: number; ze?: number; exportLimitKw?: number
+  }
+  notes?: { id: ID; lat: number; lng: number; text: string; at: number }[] // pinned site notes (access, scaffold, cable route…)
   createdAt: number
   updatedAt: number
 }

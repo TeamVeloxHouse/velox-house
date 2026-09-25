@@ -1,6 +1,7 @@
 import { McsProduction, estimateDesign } from '../components/McsProduction'
 import { systemPrice } from '../lib/finance'
 import { Savings } from '../components/Savings'
+import { Electrical } from '../components/Electrical'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import L from 'leaflet'
@@ -27,9 +28,9 @@ import { Dropdown } from '../components/Dropdown'
 
 type LatLng = { lat: number; lng: number }
 const uid = (p: string) => `${p}${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`
-type StudioTab = 'design' | 'array' | 'production' | 'savings' | 'proposal'
+type StudioTab = 'design' | 'array' | 'production' | 'savings' | 'electrical' | 'proposal'
 // Pylon-style 2D tools: select/move arrays · add · remove · rotate array · draw face · edit vertices
-type Tool = 'pan' | 'select' | 'add' | 'remove' | 'rotate' | 'draw' | 'edit' | 'pin'
+type Tool = 'pan' | 'select' | 'add' | 'remove' | 'rotate' | 'draw' | 'edit' | 'pin' | 'note'
 
 // Obstruction styling — colour + label per kind (detected or hand-placed keep-outs).
 const OBST: Record<'chimney' | 'skylight' | 'hvac' | 'keepout', { c: string; label: string }> = {
@@ -112,6 +113,8 @@ export function DesignEditor() {
   const undoRef = useRef<() => void>(() => {})
   const redoRef = useRef<() => void>(() => {})
   const onPinRef = useRef<(ll: LatLng) => void>(() => {})
+  const onNoteRef = useRef<(ll: LatLng) => void>(() => {})
+  const [noteDraft, setNoteDraft] = useState<{ lat: number; lng: number; text: string } | null>(null)
   const panelRenderer = useRef<L.Canvas | null>(null)
   const panelCanvas = useRef<PanelCanvasLayer | null>(null) // photoreal module renderer
   const obstacleLayer = useRef<L.LayerGroup | null>(null)
@@ -318,6 +321,7 @@ export function DesignEditor() {
     m.on('mousedown', (e: any) => {
       const t = toolRef.current; const p = planeAt(e.latlng)
       if (t === 'pin') { L.DomEvent.stop(e); onPinRef.current({ lat: e.latlng.lat, lng: e.latlng.lng }); return }
+      if (t === 'note') { L.DomEvent.stop(e); onNoteRef.current({ lat: e.latlng.lat, lng: e.latlng.lng }); return }
       if (t === 'rotate') {
         if (!p || !p.panels?.length) return; setSelId(p.id)
         rotPid = p.id; rotPanels0 = p.panels; rotCenLL = arrayCentroid(p.panels); rotBear0 = bearingTo(rotCenLL, { lat: e.latlng.lat, lng: e.latlng.lng })
@@ -652,7 +656,13 @@ export function DesignEditor() {
       mk.addTo(lyr)
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [design?.obstacles, selObsId, mapReady])
+    ;(design.notes ?? []).forEach((n, i) => {
+      const mk = L.marker([n.lat, n.lng], { draggable: true, keyboard: false, icon: L.divIcon({ className: '', html: `<div style="width:22px;height:22px;border-radius:50% 50% 50% 2px;transform:rotate(-45deg);background:#F59E0B;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center"><span style="transform:rotate(45deg);font:700 11px Inter,sans-serif;color:#15223B">${i + 1}</span></div>`, iconSize: [22, 22], iconAnchor: [4, 20] }) })
+      mk.bindTooltip(n.text, { direction: 'top', className: 'roof-label' })
+      mk.on('dragend', (e: any) => { const ll = e.target.getLatLng(); act.updateDesign(design.id, { notes: (design.notes ?? []).map((x) => (x.id === n.id ? { ...x, lat: ll.lat, lng: ll.lng } : x)) }) })
+      mk.addTo(lyr)
+    })
+  }, [design?.obstacles, design?.notes, selObsId, mapReady])
 
   // ── Measurements overlay — edge lengths + face area on every roof plane (for sizing / CAD) ──
   useEffect(() => {
@@ -900,6 +910,7 @@ export function DesignEditor() {
   commitRef.current = commitSnapshot
   undoRef.current = undo; redoRef.current = redo
   // Drop-pin → recentre the design on the exact roof and re-detect there (fixes an off postcode geocode).
+  onNoteRef.current = (ll: LatLng) => setNoteDraft({ lat: ll.lat, lng: ll.lng, text: '' })
   onPinRef.current = (ll: LatLng) => {
     if (!design) return
     act.updateDesign(design.id, { center: ll })
@@ -996,6 +1007,7 @@ export function DesignEditor() {
     { id: 'array', label: 'Array', icon: Grid },
     { id: 'production', label: 'Production', icon: Pie },
     { id: 'savings', label: 'Savings', icon: Target },
+    { id: 'electrical', label: 'Electrical', icon: Bolt },
     { id: 'proposal', label: 'Proposal', icon: File },
   ]
 
@@ -1053,6 +1065,7 @@ export function DesignEditor() {
                 <ToolBtn on={tool === 'draw'} onClick={() => selectTool('draw')} icon={<Plus size={15} />} label="Draw roof face" />
                 <ToolBtn on={tool === 'edit'} onClick={() => selectTool('edit')} icon={<Wrench size={14} />} label="Edit vertices" />
                 <ToolBtn on={tool === 'pin'} onClick={() => selectTool('pin')} icon={<Target size={15} />} label="Drop pin & detect here" />
+                <ToolBtn on={tool === 'note'} onClick={() => selectTool('note')} icon={<File size={14} />} label="Pin a site note" />
                 <span className="h-px mx-1.5 my-0.5 bg-divider" />
                 <ToolBtn on={false} onClick={addKeepout} icon={<Box size={15} />} label="Add keep-out (vent / chimney / skylight)" />
                 </>}
@@ -1087,6 +1100,18 @@ export function DesignEditor() {
             })()}
             {drawing && !busy && (
               <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-[500] h-9 px-4 rounded-full text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Target size={14} />Click each corner of the roof, then click the first point to close</div>
+            )}
+            {view === '2d' && tool === 'note' && (
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[520] w-[340px] rounded-[12px] bg-white shadow-modal border border-border p-3">
+                {noteDraft ? <>
+                  <div className="text-[12px] font-bold text-ink mb-1.5">Site note {(design.notes?.length ?? 0) + 1}</div>
+                  <textarea autoFocus value={noteDraft.text} onChange={(e) => setNoteDraft({ ...noteDraft, text: e.target.value })} placeholder="e.g. Scaffold access via side gate · cable route through loft · consumer unit in garage" className="w-full h-16 rounded-[8px] border border-[#E1E6EC] p-2 text-[12.5px] resize-none outline-none focus:border-[#62E4CC]" />
+                  <div className="flex gap-2 mt-2 justify-end"><button onClick={() => setNoteDraft(null)} className="h-8 px-3 rounded-[8px] text-[12px] font-semibold text-ink-3 hover:bg-control">Cancel</button><button onClick={() => { if (noteDraft.text.trim()) act.updateDesign(design.id, { notes: [...(design.notes ?? []), { id: uid('n'), lat: noteDraft.lat, lng: noteDraft.lng, text: noteDraft.text.trim(), at: Date.now() }] }); setNoteDraft(null) }} className="h-8 px-3 rounded-[8px] bg-[#15223B] text-white text-[12px] font-semibold">Pin note</button></div>
+                </> : <>
+                  <div className="text-[12px] text-ink-3"><b className="text-ink">Click the map</b> to pin a site note. Drag a pin to move it.</div>
+                  {(design.notes ?? []).map((n, i) => <div key={n.id} className="flex items-start gap-2 mt-2 text-[12px]"><span className="w-5 h-5 shrink-0 rounded-full bg-[#F59E0B] text-[#15223B] font-bold text-[10.5px] flex items-center justify-center">{i + 1}</span><span className="flex-1 text-ink-2">{n.text}</span><button onClick={() => act.updateDesign(design.id, { notes: (design.notes ?? []).filter((x) => x.id !== n.id) })} className="text-muted-3 hover:text-ink">✕</button></div>)}
+                </>}
+              </div>
             )}
             {view === '2d' && !busy && tool === 'pin' && (
               <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-[510] h-9 px-4 rounded-full text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Target size={14} />Click the exact roof to re-centre &amp; detect here</div>
@@ -1151,6 +1176,7 @@ export function DesignEditor() {
 
         {tab === 'production' && <McsProduction design={design} moduleId={moduleId} effTilt={effTilt} />}
         {tab === 'savings' && <Savings design={design} moduleId={moduleId} effTilt={effTilt} />}
+        {tab === 'electrical' && <Electrical design={design} moduleId={moduleId} kwp={kwp} />}
         {tab === 'proposal' && <ProposalPane design={design} kwp={kwp} count={totals.count} annualKwh={Math.round(totals.kwh)} onPush={pushToProposal} hasProposal={showroom.some((s) => s.designId === design.id)} onOpen={() => nav('/studio/proposals')} onConfirm={() => act.updateDesign(design.id, { status: 'confirmed', systemKwp: kwp, panels: totals.count, annualKwh: Math.round(totals.kwh) })} />}
         <DesignCopilot open={oviOpen} onClose={() => setOviOpen(false)} onExecute={oviExecute} />
       </div>
