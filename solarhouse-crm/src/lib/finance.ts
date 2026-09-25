@@ -22,11 +22,13 @@ export type FinanceAssumptions = {
   batteryFade: number // yearly usable-capacity loss
   inverterYear: number; inverterCost: number // today's £
   batteryYear: number; batteryReplacePct: number // share of today's battery price
+  smartTariff: number // 1 = on a smart/overnight tariff, so the battery also charges cheaply from the grid
+  offPeakRate: number // £/kWh overnight rate on that tariff
 }
 export const DEFAULT_FINANCE: FinanceAssumptions = {
   years: 20, importRate: 0.27, exportRate: 0.15, standingPerDay: 0.53, priceRise: 0.04, exportRise: 0, inflation: 0.02,
   discountRate: 0.045, firstYearDeg: 0.98, annualDeg: 0.0055, batteryFade: 0.02,
-  inverterYear: 12, inverterCost: 1100, batteryYear: 15, batteryReplacePct: 0.6,
+  inverterYear: 12, inverterCost: 1100, batteryYear: 15, batteryReplacePct: 0.6, smartTariff: 1, offPeakRate: 0.085,
 }
 export const FINANCE_LABEL: Record<keyof FinanceAssumptions, { label: string; unit: string; pct?: boolean; step?: number }> = {
   years: { label: 'Term', unit: 'years' },
@@ -44,6 +46,8 @@ export const FINANCE_LABEL: Record<keyof FinanceAssumptions, { label: string; un
   inverterCost: { label: 'Inverter cost', unit: '£', step: 50 },
   batteryYear: { label: 'Battery replaced', unit: 'year' },
   batteryReplacePct: { label: 'Battery replacement', unit: '% of price', pct: true },
+  smartTariff: { label: 'Smart overnight tariff', unit: 'on / off' },
+  offPeakRate: { label: 'Off-peak rate', unit: '£/kWh', step: 0.01 },
 }
 
 /** Battery supply-and-fit price before margin (hybrid inverter/controls + per usable kWh). */
@@ -57,7 +61,7 @@ export function systemPrice(kwp: number, panels: number, batteryKwh: number, cfg
 
 export type YearRow = {
   year: number; genKwh: number; selfKwh: number; exportKwh: number; importRate: number
-  billBefore: number; billAfter: number; importSaving: number; exportIncome: number; costs: number
+  billBefore: number; billAfter: number; importSaving: number; tariffSaving: number; gridShiftKwh: number; exportIncome: number; costs: number
   net: number; cumulative: number; discounted: number; cumDiscounted: number
 }
 export type Projection = {
@@ -85,15 +89,22 @@ export function project(input: { capex: number; genKwh: number; useKwh: number; 
     const imp = a.importRate * Math.pow(1 + a.priceRise, y - 1), exp = a.exportRate * Math.pow(1 + a.exportRise, y - 1)
     const standing = a.standingPerDay * 365 * Math.pow(1 + a.priceRise, y - 1)
     const importSaving = sc.selfKwh * imp, exportIncome = sc.exportKwh * exp
+    // smart tariff: the battery's spare capacity fills from the grid overnight and covers evening use at the peak rate
+    let gridShiftKwh = 0, tariffSaving = 0
+    if (a.smartTariff && batt > 0) {
+      const offPeak = a.offPeakRate * Math.pow(1 + a.priceRise, y - 1)
+      gridShiftKwh = Math.round(Math.min(Math.max(0, batt * 365 * 0.9 - sc.batteryKwh), Math.max(0, (input.useKwh - sc.selfKwh) * 0.75)))
+      tariffSaving = Math.max(0, gridShiftKwh * (imp - offPeak / 0.9))
+    }
     let costs = 0
     if (y === a.inverterYear) costs += a.inverterCost * Math.pow(1 + a.inflation, y)
     if (input.batteryKwh > 0 && y === a.batteryYear) { costs += battPrice * a.batteryReplacePct * Math.pow(1 + a.inflation, y); battAge = -1 }
     battAge++
-    const net = importSaving + exportIncome - costs
+    const net = importSaving + tariffSaving + exportIncome - costs
     cum += net
     const disc = net / Math.pow(1 + a.discountRate, y)
     cumD += disc
-    rows.push({ year: y, genKwh: Math.round(gen), selfKwh: sc.selfKwh, exportKwh: sc.exportKwh, importRate: imp, billBefore: input.useKwh * imp + standing, billAfter: (input.useKwh - sc.selfKwh) * imp + standing, importSaving, exportIncome, costs, net, cumulative: cum, discounted: disc, cumDiscounted: cumD })
+    rows.push({ year: y, genKwh: Math.round(gen), selfKwh: sc.selfKwh, exportKwh: sc.exportKwh, importRate: imp, billBefore: input.useKwh * imp + standing, billAfter: (input.useKwh - sc.selfKwh) * imp + standing - tariffSaving, importSaving, tariffSaving, gridShiftKwh, exportIncome, costs, net, cumulative: cum, discounted: disc, cumDiscounted: cumD })
   }
   const nets = rows.map((r) => r.net)
   const lifetimeSavings = nets.reduce((s, v) => s + v, 0)

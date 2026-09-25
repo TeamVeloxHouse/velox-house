@@ -154,6 +154,12 @@ export function Savings({ design, moduleId, effTilt }: { design: Design; moduleI
             <div className="grid grid-cols-2 gap-x-3 gap-y-2">
               {(Object.keys(FINANCE_LABEL) as (keyof FinanceAssumptions)[]).map((k) => {
                 const f = FINANCE_LABEL[k], v = a[k], shown = f.pct ? Math.round(v * 10000) / 100 : v
+                if (k === 'smartTariff') return (
+                  <label key={k} className="flex flex-col gap-0.5">
+                    <span className="text-[11px] font-semibold text-muted-b">{f.label}</span>
+                    <button onClick={() => setFin(k, v ? 0 : 1)} className={`h-8 px-2 rounded-[8px] border text-[12.5px] font-semibold text-left ${v ? 'border-[#62E4CC] bg-[#F1FBF8] text-[#0E7A66]' : 'border-[#E1E6EC] text-ink-3'}`}>{v ? 'On — battery tops up overnight' : 'Off'}</button>
+                  </label>
+                )
                 return (
                   <label key={k} className="flex flex-col gap-0.5">
                     <span className="text-[11px] font-semibold text-muted-b">{f.label} <span className="font-normal text-muted-3">{f.unit}</span></span>
@@ -168,9 +174,9 @@ export function Savings({ design, moduleId, effTilt }: { design: Design; moduleI
           <Panel title={`${a.years}-year cashflow`} sub="Output falls a little each year; prices rise; replacements land in their year" icon={Target}
             action={<button onClick={() => setShowAll(!showAll)} className="text-[12px] font-semibold text-accent">{showAll ? 'Key years' : 'Every year'}</button>}>
             <DataTable
-              cols={[{ label: 'Year', w: '52px' }, { label: 'kWh', align: 'right' }, { label: 'Price', align: 'right' }, { label: 'Bill saving', align: 'right' }, { label: 'Export', align: 'right' }, { label: 'Costs', align: 'right' }, { label: 'Net', align: 'right' }, { label: 'Cumulative', align: 'right' }]}
-              rows={rows.map((r) => [r.year, r.genKwh.toLocaleString(), `${Math.round(r.importRate * 100)}p`, gbp(r.importSaving), gbp(r.exportIncome), r.costs ? <span key="c" className="text-[#B45309]">{gbp(-r.costs)}</span> : '—', <b key="n">{gbp(r.net)}</b>, <span key="u" className={r.cumulative < 0 ? 'text-ink-3' : 'text-[#0E7A66] font-bold'}>{gbp(r.cumulative)}</span>])}
-              foot={proj ? ['Total', proj.lifetimeKwh.toLocaleString(), '', gbp(proj.rows.reduce((s, r) => s + r.importSaving, 0)), gbp(proj.rows.reduce((s, r) => s + r.exportIncome, 0)), gbp(-proj.rows.reduce((s, r) => s + r.costs, 0)), gbp(proj.lifetimeSavings), gbp(proj.lifetimeSavings - price)] : undefined}
+              cols={[{ label: 'Year', w: '52px' }, { label: 'kWh', align: 'right' }, { label: 'Price', align: 'right' }, { label: 'Solar use', align: 'right' }, { label: 'Off-peak', align: 'right' }, { label: 'Export', align: 'right' }, { label: 'Costs', align: 'right' }, { label: 'Net', align: 'right' }, { label: 'Cumulative', align: 'right' }]}
+              rows={rows.map((r) => [r.year, r.genKwh.toLocaleString(), `${Math.round(r.importRate * 100)}p`, gbp(r.importSaving), r.tariffSaving ? gbp(r.tariffSaving) : '—', gbp(r.exportIncome), r.costs ? <span key="c" className="text-[#B45309]">{gbp(-r.costs)}</span> : '—', <b key="n">{gbp(r.net)}</b>, <span key="u" className={r.cumulative < 0 ? 'text-ink-3' : 'text-[#0E7A66] font-bold'}>{gbp(r.cumulative)}</span>])}
+              foot={proj ? ['Total', proj.lifetimeKwh.toLocaleString(), '', gbp(proj.rows.reduce((s, r) => s + r.importSaving, 0)), gbp(proj.rows.reduce((s, r) => s + r.tariffSaving, 0)), gbp(proj.rows.reduce((s, r) => s + r.exportIncome, 0)), gbp(-proj.rows.reduce((s, r) => s + r.costs, 0)), gbp(proj.lifetimeSavings), gbp(proj.lifetimeSavings - price)] : undefined}
             />
           </Panel>
         </div>

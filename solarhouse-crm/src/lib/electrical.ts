@@ -126,6 +126,16 @@ export function checkStrings(el: Electrical, planes: DesignPlane[], moduleId: st
       { label: 'Operating current', value: `${(e.imp * par).toFixed(1)} A`, limit: `≤ ${inv.iMaxPerMppt} A per MPPT`, ok: e.imp * par <= inv.iMaxPerMppt },
       { label: 'Short-circuit current', value: `${(e.isc * par).toFixed(1)} A`, limit: `≤ ${inv.iscMaxPerMppt} A per MPPT`, ok: e.isc * par <= inv.iscMaxPerMppt },
       ...(par > 1 ? [{ label: 'Parallel strings equal', value: equal ? 'Yes' : 'No', limit: 'same length on one MPPT', ok: equal }] : []),
+      ...(() => {
+        // every panel on one MPPT should face the same way — mixed faces drag the MPPT's operating point
+        const faces = [...new Set(ss.flatMap((s) => s.panelIds.map((id) => planes.find((p) => p.panels?.some((x) => x.id === id))).filter(Boolean)))] as DesignPlane[]
+        if (faces.length < 2) return []
+        const azs = faces.map((f) => f.azimuthDeg), tilts = faces.map((f) => f.pitchDeg)
+        const angle = (a: number, b: number) => Math.abs(((a - b + 540) % 360) - 180)
+        const spread = Math.max(...azs.flatMap((a) => azs.map((b) => angle(a, b))))
+        const ok = spread <= 20 && Math.max(...tilts) - Math.min(...tilts) <= 10
+        return [{ label: 'One orientation per MPPT', value: `${faces.length} faces`, limit: 'within 20° / 10° tilt', ok }]
+      })(),
     ] })
   }
   return out

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Kpi, Panel } from './ui'
 import { Dropdown } from './Dropdown'
 import { Bolt, Check, File, Layers, Target } from './icons'
@@ -47,7 +47,34 @@ export function Electrical({ design, moduleId, kwp }: { design: Design; moduleId
   const worstString = checks.reduce((m, c) => Math.max(m, c.len), 0)
   const dc = dcLoss(el.dcCableM ?? 15, el.dcCableMm2 ?? 4, e.imp, vmpHot(worstString || 1, e))
   const breaker = breakerFor(ac.I)
-  const colored = strings.map((s, i) => ({ id: s.id, panelIds: s.panelIds, color: STRING_COLORS[i % STRING_COLORS.length] }))
+  // colours follow the string's position in the saved list, so a colour never jumps while editing
+  const colorFor = (id: string) => STRING_COLORS[Math.max(0, el.strings.findIndex((s) => s.id === id)) % STRING_COLORS.length]
+  const colored = strings.map((s) => ({ id: s.id, panelIds: s.panelIds, color: colorFor(s.id) }))
+
+  // ── hand-editing: pick a string, click panels to add/remove them ──
+  const [editing, setEditing] = useState(false)
+  const [active, setActive] = useState<string | null>(null)
+  const cleaned = el.strings.map((s) => ({ ...s, panelIds: s.panelIds.filter((id) => live.has(id)) }))
+  const activeStr = cleaned.find((s) => s.id === active) ?? null
+  const planeOfPanel = (pid: string) => filled.find((p) => p.panels!.some((x) => x.id === pid))?.id
+  const togglePanel = (pid: string) => {
+    if (!activeStr) return
+    const inActive = activeStr.panelIds.includes(pid)
+    const next = cleaned.map((s) => {
+      if (s.id === activeStr.id) return { ...s, panelIds: inActive ? s.panelIds.filter((x) => x !== pid) : [...s.panelIds, pid], planeId: s.panelIds.length || inActive ? s.planeId : planeOfPanel(pid) ?? s.planeId }
+      return { ...s, panelIds: s.panelIds.filter((x) => x !== pid) }
+    })
+    set({ strings: next })
+  }
+  const newString = () => {
+    const used = new Set(cleaned.filter((s) => s.panelIds.length).map((s) => s.mppt))
+    const mppt = Array.from({ length: inv.mppts }, (_, i) => i).find((i) => !used.has(i)) ?? 0
+    const id = `s${Date.now().toString(36)}`
+    set({ strings: [...cleaned, { id, planeId: filled[0].id, mppt, panelIds: [] }] })
+    setActive(id); setEditing(true)
+  }
+  const setMppt = (id: string, mppt: number) => set({ strings: cleaned.map((s) => (s.id === id ? { ...s, mppt } : s)) })
+  const removeString = (id: string) => { set({ strings: cleaned.filter((s) => s.id !== id) }); if (active === id) setActive(null) }
 
   if (!count) return <div className="absolute inset-0 flex items-center justify-center text-[13px] text-muted-b">Place panels first — strings are made from the layout.</div>
 
@@ -64,9 +91,27 @@ export function Electrical({ design, moduleId, kwp }: { design: Design; moduleId
         </div>
 
         <div className="grid grid-cols-[1.15fr_1fr] gap-4 items-start">
-          <Panel title="Strings on the roof" sub="Each colour is one string; the numbered dot is where it starts (+)" icon={Layers}
-            action={<button onClick={() => restring()} className="h-8 px-3 rounded-[8px] bg-[#15223B] text-white text-[12px] font-semibold">Auto-string</button>}>
-            <div ref={planRef}><RoofPlan design={design} strings={colored} light notes /></div>
+          <Panel title="Strings on the roof" sub={editing ? 'Pick a string, then click panels to add or remove them — they join the end of the run' : 'Each colour is one string; the numbered dot is where it starts (+)'} icon={Layers}
+            action={<div className="flex gap-2">
+              <button onClick={() => { setEditing(!editing); if (!active && cleaned[0]) setActive(cleaned[0].id) }} className={`h-8 px-3 rounded-[8px] text-[12px] font-semibold border ${editing ? 'bg-[#62E4CC] border-[#62E4CC] text-[#15223B]' : 'border-[#DEE3EA] text-ink-3 hover:bg-control'}`}>{editing ? 'Done editing' : 'Edit strings'}</button>
+              <button onClick={() => { restring(); setActive(null) }} className="h-8 px-3 rounded-[8px] bg-[#15223B] text-white text-[12px] font-semibold">Auto-string</button>
+            </div>}>
+            {editing && (
+              <div className="flex flex-wrap items-center gap-1.5 mb-3">
+                {cleaned.map((s, i) => (
+                  <div key={s.id} className={`flex items-center gap-1.5 h-8 pl-2 pr-1 rounded-full border text-[12px] font-semibold cursor-pointer ${active === s.id ? 'border-[#15223B] bg-[#15223B] text-white' : 'border-[#DEE3EA] bg-white text-ink-2'}`} onClick={() => setActive(s.id)}>
+                    <span className="w-3 h-3 rounded-full" style={{ background: colorFor(s.id) }} />S{i + 1} · {s.panelIds.length}
+                    <select value={s.mppt} onClick={(ev) => ev.stopPropagation()} onChange={(ev) => setMppt(s.id, Number(ev.target.value))} className={`h-6 rounded-full text-[11px] px-1 border-0 outline-none ${active === s.id ? 'bg-white/15 text-white' : 'bg-control'}`}>
+                      {Array.from({ length: inv.mppts }, (_, m) => <option key={m} value={m} className="text-ink">MPPT {m + 1}</option>)}
+                    </select>
+                    <button onClick={(ev) => { ev.stopPropagation(); removeString(s.id) }} className="w-5 h-5 rounded-full hover:bg-black/10 text-[11px]">✕</button>
+                  </div>
+                ))}
+                <button onClick={newString} className="h-8 px-3 rounded-full border border-dashed border-[#98A1B0] text-[12px] font-semibold text-ink-3 hover:bg-control">+ New string</button>
+                <span className="text-[11.5px] text-muted-b ml-1">{count - strung} unstrung</span>
+              </div>
+            )}
+            <div ref={planRef}><RoofPlan design={design} strings={colored} light notes onPanel={editing && activeStr ? togglePanel : undefined} /></div>
             {auto.issues.length > 0 && <div className="mt-3 flex flex-col gap-1.5">{auto.issues.map((m, i) => <div key={i} className="text-[12px] rounded-[8px] bg-[#FDF3E3] text-[#92400E] px-2.5 py-1.5">{m}</div>)}</div>}
           </Panel>
           <Panel title="Inverter" sub="Typical datasheet figures — confirm against the exact model's datasheet" icon={Bolt}>

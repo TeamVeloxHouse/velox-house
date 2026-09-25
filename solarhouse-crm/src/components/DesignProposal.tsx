@@ -51,7 +51,7 @@ export function useDesignProposal(design: Design | undefined, session: ShowroomS
 }
 
 /** Top-down roof plan: roof faces, every module, obstacles and the Land Registry title boundary. */
-export function RoofPlan({ design, strings, light, notes }: { design: Design; strings?: { id: string; panelIds: string[]; color: string }[]; light?: boolean; notes?: boolean }) {
+export function RoofPlan({ design, strings, light, notes, onPanel }: { design: Design; strings?: { id: string; panelIds: string[]; color: string }[]; light?: boolean; notes?: boolean; onPanel?: (panelId: string) => void }) {
   const [parcel, setParcel] = useState<{ lat: number; lng: number }[] | null>(null)
   useEffect(() => {
     if (!design.center) return
@@ -84,12 +84,21 @@ export function RoofPlan({ design, strings, light, notes }: { design: Design; st
         {parcel && <path d={path(parcel)} fill="#62E4CC" fillOpacity={0.05} stroke={light ? '#0E7A66' : '#62E4CC'} strokeWidth={0.18} />}
         {design.planes.map((p) => <path key={p.id} d={path(p.polygon)} fill={light ? '#E3E8EF' : '#3A4A63'} fillOpacity={light ? 1 : 0.55} stroke={light ? '#98A1B0' : '#A8EDDF'} strokeOpacity={0.6} strokeWidth={0.08} />)}
         {(design.obstacles ?? []).map((o) => <path key={o.id} d={path(o.polygon)} fill="#98A1B0" fillOpacity={0.5} stroke={ink} strokeOpacity={0.4} strokeWidth={0.05} />)}
-        {design.planes.flatMap((p) => (p.panels ?? []).map((pn) => <path key={pn.id} d={path(pn.corners)} fill="url(#pvglass)" stroke={colorOf.get(pn.id) ?? '#62E4CC'} strokeOpacity={0.95} strokeWidth={colorOf.has(pn.id) ? 0.12 : 0.05} />))}
+        {design.planes.flatMap((p) => (p.panels ?? []).map((pn) => {
+          const col = colorOf.get(pn.id) ?? (strings ? '#C3CAD5' : '#62E4CC')
+          return (
+            <path key={pn.id} d={path(pn.corners)} fill="url(#pvglass)" stroke={col} strokeOpacity={0.95} strokeWidth={colorOf.has(pn.id) ? 0.12 : 0.05}
+              strokeDasharray={strings && !colorOf.has(pn.id) ? '0.2 0.12' : undefined}
+              onClick={onPanel ? () => onPanel(pn.id) : undefined} style={onPanel ? { cursor: 'pointer' } : undefined} className={onPanel ? 'hover:opacity-80' : undefined}>
+              {strings && !colorOf.has(pn.id) && <title>Not on a string</title>}
+            </path>
+          )
+        }))}
         {(strings ?? []).map((s, si) => {
           const pts = s.panelIds.map((id) => panelById.get(id)).filter(Boolean).map((pn) => mid(pn!))
           if (!pts.length) return null
           return (
-            <g key={s.id}>
+            <g key={s.id} style={{ pointerEvents: 'none' }}>
               <polyline points={pts.map((p) => p.join(',')).join(' ')} fill="none" stroke={s.color} strokeWidth={0.1} strokeLinejoin="round" strokeDasharray="0.35 0.2" />
               <circle cx={pts[0][0]} cy={pts[0][1]} r={0.42} fill={s.color} />
               <text x={pts[0][0]} y={pts[0][1] + 0.2} fontSize={0.55} fontWeight={700} textAnchor="middle" fill="#15223B">{si + 1}</text>
@@ -190,7 +199,7 @@ export function SectionLongTerm({ design, session }: { design: Design; session: 
             { label: 'Today', value: r1.billBefore, color: '#15223B', sub: `${(r1.billBefore / 12).toFixed(0)} a month` },
             { label: 'With solar', value: r1.billAfter, color: '#169C85', sub: `${(r1.billAfter / 12).toFixed(0)} a month` },
           ]} />
-          <div className="mt-3 text-[12.5px] text-ink-3">Plus <b className="text-ink">{gbp(r1.exportIncome)}</b> paid to you for the {r1.exportKwh.toLocaleString()} kWh you send to the grid.</div>
+          <div className="mt-3 text-[12.5px] text-ink-3">Plus <b className="text-ink">{gbp(r1.exportIncome)}</b> paid to you for the {r1.exportKwh.toLocaleString()} kWh you send to the grid.{r1.tariffSaving > 0 && <> Your battery also tops up on cheap overnight power ({r1.gridShiftKwh.toLocaleString()} kWh a year), included in the bill above.</>}</div>
         </Card>
         <Card title="Your money over time" sub="The running total after paying for the system — once it goes teal you're in profit">
           <CumulativeChart proj={proj} />
@@ -199,7 +208,7 @@ export function SectionLongTerm({ design, session }: { design: Design; session: 
       <Card title="Year by year">
         <DataTable
           cols={[{ label: 'Year', w: '60px' }, { label: 'Generation', align: 'right' }, { label: 'Unit price', align: 'right' }, { label: 'Bill saving', align: 'right' }, { label: 'Export income', align: 'right' }, { label: 'Saved that year', align: 'right' }, { label: 'Running total', align: 'right' }]}
-          rows={keyRows.map((r) => [r.year, `${r.genKwh.toLocaleString()} kWh`, `${Math.round(r.importRate * 100)}p`, gbp(r.importSaving), gbp(r.exportIncome), <b key="n">{gbp(r.net)}</b>, <span key="c" className={r.cumulative < 0 ? 'text-ink-3' : 'text-[#0E7A66] font-bold'}>{gbp(r.cumulative)}</span>])}
+          rows={keyRows.map((r) => [r.year, `${r.genKwh.toLocaleString()} kWh`, `${Math.round(r.importRate * 100)}p`, gbp(r.importSaving + r.tariffSaving), gbp(r.exportIncome), <b key="n">{gbp(r.net)}</b>, <span key="c" className={r.cumulative < 0 ? 'text-ink-3' : 'text-[#0E7A66] font-bold'}>{gbp(r.cumulative)}</span>])}
         />
       </Card>
       <Card title="The assumptions behind these figures">
