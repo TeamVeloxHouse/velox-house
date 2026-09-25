@@ -10,6 +10,7 @@ import { useState_, useActions } from '../store/store'
 import { customerAnswer, portalStarters, type PortalBlock } from '../lib/portalAi'
 import type { CustomerPortal as Portal, PortalResource, PortalEvent, PortalMilestone, PortalOffer } from '../store/types'
 import { money, classNames } from '../lib/format'
+import { EnergyFlowScene } from '../components/EnergyFlowScene'
 
 // ── The Solar House brand (customer-facing portal) ──
 // mint is the brand colour but is NEVER a text colour on white — accent green carries text on light.
@@ -541,42 +542,17 @@ function FlowNode({ x, y, icon: Ic, label, value, color }: { x: number; y: numbe
 }
 
 // Live energy-flow diagram — the signature "experience" element (à la a premium inverter app).
+// Live energy-flow scene — the customer's own kit (solar / battery / EV) on the Solar House animated home.
+// Follows the real time of day; the customer can still tap through the rest of the day.
 function EnergyFlowHero({ portal }: { portal: Portal }) {
-  const e = useMemo(() => portalEnergy(portal), [portal])
-  const importing = e.exporting <= 0
-  const gridVal = importing ? e.fromGrid : e.exporting
-  const gridColor = importing ? '#E0A93B' : SH.mint
-  const now = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
-  const P = ({ d, color, on, slow }: { d: string; color: string; on: boolean; slow?: boolean }) => (
-    <g>
-      <path d={d} fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth={3} strokeLinecap="round" />
-      {on && <path d={d} fill="none" stroke={color} strokeWidth={3} strokeLinecap="round" className={classNames('flow-line', slow && 'flow-slow')} opacity={0.95} />}
-    </g>
-  )
+  const kit = useMemo(() => ({ solar: true, battery: !!portal.hasBattery, ev: !!portal.hasEv, kwp: portal.systemKwp }), [portal.hasBattery, portal.hasEv, portal.systemKwp])
   return (
-    <div className="glass-dark rounded-3xl p-4 sm:p-5 text-white overflow-hidden">
-      <div className="flex items-center gap-2 mb-1">
-        <Sun size={16} style={{ color: SH.mint }} />
-        <span className="text-[13px] font-extrabold tracking-wide">SOLAR STATUS</span>
-        <span className="ml-1 inline-flex items-center gap-1 text-[11px] font-bold" style={{ color: SH.mint }}><span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" /> Normal</span>
-        <span className="ml-auto text-[12px] text-white/55">Live · {now}</span>
-      </div>
-      <div className="relative w-full mx-auto" style={{ aspectRatio: '340 / 240', maxWidth: 600 }}>
-        <svg viewBox="0 0 340 240" className="absolute inset-0 w-full h-full" preserveAspectRatio="xMidYMid meet">
-          {/* connectors radiating from the house to each source/sink */}
-          <P d="M158,108 C120,82 86,58 64,46" color={SH.mint} on={e.solar > 0} />
-          <P d="M182,108 C220,82 254,58 276,46" color="#5FC7C0" on={e.home > 0} />
-          {portal.hasBattery && <P d="M182,150 C220,176 254,196 276,200" color="#38C7A8" on slow />}
-          <P d="M158,150 C120,176 86,196 64,200" color={gridColor} on slow />
-        </svg>
-        {/* the customer's own home, background removed */}
-        <img src="/brand/portal-hero-cutout.webp" alt="Your home" className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none" style={{ width: '58%', maxHeight: '86%', objectFit: 'contain', filter: 'drop-shadow(0 14px 22px rgba(0,0,0,0.45))' }} />
-        <FlowNode x={60} y={40} icon={Sun} label="Solar" value={`${e.solar} kW`} color={SH.mint} />
-        <FlowNode x={280} y={40} icon={Building} label="Home" value={`${e.home} kW`} color="#5FC7C0" />
-        {portal.hasBattery && <FlowNode x={282} y={204} icon={Bolt} label={`Battery ${e.batteryPct}%`} value={e.toBattery > 0 ? `+${e.toBattery.toFixed(1)} kW` : 'idle'} color="#38C7A8" />}
-        <FlowNode x={58} y={204} icon={Bolt} label={importing ? 'From grid' : 'Exporting'} value={`${gridVal.toFixed(1)} kW`} color={gridColor} />
-      </div>
-    </div>
+    <EnergyFlowScene
+      kit={kit}
+      live
+      className="rounded-3xl"
+      caption={portal.monitoringPlatform ? `Typical figures for your system · connect ${portal.monitoringPlatform} for your live readings` : 'Typical figures for your system'}
+    />
   )
 }
 
@@ -602,9 +578,9 @@ function OverviewTab({ portal, onGo }: { portal: Portal; onGo: (t: Tab) => void 
         {cfg.welcomeBody && <p className="text-[14px] text-[#2f423b] mt-1.5 max-w-[640px]">{cfg.welcomeBody}</p>}
         <p className="text-[13.5px] text-[#4a5a54] mt-1">{portal.systemKwp} kWp{portal.hasBattery ? ' + battery' : ''}{portal.hasEv ? ' + EV' : ''} · {portal.address}</p>
       </div>
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.6fr_1fr] items-start">
+      <div className="flex flex-col gap-4">
         <EnergyFlowHero portal={portal} />
-        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
           <GlassStat icon={Bolt} label="System" value={`${portal.systemKwp} kWp`} sub={portal.hasBattery ? 'with battery' : 'solar'} />
           <GlassStat icon={Dollar} label="Saving / yr" value={money(portal.annualSavings, { compact: true })} sub="projected" tone="#0E9A82" />
           <GlassStat icon={Clock} label="Payback" value={`${payback} yrs`} sub="then free energy" tone="#159C86" />

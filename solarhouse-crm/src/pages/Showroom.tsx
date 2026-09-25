@@ -12,6 +12,7 @@ import { showroomModel, panelsFor, starterDesign, kwhFromSpend, monthlyGeneratio
 import { generateMockupForAddress } from '../lib/mockup'
 import { BookSlotModal } from './ShowroomCalendar'
 import { SectionSurveyedDesign, SectionLongTerm } from '../components/DesignProposal'
+import { EnergyFlowScene, type SceneKit } from '../components/EnergyFlowScene'
 import { money, classNames } from '../lib/format'
 
 const ACCENT = '#0E7A66'
@@ -280,6 +281,7 @@ const sections = [
   { key: 'today', label: 'Energy today' },
   { key: 'motivations', label: 'Why go solar' },
   { key: 'design', label: 'Design your system' },
+  { key: 'flow', label: 'See it working' },
   { key: 'bill', label: 'Your new bill' },
   { key: 'why', label: 'Why Solar House' },
   { key: 'process', label: 'How it works' },
@@ -296,7 +298,7 @@ export function ShowroomExperience() {
   // a proposal pushed from the Design Studio gets the surveyed-design + 20-year pages, built from that design
   const linked = designs.find((d) => d.id === session?.designId && d.planes.some((p) => p.panels?.length))
   const secs = linked
-    ? sections.flatMap((s) => (s.key === 'design' ? [s, { key: 'surveyed', label: 'Your surveyed design' }] : s.key === 'bill' ? [s, { key: 'longterm', label: '20 years with solar' }] : [s]))
+    ? sections.flatMap((s) => (s.key === 'flow' ? [s, { key: 'surveyed', label: 'Your surveyed design' }] : s.key === 'bill' ? [s, { key: 'longterm', label: '20 years with solar' }] : [s]))
     : sections
   const [activeKey, setActiveKey] = useState('welcome')
   const [won, setWon] = useState<{ portalId: string } | null>(null)
@@ -351,6 +353,7 @@ export function ShowroomExperience() {
           <section id="today" ref={(el) => { sectionRefs.current.today = el }} className="scroll-mt-6"><SlideToday session={session} /></section>
           <section id="motivations" ref={(el) => { sectionRefs.current.motivations = el }} className="scroll-mt-6"><SectionMotivations /></section>
           <section id="design" ref={(el) => { sectionRefs.current.design = el }} className="scroll-mt-6"><SectionDesign session={session} /></section>
+          <section id="flow" ref={(el) => { sectionRefs.current.flow = el }} className="scroll-mt-6"><SectionSeeItWorking session={session} /></section>
           {linked && <section id="surveyed" ref={(el) => { sectionRefs.current.surveyed = el }} className="scroll-mt-6"><SectionSurveyedDesign design={linked} session={session} /></section>}
           <section id="bill" ref={(el) => { sectionRefs.current.bill = el }} className="scroll-mt-6"><SlideBill session={session} /></section>
           {linked && <section id="longterm" ref={(el) => { sectionRefs.current.longterm = el }} className="scroll-mt-6"><SectionLongTerm design={linked} session={session} /></section>}
@@ -570,6 +573,38 @@ function SectionMotivations() {
           </div>
         ))}
       </div>
+    </div>
+  )
+}
+
+/* ---- "See it working": the animated home, built from the kit they've chosen, with the other packages one tap away ---- */
+const PACKAGES: { key: string; label: string; battery: boolean; ev: boolean }[] = [
+  { key: 'solar', label: 'Solar only', battery: false, ev: false },
+  { key: 'battery', label: 'Solar + battery', battery: true, ev: false },
+  { key: 'ev', label: 'Solar + EV', battery: false, ev: true },
+  { key: 'all', label: 'Solar + battery + EV', battery: true, ev: true },
+]
+function SectionSeeItWorking({ session }: { session: ShowroomSession }) {
+  const d = session.design
+  const chosen = PACKAGES.find((p) => p.battery === d.hasBattery && p.ev === (d.hasEv || d.addEvCharger))!.key
+  const [pick, setPick] = useState<string | null>(null)
+  useEffect(() => setPick(null), [chosen]) // changing the design snaps back to what they chose
+  const pkg = PACKAGES.find((p) => p.key === (pick ?? chosen))!
+  const kit: SceneKit = { solar: true, battery: pkg.battery, ev: pkg.ev, kwp: d.systemKwp, panels: d.panels, batteryKwh: d.batteryKwh }
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-end justify-between gap-3 flex-wrap">
+        <div><Eyebrow>See it working</Eyebrow><h2 className="text-[22px] font-bold text-ink mt-1">A day in your home, with {pkg.key === chosen ? 'your system' : pkg.label.toLowerCase()}</h2></div>
+        <div className="flex gap-1 p-1 rounded-xl bg-[#E9EDF2] border border-[#DDE3EA] flex-wrap">
+          {PACKAGES.map((p) => (
+            <button key={p.key} onClick={() => setPick(p.key)} className={classNames('px-3 py-1.5 rounded-lg text-[12.5px] font-semibold transition-colors', (pick ?? chosen) === p.key ? 'bg-white text-ink shadow-sm' : 'text-muted-b hover:text-ink-2')}>
+              {p.label}{p.key === chosen && <span className="ml-1.5 text-[10.5px] font-bold" style={{ color: ACCENT }}>· YOURS</span>}
+            </button>
+          ))}
+        </div>
+      </div>
+      <EnergyFlowScene kit={kit} caption={`A typical day for a ${d.systemKwp} kWp system: real behaviour, typical figures, not a forecast.`} />
+      <p className="text-[12.5px] text-muted-b">Once it’s installed, this same picture lives in your customer portal — driven by your own system’s readings instead of a typical day.</p>
     </div>
   )
 }
