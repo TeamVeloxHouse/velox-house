@@ -2,6 +2,7 @@ import { McsProduction, estimateDesign } from '../components/McsProduction'
 import { systemPrice } from '../lib/finance'
 import { Savings } from '../components/Savings'
 import { Electrical } from '../components/Electrical'
+import { KitList } from '../components/KitList'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import L from 'leaflet'
@@ -28,7 +29,7 @@ import { Dropdown } from '../components/Dropdown'
 
 type LatLng = { lat: number; lng: number }
 const uid = (p: string) => `${p}${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`
-type StudioTab = 'design' | 'array' | 'production' | 'savings' | 'electrical' | 'proposal'
+type StudioTab = 'design' | 'array' | 'production' | 'savings' | 'electrical' | 'kit' | 'proposal'
 // Pylon-style 2D tools: select/move arrays · add · remove · rotate array · draw face · edit vertices
 type Tool = 'pan' | 'select' | 'add' | 'remove' | 'rotate' | 'draw' | 'edit' | 'pin' | 'note'
 
@@ -1008,6 +1009,7 @@ export function DesignEditor() {
     { id: 'production', label: 'Production', icon: Pie },
     { id: 'savings', label: 'Savings', icon: Target },
     { id: 'electrical', label: 'Electrical', icon: Bolt },
+    { id: 'kit', label: 'Kit list', icon: Box },
     { id: 'proposal', label: 'Proposal', icon: File },
   ]
 
@@ -1177,6 +1179,7 @@ export function DesignEditor() {
         {tab === 'production' && <McsProduction design={design} moduleId={moduleId} effTilt={effTilt} />}
         {tab === 'savings' && <Savings design={design} moduleId={moduleId} effTilt={effTilt} />}
         {tab === 'electrical' && <Electrical design={design} moduleId={moduleId} kwp={kwp} />}
+        {tab === 'kit' && <KitList design={design} moduleId={moduleId} kwp={kwp} />}
         {tab === 'proposal' && <ProposalPane design={design} kwp={kwp} count={totals.count} annualKwh={Math.round(totals.kwh)} onPush={pushToProposal} hasProposal={showroom.some((s) => s.designId === design.id)} onOpen={() => nav('/studio/proposals')} onConfirm={() => act.updateDesign(design.id, { status: 'confirmed', systemKwp: kwp, panels: totals.count, annualKwh: Math.round(totals.kwh) })} />}
         <DesignCopilot open={oviOpen} onClose={() => setOviOpen(false)} onExecute={oviExecute} />
       </div>

@@ -57,19 +57,23 @@ export function stringLimits(e: ModuleElec, inv: Inverter) {
   return { nMin, nMax }
 }
 
-/** Snake order through a plane's panels (row by row, alternating), so each string is a tidy run. */
-export function snakeOrder(panels: DesignPanel[], azimuthDeg: number): DesignPanel[] {
+/** A plane's panels grouped into rows (along the eaves), each row ordered left → right. */
+export function panelRows(panels: DesignPanel[], azimuthDeg: number): DesignPanel[][] {
   if (!panels.length) return []
   const lat0 = panels[0].corners[0].lat, mLng = 111320 * Math.cos((lat0 * Math.PI) / 180)
   const az = (azimuthDeg * Math.PI) / 180, down = { x: Math.sin(az), y: Math.cos(az) }, across = { x: Math.cos(az), y: -Math.sin(az) }
   const c = panels.map((p) => {
     const cx = ((p.corners[0].lng + p.corners[2].lng) / 2) * mLng, cy = ((p.corners[0].lat + p.corners[2].lat) / 2) * 110540
     return { p, row: cx * down.x + cy * down.y, col: cx * across.x + cy * across.y }
-  })
-  c.sort((a, b) => a.row - b.row)
+  }).sort((a, b) => a.row - b.row)
   const rows: (typeof c)[] = []
   for (const x of c) { const last = rows[rows.length - 1]; if (last && Math.abs(last[0].row - x.row) < 0.8) last.push(x); else rows.push([x]) }
-  return rows.flatMap((r, i) => r.sort((a, b) => (i % 2 ? b.col - a.col : a.col - b.col)).map((x) => x.p))
+  return rows.map((r) => r.sort((a, b) => a.col - b.col).map((x) => x.p))
+}
+
+/** Snake order through a plane's panels (row by row, alternating), so each string is a tidy run. */
+export function snakeOrder(panels: DesignPanel[], azimuthDeg: number): DesignPanel[] {
+  return panelRows(panels, azimuthDeg).flatMap((r, i) => (i % 2 ? [...r].reverse() : r))
 }
 
 /** Auto-string: each roof face gets its own MPPT where possible, split into equal parallel strings that fit
