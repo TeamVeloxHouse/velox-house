@@ -8,7 +8,7 @@ import type { Design, DesignPlane } from '../store/types'
 import { moduleById } from '../lib/panels'
 import { polygonAreaM2, slopedAreaM2 } from '../lib/design'
 import { useMcs } from './McsProduction'
-import { DEFAULT_FINANCE, FINANCE_LABEL, OPT_METRIC, batteryRaw, metricOf, optimise, project, systemPrice, type FinanceAssumptions, type OptMetric } from '../lib/finance'
+import { DEFAULT_FINANCE, FINANCE_LABEL, OPT_METRIC, batteryRaw, metricOf, optimise, project, systemPrice, type FinanceAssumptions, type OptMetric, type Projection } from '../lib/finance'
 
 /* Savings tab — the 20-year money story for this design, and the optimiser that scores every solar size ×
  * battery size so the adviser can show why this system is the right one. */
@@ -20,6 +20,29 @@ function rampAt(t: number) {
   const h = (s: string) => [1, 3, 5].map((k) => parseInt(s.slice(k, k + 2), 16))
   const a = h(RAMP[i]), b = h(RAMP[i + 1])
   return `rgb(${a.map((v, k) => Math.round(v + (b[k] - v) * f)).join(',')})`
+}
+
+/** Running total after paying for the system, year by year — navy while paying back, teal once in profit. */
+export function CumulativeChart({ proj }: { proj: Projection }) {
+  const price = proj.capex, cum = proj.rows.map((r) => r.cumulative)
+  const cMin = Math.min(-price, ...cum), cMax = Math.max(0, ...cum)
+  const H = 170, y = (v: number) => 8 + ((cMax - v) / (cMax - cMin || 1)) * (H - 8), bw = 520 / (cum.length + 1)
+  return (
+    <div>
+      <svg viewBox="0 0 520 200" className="w-full h-auto">
+        <line x1={0} x2={520} y1={y(0)} y2={y(0)} stroke="#98A1B0" strokeDasharray="3 3" />
+        <text x={4} y={y(0) - 4} fontSize="9" fill="#6B7585">£0</text>
+        <rect x={bw * 0.15} width={bw * 0.7} y={y(0)} height={Math.max(1, y(-price) - y(0))} rx={3} fill="#15223B" fillOpacity={0.35}><title>{`Year 0 · pay ${gbp(price)}`}</title></rect>
+        {cum.map((v, i) => (
+          <rect key={i} x={bw * (i + 1) + bw * 0.15} width={bw * 0.7} y={Math.min(y(v), y(0))} height={Math.max(1, Math.abs(y(v) - y(0)))} rx={3} fill={v < 0 ? '#15223B' : '#169C85'}>
+            <title>{`Year ${i + 1} · ${gbp(v)} cumulative · ${gbp(proj.rows[i].net)} that year${proj.rows[i].costs ? ` (after ${gbp(proj.rows[i].costs)} replacement)` : ''}`}</title>
+          </rect>
+        ))}
+        {[0, 5, 10, 15, 20, 25].filter((n) => n <= cum.length).map((n) => <text key={n} x={bw * n + bw / 2} y={H + 22} fontSize="9" textAnchor="middle" fill="#98A1B0">{n === 0 ? 'Now' : `Yr ${n}`}</text>)}
+      </svg>
+      <Legend items={[{ label: 'Still paying back', swatch: '#15223B' }, { label: 'In profit', swatch: '#169C85' }]} />
+    </div>
+  )
 }
 
 /** Most panels the plane could take: the placed count, or ~60% of its sloped area in modules. */
@@ -61,9 +84,6 @@ export function Savings({ design, moduleId, effTilt }: { design: Design; moduleI
   const score = (v: number) => (!Number.isFinite(v) || hi === lo ? (Number.isFinite(v) ? 1 : 0) : better === 'high' ? (v - lo) / (hi - lo) : (hi - v) / (hi - lo))
   const best = flat.reduce<(typeof flat)[number] | null>((b, c) => (!b || score(metricOf(c, metric)) > score(metricOf(b, metric)) ? c : b), null)
   const nearestRow = opt ? opt.counts.reduce((bi, n, i) => (Math.abs(n - panels) < Math.abs(opt.counts[bi] - panels) ? i : bi), 0) : -1
-
-  const cum = proj?.rows.map((r) => r.cumulative) ?? []
-  const cMin = Math.min(-price, ...cum), cMax = Math.max(0, ...cum)
   const rows = showAll ? proj?.rows ?? [] : (proj?.rows ?? []).filter((r) => r.year <= 5 || r.year % 5 === 0 || r.costs > 0)
 
   return (
@@ -92,23 +112,7 @@ export function Savings({ design, moduleId, effTilt }: { design: Design; moduleI
             {proj && <div className="mt-3 text-[12.5px] text-ink-3">Cuts the bill by <b className="text-ink">{gbp(proj.billBefore1 - proj.billAfter1)}</b> ({Math.round(((proj.billBefore1 - proj.billAfter1) / proj.billBefore1) * 100)}%) in year one, plus <b className="text-ink">{gbp(proj.rows[0].exportIncome)}</b> paid for exported power — and {Math.round(proj.co2Tonnes * 10) / 10} t of CO₂ avoided over {a.years} years.</div>}
           </Panel>
           <Panel title="Cumulative cashflow" sub="Running total after paying for the system — where it crosses zero is payback" icon={Target}>
-            <svg viewBox="0 0 520 200" className="w-full h-auto">
-              {(() => {
-                const H = 170, y = (v: number) => 8 + ((cMax - v) / (cMax - cMin || 1)) * (H - 8), bw = 520 / (cum.length + 1)
-                return <>
-                  <line x1={0} x2={520} y1={y(0)} y2={y(0)} stroke="#98A1B0" strokeDasharray="3 3" />
-                  <text x={4} y={y(0) - 4} fontSize="9" fill="#6B7585">£0</text>
-                  <rect x={bw * 0.15} width={bw * 0.7} y={y(0)} height={Math.max(1, y(-price) - y(0))} rx={3} fill="#15223B" fillOpacity={0.35}><title>{`Year 0 · pay ${gbp(price)}`}</title></rect>
-                  {cum.map((v, i) => (
-                    <rect key={i} x={bw * (i + 1) + bw * 0.15} width={bw * 0.7} y={Math.min(y(v), y(0))} height={Math.max(1, Math.abs(y(v) - y(0)))} rx={3} fill={v < 0 ? '#15223B' : '#169C85'}>
-                      <title>{`Year ${i + 1} · ${gbp(v)} cumulative · ${gbp(proj!.rows[i].net)} that year${proj!.rows[i].costs ? ` (after ${gbp(proj!.rows[i].costs)} replacement)` : ''}`}</title>
-                    </rect>
-                  ))}
-                  {[0, 5, 10, 15, 20, 25].filter((n) => n <= cum.length).map((n) => <text key={n} x={bw * n + bw / 2} y={H + 22} fontSize="9" textAnchor="middle" fill="#98A1B0">{n === 0 ? 'Now' : `Yr ${n}`}</text>)}
-                </>
-              })()}
-            </svg>
-            <Legend items={[{ label: 'Still paying back', swatch: '#15223B' }, { label: 'In profit', swatch: '#169C85' }]} />
+            {proj && <CumulativeChart proj={proj} />}
           </Panel>
         </div>
 

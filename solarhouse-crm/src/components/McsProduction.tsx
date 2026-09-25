@@ -55,6 +55,27 @@ export function SunpathDiagram({ segments, title }: { segments: (Segment & { sha
   )
 }
 
+/** Sun-path cells for one roof face, with everything the design records as shading it. */
+export function planeSunpath(design: Design, planeId: string) {
+  const p = design.planes.find((x) => x.id === planeId)
+  return p ? shadeFactor(design.center?.lat ?? 51.5, obstructionsFor(p, design)) : { sf: 1, segments: [] }
+}
+
+/** Mounting tilt of a plane: roof pitch when flush, the frame tilt on tilted racking. */
+export const effTiltOf = (p: DesignPlane) => (p.racking && p.racking !== 'flush' ? (p.tiltDeg ?? 10) : p.pitchDeg)
+
+/** One-shot MCS estimate for a design (no React) — used when pushing a design into a proposal. */
+export async function estimateDesign(design: Design, moduleId = 'm440', effTilt = effTiltOf): Promise<McsResult | null> {
+  const filled = design.planes.filter((p) => p.panels?.length)
+  if (!design.center || !filled.length) return null
+  const lat = design.center.lat
+  const postcode = design.address.match(/[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}/i)?.[0]
+  return mcsEstimate({
+    arrays: filled.map((p, i) => ({ id: p.id, name: p.name || `Array ${i + 1}`, kwp: ((p.panels?.length ?? 0) * moduleById(p.moduleId ?? moduleId).watts) / 1000, tiltDeg: effTilt(p), azimuthFromSouthDeg: toSouth(p.azimuthDeg), shadeFactor: design.shadeOverrides?.[p.id] ?? shadeFactor(lat, obstructionsFor(p, design)).sf })),
+    site: { ...design.center, postcode }, useKwh: design.annualConsumptionKwh ?? 3800, occupancy: (design.occupancy ?? 'in_half_day') as Occupancy, batteryUsableKwh: design.batteryKwh ?? 0,
+  })
+}
+
 /** The MCS estimate for the placed panels, plus the per-kWp yield (Kk × SF) of every roof plane — the
  *  Production tab, Savings tab and optimiser all read from this one hook. */
 export function useMcs(design: Design, moduleId: string, effTilt: (p: DesignPlane) => number) {

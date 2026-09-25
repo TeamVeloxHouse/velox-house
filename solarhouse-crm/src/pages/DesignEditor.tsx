@@ -1,4 +1,5 @@
-import { McsProduction } from '../components/McsProduction'
+import { McsProduction, estimateDesign } from '../components/McsProduction'
+import { systemPrice } from '../lib/finance'
 import { Savings } from '../components/Savings'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -92,7 +93,7 @@ export function DesignEditor() {
   const { id } = useParams()
   const nav = useNavigate()
   const act = useActions()
-  const { designs, deals, showroom } = useState_()
+  const { designs, deals, showroom, studioConfig } = useState_()
   const design = designs.find((d) => d.id === id)
 
   const mapEl = useRef<HTMLDivElement>(null)
@@ -964,12 +965,15 @@ export function DesignEditor() {
 
   /** Push this design into a showroom proposal — the customer-facing presentation. Re-pushing the
    *  same design updates its proposal rather than creating a second one. */
-  function pushToProposal() {
+  async function pushToProposal() {
     if (!design || !totals.count) { act.toast('Add panels before creating a proposal', 'warning'); return }
     const deal = deals.find((d) => d.id === design.dealId)
     const j = deal?.journey
     const batteryKwh = design.batteryKwh ?? j?.system?.batteryKwh ?? 0
-    const sdesign = { systemKwp: kwp, panels: totals.count, hasBattery: batteryKwh > 0, batteryKwh, hasEv: !!j?.property.hasEv, addEvCharger: !!j?.system?.evCharger }
+    // the proposal carries the design's own MCS generation and price, so every page agrees with the studio
+    const mcs = await estimateDesign(design, moduleId, effTilt)
+    const price = design.priceOverride ?? systemPrice(kwp, totals.count, batteryKwh, studioConfig)
+    const sdesign = { systemKwp: kwp, panels: totals.count, hasBattery: batteryKwh > 0, batteryKwh, hasEv: !!j?.property.hasEv, addEvCharger: !!j?.system?.evCharger, price, annualGenKwh: mcs?.annualKwh }
     const existing = showroom.find((s) => s.designId === design.id)
     if (existing) {
       act.updateShowroom(existing.id, { design: sdesign })

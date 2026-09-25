@@ -35,6 +35,7 @@ export function priceBreakdown(d: ShowroomDesign): { panels: number; battery: nu
   const round = (n: number) => Math.round(n / 10) * 10
   const panels = round(2400 + d.systemKwp * 1150) // base (scaffold, inverter, install) + per-kWp
   const battery = d.hasBattery ? round(900 + d.batteryKwh * 480) : 0
+  if (d.price != null) { const charger = d.addEvCharger ? 900 : 0; return { panels: Math.max(0, d.price - battery), battery, charger, subtotal: d.price + charger, total: d.price + charger } }
   const charger = d.addEvCharger ? 900 : 0
   const subtotal = panels + battery + charger
   return { panels, battery, charger, subtotal, total: subtotal } // 0% VAT on domestic solar/battery
@@ -69,7 +70,7 @@ export function showroomModel(s: ShowroomSession): ShowroomModel {
   const d = s.design
   const importRate = Math.max(0.1, s.tariffPence / 100)
   const demand = s.annualKwh > 0 ? s.annualKwh : kwhFromSpend(s.monthlySpend, s.tariffPence)
-  const gen = Math.round(d.systemKwp * YIELD_PER_KWP)
+  const gen = Math.round(d.annualGenKwh ?? d.systemKwp * YIELD_PER_KWP)
   const tariff = { importRate, exportRate: UK.exportRate }
 
   const base = simulateHome({ annualGeneration: 0, annualDemand: demand, occupancy: s.occupancy, tariff })

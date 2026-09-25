@@ -992,6 +992,8 @@ export interface ShowroomDesign {
   batteryKwh: number // usable kWh
   hasEv: boolean // they have / want an EV
   addEvCharger: boolean
+  price?: number // quoted price from a Design Studio design (else the showroom's own itemised pricing)
+  annualGenKwh?: number // MCS generation from a Design Studio design (else kWp × a typical yield)
 }
 export interface ShowroomSession {
   id: ID

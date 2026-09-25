@@ -11,10 +11,13 @@ import type { ShowroomSession } from '../store/types'
 import { showroomModel, panelsFor, starterDesign, kwhFromSpend, monthlyGeneration, dailyGenerationCurve, cashFlowSeries, priceBreakdown } from '../lib/showroom'
 import { generateMockupForAddress } from '../lib/mockup'
 import { BookSlotModal } from './ShowroomCalendar'
+import { SectionSurveyedDesign, SectionLongTerm } from '../components/DesignProposal'
 import { money, classNames } from '../lib/format'
 
 const ACCENT = '#0E7A66'
 const NAVY = '#15223B'
+/** A net bill below zero means export income beats what's bought in — say so rather than showing a minus bill. */
+const billText = (n: number) => (n < 0 ? `${money(-n)} in credit` : money(n))
 
 /* ============================ Home — sessions list ============================ */
 const SHOWROOM_TABS = ['Cardiff', 'Cheltenham', 'Melksham'] as const
@@ -288,8 +291,13 @@ const sections = [
 export function ShowroomExperience() {
   const { id } = useParams()
   const nav = useNavigate()
-  const { showroom } = useState_()
+  const { showroom, designs } = useState_()
   const session = showroom.find((s) => s.id === id)
+  // a proposal pushed from the Design Studio gets the surveyed-design + 20-year pages, built from that design
+  const linked = designs.find((d) => d.id === session?.designId && d.planes.some((p) => p.panels?.length))
+  const secs = linked
+    ? sections.flatMap((s) => (s.key === 'design' ? [s, { key: 'surveyed', label: 'Your surveyed design' }] : s.key === 'bill' ? [s, { key: 'longterm', label: '20 years with solar' }] : [s]))
+    : sections
   const [activeKey, setActiveKey] = useState('welcome')
   const [won, setWon] = useState<{ portalId: string } | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -302,9 +310,9 @@ export function ShowroomExperience() {
       const visible = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)
       if (visible[0]) setActiveKey(visible[0].target.id)
     }, { root, rootMargin: '-15% 0px -70% 0px', threshold: 0 })
-    sections.forEach((s) => { const el = sectionRefs.current[s.key]; if (el) obs.observe(el) })
+    secs.forEach((s) => { const el = sectionRefs.current[s.key]; if (el) obs.observe(el) })
     return () => obs.disconnect()
-  }, [session?.id])
+  }, [session?.id, secs.length])
 
   if (!session) return <div className="p-8 text-muted-b">Session not found. <button onClick={() => nav('/showroom')} className="text-accent font-semibold">Back to showroom</button>.</div>
 
@@ -322,7 +330,7 @@ export function ShowroomExperience() {
           <div className="flex items-center gap-2 mt-3"><Avatar name={session.name} size={30} /><div className="min-w-0"><div className="text-[13px] font-bold text-white truncate">{session.name}</div><div className="text-[11.5px] text-white/55 truncate">{session.address}</div></div></div>
         </div>
         <nav className="p-2.5 flex flex-col gap-0.5">
-          {sections.map((s) => (
+          {secs.map((s) => (
             <button
               key={s.key}
               onClick={() => goTo(s.key)}
@@ -343,7 +351,9 @@ export function ShowroomExperience() {
           <section id="today" ref={(el) => { sectionRefs.current.today = el }} className="scroll-mt-6"><SlideToday session={session} /></section>
           <section id="motivations" ref={(el) => { sectionRefs.current.motivations = el }} className="scroll-mt-6"><SectionMotivations /></section>
           <section id="design" ref={(el) => { sectionRefs.current.design = el }} className="scroll-mt-6"><SectionDesign session={session} /></section>
+          {linked && <section id="surveyed" ref={(el) => { sectionRefs.current.surveyed = el }} className="scroll-mt-6"><SectionSurveyedDesign design={linked} session={session} /></section>}
           <section id="bill" ref={(el) => { sectionRefs.current.bill = el }} className="scroll-mt-6"><SlideBill session={session} /></section>
+          {linked && <section id="longterm" ref={(el) => { sectionRefs.current.longterm = el }} className="scroll-mt-6"><SectionLongTerm design={linked} session={session} /></section>}
           <section id="why" ref={(el) => { sectionRefs.current.why = el }} className="scroll-mt-6"><SectionWhy /></section>
           <section id="process" ref={(el) => { sectionRefs.current.process = el }} className="scroll-mt-6"><SectionProcess /></section>
           <section id="portal" ref={(el) => { sectionRefs.current.portal = el }} className="scroll-mt-6"><SlidePortal session={session} /></section>
@@ -440,7 +450,7 @@ function SlideWelcome({ session }: { session: ShowroomSession }) {
           <div><div className="text-[11px]" style={{ color: '#93A0B4' }}>You'll save</div><div className="text-[26px] font-bold" style={{ color: '#8FE0C6' }}>{money(m.annualSaving + m.evSaving)}<span className="text-[13px] font-medium">/yr</span></div></div>
           <div><div className="text-[11px]" style={{ color: '#93A0B4' }}>Over 25 years</div><div className="text-[26px] font-bold" style={{ color: '#8FE0C6' }}>{money(m.lifetimeSaving, { compact: true })}</div></div>
           <div><div className="text-[11px]" style={{ color: '#93A0B4' }}>System size</div><div className="text-[26px] font-bold text-white">{session.design.systemKwp} kWp</div></div>
-          <div><div className="text-[11px]" style={{ color: '#93A0B4' }}>Bill cut by</div><div className="text-[26px] font-bold" style={{ color: '#8FE0C6' }}>{Math.round((1 - m.newBill / Math.max(1, m.currentBill)) * 100)}%</div></div>
+          <div><div className="text-[11px]" style={{ color: '#93A0B4' }}>Bill cut by</div><div className="text-[26px] font-bold" style={{ color: '#8FE0C6' }}>{Math.min(100, Math.round((1 - m.newBill / Math.max(1, m.currentBill)) * 100))}%</div></div>
         </div>
       </div>
     </div>
@@ -571,7 +581,7 @@ function SectionDesign({ session }: { session: ShowroomSession }) {
   const d = session.design
   const monthly = useMemo(() => monthlyGeneration(m.generationKwh), [m.generationKwh])
   const daily = useMemo(() => dailyGenerationCurve(d.systemKwp), [d.systemKwp])
-  const setKwp = (kwp: number) => act.updateShowroomDesign(session.id, { systemKwp: Math.round(kwp * 10) / 10, panels: panelsFor(kwp) })
+  const setKwp = (kwp: number) => act.updateShowroomDesign(session.id, { systemKwp: Math.round(kwp * 10) / 10, panels: panelsFor(kwp), price: undefined, annualGenKwh: undefined })
   const KWPS = [3.2, 4.0, 4.8, 5.6, 6.4]
   const BATTS = [5, 10, 15]
   return (
@@ -587,12 +597,12 @@ function SectionDesign({ session }: { session: ShowroomSession }) {
             </div>
           </div>
           <div className="border-t border-divider pt-4">
-            <button onClick={() => act.updateShowroomDesign(session.id, { hasBattery: !d.hasBattery })} className="w-full flex items-center gap-3 text-left">
+            <button onClick={() => act.updateShowroomDesign(session.id, { hasBattery: !d.hasBattery, price: undefined })} className="w-full flex items-center gap-3 text-left">
               <span className="w-11 h-7 rounded-full relative transition-colors shrink-0" style={{ background: d.hasBattery ? ACCENT : '#D8DEE7' }}><span className="absolute top-0.5 w-6 h-6 rounded-full bg-white transition-all shadow" style={{ left: d.hasBattery ? 18 : 2 }} /></span>
               <span className="flex-1"><span className="text-[14px] font-semibold text-ink-2">Add a battery</span><span className="block text-[12px] text-muted-2">Store daytime solar for the evening — big jump in savings</span></span>
               <Bolt size={18} className={d.hasBattery ? 'text-accent' : 'text-muted-3'} />
             </button>
-            {d.hasBattery && <div className="flex gap-2 mt-3 pl-14">{BATTS.map((b) => <button key={b} onClick={() => act.updateShowroomDesign(session.id, { batteryKwh: b })} className={classNames('px-3 py-1.5 rounded-lg text-[12.5px] font-semibold', d.batteryKwh === b ? 'text-white' : 'bg-control text-ink-2')} style={d.batteryKwh === b ? { background: ACCENT } : undefined}>{b} kWh</button>)}</div>}
+            {d.hasBattery && <div className="flex gap-2 mt-3 pl-14">{BATTS.map((b) => <button key={b} onClick={() => act.updateShowroomDesign(session.id, { batteryKwh: b, price: undefined })} className={classNames('px-3 py-1.5 rounded-lg text-[12.5px] font-semibold', d.batteryKwh === b ? 'text-white' : 'bg-control text-ink-2')} style={d.batteryKwh === b ? { background: ACCENT } : undefined}>{b} kWh</button>)}</div>}
           </div>
           <div className="border-t border-divider pt-4">
             <button onClick={() => act.updateShowroomDesign(session.id, { hasEv: !d.hasEv, addEvCharger: !d.hasEv })} className="w-full flex items-center gap-3 text-left">
@@ -607,7 +617,7 @@ function SectionDesign({ session }: { session: ShowroomSession }) {
           <div className="flex items-center gap-2"><Sparkle size={15} className="text-[#8FE0C6]" /><span className="text-[12px] font-semibold tracking-wide" style={{ color: '#8FE0C6' }}>LIVE RESULT</span></div>
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-lg p-3" style={{ background: 'rgba(255,255,255,0.06)' }}><div className="text-[10.5px] uppercase tracking-wide text-white/55 font-semibold">Bill now</div><div className="text-[20px] font-bold" style={{ color: '#F5B85C' }}>{money(m.currentBill)}</div></div>
-            <div className="rounded-lg p-3" style={{ background: 'rgba(143,224,198,0.14)' }}><div className="text-[10.5px] uppercase tracking-wide text-white/55 font-semibold">Bill after</div><div className="text-[20px] font-bold" style={{ color: '#8FE0C6' }}>{money(m.newBill)}</div></div>
+            <div className="rounded-lg p-3" style={{ background: 'rgba(143,224,198,0.14)' }}><div className="text-[10.5px] uppercase tracking-wide text-white/55 font-semibold">Bill after</div><div className="text-[20px] font-bold" style={{ color: '#8FE0C6' }}>{billText(m.newBill)}</div></div>
           </div>
           <div className="rounded-lg p-4 text-center" style={{ background: 'rgba(255,255,255,0.06)' }}>
             <div className="text-[11px] uppercase tracking-wide font-semibold" style={{ color: '#8FE0C6' }}>You save</div>
@@ -643,12 +653,12 @@ function SectionDesign({ session }: { session: ShowroomSession }) {
 function SlideBill({ session }: { session: ShowroomSession }) {
   const m = useMemo(() => showroomModel(session), [session])
   const cashFlow = useMemo(() => cashFlowSeries(m.annualSaving + m.evSaving, m.price), [m.annualSaving, m.evSaving, m.price])
-  const cut = Math.round((1 - m.newBill / Math.max(1, m.currentBill)) * 100)
+  const cut = Math.min(100, Math.round((1 - m.newBill / Math.max(1, m.currentBill)) * 100))
   return (
     <div className="flex flex-col gap-4">
       <div>
         <Eyebrow>Your new bill</Eyebrow>
-        <h2 className="text-[22px] font-bold text-ink mt-1">From {money(m.currentBill)} down to <span className="text-accent">{money(m.newBill)}</span> a year.</h2>
+        <h2 className="text-[22px] font-bold text-ink mt-1">From {money(m.currentBill)} {m.newBill < 0 ? 'to' : 'down to'} <span className="text-accent">{billText(m.newBill)}</span> a year.</h2>
       </div>
       <div className="flex items-center gap-3 flex-wrap">
         <div className="bg-surface border border-border rounded-card px-5 py-3.5"><div className="text-[11px] font-semibold uppercase text-muted-3">Cut your bill by</div><div className="text-[26px] font-bold text-accent">{cut}%</div></div>
@@ -880,7 +890,7 @@ function SlideClose({ session, won, onWin }: { session: ShowroomSession; won: { 
         <div className="text-[13px] text-muted-b">or about <b className="text-accent">{money(monthly)}/month</b> on 0% finance</div>
         <div className="grid grid-cols-3 gap-3 mt-4 max-w-[480px] mx-auto">
           <Stat label="You save" value={`${money(m.annualSaving + m.evSaving, { compact: true })}/yr`} tone={ACCENT} />
-          <Stat label="New bill" value={money(m.newBill)} tone={ACCENT} />
+          <Stat label="New bill" value={billText(m.newBill)} tone={ACCENT} />
           <Stat label="25yr saving" value={money(m.lifetimeSaving, { compact: true })} tone={ACCENT} />
         </div>
       </div>
