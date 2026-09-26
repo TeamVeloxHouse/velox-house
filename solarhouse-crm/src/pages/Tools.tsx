@@ -6,6 +6,7 @@ import { Sun, Bolt, Layers, Radar, Person, Building, Wrench, Sparkle, MapPin, Fl
 import { useActions, useState_ } from '../store/store'
 import { money } from '../lib/format'
 import { ProspectDatabase, ProspectDetail } from './CommercialSolar'
+import { ArtHomeFinder, ArtWholeHome, ArtEvCharger, ArtEnquiries, ArtBatteryRetrofit, ArtReferrals } from '../components/ToolArt'
 
 type Icon = (p: { size?: number; className?: string }) => JSX.Element
 type ToolDef = {
@@ -18,44 +19,44 @@ const TOOLS: ToolDef[] = [
   {
     id: 'home-finder', name: 'Home Finder', tagline: 'Street-level targeting',
     desc: 'Pull every home around a showroom or postcode, measure each roof from satellite and keep the ones worth knocking on.',
-    icon: Sun, to: '/tools/home-finder', live: true, accent: '#13927B', wash: '#E6F6F1',
+    icon: Sun, to: '/tools/home-finder', live: true, accent: '#15223B', wash: '#E4F7F2',
     features: [{ icon: Radar, label: 'Area scan' }, { icon: Sun, label: 'Live roof data' }, { icon: MapPin, label: 'Map' }],
-    preview: (a) => <PreviewHouse accent={a} />,
+    preview: () => <ArtHomeFinder />,
   },
   {
     id: 'whole-home', name: 'Whole-home Designer', tagline: 'Solar + battery + EV',
     desc: 'Model a homeowner’s solar, battery and EV as one system, half-hour by half-hour, and show the real saving.',
-    icon: Sparkle, to: '/design/whole-home', live: true, accent: '#7C3AED', wash: '#F1ECFD',
+    icon: Sparkle, to: '/design/whole-home', live: true, accent: '#15223B', wash: '#E4F7F2',
     features: [{ icon: Sun, label: 'Solar' }, { icon: Layers, label: 'Battery' }, { icon: Bolt, label: 'EV' }],
-    preview: (a) => <PreviewBattery accent={a} />,
+    preview: () => <ArtWholeHome />,
   },
   {
     id: 'ev-charging', name: 'EV Charger Sizer', tagline: 'Home charging',
     desc: 'Size a home charger, check the supply’s headroom and show the cost per mile on solar.',
-    icon: Bolt, to: '/studio/ev', live: true, accent: '#4F46E5', wash: '#EEEFFD',
+    icon: Bolt, to: '/studio/ev', live: true, accent: '#15223B', wash: '#E4F7F2',
     features: [{ icon: Bolt, label: 'Load check' }, { icon: Clock, label: 'Payback' }],
-    preview: (a) => <PreviewBars accent={a} />,
+    preview: () => <ArtEvCharger />,
   },
   {
     id: 'enquiries', name: 'Enquiry Capture', tagline: 'Web, ads & showroom', eta: 'Q4',
     desc: 'Every website form, Meta/Google lead ad and showroom walk-in lands here, scored and routed within a minute.',
-    icon: Person, live: false, accent: '#0284C7', wash: '#E6F3FA',
+    icon: Person, live: false, accent: '#15223B', wash: '#EDF1F5',
     features: [{ icon: Flow, label: 'Lead ads' }, { icon: Person, label: 'Walk-ins' }],
-    preview: (a) => <PreviewList accent={a} />,
+    preview: () => <ArtEnquiries />,
   },
   {
     id: 'battery-retrofit', name: 'Battery Retrofit Finder', tagline: 'Homes with panels, no battery', eta: 'Q1',
     desc: 'Spot homes that already have solar from aerial imagery and offer them a battery upgrade.',
-    icon: Layers, live: false, accent: '#D97706', wash: '#FDF3E3',
+    icon: Layers, live: false, accent: '#15223B', wash: '#EDF1F5',
     features: [{ icon: Radar, label: 'Aerial check' }, { icon: Layers, label: 'Upsell' }],
-    preview: (a) => <PreviewRoof accent={a} />,
+    preview: () => <ArtBatteryRetrofit />,
   },
   {
     id: 'referrals', name: 'Referral Engine', tagline: 'Neighbours of happy customers', eta: 'Q1',
     desc: 'Turn every install into introductions: target the streets around finished jobs and reward referrals from the customer portal.',
-    icon: Wrench, live: false, accent: '#DC4B4B', wash: '#FCECEC',
+    icon: Wrench, live: false, accent: '#15223B', wash: '#EDF1F5',
     features: [{ icon: MapPin, label: 'Nearby streets' }, { icon: Person, label: 'Portal rewards' }],
-    preview: (a) => <PreviewCurve accent={a} />,
+    preview: () => <ArtReferrals />,
   },
 ]
 
@@ -163,10 +164,10 @@ export function ToolsHub() {
                 className={`group rounded-card bg-surface border border-border shadow-card overflow-hidden flex flex-col transition-all duration-200 ${t.live ? 'cursor-pointer hover:shadow-lift hover:-translate-y-0.5 hover:border-input-border' : ''}`}
               >
                 {/* visual preview */}
-                <div className="relative h-[128px] overflow-hidden" style={{ background: `linear-gradient(150deg, ${t.wash} 0%, #FFFFFF 95%)` }}>
-                  <div className={`absolute inset-0 flex items-center justify-center transition-transform duration-300 ${t.live ? 'group-hover:scale-[1.04]' : 'grayscale-[0.6] opacity-70'}`}>{t.preview(t.accent)}</div>
+                <div className="relative h-[150px] overflow-hidden" style={{ background: `linear-gradient(160deg, ${t.wash} 0%, #FFFFFF 90%)` }}>
+                  <div className={`absolute inset-x-2 top-5 bottom-0 transition-transform duration-300 ${t.live ? "group-hover:scale-[1.04]" : "grayscale-[0.5] opacity-60"}`}>{t.preview(t.accent)}</div>
                   <div className="absolute top-3 left-3 flex items-center gap-2">
-                    <span className="w-9 h-9 rounded-[10px] flex items-center justify-center text-white shadow-card" style={{ background: t.accent }}><t.icon size={18} /></span>
+                    <span className="w-9 h-9 rounded-[10px] flex items-center justify-center text-[#62E4CC] shadow-card" style={{ background: t.accent }}><t.icon size={18} /></span>
                   </div>
                   <div className="absolute top-3 right-3">
                     {t.live ? (
@@ -229,83 +230,6 @@ export function ToolsHub() {
         </div>
       </PageBody>
     </>
-  )
-}
-
-/* ─────────── Card preview illustrations (pure SVG, tinted per tool) ─────────── */
-
-function PreviewList({ accent }: { accent: string }) {
-  return (
-    <svg width="230" height="100" viewBox="0 0 230 100" fill="none" className="mt-6">
-      {[0, 1, 2].map((i) => (
-        <g key={i} transform={`translate(${i * 6} ${i * 30})`} opacity={1 - i * 0.22}>
-          <rect width="210" height="26" rx="7" fill="#fff" stroke="#E4E8EE" />
-          <rect x="7" y="6" width="14" height="14" rx="4" fill={accent} opacity="0.85" />
-          <rect x="28" y="8" width={70 - i * 12} height="4" rx="2" fill="#1B2534" opacity="0.7" />
-          <rect x="28" y="15" width={48 - i * 6} height="3" rx="1.5" fill="#98A1B0" />
-          {[0, 1, 2].map((j) => <circle key={j} cx={150 + j * 9} cy="13" r="5.5" fill={['#EAF6F2', '#EEF2FF', '#FDF1E7'][j]} stroke="#fff" strokeWidth="1.5" />)}
-          <circle cx="193" cy="13" r="6.5" fill="none" stroke={accent} strokeWidth="2.2" strokeDasharray={`${30 - i * 7} 41`} transform="rotate(-90 193 13)" />
-        </g>
-      ))}
-    </svg>
-  )
-}
-
-function PreviewRoof({ accent }: { accent: string }) {
-  return (
-    <svg width="220" height="110" viewBox="0 0 220 110" fill="none" className="mt-5">
-      <path d="M30 95 L60 25 L200 25 L185 95 Z" fill="#fff" stroke="#E4E8EE" strokeWidth="1.5" />
-      {Array.from({ length: 4 }).map((_, r) =>
-        Array.from({ length: 7 }).map((__, c) => (
-          <rect key={`${r}-${c}`} x={62 + c * 18 - r * 6} y={32 + r * 15} width="15" height="12" rx="1.5" fill={accent} opacity={0.35 + ((r + c) % 3) * 0.2} />
-        )),
-      )}
-      <circle cx="196" cy="18" r="9" fill={accent} opacity="0.25" />
-      <circle cx="196" cy="18" r="5" fill={accent} />
-    </svg>
-  )
-}
-
-function PreviewBars({ accent }: { accent: string }) {
-  const h = [30, 46, 38, 62, 54, 74, 66]
-  return (
-    <svg width="210" height="100" viewBox="0 0 210 100" fill="none" className="mt-6">
-      <line x1="10" y1="92" x2="200" y2="92" stroke="#E4E8EE" />
-      {h.map((v, i) => <rect key={i} x={24 + i * 25} y={92 - v} width="15" height={v} rx="3" fill={accent} opacity={0.3 + i * 0.1} />)}
-      <path d="M20 58 C 60 50, 100 40, 190 20" stroke={accent} strokeWidth="2" strokeDasharray="4 4" />
-    </svg>
-  )
-}
-
-function PreviewHouse({ accent }: { accent: string }) {
-  return (
-    <svg width="200" height="110" viewBox="0 0 200 110" fill="none" className="mt-5">
-      <path d="M45 55 L100 18 L155 55 V100 H45 Z" fill="#fff" stroke="#E4E8EE" strokeWidth="1.5" />
-      <path d="M100 18 L155 55" stroke="#E4E8EE" strokeWidth="1.5" />
-      {[0, 1, 2].map((i) => <path key={i} d={`M${108 + i * 13} ${31 + i * 8.5} l11 7.5 l-4 6 l-11 -7.5 z`} fill={accent} opacity={0.5 + i * 0.15} />)}
-      <rect x="88" y="72" width="24" height="28" rx="2" fill={accent} opacity="0.2" />
-    </svg>
-  )
-}
-
-function PreviewBattery({ accent }: { accent: string }) {
-  return (
-    <svg width="200" height="100" viewBox="0 0 200 100" fill="none" className="mt-6">
-      <rect x="40" y="30" width="110" height="50" rx="9" fill="#fff" stroke="#E4E8EE" strokeWidth="1.5" />
-      <rect x="150" y="45" width="8" height="20" rx="2.5" fill="#E4E8EE" />
-      {[0, 1, 2, 3].map((i) => <rect key={i} x={48 + i * 25} y="38" width="20" height="34" rx="4" fill={accent} opacity={0.3 + i * 0.18} />)}
-    </svg>
-  )
-}
-
-function PreviewCurve({ accent }: { accent: string }) {
-  return (
-    <svg width="210" height="100" viewBox="0 0 210 100" fill="none" className="mt-6">
-      {[30, 55, 80].map((y) => <line key={y} x1="10" y1={y} x2="200" y2={y} stroke="#EEF1F4" />)}
-      <path d="M10 80 C 50 78, 70 30, 110 34 S 170 60, 200 22" stroke={accent} strokeWidth="2.5" fill="none" />
-      <path d="M10 80 C 50 78, 70 30, 110 34 S 170 60, 200 22 V 90 H 10 Z" fill={accent} opacity="0.08" />
-      <path d="M10 62 C 60 60, 120 58, 200 50" stroke="#98A1B0" strokeWidth="1.5" strokeDasharray="4 4" />
-    </svg>
   )
 }
 
