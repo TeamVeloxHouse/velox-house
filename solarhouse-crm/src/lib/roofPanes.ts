@@ -294,6 +294,158 @@ function dp(loop: PXY[], tol: number): PXY[] {
   return [...run(c1).slice(0, -1), ...run(c2).slice(0, -1)].map((i) => loop[i])
 }
 
+/* ── 3b · panes straight from the 3D surface ────────────────────────────────
+ * The same height model the 3D view draws. Inside the house's outline we find every flat plane in the
+ * surface (region growing on height + slope, refitting the plane as it grows), merge planes that are really
+ * one, give stragglers to the plane that explains them best, then trace each plane and straighten its edges
+ * to the building's own angles (walls, and hips at 45° to them). Steps between roof levels — a lower wing, a
+ * flat extension, a dormer — come out as separate panes because they're different planes. */
+
+type HPlane = { a: number; b: number; c: number } // z = a·east + b·north + c
+export function panesFromHeights(dsm: DsmData, outline: XY[]): { ring: XY[]; plane: HPlane; areaM2: number }[] | null {
+  const W = dsm.width, H = dsm.height, res = dsm.resM
+  const halfW = (W * res) / 2, halfH = (H * res) / 2
+  const ex = (c: number) => (c + 0.5) * res - halfW, no = (r: number) => halfH - (r + 0.5) * res
+  const valid = (v: number) => v > -500 && v < 10000
+  // inside the outline (grown 0.3 m for the eaves overhang)
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+  for (const p of outline) { minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x); minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y) }
+  const c0 = Math.max(1, Math.floor((minX - 0.5 + halfW) / res)), c1 = Math.min(W - 2, Math.ceil((maxX + 0.5 + halfW) / res))
+  const r0 = Math.max(1, Math.floor((halfH - maxY - 0.5) / res)), r1 = Math.min(H - 2, Math.ceil((halfH - minY + 0.5) / res))
+  const inside = new Uint8Array(W * H)
+  const nearEdge = (p: XY) => { let d = Infinity; for (let k = 0; k < outline.length; k++) d = Math.min(d, segDist(p, outline[k], outline[(k + 1) % outline.length]).d); return d }
+  let nIn = 0
+  for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
+    const p = { x: ex(c), y: no(r) }
+    if ((inPoly(p, outline) || nearEdge(p) < 0.3) && valid(dsm.heights[r * W + c])) { inside[r * W + c] = 1; nIn++ }
+  }
+  if (nIn < 200) return null
+  // smoothed heights + slope per pixel (central differences on a 3×3 mean)
+  const hs = new Float32Array(W * H)
+  for (let r = r0 - 1; r <= r1 + 1; r++) for (let c = c0 - 1; c <= c1 + 1; c++) {
+    let s = 0, n = 0
+    for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) { const rr = r + dr, cc = c + dc; if (rr >= 0 && cc >= 0 && rr < H && cc < W) { const v = dsm.heights[rr * W + cc]; if (valid(v)) { s += v; n++ } } }
+    if (r >= 0 && c >= 0 && r < H && c < W) hs[r * W + c] = n ? s / n : dsm.minH
+  }
+  const gA = new Float32Array(W * H), gB = new Float32Array(W * H), curv = new Float32Array(W * H)
+  for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
+    const i = r * W + c; if (!inside[i]) continue
+    gA[i] = (hs[i + 1] - hs[i - 1]) / (2 * res); gB[i] = (hs[i - W] - hs[i + W]) / (2 * res)
+  }
+  for (let r = r0 + 1; r < r1; r++) for (let c = c0 + 1; c < c1; c++) {
+    const i = r * W + c; if (!inside[i]) continue
+    curv[i] = Math.abs(gA[i + 1] - gA[i - 1]) + Math.abs(gB[i - W] - gB[i + W]) + Math.abs(gA[i - W] - gA[i + W]) + Math.abs(gB[i + 1] - gB[i - 1])
+  }
+  // region growing, seeded from the flattest-looking pixels first
+  const label = new Int32Array(W * H).fill(-1)
+  const seeds: number[] = []; for (let i = 0; i < W * H; i++) if (inside[i]) seeds.push(i)
+  seeds.sort((p, q) => curv[p] - curv[q])
+  type Reg = { pix: number[]; pl: HPlane; S: number[] }
+  const regs: Reg[] = []
+  const solve = (S: number[]): HPlane | null => { // S = [Sxx,Sxy,Sx,Syy,Sy,N,Sxz,Syz,Sz]
+    const M = [[S[0], S[1], S[2]], [S[1], S[3], S[4]], [S[2], S[4], S[5]]], B = [S[6], S[7], S[8]]
+    const det = (m: number[][]) => m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0])
+    const d = det(M); if (Math.abs(d) < 1e-9) return null
+    const k = [0, 1, 2].map((j) => det(M.map((row, i) => row.map((v, jj) => (jj === j ? B[i] : v)))) / d)
+    return { a: k[0], b: k[1], c: k[2] }
+  }
+  const TOL = 0.12, COS = Math.cos((18 * Math.PI) / 180)
+  const nrm = (a: number, b: number) => { const l = Math.hypot(a, b, 1); return [-a / l, -b / l, 1 / l] }
+  for (const s of seeds) {
+    if (label[s] >= 0 || curv[s] > 1.2) continue
+    const id = regs.length
+    const reg: Reg = { pix: [], pl: { a: gA[s], b: gB[s], c: hs[s] - gA[s] * ex(s % W) - gB[s] * no((s / W) | 0) }, S: new Array(9).fill(0) }
+    const add = (i: number) => {
+      const x = ex(i % W), y = no((i / W) | 0), z = hs[i]
+      const S = reg.S; S[0] += x * x; S[1] += x * y; S[2] += x; S[3] += y * y; S[4] += y; S[5] += 1; S[6] += x * z; S[7] += y * z; S[8] += z
+      reg.pix.push(i); label[i] = id
+    }
+    add(s)
+    const queue = [s]; let nextFit = 16
+    while (queue.length) {
+      const p = queue.shift()!, x = p % W, y = (p / W) | 0
+      for (const q of [x > 0 ? p - 1 : -1, x < W - 1 ? p + 1 : -1, y > 0 ? p - W : -1, y < H - 1 ? p + W : -1]) {
+        if (q < 0 || !inside[q] || label[q] >= 0) continue
+        const pl = reg.pl, qx = ex(q % W), qy = no((q / W) | 0)
+        if (Math.abs(hs[q] - (pl.a * qx + pl.b * qy + pl.c)) > TOL) continue
+        const n1 = nrm(gA[q], gB[q]), n2 = nrm(pl.a, pl.b)
+        if (n1[0] * n2[0] + n1[1] * n2[1] + n1[2] * n2[2] < COS) continue
+        add(q); queue.push(q)
+        if (reg.pix.length >= nextFit) { const f = solve(reg.S); if (f) reg.pl = f; nextFit = Math.ceil(nextFit * 1.5) }
+      }
+    }
+    if (reg.pix.length * res * res < 1.2) { for (const i of reg.pix) label[i] = -1; regs.push({ pix: [], pl: reg.pl, S: reg.S }); continue }
+    const f = solve(reg.S); if (f) reg.pl = f
+    regs.push(reg)
+  }
+  // merge neighbouring regions that are the same plane (DSM noise splits one face)
+  const parent = regs.map((_, i) => i)
+  const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i])))
+  for (let i = 0; i < W * H; i++) {
+    const l = label[i]; if (l < 0) continue
+    for (const q of [i + 1, i + W]) {
+      const m = label[q]; if (m < 0 || find(m) === find(l)) continue
+      const A = regs[l].pl, B = regs[m].pl, x = ex(i % W), y = no((i / W) | 0)
+      const n1 = nrm(A.a, A.b), n2 = nrm(B.a, B.b)
+      if (n1[0] * n2[0] + n1[1] * n2[1] + n1[2] * n2[2] > Math.cos((7 * Math.PI) / 180) && Math.abs((A.a * x + A.b * y + A.c) - (B.a * x + B.b * y + B.c)) < 0.2) parent[find(l)] = find(m)
+    }
+  }
+  const groups = new Map<number, number[]>()
+  regs.forEach((r, i) => { if (!r.pix.length) return; const g = find(i); if (!groups.has(g)) groups.set(g, []); groups.get(g)!.push(...r.pix) })
+  let planes: { pix: number[]; pl: HPlane }[] = []
+  for (const pix of groups.values()) {
+    const S = new Array(9).fill(0)
+    for (const i of pix) { const x = ex(i % W), y = no((i / W) | 0), z = hs[i]; S[0] += x * x; S[1] += x * y; S[2] += x; S[3] += y * y; S[4] += y; S[5] += 1; S[6] += x * z; S[7] += y * z; S[8] += z }
+    const pl = solve(S); if (pl && pix.length * res * res >= 2) planes.push({ pix, pl })
+  }
+  if (!planes.length) return null
+  // relabel, then give leftover roof pixels to whichever neighbouring plane explains them best
+  label.fill(-1); planes.forEach((p, k) => p.pix.forEach((i) => (label[i] = k)))
+  for (let pass = 0; pass < 40; pass++) {
+    let changed = 0
+    for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
+      const i = r * W + c; if (!inside[i] || label[i] >= 0) continue
+      let best = -1, be = 0.5
+      for (const q of [i - 1, i + 1, i - W, i + W]) { const k = label[q]; if (k < 0) continue; const pl = planes[k].pl; const e = Math.abs(hs[i] - (pl.a * ex(c) + pl.b * no(r) + pl.c)); if (e < be) { be = e; best = k } }
+      if (best >= 0) { label[i] = best; changed++ }
+    }
+    if (!changed) break
+  }
+  // dominant directions: the outline's walls, and 45° to them (hips)
+  const dirs: number[] = []
+  for (let k = 0; k < outline.length; k++) { const a = outline[k], b = outline[(k + 1) % outline.length]; if (dist(a, b) < 1.5) continue; const t = Math.atan2(b.y - a.y, b.x - a.x); for (const d of [t, t + Math.PI / 4, t + Math.PI / 2, t - Math.PI / 4]) dirs.push(((d % Math.PI) + Math.PI) % Math.PI) }
+  const snapDir = (t: number) => { const u = ((t % Math.PI) + Math.PI) % Math.PI; let best = u, bd = (12 * Math.PI) / 180; for (const d of dirs) { const e = Math.min(Math.abs(u - d), Math.PI - Math.abs(u - d)); if (e < bd) { bd = e; best = d } } return best }
+  const straighten = (ring: XY[]): XY[] => {
+    const n = ring.length; if (n < 4) return ring
+    const lines = ring.map((a, i) => { const b = ring[(i + 1) % n]; const t = snapDir(Math.atan2(b.y - a.y, b.x - a.x)); return { p: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, d: { x: Math.cos(t), y: Math.sin(t) } } })
+    return ring.map((orig, i) => {
+      const L1 = lines[(i - 1 + n) % n], L2 = lines[i]
+      const den = L1.d.x * L2.d.y - L1.d.y * L2.d.x
+      if (Math.abs(den) < 0.2) return orig // near-parallel — keep the traced corner
+      const t = ((L2.p.x - L1.p.x) * L2.d.y - (L2.p.y - L1.p.y) * L2.d.x) / den
+      const q = { x: L1.p.x + L1.d.x * t, y: L1.p.y + L1.d.y * t }
+      return dist(q, orig) < 1.2 ? q : orig
+    })
+  }
+  const out: { ring: XY[]; plane: HPlane; areaM2: number }[] = []
+  planes.forEach((p, k) => {
+    const done = new Uint8Array(W * H)
+    for (const s0 of p.pix) {
+      if (done[s0] || label[s0] !== k) continue
+      const comp = new Uint8Array(W * H), stack = [s0]; done[s0] = 1; comp[s0] = 1; let n = 0
+      while (stack.length) { const q = stack.pop()!; n++; for (const t of [q - 1, q + 1, q - W, q + W]) if (t >= 0 && t < W * H && label[t] === k && !done[t]) { done[t] = 1; comp[t] = 1; stack.push(t) } }
+      if (n * res * res < 1.5) continue
+      const loop = trace((x, y) => x >= 0 && y >= 0 && x < W && y < H && comp[y * W + x] === 1, W, H)
+      if (!loop) continue
+      const simp = dp(loop, Math.max(1.5, 0.28 / res))
+      if (simp.length < 3) continue
+      const ring = straighten(simp.map(([c, r]) => ({ x: ex(c), y: no(r) })))
+      out.push({ ring, plane: p.pl, areaM2: n * res * res })
+    }
+  })
+  return out.length ? out : null
+}
+
 /* ── 5 · measure with the height model ─────────────────────────────────── */
 
 type Fit = { pitch: number; azimuth: number; rms: number; n: number }
@@ -420,6 +572,31 @@ export async function detectRoofPanes(center: LatLng, style: RoofStyle = 'gable'
   let dsm: DsmData | null = await fetchDsm(center.lat, center.lng, Math.min(100, Math.ceil(ext + 6)), 0.25).catch(() => null)
   if (dsm) heightSource = 'Google height model'
   else { const l = await fetchLidarDsm(center.lat, center.lng, Math.min(60, Math.ceil(ext + 6))).catch(() => null); if (l) { dsm = l; heightSource = 'Environment Agency LiDAR' } }
+  // BEST: cut the panes straight from Google's 3D surface (10 cm) — the same data the 3D view draws. Used whenever
+  // it covers most of the house; the outline skeleton below is the fallback (LiDAR / no height data).
+  if (heightSource === 'Google height model') {
+    onStep?.('Cutting the panes from the 3D roof surface…')
+    const fine = await fetchDsm(center.lat, center.lng, Math.min(40, Math.ceil(ext + 3)), 0.1).catch(() => null)
+    const hp = fine ? panesFromHeights(fine, r) : null
+    const covered = hp ? hp.reduce((s, p) => s + p.areaM2, 0) / Math.max(1, polyArea(r)) : 0
+    if (hp && covered >= 0.6) {
+      const welded = weld(hp.map((p, i) => ({ edge: i, ring: p.ring, areaM2: p.areaM2 })), r) // edge = index into hp (weld may drop a sliver)
+      const planes: DesignPlane[] = welded.map((p) => {
+        const pl = hp[p.edge].plane
+        const pitch = Math.atan(Math.hypot(pl.a, pl.b)) / DEG, flat = pitch < 6
+        const az = flat ? 180 : Math.round(((Math.atan2(-pl.a, -pl.b) / DEG) + 360) % 360)
+        return {
+          id: uid('pl'), name: flat ? 'Flat roof' : `${compassOf(az)}-facing pane`, polygon: p.ring.map(f.toLL),
+          pitchDeg: flat ? 0 : Math.round(Math.min(60, pitch)), azimuthDeg: az, areaM2: Math.round(polyArea(p.ring)),
+          source: 'google' as const, racking: 'flush' as const, pitchSource: 'measured' as const,
+        }
+      }).filter((p) => p.areaM2 >= 2).sort((a, b) => b.areaM2 - a.areaM2)
+      if (planes.length) return {
+        planes, model: { outline: r.map(f.toLL), roles, source, measured: true }, outlineSource: source, measured: true,
+        message: `${planes.length} pane${planes.length === 1 ? '' : 's'} cut from Google's 3D roof surface inside the ${source === 'osm' ? 'OpenStreetMap' : 'Google'} outline · pitch + facing measured`,
+      }
+    }
+  }
   onStep?.(dsm ? 'Measuring each pane’s pitch from the height model…' : 'Splitting the roof into panes…')
   const res = planesFrom(center, r, roles, dsm)
   roles = res.roles
