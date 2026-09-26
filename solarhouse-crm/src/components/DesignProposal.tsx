@@ -1,3 +1,4 @@
+import { designPrice } from '../lib/designPrice'
 import { useEffect, useMemo, useState } from 'react'
 import { DataTable, HBars, MonthColumns } from './charts'
 import { SunpathDiagram, estimateDesign, planeSunpath } from './McsProduction'
@@ -44,7 +45,8 @@ export function useDesignProposal(design: Design | undefined, session: ShowroomS
   const mod = moduleById(filled[0]?.moduleId)
   const kwp = filled.reduce((s, p) => s + ((p.panels?.length ?? 0) * moduleById(p.moduleId).watts) / 1000, 0)
   const batt = design?.batteryKwh ?? session.design.batteryKwh ?? 0
-  const price = design?.priceOverride ?? systemPrice(kwp, panels, batt, studioConfig)
+  const parts = design ? designPrice(design, kwp, panels, studioConfig) : null
+  const price = design?.priceOverride ?? (parts ? parts.pv + parts.battery : systemPrice(kwp, panels, batt, studioConfig)) // the 20-year solar page leaves the EV charger out
   const a: FinanceAssumptions = { ...DEFAULT_FINANCE, ...(design?.finance as Partial<FinanceAssumptions> | undefined), importRate: Math.max(0.1, session.tariffPence / 100) }
   const proj = useMemo(() => (mcs ? project({ capex: price, genKwh: mcs.annualKwh, useKwh: mcs.useKwh, occupancy: session.occupancy, batteryKwh: batt, batteryPrice: batteryRaw(batt) * (1 + studioConfig.marginPct / 100), a }) : null), [mcs, price, batt, session.occupancy, design?.finance, session.tariffPence]) // eslint-disable-line react-hooks/exhaustive-deps
   return { mcs, proj, a, price, kwp, panels, mod, batt, filled }

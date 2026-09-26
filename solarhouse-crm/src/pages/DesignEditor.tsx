@@ -1,3 +1,9 @@
+import { HomeEnergy } from '../components/HomeEnergy'
+import { BatteryDesigner } from '../components/BatteryDesigner'
+import { EvDesigner } from '../components/EvDesigner'
+import { ScopePicker } from '../components/ScopePicker'
+import { scopeOf } from '../lib/homeSystem'
+import { designPrice } from '../lib/designPrice'
 import { McsProduction, estimateDesign } from '../components/McsProduction'
 import { systemPrice } from '../lib/finance'
 import { Savings } from '../components/Savings'
@@ -11,7 +17,7 @@ import '@geoman-io/leaflet-geoman-free'
 import '@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css'
 import { TopBar } from '../components/TopBar'
 import { Button } from '../components/ui'
-import { Sun, Radar, Check, Person, Layers, Target, Sparkle, Plus, Grid, Wrench, Bolt, Pie, File, Box } from '../components/icons'
+import { Sun, Radar, Check, Person, Layers, Target, Sparkle, Plus, Grid, Wrench, Bolt, Pie, File, Box, Home } from '../components/icons'
 import { useActions, useState_ } from '../store/store'
 import { geocodeLocation } from '../lib/commercialFinder'
 import { detectPlanes, slopedAreaM2, totalRoofArea, compass, polygonAreaM2 } from '../lib/design'
@@ -30,7 +36,7 @@ import { Dropdown } from '../components/Dropdown'
 
 type LatLng = { lat: number; lng: number }
 const uid = (p: string) => `${p}${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`
-type StudioTab = 'design' | 'array' | 'production' | 'savings' | 'electrical' | 'kit' | 'proposal'
+type StudioTab = 'design' | 'array' | 'home' | 'battery' | 'ev' | 'production' | 'savings' | 'electrical' | 'kit' | 'proposal'
 // Pylon-style 2D tools: select/move arrays · add · remove · rotate array · draw face · edit vertices
 type Tool = 'pan' | 'select' | 'add' | 'remove' | 'rotate' | 'draw' | 'edit' | 'pin' | 'note'
 
@@ -126,6 +132,14 @@ export function DesignEditor() {
   designRef.current = design
 
   const [tab, setTab] = useState<StudioTab>('design')
+  const [scopeOpen, setScopeOpen] = useState(false)
+  // Never sit on a step the scope doesn't have (e.g. the roof tabs on a battery-only retrofit).
+  useEffect(() => {
+    if (!design) return
+    const s = scopeOf(design)
+    const gone = ((tab === 'design' || tab === 'array' || tab === 'production' || tab === 'electrical') && !s.pv) || (tab === 'battery' && !s.battery) || (tab === 'ev' && !s.ev)
+    if (gone) setTab(s.pv ? 'design' : 'home')
+  }, [design?.scope, tab]) // eslint-disable-line react-hooks/exhaustive-deps
   const [mapReady, setMapReady] = useState(false)
   const [busy, setBusy] = useState(false)
   const [status, setStatus] = useState('')
@@ -583,7 +597,7 @@ export function DesignEditor() {
       let c = design.center
       if (!c && design.address) { const g = await geocodeLocation(design.address); if (g) { c = { lat: g.lat, lng: g.lng }; act.updateDesign(design.id, { center: c }) } }
       if (c) map.current!.setView([c.lat, c.lng], 20)
-      if (c && design.planes.length === 0) runDetect(c)
+      if (c && design.planes.length === 0 && design.scope?.pv !== false) runDetect(c) // no roof needed for a battery/EV-only job
       // Pull the real building height from OSM once (free, no key) so the 3D model isn't a guess.
       if (c && design.eaveHeightM == null) {
         fetchBuildingHeight(c).then((h) => { if (h && designRef.current?.id === design.id) { act.updateDesign(design.id, { eaveHeightM: h.eaveM, heightSource: h.source }); act.toast(`Building height ${h.eaveM} m from OpenStreetMap`) } }).catch(() => {})
@@ -1080,7 +1094,7 @@ export function DesignEditor() {
     const batteryKwh = design.batteryKwh ?? j?.system?.batteryKwh ?? 0
     // the proposal carries the design's own MCS generation and price, so every page agrees with the studio
     const mcs = await estimateDesign(design, moduleId, effTilt)
-    const price = design.priceOverride ?? systemPrice(kwp, totals.count, batteryKwh, studioConfig)
+    const price = design.priceOverride ?? designPrice(design, kwp, totals.count, studioConfig).total
     const sdesign = { systemKwp: kwp, panels: totals.count, hasBattery: batteryKwh > 0, batteryKwh, hasEv: !!j?.property.hasEv, addEvCharger: !!j?.system?.evCharger, price, annualGenKwh: mcs?.annualKwh }
     const existing = showroom.find((s) => s.designId === design.id)
     if (existing) {
@@ -1099,20 +1113,25 @@ export function DesignEditor() {
     nav(`/showroom/${s.id}`)
   }
 
+  // Steps follow the scope: solar brings the roof tabs, battery and EV bring their own; everything shares Home & usage.
+  const sc = scopeOf(design)
   const tabs: { id: StudioTab; label: string; icon: any }[] = [
-    { id: 'design', label: 'Design', icon: Sun },
-    { id: 'array', label: 'Array', icon: Grid },
-    { id: 'production', label: 'Production', icon: Pie },
+    ...(sc.pv ? [{ id: 'design' as const, label: 'Design', icon: Sun }, { id: 'array' as const, label: 'Array', icon: Grid }] : []),
+    { id: 'home', label: 'Home & usage', icon: Home },
+    ...(sc.battery ? [{ id: 'battery' as const, label: 'Battery', icon: Layers }] : []),
+    ...(sc.ev ? [{ id: 'ev' as const, label: 'EV charger', icon: Bolt }] : []),
+    ...(sc.pv ? [{ id: 'production' as const, label: 'Production', icon: Pie }] : []),
     { id: 'savings', label: 'Savings', icon: Target },
-    { id: 'electrical', label: 'Electrical', icon: Bolt },
+    ...(sc.pv ? [{ id: 'electrical' as const, label: 'Electrical', icon: Wrench }] : []),
     { id: 'kit', label: 'Kit list', icon: Box },
     { id: 'proposal', label: 'Proposal', icon: File },
   ]
+  const scopeLabel = [sc.pv && 'Solar', sc.battery && 'Battery', sc.ev && 'EV'].filter(Boolean).join(' + ')
 
   return (
     <div ref={rootRef} className="flex flex-col flex-1 min-h-0 h-full bg-canvas">
-      <TopBar title={design.name} crumbs={['Design']} identity={{ icon: Sun, accent: '#62E4CC' }} tabs={{ items: tabs, value: tab, onChange: (id) => setTab(id as StudioTab) }}
-        actions={<div className="flex items-center gap-2">
+      <TopBar title={design.name} crumbs={['Design']} identity={{ icon: Sun, accent: '#62E4CC' }} tabs={{ items: tabs, value: tabs.some((t) => t.id === tab) ? tab : tabs[0].id, onChange: (id) => setTab(id as StudioTab) }}
+        actions={<div className="flex items-center gap-2">{<button onClick={() => setScopeOpen(true)} title={`${scopeLabel} — change what's being designed, or mark it surveyed`} className="h-9 px-3 rounded-[10px] inline-flex items-center gap-2 text-[12.5px] font-bold whitespace-nowrap" style={{ background: 'rgba(21,34,59,0.08)', color: '#15223B' }}><span className="inline-flex items-center gap-1" aria-label={scopeLabel || 'Choose scope'}>{sc.pv && <Sun size={14} />}{sc.battery && <Layers size={14} />}{sc.ev && <Bolt size={14} />}</span><span className="h-5 px-1.5 rounded-full text-[10.5px] inline-flex items-center" style={design.stage === 'surveyed' ? { background: '#15223B', color: '#62E4CC' } : { background: '#FEF3C7', color: '#92400E' }}>{design.stage === 'surveyed' ? 'Surveyed' : 'Estimate'}</span></button>}
           {/* Only the page-level decisions live up here — the roof/panel tools sit on the canvas where you use them. */}
           <span title={isFs ? 'Exit full screen' : 'Full screen'}><Button variant="secondary" icon={<MaximizeIcon on={isFs} />} onClick={toggleFs} className="px-2.5">{null}</Button></span>
           <Button variant="secondary" icon={<Check size={15} />} onClick={() => act.updateDesign(design.id, { status: design.status === 'confirmed' ? 'draft' : 'confirmed' })}>{design.status === 'confirmed' ? 'Confirmed' : 'Confirm'}</Button>
@@ -1285,6 +1304,10 @@ export function DesignEditor() {
 
         {tab === 'production' && <McsProduction design={design} moduleId={moduleId} effTilt={effTilt} />}
         {tab === 'savings' && <Savings design={design} moduleId={moduleId} effTilt={effTilt} />}
+        {tab === 'home' && <HomeEnergy design={design} moduleId={moduleId} effTilt={effTilt} />}
+        {tab === 'battery' && sc.battery && <BatteryDesigner design={design} moduleId={moduleId} effTilt={effTilt} />}
+        {tab === 'ev' && sc.ev && <EvDesigner design={design} moduleId={moduleId} effTilt={effTilt} />}
+        {(scopeOpen || (!design.scope && design.planes.length === 0)) && <ScopePicker design={design} onClose={() => setScopeOpen(false)} onDone={(s) => { setScopeOpen(false); if (!s.pv) setTab('home'); else if (!sc.pv) setTab('design') }} />}
         {tab === 'electrical' && <Electrical design={design} moduleId={moduleId} kwp={kwp} />}
         {tab === 'kit' && <KitList design={design} moduleId={moduleId} kwp={kwp} />}
         {tab === 'proposal' && <ProposalPane design={design} kwp={kwp} count={totals.count} annualKwh={Math.round(totals.kwh)} onPush={pushToProposal} hasProposal={showroom.some((s) => s.designId === design.id)} onOpen={() => nav('/studio/proposals')} onConfirm={() => act.updateDesign(design.id, { status: 'confirmed', systemKwp: kwp, panels: totals.count, annualKwh: Math.round(totals.kwh) })} />}

@@ -1148,6 +1148,52 @@ export interface DesignObstacle {
   heightM?: number // height proud of the roof (m), when detected
 }
 export type DesignStatus = 'draft' | 'confirmed'
+/* ── Whole-home design inputs ── */
+export type Provenance = 'estimate' | 'survey' // estimate = typical/assumed value; survey = confirmed on site
+export type DesignScope = { pv: boolean; battery: boolean; ev: boolean }
+export type EarthingType = 'TN-C-S' | 'TN-S' | 'TT'
+export interface HomeSupply {
+  fuseA: number // main (cut-out) fuse rating
+  phases: 1 | 3
+  earthing: EarthingType
+  spareWays: number // free ways in the consumer unit
+  source: Provenance
+}
+export interface HomeLoads { showerKw: number; cookingKw: number; immersionKw: number; heatPumpKw: number; otherKw: number }
+export interface HomeProfile {
+  usageSource: 'estimate' | 'bill' | 'smart-meter'
+  monthlyBill?: number // £/month, when usage came from the bill
+  usageProfile?: number[][] // 12 × 48 kWh — the average day for each month, from half-hourly smart-meter data
+  smartMeter?: { source: 'csv' | 'n3rgy'; importedAt: number; days: number; from: string; to: string; annualKwh: number; fileName?: string }
+  tariffId: string // current import tariff (lib/tariffs.ts)
+  exportTariffId: string
+  supply: HomeSupply
+  loads: HomeLoads
+  tenure: 'owner' | 'renter' | 'flat' | 'landlord' // decides OZEV grant eligibility
+  existingPv?: { kwp: number; azimuthDeg: number; pitchDeg: number } // battery-only retrofits: the array already on the roof
+}
+export type BatteryLocation = 'outdoor-wall' | 'garage' | 'utility' | 'plant-room' | 'loft' | 'hallway' | 'bedroom' | 'cupboard'
+export interface BatteryDesign {
+  productId: string // lib/catalogue.ts BATTERIES
+  units: number // modules / towers of that product
+  mode: 'self' | 'tou' | 'arbitrage' // self-consumption · charge cheap overnight · Flux-style export at the peak
+  location?: BatteryLocation
+  locationSource?: Provenance
+  checks?: Record<string, boolean> // PAS 63100 checklist answers
+  backup: 'none' | 'eps' | 'whole-home'
+}
+export interface EvDesign {
+  vehicleId: string // lib/catalogue.ts VEHICLES
+  annualMiles: number
+  homeSharePct: number
+  chargerId: string // lib/catalogue.ts CHARGERS
+  strategy: 'dumb' | 'offpeak' | 'solar'
+  cableRunM: number
+  install: 'clipped' | 'buried' | 'conduit'
+  chargerLocation: 'house-wall' | 'garage' | 'post'
+  source: Provenance
+}
+
 export interface Design {
   id: ID
   name: string
@@ -1182,6 +1228,12 @@ export interface Design {
     acCableM?: number; acCableMm2?: number; dcCableM?: number; dcCableMm2?: number; ze?: number; exportLimitKw?: number
   }
   notes?: { id: ID; lat: number; lng: number; text: string; at: number }[] // pinned site notes (access, scaffold, cable route…)
+  // ── Whole-home design (lib/homeSystem.ts): what's in scope, how far along, and the shared inputs every step reads ──
+  scope?: DesignScope
+  stage?: 'estimate' | 'surveyed' // estimate = sales pre-design from satellite + typical values; surveyed = checked on site
+  home?: HomeProfile
+  batteryDesign?: BatteryDesign
+  evDesign?: EvDesign
   // Detected roof model (lib/roofPanes.ts): the building outline + per-edge roles, so the panes can be re-split (gable ⇄ hip)
   roofModel?: { outline: { lat: number; lng: number }[]; roles: ('eave' | 'gable' | 'party')[]; source: 'google' | 'osm'; measured: boolean }
   createdAt: number

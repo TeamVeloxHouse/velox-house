@@ -350,6 +350,20 @@ function geocodeApi(env: Record<string, string>): Plugin {
         try { res.end(JSON.stringify(await postcodeHomes(pc, reverseAny))) }
         catch (e) { res.end(JSON.stringify({ ok: false, reason: String((e as Error)?.message || e) })) }
       })
+      // Smart-meter data via n3rgy (consent-based DCC access). Wired but OFF: without N3RGY_API_KEY it says so, and
+      // the designer uses the free CSV route. With a key, GET ?mpan=&ihd= returns the consented half-hourly usage.
+      server.middlewares.use('/api/smart-meter/n3rgy', async (req, res) => {
+        res.setHeader('Content-Type', 'application/json')
+        const n3 = env.N3RGY_API_KEY || process.env.N3RGY_API_KEY || ''
+        if (!n3) return res.end(JSON.stringify({ configured: false, reason: 'Set N3RGY_API_KEY to fetch consented smart-meter data from n3rgy' }))
+        const u = new URL(req.url || '', 'http://x').searchParams
+        const mpan = u.get('mpan'), from = u.get('from') || '', to = u.get('to') || ''
+        if (!mpan) return res.end(JSON.stringify({ configured: true, reason: 'mpan required' }))
+        try {
+          const r = await fetch(`https://consumer-api.data.n3rgy.com/electricity/consumption/1?start=${from}&end=${to}&output=json`, { headers: { Authorization: n3 } })
+          res.end(JSON.stringify({ configured: true, status: r.status, data: await r.json().catch(() => null) }))
+        } catch (e) { res.end(JSON.stringify({ configured: true, reason: String((e as Error)?.message || e) })) }
+      })
       // OSM building footprints around a point — server-side so every caller shares the retry,
       // the mirror fallback and the User-Agent Overpass now insists on.
       server.middlewares.use('/api/osm-buildings', async (req, res) => {

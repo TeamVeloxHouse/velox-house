@@ -1,3 +1,4 @@
+import { designPrice } from '../lib/designPrice'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Kpi, Panel } from './ui'
@@ -12,7 +13,7 @@ import { moduleById } from '../lib/panels'
  * it on the customer's delivery record as orders grouped by supplier. */
 
 const gbp = (n: number) => `£${Math.round(n).toLocaleString()}`
-const CATS: BomCategory[] = ['Solar modules', 'Inverter & battery', 'Mounting', 'DC electrical', 'AC electrical', 'Site & access']
+const CATS: BomCategory[] = ['Solar modules', 'Inverter & battery', 'EV charger', 'Mounting', 'DC electrical', 'AC electrical', 'Site & access']
 const DAY_RATE = 220 // £ per installer-day, example figure
 
 export function KitList({ design, moduleId, kwp }: { design: Design; moduleId: string; kwp: number }) {
@@ -23,7 +24,7 @@ export function KitList({ design, moduleId, kwp }: { design: Design; moduleId: s
   const [include, setInclude] = useState<Set<string>>(() => new Set(lines.filter((l) => l.optional).map((l) => l.id)))
   const { total, bySupplier, used } = bomTotals(lines, include)
   const panels = design.planes.reduce((s, p) => s + (p.panels?.length ?? 0), 0)
-  const price = design.priceOverride ?? systemPrice(kwp, panels, design.batteryKwh ?? 0, studioConfig)
+  const price = design.priceOverride ?? designPrice(design, kwp, panels, studioConfig).total
   const installDays = kwp > 6 ? 2 : 1, labour = installDays * 2 * DAY_RATE
   const margin = price - total - labour
   const deal = deals.find((d) => d.id === design.dealId)

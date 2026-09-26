@@ -1,3 +1,6 @@
+import { SystemSavings } from './SystemSavings'
+import { scopeOf } from '../lib/homeSystem'
+import { designPrice } from '../lib/designPrice'
 import { useMemo, useState } from 'react'
 import { Kpi, Panel } from './ui'
 import { DataTable, HBars, Legend } from './charts'
@@ -60,7 +63,8 @@ export function Savings({ design, moduleId, effTilt }: { design: Design; moduleI
   const mod = moduleById(moduleId)
   const panels = filled.reduce((s, p) => s + (p.panels?.length ?? 0), 0)
   const kwp = filled.reduce((s, p) => s + ((p.panels?.length ?? 0) * moduleById(p.moduleId ?? moduleId).watts) / 1000, 0)
-  const formula = systemPrice(kwp, panels, batt, studioConfig)
+  const parts = designPrice(design, kwp, panels, studioConfig)
+  const formula = parts.pv + parts.battery // solar + battery finance; the EV charger is valued on its own (cost per mile)
   const price = design.priceOverride ?? formula
   const proj = useMemo(() => (res ? project({ capex: price, genKwh: res.annualKwh, useKwh: use, occupancy: occ, batteryKwh: batt, batteryPrice: batteryRaw(batt) * (1 + studioConfig.marginPct / 100), a }) : null), [res, price, use, occ, batt, design.finance]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -74,7 +78,10 @@ export function Savings({ design, moduleId, effTilt }: { design: Design; moduleI
   }, [planeYield, design.planes, mod, use, occ, studioConfig, design.finance]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const setFin = (k: keyof FinanceAssumptions, v: number) => act.updateDesign(design.id, { finance: { ...(design.finance ?? {}), [k]: v } })
-  if (!filled.length) return <div className="absolute inset-0 flex items-center justify-center text-[13px] text-muted-b">Place panels first — the savings are worked out from the design.</div>
+  const sc = scopeOf(design)
+  if (!filled.length) return sc.battery || sc.ev
+    ? <div className="absolute inset-0 overflow-y-auto px-5 py-5"><div className="max-w-[1100px] mx-auto"><SystemSavings design={design} moduleId={moduleId} effTilt={effTilt} kwp={0} panels={0} /></div></div>
+    : <div className="absolute inset-0 flex items-center justify-center text-[13px] text-muted-b">Place panels first — the savings are worked out from the design.</div>
 
   // heatmap scaling
   const flat = opt?.cells.flat() ?? []
@@ -89,6 +96,7 @@ export function Savings({ design, moduleId, effTilt }: { design: Design; moduleI
   return (
     <div className="absolute inset-0 overflow-y-auto px-5 py-5">
       <div className="max-w-[1100px] mx-auto flex flex-col gap-4">
+        {<SystemSavings design={design} moduleId={moduleId} effTilt={effTilt} kwp={kwp} panels={panels} />}
         <div className="grid grid-cols-5 gap-3">
           <div className="rounded-card bg-[#15223B] text-white px-4 py-3.5">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-[#62E4CC]">System price</div>
