@@ -152,6 +152,19 @@ type RawHome = { id: string; ring: LatLng[]; center: LatLng; m2: number; type: P
 
 async function homesAround(center: LatLng, radiusM: number, includeUntagged: boolean): Promise<RawHome[]> {
   const tags = includeUntagged ? '^(house|detached|semidetached_house|terrace|bungalow|residential|yes)$' : '^(house|detached|semidetached_house|terrace|bungalow|residential)$'
+  // Local building store first (instant inside the showroom catchments), Overpass only if that comes back empty
+  try {
+    const r = await fetch(`/api/osm-buildings?lat=${center.lat}&lng=${center.lng}&r=${Math.round(radiusM)}`)
+    const j = await r.json()
+    type B = { id: number; tags: Record<string, string>; ring: LatLng[] }
+    const re = new RegExp(tags)
+    const list: B[] = (j.buildings ?? []).filter((b: B) => re.test(b.tags.building || '') && b.ring.length >= 4 && !b.tags.shop && !b.tags.amenity && !b.tags.office && !b.tags.industrial)
+    if (list.length) return list.map((b) => {
+      const tg = b.tags
+      const addr = tg['addr:housenumber'] && tg['addr:street'] ? `${tg['addr:housenumber']} ${tg['addr:street']}` : tg['addr:housename']
+      return { id: `osm${b.id}`, ring: b.ring, center: centroid(b.ring), m2: polyAreaM2(b.ring), type: typeFromTag(tg.building || ''), addr }
+    })
+  } catch { /* fall through to Overpass */ }
   const q = `[out:json][timeout:25];way["building"~"${tags}"](around:${Math.round(radiusM)},${center.lat},${center.lng});out tags geom;`
   for (const url of OVERPASS) {
     try {

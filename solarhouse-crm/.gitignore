@@ -4,3 +4,5 @@ dist
 .env.local
 data/inspire/
 data/ostn15/
+data/osm/
+data/cache/

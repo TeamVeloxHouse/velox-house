@@ -65,6 +65,17 @@ export async function fetchDsm(lat: number, lng: number, radius = 35, px = 0.1):
   } catch { return null }
 }
 
+/** Government LiDAR roof heights (England: EA 1 m DSM, free) resampled server-side onto the same true-north grid
+ *  as Google's DSM — so pitch can be measured without Google. Null outside coverage (e.g. Wales). */
+export async function fetchLidarDsm(lat: number, lng: number, radius = 30): Promise<(DsmData & { source: string }) | null> {
+  try {
+    const r = await fetch(`/api/lidar?lat=${lat}&lng=${lng}&r=${radius}`)
+    const j = await r.json()
+    if (!j.covered) return null
+    return { width: j.width, height: j.height, resM: j.resM, heights: Float32Array.from(j.heights), minH: j.minH, maxH: j.maxH, source: j.source }
+  } catch { return null }
+}
+
 /** Fetch the RGB aerial data-layer (same grid as the DSM) as a canvas, to drape on the roof mesh. */
 export async function fetchRgbCanvas(lat: number, lng: number, radius = 35, px = 0.1): Promise<HTMLCanvasElement | null> {
   try {

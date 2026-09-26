@@ -133,6 +133,7 @@ export function DesignEditor() {
 
   const [tab, setTab] = useState<StudioTab>('design')
   const [scopeOpen, setScopeOpen] = useState(false)
+  const [seeThrough, setSeeThrough] = useState(false) // X — panels translucent so the roof shows through
   // Never sit on a step the scope doesn't have (e.g. the roof tabs on a battery-only retrofit).
   useEffect(() => {
     if (!design) return
@@ -250,7 +251,7 @@ export function DesignEditor() {
     // so the preview reads exactly like what will land. Purple = place, teal = move, red = clear.
     const GH: Record<string, { frame: string; glass: string; fill: number; weight: number }> = {
       add: { frame: '#62E4CC', glass: '#15223B', fill: 0.78, weight: 1.6 },
-      move: { frame: '#62E4CC', glass: '#15223B', fill: 0.7, weight: 1.6 },
+      move: { frame: '#62E4CC', glass: '#62E4CC', fill: 0.16, weight: 2 }, // light teal outline — the originals fade underneath
       remove: { frame: '#FF5A5A', glass: '#FF6B6B', fill: 0.34, weight: 1.6 },
       bad: { frame: '#FF5A5A', glass: '#FF6B6B', fill: 0.14, weight: 1.4 },
     }
@@ -310,6 +311,7 @@ export function DesignEditor() {
       const cs = items.map((i) => panelCenter({ corners: i.corners0 }))
       const center = { lat: cs.reduce((s, c) => s + c.lat, 0) / cs.length, lng: cs.reduce((s, c) => s + c.lng, 0) / cs.length }
       grp = { items, center }; grpMode = mode; grpStart = ll; grpRot0 = bearingTo(center, ll); m.dragging.disable()
+      panelCanvas.current?.setDim(items.map((i) => i.panelId)) // originals fade; the light preview shows where they'll land
     }
     const startGroup = (mode: 'move' | 'rotate', ll: L.LatLng) => { const items = selectionItems(); if (!items.length) return; startGroupWith(items.map((i) => ({ pid: i.pid, panelId: i.panel.id, corners0: i.panel.corners })), mode, ll) }
     // Magnetic align: nudge a move so the selection snaps onto the NEAREST other panel's module lattice
@@ -340,7 +342,8 @@ export function DesignEditor() {
       drawGhostSet(sets, grpInvalid ? 'bad' : 'move')
     }
 
-    let painting = false // select tool: placing panels on the already-selected face (click = one, drag = a block)
+    let painting = false // select tool, shift-drag on the selected face: paint a block of panels
+    let pendingAdd: { cp: L.Point } | null = null // pressed on open roof of the selected face: a click adds a panel, a drag becomes a box-select
     m.on('mousedown', (e: any) => {
       setCtx(null)
       if (e.originalEvent?.button === 2) return // right button → context menu, never a drag
@@ -372,10 +375,13 @@ export function DesignEditor() {
           if (shift) { const cur = selPanelRef.current; setSelPanelIds(cur.includes(hit.panel.id) ? cur.filter((x) => x !== hit.panel.id) : [...cur, hit.panel.id]); setSelId(hit.pid); L.DomEvent.stop(e); return }
           setSelPanelIds([hit.panel.id]); setSelId(hit.pid); startGroupWith([{ pid: hit.pid, panelId: hit.panel.id, corners0: hit.panel.corners }], 'move', e.latlng); L.DomEvent.stop(e); return
         }
-        // 4) open roof on the face you're working on → place panels: click drops one, drag paints a block
-        if (p && !shift && p.id === selIdRef.current) {
-          dragPid = p.id; dragCells = gridFor(p); startCell = nearestCell(dragCells, e.latlng); moved = false; painting = true
-          setSelPanelIds([]); m.dragging.disable(); L.DomEvent.stop(e); return
+        // 4) open roof on the face you're working on: a click drops one panel, a drag box-selects panels
+        //    (the standard design-tool gesture), and shift-drag paints a block of new panels
+        if (p && p.id === selIdRef.current) {
+          dragPid = p.id; dragCells = gridFor(p); startCell = nearestCell(dragCells, e.latlng); moved = false
+          if (shift) painting = true
+          else { pendingAdd = { cp: m.latLngToContainerPoint(e.latlng) }; marqStart = e.latlng; setSelPanelIds([]) }
+          m.dragging.disable(); L.DomEvent.stop(e); return
         }
         // 5) another face → select it (dragging from here box-selects panels); shift-drag box-selects anywhere
         if (p || shift) {
@@ -405,6 +411,8 @@ export function DesignEditor() {
         else if (grpMode === 'rotate') { const delta = bearingTo(grp.center, e.latlng) - grpRot0; setRotDeg(Math.round((((-delta * 180) / Math.PI) % 360 + 360) % 360)); drawGroupGhost((c) => rotateCorners(c, grp!.center, delta), false) }
         return
       }
+      if (t === 'select' && pendingAdd && pendingAdd.cp.distanceTo(e.containerPoint) > 6) pendingAdd = null // moved → it's a box-select
+      if (t === 'select' && pendingAdd) return
       if (t === 'select' && marqStart) { // marquee rectangle
         const a = marqStart, b = e.latlng
         const g = ghostLayer.current!; g.clearLayers()
@@ -471,6 +479,11 @@ export function DesignEditor() {
           if (moved2.some((mv) => outside.some((pn) => quadsOverlap(mv.corners, pn.corners)))) act.toast('Panels can’t overlap — dropped back', 'warning')
           else { const d = designRef.current!; const byId = new Map(moved2.map((mv) => [mv.panelId, mv.corners])); commitRef.current(d.planes.map((x) => ({ ...x, panels: (x.panels ?? []).map((pn) => (byId.has(pn.id) ? { ...pn, corners: byId.get(pn.id)! } : pn)) }))) }
         }
+      } else if (t === 'select' && pendingAdd && dragPid && startCell) {
+        // a click (no drag) on open roof of the selected face → one panel in that slot, unless something's there
+        const d = designRef.current!; const p = d.planes.find((x) => x.id === dragPid)
+        if (p && !(p.panels ?? []).some((pn) => sameCell(panelCenter(pn), startCell!.center) || quadsOverlap(pn.corners, startCell!.corners)))
+          commitRef.current(d.planes.map((x) => (x.id === dragPid ? { ...x, panels: [...(x.panels ?? []), { id: uid('pn'), corners: startCell!.corners }], moduleId: p.moduleId ?? moduleIdRef.current } : x)))
       } else if (t === 'select' && marqStart) {
         const a = marqStart, b = e.latlng
         const latLo = Math.min(a.lat, b.lat), latHi = Math.max(a.lat, b.lat), lngLo = Math.min(a.lng, b.lng), lngHi = Math.max(a.lng, b.lng)
@@ -483,7 +496,8 @@ export function DesignEditor() {
       }
       ghostLayer.current?.clearLayers(); setGhostN(null); setRotDeg(null)
       startCell = null; dragCells = []; dragPid = null; moveOccupied = []; rotPid = null; rotCenLL = null; rotPanels0 = []
-      grp = null; grpMode = null; grpStart = null; grpInvalid = false; marqStart = null; painting = false; m.dragging.enable()
+      if (grp) panelCanvas.current?.setDim([])
+      grp = null; grpMode = null; grpStart = null; grpInvalid = false; marqStart = null; painting = false; pendingAdd = null; m.dragging.enable()
     })
     // A plain click on open ground (off every roof) clears the selection and finishes corner editing.
     m.on('click', (e: any) => {
@@ -507,6 +521,7 @@ export function DesignEditor() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  useEffect(() => { panelCanvas.current?.setAlpha(seeThrough ? 0.4 : 1) }, [seeThrough, mapReady])
   // Keep Leaflet sized correctly when returning to a canvas tab (it was display:none)
   useEffect(() => { if (canvasVisible && map.current) setTimeout(() => map.current!.invalidateSize(), 60) }, [canvasVisible])
 
@@ -650,8 +665,8 @@ export function DesignEditor() {
       for (const pn of selItems) for (const v of pn.corners) { const ex = (v.lng - c0.lng) * mLng, ny = (v.lat - c0.lat) * mLat; const rx = ex * ca + ny * sa, ry = -ex * sa + ny * ca; minX = Math.min(minX, rx); maxX = Math.max(maxX, rx); minY = Math.min(minY, ry); maxY = Math.max(maxY, ry) }
       const back = (rx: number, ry: number) => ({ lat: c0.lat + (rx * sa + ry * ca) / mLat, lng: c0.lng + (rx * ca - ry * sa) / mLng })
       const corners = [back(minX, minY), back(maxX, minY), back(maxX, maxY), back(minX, maxY)]
-      L.polygon(corners.map((v) => [v.lat, v.lng]) as [number, number][], { pmIgnore: true, interactive: false, color: '#62E4CC', weight: 2, fill: false, dashArray: '4 3' } as any).addTo(pl)
-      corners.forEach((v) => L.circleMarker([v.lat, v.lng], { radius: 5, color: '#62E4CC', weight: 2, fillColor: '#fff', fillOpacity: 1, pmIgnore: true, interactive: false } as any).addTo(pl))
+      if (selItems.length > 1) L.polygon(corners.map((v) => [v.lat, v.lng]) as [number, number][], { pmIgnore: true, interactive: false, color: '#62E4CC', weight: 1.2, opacity: 0.8, fill: false, dashArray: '3 4' } as any).addTo(pl) // a single panel's own teal frame is enough
+      // (no corner nodes — the rotate handle above is the one grip; corners still rotate if you grab them)
       // rotate handle — top-centre of the screen bounding box, offset up (matches the hit-test)
       const pts = corners.map((v) => mp.latLngToContainerPoint([v.lat, v.lng]))
       const minx = Math.min(...pts.map((p) => p.x)), maxx = Math.max(...pts.map((p) => p.x)), miny = Math.min(...pts.map((p) => p.y))
@@ -772,6 +787,18 @@ export function DesignEditor() {
       const typing = !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)
       if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) { if (typing) return; e.preventDefault(); e.shiftKey ? redoRef.current() : undoRef.current(); return }
       if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || e.key === 'Y')) { if (typing) return; e.preventDefault(); redoRef.current(); return }
+      if (!typing && (e.key === 'x' || e.key === 'X') && !e.ctrlKey && !e.metaKey) { setSeeThrough((v) => !v); return }
+      // arrow keys nudge the selected panels 5 cm (shift: 25 cm) — fine placement without dragging
+      if (!typing && selPanelRef.current.length && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        e.preventDefault()
+        const d0 = designRef.current; if (!d0) return
+        const step = e.shiftKey ? 0.25 : 0.05, lat0 = d0.center?.lat ?? 52
+        const dLat = (e.key === 'ArrowUp' ? step : e.key === 'ArrowDown' ? -step : 0) / 110540
+        const dLng = (e.key === 'ArrowRight' ? step : e.key === 'ArrowLeft' ? -step : 0) / (111320 * Math.cos((lat0 * Math.PI) / 180))
+        const ids = new Set(selPanelRef.current)
+        commitRef.current(d0.planes.map((p) => ({ ...p, panels: (p.panels ?? []).map((pn) => (ids.has(pn.id) ? { ...pn, corners: pn.corners.map((c) => ({ lat: c.lat + dLat, lng: c.lng + dLng })) } : pn)) })))
+        return
+      }
       if (e.key === 'Escape' && !typing) {
         setCtx(null)
         if (editPlaneRef.current) { setEditPlaneId(null); return }
@@ -1174,6 +1201,7 @@ export function DesignEditor() {
                 <>
                   {hdReady && <button onClick={() => setHdOn((v) => !v)} title={hdOn ? 'High-res Google aerial — on' : 'Show high-res Google aerial'} className={`h-8 px-2.5 rounded-[8px] text-[12px] font-bold inline-flex items-center gap-1 ${hdOn ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={hdOn ? { background: '#15223B' } : undefined}><Sun size={12} />HD</button>}
                   <button onClick={() => setBoundaryOn((v) => !v)} title="Land-ownership boundary (HMLR INSPIRE, else building footprint)" className={`h-8 px-2.5 rounded-[8px] text-[12px] font-bold inline-flex items-center gap-1 ${boundaryOn ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={boundaryOn ? { background: '#15223B' } : undefined}><Target size={12} />Plot</button>
+                  <button onClick={() => setSeeThrough((v) => !v)} title="See-through panels (X) — see the roof under the array" className={`h-8 px-2.5 rounded-[8px] text-[12px] font-bold inline-flex items-center gap-1 ${seeThrough ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={seeThrough ? { background: '#15223B' } : undefined}><Grid size={12} />See-through</button>
                   <button onClick={() => setMeasureOn((v) => !v)} title="Show roof measurements — edge lengths & face area" className={`h-8 px-2.5 rounded-[8px] text-[12px] font-bold inline-flex items-center gap-1 ${measureOn ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={measureOn ? { background: '#15223B' } : undefined}><Wrench size={12} />Measure</button>
                   <span className="w-px h-5 bg-divider" />
                 </>
@@ -1273,9 +1301,9 @@ export function DesignEditor() {
             {view === '2d' && !busy && !drawing && !editPlaneId && !preview && design.planes.length > 0 && tool === 'select' && (
               <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-[500] h-9 px-4 rounded-full bg-white/95 backdrop-blur border border-border text-ink-2 text-[12.5px] font-semibold flex items-center gap-2 shadow-modal whitespace-nowrap max-w-[calc(100%-24px)] overflow-hidden">
                 {selPanelIds.length
-                  ? <><CursorIcon /><b className="text-ink">{selPanelIds.length} panel{selPanelIds.length === 1 ? '' : 's'}</b> · drag to move · drag a corner to rotate · Del removes · Esc</>
+                  ? <><CursorIcon /><b className="text-ink">{selPanelIds.length} panel{selPanelIds.length === 1 ? '' : 's'}</b> · drag to move · handle rotates · arrows nudge · Del removes</>
                   : sel
-                    ? <><Grid size={14} />Click the roof to add a panel · drag to paint a block{ghostN != null ? ` (${ghostN})` : ''} · shift-drag to select</>
+                    ? <><Grid size={14} />Click the roof to add a panel · drag to select panels · shift-drag to paint a block{ghostN != null ? ` (${ghostN})` : ''} · X see-through</>
                     : <><CursorIcon />Click a roof face to work on it · drag the map to pan · double-click a face to reshape · right-click for more</>}
               </div>
             )}

@@ -17,7 +17,7 @@
  * Without height data the pitch is ASSUMED (35°, typical UK) and flagged on every pane. */
 
 import type { DesignPlane } from '../store/types'
-import { fetchBuildingOutline, fetchDsm, sampleHeight, type DsmData } from './dsm'
+import { fetchBuildingOutline, fetchDsm, fetchLidarDsm, sampleHeight, type DsmData } from './dsm'
 
 type LatLng = { lat: number; lng: number }
 type XY = { x: number; y: number } // metres east (x) / north (y) of the query point
@@ -297,7 +297,7 @@ function dp(loop: PXY[], tol: number): PXY[] {
 /* ── 5 · measure with the height model ─────────────────────────────────── */
 
 type Fit = { pitch: number; azimuth: number; rms: number; n: number }
-function fitPane(dsm: DsmData, ring: XY[]): Fit | null {
+function fitPane(dsm: DsmData, ring: XY[], robust = true): Fit | null {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
   for (const p of ring) { minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x); minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y) }
   // sample the pane's interior, 0.4 m in from its edges (the edges straddle ridges and gutters)
@@ -305,21 +305,33 @@ function fitPane(dsm: DsmData, ring: XY[]): Fit | null {
   for (let x = minX; x <= maxX; x += 0.3) for (let y = minY; y <= maxY; y += 0.3) {
     const p = { x, y }; if (!inPoly(p, ring)) continue
     let edge = Infinity; for (let k = 0; k < ring.length; k++) edge = Math.min(edge, segDist(p, ring[k], ring[(k + 1) % ring.length]).d)
-    if (edge < 0.4) continue
+    if (edge < (dsm.resM >= 0.45 ? 0.8 : 0.4)) continue // LiDAR is coarser — stay further from ridges and gutters
     const z = sampleHeight(dsm, x, y); if (z > 0.5) pts.push([x, y, z])
   }
   if (pts.length < 20) return null
-  // least-squares plane z = a·x + b·y + c
-  let Sxx = 0, Sxy = 0, Sx = 0, Syy = 0, Sy = 0, Sxz = 0, Syz = 0, Sz = 0
-  for (const [x, y, z] of pts) { Sxx += x * x; Sxy += x * y; Sx += x; Syy += y * y; Sy += y; Sxz += x * z; Syz += y * z; Sz += z }
-  const N = pts.length
-  const M = [[Sxx, Sxy, Sx], [Sxy, Syy, Sy], [Sx, Sy, N]], B = [Sxz, Syz, Sz]
+  // least-squares plane z = a·x + b·y + c, refitted twice without the worst 20% of points — so a chimney, a
+  // dormer edge or the ridge blur in 1 m LiDAR can't tilt the whole pane
   const det = (m: number[][]) => m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0])
-  const d = det(M); if (Math.abs(d) < 1e-9) return null
-  const sol = [0, 1, 2].map((k) => det(M.map((row, i) => row.map((v, j) => (j === k ? B[i] : v)))) / d)
+  const fit = (P: [number, number, number][]) => {
+    let Sxx = 0, Sxy = 0, Sx = 0, Syy = 0, Sy = 0, Sxz = 0, Syz = 0, Sz = 0
+    for (const [x, y, z] of P) { Sxx += x * x; Sxy += x * y; Sx += x; Syy += y * y; Sy += y; Sxz += x * z; Syz += y * z; Sz += z }
+    const M = [[Sxx, Sxy, Sx], [Sxy, Syy, Sy], [Sx, Sy, P.length]], B = [Sxz, Syz, Sz]
+    const d = det(M); if (Math.abs(d) < 1e-9) return null
+    return [0, 1, 2].map((k) => det(M.map((row, i) => row.map((v, j) => (j === k ? B[i] : v)))) / d)
+  }
+  let use = pts, sol = fit(use)
+  for (let it = 0; it < (robust ? 2 : 0) && sol; it++) {
+    const [a0, b0, c0] = sol
+    const err = (p: [number, number, number]) => Math.abs(p[2] - (a0 * p[0] + b0 * p[1] + c0))
+    const cut = use.map(err).sort((x, y) => x - y)[Math.floor(use.length * 0.8)]
+    const next = use.filter((p) => err(p) <= cut)
+    if (next.length < 15) break
+    use = next; sol = fit(use)
+  }
+  if (!sol) return null
   const [a, b, c] = sol
-  const rms = Math.sqrt(pts.reduce((s, [x, y, z]) => s + (z - (a * x + b * y + c)) ** 2, 0) / N)
-  return { pitch: Math.atan(Math.hypot(a, b)) / DEG, azimuth: ((Math.atan2(-a, -b) / DEG) + 360) % 360, rms, n: N }
+  const rms = Math.sqrt(use.reduce((s, [x, y, z]) => s + (z - (a * x + b * y + c)) ** 2, 0) / use.length)
+  return { pitch: Math.atan(Math.hypot(a, b)) / DEG, azimuth: ((Math.atan2(-a, -b) / DEG) + 360) % 360, rms, n: use.length }
 }
 
 /* ── the whole pipeline ────────────────────────────────────────────────── */
@@ -338,27 +350,37 @@ function planesFrom(origin: LatLng, r: XY[], roles: EdgeRole[], dsm: DsmData | n
   let panes = splitPanes(r, roles, pitch)
   let fits: (Fit | null)[] = panes.map(() => null)
   if (dsm) {
-    fits = panes.map((p) => fitPane(dsm, p.ring))
-    // A wall whose pane doesn't slope towards it is really a gable (or the roof is flat): fix + re-split once.
-    let changed = false
-    const nextRoles = roles.slice()
-    panes.forEach((p, i) => {
-      const ft = fits[i]; if (!ft || ft.rms > 0.4 || ft.pitch < 8) return
-      const off = Math.abs(((ft.azimuth - outwardAz(r, p.edge) + 540) % 360) - 180)
-      if (off > 60 && nextRoles[p.edge] === 'eave' && nextRoles.filter((x) => x === 'eave').length > 2) { nextRoles[p.edge] = 'gable'; changed = true }
-      else if (off <= 40) pitch[p.edge] = Math.max(5, Math.min(60, ft.pitch))
-    })
-    if (changed || pitch.some((x) => x !== ASSUMED_PITCH)) {
-      roles = nextRoles
-      pitch = pitch.map((x, i) => (roles[i] === 'eave' ? x : ASSUMED_PITCH))
-      panes = splitPanes(r, roles, pitch)
-      fits = panes.map((p) => fitPane(dsm, p.ring))
+    // MODEL SELECTION: build each plausible roof over this outline — gabled, gabled across the other way, hipped,
+    // flat — and keep the one whose planes fit the measured heights best. The height data decides the shape;
+    // nothing is guessed from wall lengths when it doesn't have to be.
+    const party = roles.map((x) => x === 'party')
+    const swap = roles.map((x) => (x === 'party' ? 'party' : x === 'gable' ? 'eave' : 'gable')) as EdgeRole[]
+    const hyps: EdgeRole[][] = [roles, defaultRoles(r, party, 'gable'), defaultRoles(r, party, 'hip'), ...(swap.filter((x) => x === 'eave').length >= 2 ? [swap] : [])]
+      .filter((h, i, a) => a.findIndex((o) => o.join() === h.join()) === i)
+    const score = (ps: Pane[]) => {
+      let sse = 0, n = 0, missed = 0
+      for (const p of ps) { const ft = fitPane(dsm, p.ring, false); if (!ft) { missed += polyArea(p.ring); continue } sse += ft.rms * ft.rms * ft.n; n += ft.n }
+      return n ? Math.sqrt(sse / n) + (missed / Math.max(1, polyArea(r))) * 0.5 : Infinity
     }
+    let best = { roles, panes, rms: score(panes) }
+    for (const h of hyps) { const ps = splitPanes(r, h, pitch); const s = score(ps); if (s < best.rms - 0.02) best = { roles: h, panes: ps, rms: s } }
+    const whole = fitPane(dsm, r, false)
+    if (whole && whole.pitch < 8 && whole.rms < best.rms * 0.85) { // a flat roof fits better than any pitched one
+      best = { roles: r.map(() => 'gable' as EdgeRole), panes: [{ edge: 0, ring: r, areaM2: polyArea(r) }], rms: whole.rms }
+    }
+    roles = best.roles; panes = best.panes
+    fits = panes.map((p) => fitPane(dsm, p.ring))
+    // re-split with each wall's measured pitch, so ridges sit where unequal slopes actually meet
+    let reSplit = false
+    panes.forEach((p, i) => { const ft = fits[i]; if (ft && ft.rms <= 0.45 && ft.pitch >= 8 && ft.pitch <= 60) { pitch[p.edge] = ft.pitch; reSplit = true } })
+    if (reSplit && panes.length > 1) { panes = splitPanes(r, roles, pitch); fits = panes.map((p) => fitPane(dsm, p.ring)) }
   }
   let measured = false
   const planes: DesignPlane[] = panes.map((p) => {
     const ft = fits[panes.indexOf(p)]
-    const good = !!ft && ft.rms <= 0.4
+    const facingOff = ft ? Math.abs(((ft.azimuth - outwardAz(r, p.edge) + 540) % 360) - 180) : 180
+    // trust a measurement only if it's a believable roof: under 60°, a clean plane, sloping the way its wall faces (or flat)
+    const good = !!ft && ft.rms <= 0.45 && ft.pitch <= 60 && (ft.pitch < 6 || facingOff <= 50)
     const flat = good && ft!.pitch < 6
     if (good) measured = true
     const az = flat ? 180 : Math.round(outwardAz(r, p.edge))
@@ -369,6 +391,9 @@ function planesFrom(origin: LatLng, r: XY[], roles: EdgeRole[], dsm: DsmData | n
       source: 'google' as const, racking: 'flush' as const, pitchSource: good ? 'measured' as const : 'assumed' as const,
     }
   }).sort((a, b) => b.areaM2 - a.areaM2)
+  // panes we couldn't measure take the measured median — both sides of a gable almost always share a pitch
+  const got = planes.filter((p) => p.pitchSource === 'measured' && p.pitchDeg >= 6).map((p) => p.pitchDeg).sort((a, b) => a - b)
+  if (got.length) { const med = got[Math.floor(got.length / 2)]; for (const p of planes) if (p.pitchSource === 'assumed') p.pitchDeg = med }
   return { planes, roles, measured }
 }
 
@@ -385,17 +410,21 @@ export async function detectRoofPanes(center: LatLng, style: RoofStyle = 'gable'
   onStep?.('Reading walls, gables and party walls…')
   const party = partyWalls(r, osm.others.map((o) => o.map(f.toXY)))
   let roles = defaultRoles(r, party, style)
-  onStep?.('Checking for Google height data…')
+  onStep?.('Fetching roof heights (Google or LiDAR)…')
   const ext = Math.max(...r.map((p) => Math.hypot(p.x, p.y)))
   // the height model comes from the same Google layer as the mask — no mask, no point asking
-  const dsm = source !== 'google' ? null : await fetchDsm(center.lat, center.lng, Math.min(100, Math.ceil(ext + 6)), 0.25).catch(() => null)
+  // Heights: Google's DSM where it works, else free government LiDAR (England) — either way the pitch is MEASURED
+  let heightSource = ''
+  let dsm: DsmData | null = source === 'google' ? await fetchDsm(center.lat, center.lng, Math.min(100, Math.ceil(ext + 6)), 0.25).catch(() => null) : null
+  if (dsm) heightSource = 'Google height model'
+  else { const l = await fetchLidarDsm(center.lat, center.lng, Math.min(60, Math.ceil(ext + 6))).catch(() => null); if (l) { dsm = l; heightSource = 'Environment Agency LiDAR' } }
   onStep?.(dsm ? 'Measuring each pane’s pitch from the height model…' : 'Splitting the roof into panes…')
   const res = planesFrom(center, r, roles, dsm)
   roles = res.roles
   const nParty = roles.filter((x) => x === 'party').length, nGable = roles.filter((x) => x === 'gable').length
   const message = `${res.planes.length} pane${res.planes.length === 1 ? '' : 's'} from the ${source === 'google' ? 'Google' : 'OpenStreetMap'} outline`
     + (nGable ? ` · ${nGable} gable${nGable === 1 ? '' : 's'}` : '') + (nParty ? ` · ${nParty} party wall${nParty === 1 ? '' : 's'}` : '')
-    + (res.measured ? ' · pitch measured' : ` · pitch assumed ${ASSUMED_PITCH}° (no height data)`)
+    + (res.measured ? ` · pitch measured from ${heightSource}` : ` · pitch assumed ${ASSUMED_PITCH}° (no height data here)`)
   return { planes: res.planes, model: { outline: r.map(f.toLL), roles, source, measured: res.measured }, outlineSource: source, measured: res.measured, message }
 }
 
@@ -405,7 +434,8 @@ export async function resplitRoof(center: LatLng, model: RoofModel, rolesOrStyle
   const r = model.outline.map(f.toXY)
   const party = model.roles.map((x) => x === 'party')
   const roles = Array.isArray(rolesOrStyle) ? rolesOrStyle : defaultRoles(r, party, rolesOrStyle)
-  const dsm = model.measured ? await fetchDsm(center.lat, center.lng, Math.min(100, Math.ceil(Math.max(...r.map((p) => Math.hypot(p.x, p.y))) + 6)), 0.25).catch(() => null) : null
+  const radius = Math.min(60, Math.ceil(Math.max(...r.map((p) => Math.hypot(p.x, p.y))) + 6))
+  const dsm = model.measured ? (await fetchDsm(center.lat, center.lng, radius, 0.25).catch(() => null)) ?? (await fetchLidarDsm(center.lat, center.lng, radius).catch(() => null)) : null
   const res = planesFrom(center, r, roles, dsm)
   return { planes: res.planes, model: { ...model, roles: res.roles, measured: res.measured }, outlineSource: model.source, measured: res.measured, message: `${res.planes.length} panes` }
 }

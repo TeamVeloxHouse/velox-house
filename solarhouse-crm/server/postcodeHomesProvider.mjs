@@ -9,6 +9,15 @@
  *   4. keep only the buildings whose address is IN the searched postcode, one per address
  * Every home comes back with its building centre, so picking one pins the design on that exact roof. */
 
+import { localCovered, localBuildings } from './osmLocal.mjs'
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs'
+import { join, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
+// building id → its geocoded address, kept on disk: a building looked up once never needs geocoding again
+const CACHE_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'data/cache'), ADDR_FILE = join(CACHE_DIR, 'addresses.json')
+const addrCache = existsSync(ADDR_FILE) ? JSON.parse(readFileSync(ADDR_FILE, 'utf8')) : {}
+let saveTimer = null
+const saveAddrCache = () => { clearTimeout(saveTimer); saveTimer = setTimeout(() => { try { mkdirSync(CACHE_DIR, { recursive: true }); writeFileSync(ADDR_FILE, JSON.stringify(addrCache)) } catch { /* best effort */ } }, 1500) }
 const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://overpass.private.coffee/api/interpreter']
 const UA = { 'User-Agent': 'SolarHouseCRM/1.0 (+https://thesolarhouse.co.uk)', 'Content-Type': 'application/x-www-form-urlencoded' } // overpass-api.de answers 406 to anonymous clients
 const norm = (pc) => String(pc || '').toUpperCase().replace(/\s+/g, '')
@@ -24,6 +33,7 @@ async function postcodeCentre(pc) {
 const cache = new Map() // postcode → result, 1 h (Overpass rate-limits bursts)
 const bCache = new Map() // rounded point → buildings, 30 min
 export async function buildingsAround(lat, lng, radius) {
+  if (localCovered(+lat, +lng, radius)) return localBuildings(+lat, +lng, radius) // instant — Geofabrik extract on disk
   const ck = `${(+lat).toFixed(4)},${(+lng).toFixed(4)},${radius}`, hit = bCache.get(ck)
   if (hit && Date.now() - hit.at < 1800e3) return hit.v
   const q = `[out:json][timeout:20];way["building"](around:${radius},${lat},${lng});out tags geom;`
@@ -76,7 +86,9 @@ export async function postcodeHomes(pcRaw, reverse) {
         postcode = t['addr:postcode']
         label = `${t['addr:housenumber'] || t['addr:housename']} ${t['addr:street']}`
       } else {
-        try { const r = await reverse(b.center.lat, b.center.lng); postcode = r.postcode; label = (r.formatted || '').split(',')[0]; source = 'geocode' } catch { continue }
+        const hit = addrCache[b.id]
+        if (hit) { postcode = hit.pc; label = hit.label; source = 'geocode' }
+        else try { const r = await reverse(b.center.lat, b.center.lng); postcode = r.postcode; label = (r.formatted || '').split(',')[0]; source = 'geocode'; addrCache[b.id] = { pc: postcode, label }; saveAddrCache() } catch { continue }
       }
       if (!label || norm(postcode) !== want) continue
       const key = label.toLowerCase()
@@ -86,7 +98,7 @@ export async function postcodeHomes(pcRaw, reverse) {
       homes.push({ id: b.id, label, number: m ? m[1] : label, street: m ? m[2] : '', address: `${label}, ${pc.district ? pc.district + ', ' : ''}${pc.postcode}`, center: b.center, footprint: b.footprint, areaM2: Math.round(b.m2), source })
     }
   }
-  await Promise.all(Array.from({ length: 8 }, worker))
+  await Promise.all(Array.from({ length: 16 }, worker))
   const num = (s) => { const m = String(s).match(/\d+/); return m ? +m[0] : 1e9 }
   homes.sort((a, b) => a.street.localeCompare(b.street) || num(a.number) - num(b.number) || a.number.localeCompare(b.number))
   const v = { ok: true, postcode: pc.postcode, center: { lat: pc.lat, lng: pc.lng }, district: pc.district, homes, scanned: cands.length }

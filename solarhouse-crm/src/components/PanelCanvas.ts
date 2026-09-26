@@ -15,6 +15,8 @@ export class PanelCanvasLayer extends L.Layer {
   hoverId: string | null = null
   selected = new Set<string>()
   hidden = new Set<string>() // panels temporarily hidden (e.g. while being dragged as ghosts)
+  dim = new Set<string>() // panels being moved — faded so the light preview reads clearly
+  alpha = 1 // 'see-through' mode draws every module translucent so the roof shows through
 
   onAdd(map: L.Map) {
     this.host = map
@@ -39,6 +41,8 @@ export class PanelCanvasLayer extends L.Layer {
   setHover(id: string | null) { if (id !== this.hoverId) { this.hoverId = id; this.redraw() } }
   setSelected(ids: string[]) { this.selected = new Set(ids); this.redraw() }
   setHidden(ids: string[]) { this.hidden = new Set(ids); this.redraw() }
+  setDim(ids: string[]) { this.dim = new Set(ids); this.redraw() }
+  setAlpha(a: number) { if (a !== this.alpha) { this.alpha = a; this.redraw() } }
 
   redraw() {
     const map = this.host; if (!map || !this.canvas) return
@@ -56,7 +60,7 @@ export class PanelCanvasLayer extends L.Layer {
     // 1) shadows for all panels first so no shadow ever sits on top of a neighbour
     ctx.save()
     for (const p of this.panels) {
-      if (this.hidden.has(p.id)) continue
+      if (this.hidden.has(p.id) || this.dim.has(p.id) || this.alpha < 0.9) continue // no shadows in see-through / while moving
       const q = pts(p.corners)
       ctx.beginPath(); q.forEach((v, i) => (i ? ctx.lineTo(v.x + 1.6, v.y + 2.2) : ctx.moveTo(v.x + 1.6, v.y + 2.2))); ctx.closePath()
       ctx.fillStyle = 'rgba(0,0,0,0.38)'; ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = 5; ctx.fill()
@@ -69,6 +73,7 @@ export class PanelCanvasLayer extends L.Layer {
       const q = pts(p.corners)
       const e1 = Math.hypot(q[1].x - q[0].x, q[1].y - q[0].y), e2 = Math.hypot(q[2].x - q[1].x, q[2].y - q[1].y)
       const on = this.selected.has(p.id), hov = this.hoverId === p.id
+      ctx.globalAlpha = this.dim.has(p.id) ? 0.22 : on && this.alpha < 1 ? Math.min(1, this.alpha + 0.2) : this.alpha
       const path = () => { ctx.beginPath(); q.forEach((v, i) => (i ? ctx.lineTo(v.x, v.y) : ctx.moveTo(v.x, v.y))); ctx.closePath() }
 
       // glass body — deep blue-black, lighter towards the top edge
@@ -110,5 +115,6 @@ export class PanelCanvasLayer extends L.Layer {
       path(); ctx.strokeStyle = on ? '#62E4CC' : hov ? 'rgba(98,228,204,0.95)' : 'rgba(196,210,230,0.62)'; ctx.lineWidth = on ? 2.2 : hov ? 1.8 : 0.9; ctx.stroke()
       if (on) { path(); ctx.fillStyle = 'rgba(98,228,204,0.16)'; ctx.fill() }
     }
+    ctx.globalAlpha = 1
   }
 }

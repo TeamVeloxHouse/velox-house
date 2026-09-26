@@ -15,7 +15,7 @@ const TILES = join(ROOT, 'data/inspire/tiles')
 const GSB = join(ROOT, 'data/ostn15/OSTN15_NTv2_OSGBtoETRS.gsb')
 
 let toBng = null
-function projector() {
+export function projector() {
   if (toBng) return toBng
   if (existsSync(GSB)) {
     const b = readFileSync(GSB)

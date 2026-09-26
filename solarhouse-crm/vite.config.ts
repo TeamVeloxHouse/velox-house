@@ -12,6 +12,7 @@ import { pvgisHourly, pvgisMonthly } from './server/pvgisProvider.mjs'
 import { callOvi } from './server/oviProvider.mjs'
 import { mapboxGeocode, mapboxReverse, mapboxSuggest } from './server/mapboxProvider.mjs'
 import { postcodeHomes, buildingsAround } from './server/postcodeHomesProvider.mjs'
+import { lidarDsm } from './server/lidarProvider.mjs'
 
 /** Dev-only backend for the real Ovi operator — keeps the Anthropic key server-side.
  *  Set ANTHROPIC_API_KEY in .env to go live; without it, /api/ovi returns
@@ -364,12 +365,21 @@ function geocodeApi(env: Record<string, string>): Plugin {
           res.end(JSON.stringify({ configured: true, status: r.status, data: await r.json().catch(() => null) }))
         } catch (e) { res.end(JSON.stringify({ configured: true, reason: String((e as Error)?.message || e) })) }
       })
+      // Free government LiDAR roof heights (England: EA 1 m DSM) on the DSM grid the roof-pane fitter reads.
+      server.middlewares.use('/api/lidar', async (req, res) => {
+        res.setHeader('Content-Type', 'application/json')
+        const u = new URL(req.url || '', 'http://x').searchParams
+        const lat = +(u.get('lat') || NaN), lng = +(u.get('lng') || NaN), r = Math.min(80, +(u.get('r') || 30))
+        if (!isFinite(lat) || !isFinite(lng)) { res.statusCode = 400; return res.end('{}') }
+        try { res.end(JSON.stringify(await lidarDsm(lat, lng, r))) }
+        catch (e) { res.end(JSON.stringify({ covered: false, reason: String((e as Error)?.message || e) })) }
+      })
       // OSM building footprints around a point — server-side so every caller shares the retry,
       // the mirror fallback and the User-Agent Overpass now insists on.
       server.middlewares.use('/api/osm-buildings', async (req, res) => {
         res.setHeader('Content-Type', 'application/json')
         const u = new URL(req.url || '', 'http://x').searchParams
-        const lat = +(u.get('lat') || NaN), lng = +(u.get('lng') || NaN), r = Math.min(400, +(u.get('r') || 70))
+        const lat = +(u.get('lat') || NaN), lng = +(u.get('lng') || NaN), r = Math.min(3000, +(u.get('r') || 70))
         if (!isFinite(lat) || !isFinite(lng)) { res.statusCode = 400; return res.end('{}') }
         const els = await buildingsAround(lat, lng, r).catch(() => [])
         res.end(JSON.stringify({ buildings: els.map((e: { id: number; tags?: Record<string, string>; geometry: { lat: number; lon: number }[] }) => ({ id: e.id, tags: e.tags || {}, ring: e.geometry.map((g) => ({ lat: g.lat, lng: g.lon })) })) }))

@@ -327,19 +327,21 @@ function ringAreaish(poly: LatLng[]): number {
   return Math.abs(a / 2)
 }
 
+/** OSM buildings around a point, Overpass-shaped — via the server, which answers from the local Geofabrik store
+ *  inside the showroom catchments (instant) and only falls back to Overpass outside them. */
+async function osmElements(center: LatLng, radius: number): Promise<{ elements: { type: string; id: number; tags: Record<string, string>; geometry: { lat: number; lon: number }[] }[] }> {
+  const r = await fetch(`/api/osm-buildings?lat=${center.lat}&lng=${center.lng}&r=${radius}`)
+  const j = await r.json()
+  return { elements: (j.buildings ?? []).map((b: { id: number; tags: Record<string, string>; ring: LatLng[] }) => ({ type: 'way', id: b.id, tags: b.tags, geometry: b.ring.map((p) => ({ lat: p.lat, lon: p.lng })) })) }
+}
+
 /** Real building outline at a point, from OSM. Returns the polygon (lat/lng ring) or null. */
 export async function fetchBuildingFootprint(center: LatLng): Promise<LatLng[] | null> {
   // 150 m radius: a big shed's centroid can be ~75 m from its walls, so a tight radius misses it.
   // We then pick the polygon that CONTAINS the point, so a wide net never grabs a neighbour by mistake.
-  const q = `[out:json][timeout:12];way(around:150,${center.lat},${center.lng})["building"];out geom;`
-  for (const url of OVERPASS) {
+  {
     try {
-      const ctrl = new AbortController()
-      const t = setTimeout(() => ctrl.abort(), 9000)
-      const r = await fetch(url, { method: 'POST', body: `data=${encodeURIComponent(q)}`, signal: ctrl.signal })
-      clearTimeout(t)
-      if (!r.ok) continue
-      const j = await r.json()
+      const j = await osmElements(center, 150)
       const ways: LatLng[][] = (j.elements || [])
         .filter((e: { type: string; geometry?: unknown[] }) => e.type === 'way' && Array.isArray(e.geometry) && e.geometry.length >= 4)
         .map((e: { geometry: { lat: number; lon: number }[] }) => e.geometry.map((g) => ({ lat: g.lat, lng: g.lon })))
@@ -359,15 +361,9 @@ export async function fetchBuildingFootprint(center: LatLng): Promise<LatLng[] |
 /** Real building height at a point, from OSM `height` / `building:levels` tags. Returns the eave
  *  height in metres (what the 3D walls rise to) + which tag it came from, or null if untagged. */
 export async function fetchBuildingHeight(center: LatLng): Promise<{ eaveM: number; source: 'osm' } | null> {
-  const q = `[out:json][timeout:12];way(around:120,${center.lat},${center.lng})["building"];out tags geom;`
-  for (const url of OVERPASS) {
+  {
     try {
-      const ctrl = new AbortController()
-      const t = setTimeout(() => ctrl.abort(), 9000)
-      const r = await fetch(url, { method: 'POST', body: `data=${encodeURIComponent(q)}`, signal: ctrl.signal })
-      clearTimeout(t)
-      if (!r.ok) continue
-      const j = await r.json()
+      const j = await osmElements(center, 120)
       type W = { ring: LatLng[]; tags: Record<string, string>; area: number }
       const ways: W[] = (j.elements || [])
         .filter((e: { type: string; geometry?: unknown[] }) => e.type === 'way' && Array.isArray(e.geometry) && e.geometry.length >= 4)
