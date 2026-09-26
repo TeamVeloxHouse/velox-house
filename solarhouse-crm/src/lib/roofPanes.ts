@@ -402,9 +402,11 @@ export async function detectRoofPanes(center: LatLng, style: RoofStyle = 'gable'
   const f = frame(center)
   onStep?.('Finding the building outline…')
   const [mask, osm] = await Promise.all([fetchBuildingOutline(center.lat, center.lng).catch(() => null), osmBuildings(center)])
-  const outlineLL = mask && mask.length >= 4 ? mask : osm.target
+  // OSM first: it's traced per house. Google's mask merges terraces and neighbours into one blob, so it's only the
+  // fallback where OSM has no building here. Google's height model still measures the pitch either way.
+  const outlineLL = osm.target ?? (mask && mask.length >= 4 ? mask : null)
   if (!outlineLL) return null
-  const source: 'google' | 'osm' = mask && mask.length >= 4 ? 'google' : 'osm'
+  const source: 'google' | 'osm' = osm.target ? 'osm' : 'google'
   const r = cleanRing(outlineLL.map(f.toXY))
   if (r.length < 3) return null
   onStep?.('Reading walls, gables and party walls…')
@@ -412,10 +414,10 @@ export async function detectRoofPanes(center: LatLng, style: RoofStyle = 'gable'
   let roles = defaultRoles(r, party, style)
   onStep?.('Fetching roof heights (Google or LiDAR)…')
   const ext = Math.max(...r.map((p) => Math.hypot(p.x, p.y)))
-  // the height model comes from the same Google layer as the mask — no mask, no point asking
+
   // Heights: Google's DSM where it works, else free government LiDAR (England) — either way the pitch is MEASURED
   let heightSource = ''
-  let dsm: DsmData | null = source === 'google' ? await fetchDsm(center.lat, center.lng, Math.min(100, Math.ceil(ext + 6)), 0.25).catch(() => null) : null
+  let dsm: DsmData | null = await fetchDsm(center.lat, center.lng, Math.min(100, Math.ceil(ext + 6)), 0.25).catch(() => null)
   if (dsm) heightSource = 'Google height model'
   else { const l = await fetchLidarDsm(center.lat, center.lng, Math.min(60, Math.ceil(ext + 6))).catch(() => null); if (l) { dsm = l; heightSource = 'Environment Agency LiDAR' } }
   onStep?.(dsm ? 'Measuring each pane’s pitch from the height model…' : 'Splitting the roof into panes…')
