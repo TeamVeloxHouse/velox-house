@@ -246,7 +246,7 @@ export function DesignEditor() {
     const planeAt = (ll: L.LatLng) => designRef.current?.planes.find((p) => pointInRing(p.polygon, { lat: ll.lat, lng: ll.lng }))
     // Manual placement uses NO setback — you can drop panels right to the roof edge (Pylon-style). A
     // fire setback, if wanted, is a per-plane slider that only trims auto-fill, never manual placement.
-    const gridFor = (p: DesignPlane) => planeGrid(p.polygon, moduleById(p.moduleId ?? moduleIdRef.current), { orientation: p.orientation ?? 'portrait', setback: 0, rowGap: p.rowGapM, gap: p.panelGapM, angleDeg: p.arrayAngleDeg })
+    const gridFor = (p: DesignPlane) => planeGrid(p.polygon, moduleById(p.moduleId ?? moduleIdRef.current), { orientation: p.orientation ?? 'portrait', setback: 0, rowGap: p.rowGapM, gap: p.panelGapM, angleDeg: p.arrayAngleDeg, pitchDeg: p.racking && p.racking !== 'flush' ? (p.tiltDeg ?? 10) : p.pitchDeg, azimuthDeg: p.azimuthDeg })
     // Ghost styling — draw intended modules as real panels (dark glass + a thin intent-coloured frame)
     // so the preview reads exactly like what will land. Purple = place, teal = move, red = clear.
     const GH: Record<string, { frame: string; glass: string; fill: number; weight: number }> = {
@@ -647,7 +647,41 @@ export function DesignEditor() {
       if (!p.panels?.length && (on || design.planes.length <= 4)) tip.openTooltip([topPt.lat, topPt.lng])
       poly.addTo(lyr)
       if (p.id === editPlaneId) (poly as any).pm.enable({ allowSelfIntersection: false, snappable: true })
-      if (on) p.polygon.forEach((v) => L.circleMarker([v.lat, v.lng], { radius: 3.5, color: '#FFFFFF', weight: 1.5, fillColor: '#15223B', fillOpacity: 1, pmIgnore: true, interactive: false } as any).addTo(lyr))
+      // Selected face: every corner is a handle — grab and drag. A corner shared with a neighbouring pane (ridge end,
+      // hip top) moves with it so the roof stays joined; dropped near another pane's corner, it snaps onto it.
+      if (on && editPlaneId !== p.id) {
+        const mLat = 110540, mLng = 111320 * Math.cos((p.polygon[0].lat * Math.PI) / 180)
+        const near = (a: LatLng, b: LatLng, m: number) => Math.hypot((a.lat - b.lat) * mLat, (a.lng - b.lng) * mLng) <= m
+        p.polygon.forEach((v, vi) => {
+          const shared = design.planes.flatMap((q) => (q.id === p.id ? [] : q.polygon.map((w, wi) => ({ pid: q.id, wi, w })).filter((o) => near(o.w, v, 0.2))))
+          const mk = L.marker([v.lat, v.lng], {
+            draggable: true, keyboard: false, pmIgnore: true, zIndexOffset: 1000,
+            icon: L.divIcon({ className: '', html: `<div title="Drag to reshape" style="width:13px;height:13px;border-radius:50%;background:#fff;border:2.5px solid #15223B;box-shadow:0 1px 4px rgba(0,0,0,.55);cursor:move"></div>`, iconSize: [13, 13], iconAnchor: [6.5, 6.5] }),
+          } as any)
+          mk.on('drag', (e: any) => {
+            const ll = e.target.getLatLng()
+            poly.setLatLngs(p.polygon.map((w, i) => (i === vi ? [ll.lat, ll.lng] : [w.lat, w.lng])) as [number, number][])
+          })
+          mk.on('dragend', (e: any) => {
+            let ll: LatLng = { lat: e.target.getLatLng().lat, lng: e.target.getLatLng().lng }
+            const d = designRef.current; if (!d) return
+            // magnet: onto another pane's corner within 30 cm
+            const others = d.planes.flatMap((q) => (q.id === p.id ? [] : q.polygon)).filter((w) => !shared.some((s) => s.w === w))
+            const snap = others.find((w) => near(w, ll, 0.3)); if (snap) ll = { lat: snap.lat, lng: snap.lng }
+            const moved = (q: DesignPlane, ring: LatLng[]) => {
+              const inside = (pt: LatLng) => pointInRing(ring, pt)
+              // keep the modules that still sit fully on the reshaped face
+              return { ...q, polygon: ring, areaM2: Math.round(polygonAreaM2(ring)), panels: (q.panels ?? []).filter((pn) => pn.corners.every(inside)) }
+            }
+            commitRef.current(d.planes.map((q) => {
+              if (q.id === p.id) return moved(q, q.polygon.map((w, i) => (i === vi ? ll : w)))
+              const s = shared.filter((o) => o.pid === q.id)
+              return s.length ? moved(q, q.polygon.map((w, i) => (s.some((o) => o.wi === i) ? ll : w))) : q
+            }))
+          })
+          mk.addTo(lyr)
+        })
+      }
       // Modules go to the photoreal canvas (hidden while a suggested layout is previewed on this plane).
       if (!preview?.planes.some((pp) => pp.id === p.id)) p.panels?.forEach((pn) => canvasPanels.push({ id: pn.id, corners: pn.corners, azimuthDeg: p.azimuthDeg }))
     })

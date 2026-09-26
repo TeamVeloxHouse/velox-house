@@ -331,6 +331,26 @@ function dp(loop: PXY[], tol: number): PXY[] {
 
 type HPlane = { a: number; b: number; c: number } // z = a·east + b·north + c
 
+/** Square a ring to a building axis: every wall within `tolDeg` of the axis or its perpendicular is turned exactly
+ *  onto it (about its midpoint) and the corners rebuilt where the straightened walls meet. */
+function squareRing(ring: XY[], theta: number, tolDeg = 20): XY[] {
+  const n = ring.length; if (n < 4) return ring
+  const tol = (tolDeg * Math.PI) / 180
+  const lines = ring.map((a, i) => {
+    const b = ring[(i + 1) % n], t = Math.atan2(b.y - a.y, b.x - a.x)
+    let best = t
+    for (const d of [theta, theta + Math.PI / 2]) { const e = Math.abs(((t - d) % Math.PI + Math.PI * 1.5) % Math.PI - Math.PI / 2); if (e < tol) { best = t - (((t - d) % Math.PI + Math.PI * 1.5) % Math.PI - Math.PI / 2) } }
+    return { p: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, d: { x: Math.cos(best), y: Math.sin(best) } }
+  })
+  return ring.map((orig, i) => {
+    const L1 = lines[(i - 1 + n) % n], L2 = lines[i], den = L1.d.x * L2.d.y - L1.d.y * L2.d.x
+    if (Math.abs(den) < 0.2) return orig
+    const t = ((L2.p.x - L1.p.x) * L2.d.y - (L2.p.y - L1.p.y) * L2.d.x) / den
+    const q = { x: L1.p.x + L1.d.x * t, y: L1.p.y + L1.d.y * t }
+    return dist(q, orig) < 1.5 ? q : orig
+  })
+}
+
 /** Keep the part of a polygon where f(x,y) ≥ 0, f linear (Sutherland–Hodgman against one half-plane). */
 function clipHalf(poly: XY[], f: (p: XY) => number): XY[] {
   const out: XY[] = []
@@ -455,7 +475,12 @@ export function panesFromHeights(dsm: DsmData, outline: XY[]): { ring: XY[]; pla
     for (const i of pix) { const x = ex(i % W), y = no((i / W) | 0), z = hs[i]; S[0] += x * x; S[1] += x * y; S[2] += x; S[3] += y * y; S[4] += y; S[5] += 1; S[6] += x * z; S[7] += y * z; S[8] += z }
     // a real roof pane is at least ~4 m² and under ~52°; smaller or steeper pieces are gutters, party-wall steps or
     // wall edges — leave their pixels for the neighbouring panes to absorb below
-    const pl = solve(S); if (pl && pix.length * res * res >= 4 && Math.atan(Math.hypot(pl.a, pl.b)) / DEG <= 52) planes.push({ pix, pl })
+    // …and at least ~1.1 m wide: a thin strip along a ridge is the blur where two slopes meet, not a pane of its own
+    const n = pix.length, mx = S[2] / n, my = S[4] / n
+    const cxx = S[0] / n - mx * mx, cyy = S[3] / n - my * my, cxy = S[1] / n - mx * my
+    const lmin = (cxx + cyy) / 2 - Math.sqrt(((cxx - cyy) / 2) ** 2 + cxy * cxy)
+    const width = Math.sqrt(12 * Math.max(0, lmin))
+    const pl = solve(S); if (pl && n * res * res >= 4 && width >= 1.1 && Math.atan(Math.hypot(pl.a, pl.b)) / DEG <= 52) planes.push({ pix, pl })
   }
   if (!planes.length) return null
   // relabel, then give leftover roof pixels to whichever neighbouring plane explains them best
@@ -688,12 +713,25 @@ export async function detectRoofPanes(center: LatLng, style: RoofStyle = 'gable'
   if (heightSource === 'Google height model') {
     onStep?.('Cutting the panes from the 3D roof surface…')
     const fine = await fetchDsm(center.lat, center.lng, Math.min(40, Math.ceil(ext + 3)), 0.1).catch(() => null)
-    const hp = fine ? panesFromHeights(fine, r) : null
-    const covered = hp ? hp.reduce((s, p) => s + p.areaM2, 0) / Math.max(1, polyArea(r)) : 0
+    let rs = r
+    let hp = fine ? panesFromHeights(fine, rs) : null
+    // Square the walls to the ridge the height model actually shows (title lines and traced shapes are a little skew):
+    // the ridge runs along the intersection of the two biggest non-parallel panes.
+    if (hp && hp.length >= 2 && fine) {
+      const [P, Q] = [...hp].sort((a, b) => b.areaM2 - a.areaM2)
+      const A = P.plane.a - Q.plane.a, B = P.plane.b - Q.plane.b
+      if (Math.hypot(A, B) > 0.2) {
+        const sq = cleanRing(squareRing(rs, Math.atan2(-A, B)))
+        const ratio = Math.abs(signedArea(sq)) / Math.max(1, Math.abs(signedArea(rs)))
+        if (sq.length >= 3 && ratio > 0.85 && ratio < 1.15) { const again = panesFromHeights(fine, sq); if (again) { rs = sq; hp = again } }
+      }
+    }
+    const covered = hp ? hp.reduce((s, p) => s + p.areaM2, 0) / Math.max(1, polyArea(rs)) : 0
     if (hp && covered >= 0.6) {
-      const welded = weld(hp.map((p, i) => ({ edge: i, ring: p.ring, areaM2: p.areaM2 })), r) // edge = index into hp (weld may drop a sliver)
+      const hpF = hp
+      const welded = weld(hpF.map((p, i) => ({ edge: i, ring: p.ring, areaM2: p.areaM2 })), rs) // edge = index into hp (weld may drop a sliver)
       const planes: DesignPlane[] = welded.map((p) => {
-        const pl = hp[p.edge].plane
+        const pl = hpF[p.edge].plane
         const pitch = Math.atan(Math.hypot(pl.a, pl.b)) / DEG, flat = pitch < 6
         const az = flat ? 180 : Math.round(((Math.atan2(-pl.a, -pl.b) / DEG) + 360) % 360)
         return {
@@ -703,7 +741,7 @@ export async function detectRoofPanes(center: LatLng, style: RoofStyle = 'gable'
         }
       }).filter((p) => p.areaM2 >= 2).sort((a, b) => b.areaM2 - a.areaM2)
       if (planes.length) return {
-        planes, model: { outline: r.map(f.toLL), roles, source, measured: true }, outlineSource: source, measured: true,
+        planes, model: { outline: rs.map(f.toLL), roles, source, measured: true }, outlineSource: source, measured: true,
         message: `${planes.length} pane${planes.length === 1 ? '' : 's'} cut from Google's 3D roof surface inside the ${source === 'osm' ? 'OpenStreetMap' : 'Google'} outline${clippedToTitle ? ' (cut to the Land Registry title)' : ''} · pitch + facing measured`,
       }
     }

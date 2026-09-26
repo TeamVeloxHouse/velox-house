@@ -510,7 +510,7 @@ export function Design3D({ design, onCapture, adding, selecting, moduleId, onCom
       return pt ? { lat: origin.lat - pt.z / mPerLat, lng: origin.lng + pt.x / mPerLng } : null
     }
     const planeAtLL = (ll: LL) => designRef.current.planes.find((p) => p.polygon.length >= 3 && pointInRing(p.polygon, ll))
-    const gridFor = (p: DesignPlane) => planeGrid(p.polygon, moduleById(p.moduleId ?? moduleIdRef.current), { orientation: p.orientation ?? 'portrait', setback: 0, rowGap: p.rowGapM })
+    const gridFor = (p: DesignPlane) => planeGrid(p.polygon, moduleById(p.moduleId ?? moduleIdRef.current), { orientation: p.orientation ?? 'portrait', setback: 0, rowGap: p.rowGapM, gap: p.panelGapM, angleDeg: p.arrayAngleDeg, pitchDeg: p.racking && p.racking !== 'flush' ? (p.tiltDeg ?? 10) : p.pitchDeg, azimuthDeg: p.azimuthDeg })
     const cellQuad = (pid: string, cell: GridCell) => { const g = planeGeo.get(pid); const sc = cell.corners.map((v) => ({ x: X(v), z: Z(v) })); const ys = g ? g.panelY(sc) : sc.map(() => 0); return cell.corners.map((v, i) => new THREE.Vector3(X(v), ys[i] + 0.08, Z(v))) }
     const drawGhost = (pid: string, cells: GridCell[], removing: boolean) => {
       ghostGroup.clear()

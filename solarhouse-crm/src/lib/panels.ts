@@ -90,6 +90,9 @@ function insetXY(poly: XY[], d: number): XY[] {
 export type BBox = { minLat: number; maxLat: number; minLng: number; maxLng: number }
 export type PackOpts = {
   orientation: PanelOrientation; gap?: number; setback?: number; rowGap?: number; bbox?: BBox; angleDeg?: number
+  pitchDeg?: number // roof (or racking) tilt — the up-slope size of a module is shorter on plan by cos(tilt)
+  azimuthDeg?: number // which way the pane faces (from north) — the grid lines up with the slope, not just the longest edge
+  offsetX?: number; offsetY?: number // 0–1 shift of the grid origin, in cells — the packer tries several to fit more
   obstacles?: LatLng[][] // keep-out rings (obstruction outlines) panels must avoid
   obstacleClearance?: number // margin kept around each obstruction (m); default 0.15
 }
@@ -106,13 +109,18 @@ export function planeGrid(polygon: LatLng[], module: Module, opts: PackOpts): Gr
   const origin = polygon.reduce((a, p) => ({ lat: a.lat + p.lat / polygon.length, lng: a.lng + p.lng / polygon.length }), { lat: 0, lng: 0 })
   const proj = projector(origin)
   const polyXY = polygon.map(proj.toXY)
-  const theta = dominantAngle(polyXY) + (opts.angleDeg ?? 0) * (Math.PI / 180) // roof edge + manual rotation
-  const R = polyXY.map((p) => rot(p, theta)) // grid-aligned frame
-
-  const pw = opts.orientation === 'portrait' ? module.w : module.h // panel footprint in the grid
-  const ph = opts.orientation === 'portrait' ? module.h : module.w
+  // Rows run along the slope's contour (so modules sit square to the ridge) when the pane's facing is known and
+  // it's actually pitched; otherwise along the longest edge. Plus any manual array rotation.
+  const pitched = opts.azimuthDeg != null && (opts.pitchDeg ?? 0) >= 3
+  const theta = (pitched ? -(opts.azimuthDeg! * Math.PI) / 180 : dominantAngle(polyXY)) + (opts.angleDeg ?? 0) * (Math.PI / 180)
+  const R = polyXY.map((p) => rot(p, theta)) // grid-aligned frame (x along the contour, y down/up the slope)
+  // PLAN footprint: a module lying on a pitched roof is shorter on plan up the slope by cos(pitch) — without
+  // this, every module was drawn ~20% too long and the array overflowed the roof in 3D.
+  const fore = pitched ? Math.cos(((opts.pitchDeg ?? 0) * Math.PI) / 180) : 1
+  const pw = opts.orientation === 'portrait' ? module.w : module.h // across the slope
+  const ph = (opts.orientation === 'portrait' ? module.h : module.w) * fore // up the slope, on plan
   const gap = opts.gap ?? 0.02
-  const rowGap = opts.rowGap ?? gap
+  const rowGap = (opts.rowGap ?? gap) * fore
   const setback = opts.setback ?? 0.3
   const cw = pw + gap, ch = ph + rowGap
   // Enforce the setback from every roof EDGE (not just the bounding box): erode the polygon and keep
@@ -131,9 +139,9 @@ export function planeGrid(polygon: LatLng[], module: Module, opts: PackOpts): Gr
 
   const cells: GridCell[] = []
   let row = 0
-  for (let y = minY; y + ph <= maxY; y += ch, row++) {
+  for (let y = minY + ((opts.offsetY ?? 0) % 1) * ch; y + ph <= maxY; y += ch, row++) {
     let col = 0
-    for (let x = minX; x + pw <= maxX; x += cw, col++) {
+    for (let x = minX + ((opts.offsetX ?? 0) % 1) * cw; x + pw <= maxX; x += cw, col++) {
       // corners of the cell in the grid frame (inset a hair so touching edges still count as in)
       const corners: XY[] = [
         { x: x + 0.02, y: y + 0.02 }, { x: x + pw - 0.02, y: y + 0.02 },
@@ -199,13 +207,36 @@ export function packWithSettings(plane: DesignPlane, module: Module, designSetba
   const rowGap = plane.rowGapM
   const gap = plane.panelGapM
   const angleDeg = plane.arrayAngleDeg
-  const base = { setback, rowGap, gap, angleDeg, obstacles }
-  if (plane.orientation) {
-    return { panels: packPlane(plane.polygon, module, { orientation: plane.orientation, ...base }), orientation: plane.orientation }
+  const tilt = plane.racking && plane.racking !== 'flush' ? (plane.tiltDeg ?? 10) : plane.pitchDeg
+  const base: PackOpts = { orientation: 'portrait', setback, rowGap, gap, angleDeg, obstacles, pitchDeg: tilt, azimuthDeg: plane.azimuthDeg }
+  // Search: each allowed orientation × several grid origins — where the grid starts decides whether that last
+  // column/row squeezes in. Keep the arrangement that fits the most modules.
+  const orients: PanelOrientation[] = plane.orientation ? [plane.orientation] : ['portrait', 'landscape']
+  let best: { panels: DesignPanel[]; orientation: PanelOrientation } = { panels: [], orientation: orients[0] }
+  // On a low-pitched roof (<15°) the facing hardly matters and modules normally follow the building — also try the
+  // grid along the pane's longest edge and keep whichever alignment fits more.
+  const aligns = tilt < 15 && !angleDeg ? [base.azimuthDeg, undefined] : [base.azimuthDeg]
+  let bestAlign: number | undefined = base.azimuthDeg
+  for (const az of aligns) for (const orientation of orients) for (const offsetX of [0, 0.25, 0.5, 0.75]) for (const offsetY of [0, 0.33, 0.67]) {
+    const panels = packPlane(plane.polygon, module, { ...base, azimuthDeg: az, orientation, offsetX, offsetY })
+    if (panels.length > best.panels.length) { best = { panels, orientation }; bestAlign = az }
   }
-  const portrait = packPlane(plane.polygon, module, { orientation: 'portrait', ...base })
-  const landscape = packPlane(plane.polygon, module, { orientation: 'landscape', ...base })
-  return landscape.length > portrait.length ? { panels: landscape, orientation: 'landscape' } : { panels: portrait, orientation: 'portrait' }
+  base.azimuthDeg = bestAlign // the gap-filling pass below uses the same alignment
+  // Mixed: where the main block leaves space the other way round fits, add those modules too (e.g. a landscape
+  // row across the top of a portrait array). Only when the orientation isn't locked for this pane.
+  if (!plane.orientation && best.panels.length) {
+    const other: PanelOrientation = best.orientation === 'portrait' ? 'landscape' : 'portrait'
+    const proj = projector(plane.polygon[0])
+    const taken = best.panels.map((p) => p.corners.map(proj.toXY))
+    const clash = (c: XY[]) => taken.some((t) => polysOverlap(c, t))
+    let extra: DesignPanel[] = []
+    for (const offsetX of [0, 0.25, 0.5, 0.75]) for (const offsetY of [0, 0.33, 0.67]) {
+      const add = packPlane(plane.polygon, module, { ...base, orientation: other, offsetX, offsetY }).filter((p) => !clash(p.corners.map(proj.toXY)))
+      if (add.length > extra.length) extra = add
+    }
+    if (extra.length) best = { panels: [...best.panels, ...extra], orientation: best.orientation }
+  }
+  return best
 }
 
 /** Lay out the whole design toward a goal. Best planes first; trims the last plane to hit a target. */
@@ -219,8 +250,12 @@ export function autoLayout(planes: DesignPlane[], module: Module, goal: LayoutGo
     if (placed >= targetCount) break
     if (opts.restrict && !opts.restrict(p)) continue // skip planes the brief excluded
     if (goal.kind === 'target-kwh' && kwh >= goal.kwh) break
+    // Worth it? A pane yielding under ~60% of an ideal south roof (north-facing) isn't filled unless the brief
+    // explicitly asked for it (opts.restrict) — Ovi's "max" means max sensible, not every square metre.
+    if (!opts.restrict && planeSolarFactor({ azimuthDeg: p.azimuthDeg, pitchDeg: p.racking && p.racking !== 'flush' ? (p.tiltDeg ?? 10) : p.pitchDeg }) < 0.6) continue
     const packed = packWithSettings(planes[i], module, designSetback, opts.obstacles)
     let panels = packed.panels
+    if (panels.length < 3 && !opts.restrict) continue // one or two stray modules on a scrap of roof — not worth a string
     if (placed + panels.length > targetCount) panels = panels.slice(0, targetCount - placed) // trim to target kWp
     if (goal.kind === 'target-kwh') {
       const per = kwhPerPanelOn(p)
