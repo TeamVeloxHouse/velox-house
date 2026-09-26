@@ -552,25 +552,85 @@ export function panesFromHeights(dsm: DsmData, outline: XY[]): { ring: XY[]; pla
     for (let h = 0; h < hull.length && poly.length >= 3; h++) { const a = hull[h], b = hull[(h + 1) % hull.length]; poly = clipHalf(poly, (p) => (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x)) }
     if (poly.length < 3) return null
     const area = Math.abs(signedArea(poly)), want = pix.length * res * res
-    return area >= want * 0.7 && area <= want * 1.45 ? poly : null // disagrees with the data → use the traced shape
+    if (area < want * 0.7 || area > want * 1.45) return null // disagrees with the data → use the traced shape
+    // …and it must actually BE this pane: the hull is convex, so an L-shaped or split pixel set would stretch it
+    // across another slope. At least 80% of the straight-edged shape has to be this pane's own measured roof.
+    let bx0 = Infinity, bx1 = -Infinity, by0 = Infinity, by1 = -Infinity
+    for (const p of poly) { bx0 = Math.min(bx0, p.x); bx1 = Math.max(bx1, p.x); by0 = Math.min(by0, p.y); by1 = Math.max(by1, p.y) }
+    let tot = 0, own = 0
+    const ca = Math.max(0, Math.floor((bx0 + halfW) / res)), cb = Math.min(W - 1, Math.ceil((bx1 + halfW) / res))
+    const ra = Math.max(0, Math.floor((halfH - by1) / res)), rb = Math.min(H - 1, Math.ceil((halfH - by0) / res))
+    const st = Math.max(1, Math.round(0.2 / res))
+    for (let r = ra; r <= rb; r += st) for (let c = ca; c <= cb; c += st) { if (!inPoly({ x: ex(c), y: no(r) }, poly)) continue; tot++; if (label[r * W + c] === k) own++ }
+    return tot && own / tot >= 0.8 ? poly : null
   }
-  const out: { ring: XY[]; plane: HPlane; areaM2: number }[] = []
+  const out: { ring: XY[]; plane: HPlane; areaM2: number; pix: number[] }[] = []
   planes.forEach((p, k) => {
     const done = new Uint8Array(W * H)
     for (const s0 of p.pix) {
       if (done[s0] || label[s0] !== k) continue
       const comp = new Uint8Array(W * H), stack = [s0]; done[s0] = 1; comp[s0] = 1; let n = 0; const compPix: number[] = []
       while (stack.length) { const q = stack.pop()!; n++; compPix.push(q); for (const t of [q - 1, q + 1, q - W, q + W]) if (t >= 0 && t < W * H && label[t] === k && !done[t]) { done[t] = 1; comp[t] = 1; stack.push(t) } }
-      if (n * res * res < 1.5) continue
+      if (n * res * res < 2.5) continue // a stray scrap of a plane, not a pane
       const loop = trace((x, y) => x >= 0 && y >= 0 && x < W && y < H && comp[y * W + x] === 1, W, H)
       if (!loop) continue
       const simp = dp(loop, Math.max(1.5, 0.28 / res))
       if (simp.length < 3) continue
       const ring = analytic(compPix, k) ?? straighten(simp.map(([c, r]) => ({ x: ex(c), y: no(r) })))
-      out.push({ ring, plane: p.pl, areaM2: n * res * res })
+      out.push({ ring, plane: p.pl, areaM2: n * res * res, pix: compPix })
     }
   })
-  return out.length ? out : null
+  // ── TIDY: no two panes may overlap, and no slivers. Each pane was cut only against neighbours whose pixels touch
+  // it, so panes that nearly touch (or fell back to the traced shape) can still overlap. Cut every overlapping pair
+  // apart along the line that best separates their measured pixels — where the two planes meet if that line does
+  // the job, else a straight line at the building's angles.
+  const sample = (pix: number[]) => { const st = Math.max(1, (pix.length / 300) | 0), o: XY[] = []; for (let q = 0; q < pix.length; q += st) { const i = pix[q]; o.push({ x: ex(i % W), y: no((i / W) | 0) }) } return o }
+  const overlapM2 = (A: XY[], B: XY[]) => {
+    const bb = (r: XY[]) => r.reduce((m, p) => ({ x0: Math.min(m.x0, p.x), x1: Math.max(m.x1, p.x), y0: Math.min(m.y0, p.y), y1: Math.max(m.y1, p.y) }), { x0: Infinity, x1: -Infinity, y0: Infinity, y1: -Infinity })
+    const a = bb(A), b = bb(B), x0 = Math.max(a.x0, b.x0), x1 = Math.min(a.x1, b.x1), y0 = Math.max(a.y0, b.y0), y1 = Math.min(a.y1, b.y1)
+    if (x1 <= x0 || y1 <= y0) return 0
+    let n = 0; const g = 0.2
+    for (let x = x0 + g / 2; x < x1; x += g) for (let y = y0 + g / 2; y < y1; y += g) if (inPoly({ x, y }, A) && inPoly({ x, y }, B)) n++
+    return n * g * g
+  }
+  const separator = (i: number, j: number): ((p: XY) => number) => {
+    const A = sample(out[i].pix), B = sample(out[j].pix), N = A.length + B.length
+    const err = (f: (p: XY) => number) => (A.filter((p) => f(p) < 0).length + B.filter((p) => f(p) > 0).length) / N
+    let best: { f: (p: XY) => number; e: number } = { f: () => 0, e: Infinity }
+    const Pi = out[i].plane, Pj = out[j].plane, a = Pi.a - Pj.a, b = Pi.b - Pj.b, c = Pi.c - Pj.c
+    if (Math.hypot(a, b) > 0.02) { const g = (p: XY) => a * p.x + b * p.y + c; const f = err(g) > 0.5 ? (p: XY) => -g(p) : g; best = { f, e: err(f) - 0.03 } } // slight preference: it's the real ridge/hip/valley
+    for (const t of dirs) {
+      const nx = -Math.sin(t), ny = Math.cos(t)
+      const pr = [...A.map((p) => ({ v: nx * p.x + ny * p.y, s: 1 })), ...B.map((p) => ({ v: nx * p.x + ny * p.y, s: -1 }))].sort((u, w) => u.v - w.v)
+      for (const sg of [1, -1]) { // sg 1: A above the threshold, B below
+        let e = sg === 1 ? B.length : A.length, be = e, bt = pr[0].v - 0.01
+        for (let q = 0; q < pr.length; q++) {
+          e += pr[q].s === sg ? 1 : -1
+          if (e < be) { be = e; bt = q + 1 < pr.length ? (pr[q].v + pr[q + 1].v) / 2 : pr[q].v + 0.01 }
+        }
+        if (be / N < best.e) { const T = bt; best = { f: (p) => sg * (nx * p.x + ny * p.y - T), e: be / N } }
+      }
+    }
+    return best.f
+  }
+  const alive = out.map(() => true)
+  for (let pass = 0; pass < 3; pass++) {
+    const pairs: [number, number, number][] = []
+    for (let i = 0; i < out.length; i++) for (let j = i + 1; j < out.length; j++) if (alive[i] && alive[j]) { const o = overlapM2(out[i].ring, out[j].ring); if (o > 0.2) pairs.push([i, j, o]) }
+    if (!pairs.length) break
+    pairs.sort((u, w) => w[2] - u[2])
+    for (const [i, j] of pairs) {
+      if (!alive[i] || !alive[j] || overlapM2(out[i].ring, out[j].ring) <= 0.2) continue
+      const f = separator(i, j)
+      const ri = clipHalf(out[i].ring, f), rj = clipHalf(out[j].ring, (p) => -f(p))
+      if (ri.length >= 3) out[i].ring = ri; else alive[i] = false
+      if (rj.length >= 3) out[j].ring = rj; else alive[j] = false
+    }
+  }
+  // slivers: under 2.5 m² or narrower than a metre at their widest cross-section
+  const widthOf = (r: XY[]) => { const h = grownHull(r, 0); let w = Infinity; for (let k = 0; k < h.length; k++) { const a = h[k], b = h[(k + 1) % h.length], l = dist(a, b); if (l < 0.2) continue; const nx = -(b.y - a.y) / l, ny = (b.x - a.x) / l; let lo = Infinity, hi = -Infinity; for (const p of h) { const v = nx * p.x + ny * p.y; lo = Math.min(lo, v); hi = Math.max(hi, v) } w = Math.min(w, hi - lo) } return w }
+  const kept = out.filter((o, i) => alive[i] && Math.abs(signedArea(o.ring)) >= 2.5 && widthOf(o.ring) >= 1).map(({ ring, plane, areaM2 }) => ({ ring, plane, areaM2 }))
+  return kept.length ? kept : null
 }
 
 /* ── 5 · measure with the height model ─────────────────────────────────── */
