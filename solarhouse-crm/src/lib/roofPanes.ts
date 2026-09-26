@@ -290,7 +290,7 @@ function weld(panes: Pane[], outline: XY[]): Pane[] {
 }
 
 type PXY = [number, number]
-function trace(inR: (x: number, y: number) => boolean, W: number, H: number): PXY[] | null {
+export function trace(inR: (x: number, y: number) => boolean, W: number, H: number): PXY[] | null {
   let sx = -1, sy = -1
   for (let y = 0; y < H && sy < 0; y++) for (let x = 0; x < W; x++) if (inR(x, y)) { sx = x; sy = y; break }
   if (sx < 0) return null
@@ -304,7 +304,7 @@ function trace(inR: (x: number, y: number) => boolean, W: number, H: number): PX
   return out.length >= 3 ? out : null
 }
 /** Douglas–Peucker on a closed pixel loop (split at the two farthest points). */
-function dp(loop: PXY[], tol: number): PXY[] {
+export function dp(loop: PXY[], tol: number): PXY[] {
   if (loop.length < 5) return loop
   let a = 0, b = 0, best = -1
   for (let i = 0; i < loop.length; i += Math.max(1, (loop.length / 60) | 0)) for (let j = 0; j < loop.length; j++) { const d = (loop[i][0] - loop[j][0]) ** 2 + (loop[i][1] - loop[j][1]) ** 2; if (d > best) { best = d; a = i; b = j } }

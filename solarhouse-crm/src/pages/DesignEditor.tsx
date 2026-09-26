@@ -35,6 +35,7 @@ import type { Design, DesignObstacle, DesignObstacleKind, DesignPanel, DesignPla
 import { Dropdown } from '../components/Dropdown'
 import { tidyPolygon, paneQuality, tidyRoofLL } from '../lib/paneShape'
 import { oviDesign, type OviGoal, type OviResult } from '../lib/oviLayout'
+import { mergeFaces, neighbours } from '../lib/faceOps'
 
 type LatLng = { lat: number; lng: number }
 const uid = (p: string) => `${p}${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`
@@ -1051,6 +1052,15 @@ export function DesignEditor() {
     act.toast(`Tidied ${changed} face${changed === 1 ? '' : 's'}${removed > 0 ? ` · ${removed} stray corner${removed === 1 ? '' : 's'} removed` : ''} — undo with Ctrl+Z`)
   }
   tidyRef.current = tidyPlanes
+  /** Merge faces and/or make one flat — the fix when the height model is wrong (a flat roof with a glass lantern). */
+  function mergePlanes(ids: string[], flat = false) {
+    const d = designRef.current; if (!d) return
+    const next = mergeFaces(d.planes, ids, flat, d.roofModel?.outline)
+    if (!next) { act.toast('Those faces don’t join up — move a corner so they touch, then merge', 'warning'); return }
+    commitSnapshot(next); setSelPanelIds([])
+    const kept = next.find((p) => ids.includes(p.id)); if (kept) setSelId(kept.id)
+    act.toast(ids.length > 1 ? `Merged ${ids.length} faces${flat ? ' into a flat roof' : ''} — Ctrl+Z to undo` : 'Made a flat roof — Ctrl+Z to undo')
+  }
   function clearAllPlanes() {
     const d = designRef.current; if (!d || !d.planes.length) return
     const n = d.planes.length
@@ -1474,6 +1484,8 @@ export function DesignEditor() {
                     {item('Fill with panels', () => fillPlane(face.id))}
                     {!!face.panels?.length && item('Clear panels', () => clearPlane(face.id))}
                     {item('Tidy shape (T)', () => tidyPlanes([face.id]))}
+                    {face.pitchDeg > 0 && item('Make it a flat roof', () => mergePlanes([face.id], true))}
+                    {neighbours(design.planes, face.id).slice(0, 4).map((nb) => item(`Merge with ${compass(nb.azimuthDeg)} ${nb.pitchDeg}° · ${nb.areaM2} m²`, () => mergePlanes([face.id, nb.id], face.pitchDeg === 0 || nb.pitchDeg === 0)))}
                     {item('Reshape corners', () => { setSelId(face.id); setEditPlaneId(face.id) })}
                     {item('Delete face', () => deletePlane(face.id), true)}
                     <div className="h-px bg-divider my-1" />
