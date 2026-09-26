@@ -85,7 +85,7 @@ const anyCornerInside = (p: LatLng[], q: LatLng[]) => p.some((c) => pointInRing(
 const quadsOverlap = (a: LatLng[], b: LatLng[]) => anyCornerInside(a, b) || anyCornerInside(b, a)
 // A circular-arrow "rotate" cursor shown when hovering a selection's corner node / rotate handle.
 const ROTATE_CURSOR = (() => {
-  try { const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#159C86" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v5h-5"/></svg>`; return `url("data:image/svg+xml;base64,${btoa(svg)}") 13 13, auto` } catch { return 'grab' }
+  try { const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#62E4CC" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v5h-5"/></svg>`; return `url("data:image/svg+xml;base64,${btoa(svg)}") 13 13, auto` } catch { return 'grab' }
 })()
 
 /** Effective generating tilt — tilt-racking on a flat roof beats the flat pitch. */
@@ -186,7 +186,7 @@ export function DesignEditor() {
     m.createPane('panels'); const pp = m.getPane('panels'); if (pp) { pp.style.zIndex = '405'; pp.style.pointerEvents = 'none' }
     panelCanvas.current = new PanelCanvasLayer().addTo(m)
     m.pm.setGlobalOptions({ snappable: true, snapDistance: 16, allowSelfIntersection: false })
-    m.pm.setPathOptions({ color: '#00E5FF', fillColor: '#22E0FF', fillOpacity: 0.24 })
+    m.pm.setPathOptions({ color: '#62E4CC', fillColor: '#62E4CC', fillOpacity: 0.24 })
     m.on('pm:create', (e: any) => {
       const ring = (e.layer.getLatLngs()[0] as L.LatLng[]).map((p) => ({ lat: p.lat, lng: p.lng }))
       e.layer.remove()
@@ -197,7 +197,7 @@ export function DesignEditor() {
     //    you're dragging in real time, so you can shape the plane precisely against the imagery. ──
     const lbl = (lat: number, lng: number, text: string, area = false) => L.marker([lat, lng], {
       interactive: false, pmIgnore: true, keyboard: false,
-      icon: L.divIcon({ className: '', html: `<div style="transform:translate(-50%,-50%);white-space:nowrap;font:700 11px/1 system-ui;color:#fff;background:${area ? 'rgba(124,58,237,.94)' : 'rgba(10,14,23,.9)'};padding:2px 5px;border-radius:5px;box-shadow:0 1px 3px rgba(0,0,0,.45)">${text}</div>`, iconSize: [0, 0] }),
+      icon: L.divIcon({ className: '', html: `<div style="transform:translate(-50%,-50%);white-space:nowrap;font:700 11px/1 system-ui;color:#fff;background:${area ? 'rgba(21,34,59,.96)' : 'rgba(10,14,23,.9)'};padding:2px 5px;border-radius:5px;box-shadow:0 1px 3px rgba(0,0,0,.45)">${text}</div>`, iconSize: [0, 0] }),
     })
     const drawLiveEdges = (layer: any) => {
       const el = editMeasureLayer.current; if (!el) return; el.clearLayers()
@@ -394,7 +394,7 @@ export function DesignEditor() {
       if (t === 'select' && marqStart) { // marquee rectangle
         const a = marqStart, b = e.latlng
         const g = ghostLayer.current!; g.clearLayers()
-        L.polygon([[a.lat, a.lng], [a.lat, b.lng], [b.lat, b.lng], [b.lat, a.lng]] as [number, number][], { renderer: panelRenderer.current!, pmIgnore: true, interactive: false, color: '#159C86', weight: 1.4, dashArray: '5 3', fillColor: '#159C86', fillOpacity: 0.08 } as any).addTo(g)
+        L.polygon([[a.lat, a.lng], [a.lat, b.lng], [b.lat, b.lng], [b.lat, a.lng]] as [number, number][], { renderer: panelRenderer.current!, pmIgnore: true, interactive: false, color: '#62E4CC', weight: 1.4, dashArray: '5 3', fillColor: '#62E4CC', fillOpacity: 0.08 } as any).addTo(g)
         return
       }
       if (t === 'select' && !grpMode && !marqStart) {
@@ -636,14 +636,14 @@ export function DesignEditor() {
       for (const pn of selItems) for (const v of pn.corners) { const ex = (v.lng - c0.lng) * mLng, ny = (v.lat - c0.lat) * mLat; const rx = ex * ca + ny * sa, ry = -ex * sa + ny * ca; minX = Math.min(minX, rx); maxX = Math.max(maxX, rx); minY = Math.min(minY, ry); maxY = Math.max(maxY, ry) }
       const back = (rx: number, ry: number) => ({ lat: c0.lat + (rx * sa + ry * ca) / mLat, lng: c0.lng + (rx * ca - ry * sa) / mLng })
       const corners = [back(minX, minY), back(maxX, minY), back(maxX, maxY), back(minX, maxY)]
-      L.polygon(corners.map((v) => [v.lat, v.lng]) as [number, number][], { pmIgnore: true, interactive: false, color: '#159C86', weight: 2, fill: false, dashArray: '4 3' } as any).addTo(pl)
-      corners.forEach((v) => L.circleMarker([v.lat, v.lng], { radius: 5, color: '#159C86', weight: 2, fillColor: '#fff', fillOpacity: 1, pmIgnore: true, interactive: false } as any).addTo(pl))
+      L.polygon(corners.map((v) => [v.lat, v.lng]) as [number, number][], { pmIgnore: true, interactive: false, color: '#62E4CC', weight: 2, fill: false, dashArray: '4 3' } as any).addTo(pl)
+      corners.forEach((v) => L.circleMarker([v.lat, v.lng], { radius: 5, color: '#62E4CC', weight: 2, fillColor: '#fff', fillOpacity: 1, pmIgnore: true, interactive: false } as any).addTo(pl))
       // rotate handle — top-centre of the screen bounding box, offset up (matches the hit-test)
       const pts = corners.map((v) => mp.latLngToContainerPoint([v.lat, v.lng]))
       const minx = Math.min(...pts.map((p) => p.x)), maxx = Math.max(...pts.map((p) => p.x)), miny = Math.min(...pts.map((p) => p.y))
       const anchor = mp.containerPointToLatLng(L.point((minx + maxx) / 2, miny)), hp = mp.containerPointToLatLng(L.point((minx + maxx) / 2, miny - 24))
-      L.polyline([[anchor.lat, anchor.lng], [hp.lat, hp.lng]], { color: '#159C86', weight: 1.6, opacity: 0.9, pmIgnore: true, interactive: false } as any).addTo(pl)
-      L.circleMarker([hp.lat, hp.lng], { radius: 6, color: '#159C86', weight: 2, fillColor: '#fff', fillOpacity: 1, pmIgnore: true, interactive: false } as any).addTo(pl)
+      L.polyline([[anchor.lat, anchor.lng], [hp.lat, hp.lng]], { color: '#62E4CC', weight: 1.6, opacity: 0.9, pmIgnore: true, interactive: false } as any).addTo(pl)
+      L.circleMarker([hp.lat, hp.lng], { radius: 6, color: '#62E4CC', weight: 2, fillColor: '#fff', fillOpacity: 1, pmIgnore: true, interactive: false } as any).addTo(pl)
     }
     // Frame the roof only when the structure changes (detect/draw) — never on a panel edit, or the map would jump mid-drag.
     const fitKey = `${design.id}:${design.planes.length}`
@@ -724,7 +724,7 @@ export function DesignEditor() {
     lyr.clearLayers()
     if ((!measureOn && tool !== 'edit' && !editPlaneId) || view !== '2d') return // measurements: on demand, or always while editing a face
     const label = (lat: number, lng: number, text: string, tone: 'edge' | 'area') => {
-      const bg = tone === 'area' ? 'rgba(124,58,237,.92)' : 'rgba(10,14,23,.86)'
+      const bg = tone === 'area' ? 'rgba(21,34,59,.96)' : 'rgba(10,14,23,.86)'
       L.marker([lat, lng], { interactive: false, pmIgnore: true, keyboard: false, icon: L.divIcon({ className: '', html: `<div style="transform:translate(-50%,-50%);white-space:nowrap;font:700 11px/1 system-ui;color:#fff;background:${bg};padding:2px 5px;border-radius:5px;box-shadow:0 1px 3px rgba(0,0,0,.4)">${text}</div>`, iconSize: [0, 0] }) }).addTo(lyr)
     }
     // Edge-length labels get unreadable fast with several small planes on screen at once — only
@@ -1110,8 +1110,8 @@ export function DesignEditor() {
   ]
 
   return (
-    <div ref={rootRef} className="flex flex-col flex-1 min-h-0 h-full bg-surface">
-      <TopBar title={design.name} crumbs={['Design', 'Studio']}
+    <div ref={rootRef} className="flex flex-col flex-1 min-h-0 h-full bg-canvas">
+      <TopBar title={design.name} crumbs={['Design']} identity={{ icon: Sun, accent: '#62E4CC' }} tabs={{ items: tabs, value: tab, onChange: (id) => setTab(id as StudioTab) }}
         actions={<div className="flex items-center gap-2">
           {/* Only the page-level decisions live up here — the roof/panel tools sit on the canvas where you use them. */}
           <span title={isFs ? 'Exit full screen' : 'Full screen'}><Button variant="secondary" icon={<MaximizeIcon on={isFs} />} onClick={toggleFs} className="px-2.5">{null}</Button></span>
@@ -1119,30 +1119,6 @@ export function DesignEditor() {
           <Button variant="primary" icon={<File size={15} />} onClick={pushToProposal}>{showroom.some((s) => s.designId === design.id) ? 'Update proposal' : 'Create proposal'}</Button>
         </div>} />
 
-      {/* OpenSolar-style tab row — navigation *inside* the tool, CRM rail stays put */}
-      <div className="px-5 border-b border-divider flex items-center gap-1 min-w-0">
-        <div className="flex items-center gap-1 min-w-0 overflow-x-auto [scrollbar-width:none]">
-        {tabs.map((t) => {
-          const on = t.id === tab
-          return (
-            <button key={t.id} onClick={() => setTab(t.id)} className={`relative h-11 px-3.5 text-[13.5px] font-semibold inline-flex items-center gap-2 whitespace-nowrap shrink-0 transition-colors ${on ? 'text-accent' : 'text-muted-b hover:text-ink-3'}`}>
-              <t.icon size={15} />{t.label}
-              {on && <span className="absolute left-2 right-2 bottom-0 h-[2.5px] rounded-full" style={{ background: 'linear-gradient(90deg,#1FAE94,#159C86)' }} />}
-            </button>
-          )
-        })}
-        </div>
-        <div className="ml-auto flex items-center gap-3 shrink-0 pl-2">
-          <button onClick={() => setOviOpen(true)} className="h-8 px-3 whitespace-nowrap rounded-full text-white text-[12.5px] font-semibold inline-flex items-center gap-1.5 shadow-primary" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Sparkle size={13} />Design with Ovi</button>
-          <div className="hidden xl:flex items-center gap-2 text-[12px] text-muted-b whitespace-nowrap">
-            <span className="font-bold text-ink tabular-nums">{kwp || '—'}</span> kWp
-            <span className="w-px h-4 bg-divider" />
-            <span className="font-bold text-ink tabular-nums">{totals.count || '—'}</span> panels
-            <span className="w-px h-4 bg-divider" />
-            <span className="font-bold text-ink tabular-nums">{totals.kwh ? Math.round(totals.kwh).toLocaleString() : '—'}</span> kWh/yr
-          </div>
-        </div>
-      </div>
 
       <div className="flex-1 min-h-0 relative">
         {/* Canvas + inspector — always mounted, hidden (not unmounted) on info tabs so Leaflet survives */}
@@ -1166,7 +1142,8 @@ export function DesignEditor() {
                 </>}
                 <span className="h-px mx-1.5 my-0.5 bg-divider" />
                 <ToolBtn on={busy} onClick={() => runDetect()} icon={<Radar size={15} />} label="Detect roof — outline + panes" />
-                <ToolBtn on={false} onClick={() => runAutoLayout({ kind: 'max' })} icon={<Sparkle size={15} />} label="Ovi auto-layout — fill the best panes" />
+                <ToolBtn on={false} onClick={() => runAutoLayout({ kind: 'max' })} icon={<Grid size={15} />} label="Auto-layout — fill the best panes" />
+                <ToolBtn on={oviOpen} onClick={() => setOviOpen(true)} icon={<Sparkle size={15} />} label="Design with Ovi — describe the system you want" />
                 {totals.count > 0 && <ToolBtn on={false} onClick={clearAllPanels} icon={<EraseIcon />} label="Clear all panels" />}
                 <span className="h-px mx-1.5 my-0.5 bg-divider" />
                 <ToolBtn on={false} onClick={undo} icon={<UndoIcon />} label={`Undo (Ctrl+Z)${undoStack.current.length ? '' : ' — nothing to undo'}`} />
@@ -1176,14 +1153,14 @@ export function DesignEditor() {
             <div className={`absolute z-[550] flex items-center gap-1 bg-white/95 backdrop-blur border border-border rounded-control shadow-modal p-1 ${view === '3d' ? 'bottom-3 right-3' : 'top-3 right-3'}`}>
               {view === '2d' && (
                 <>
-                  {hdReady && <button onClick={() => setHdOn((v) => !v)} title={hdOn ? 'High-res Google aerial — on' : 'Show high-res Google aerial'} className={`h-8 px-2.5 rounded-[8px] text-[12px] font-bold inline-flex items-center gap-1 ${hdOn ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={hdOn ? { background: 'linear-gradient(135deg,#1FAE94,#159C86)' } : undefined}><Sun size={12} />HD</button>}
-                  <button onClick={() => setBoundaryOn((v) => !v)} title="Land-ownership boundary (HMLR INSPIRE, else building footprint)" className={`h-8 px-2.5 rounded-[8px] text-[12px] font-bold inline-flex items-center gap-1 ${boundaryOn ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={boundaryOn ? { background: '#E5484D' } : undefined}><Target size={12} />Plot</button>
-                  <button onClick={() => setMeasureOn((v) => !v)} title="Show roof measurements — edge lengths & face area" className={`h-8 px-2.5 rounded-[8px] text-[12px] font-bold inline-flex items-center gap-1 ${measureOn ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={measureOn ? { background: '#0A0E17' } : undefined}><Wrench size={12} />Measure</button>
+                  {hdReady && <button onClick={() => setHdOn((v) => !v)} title={hdOn ? 'High-res Google aerial — on' : 'Show high-res Google aerial'} className={`h-8 px-2.5 rounded-[8px] text-[12px] font-bold inline-flex items-center gap-1 ${hdOn ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={hdOn ? { background: '#15223B' } : undefined}><Sun size={12} />HD</button>}
+                  <button onClick={() => setBoundaryOn((v) => !v)} title="Land-ownership boundary (HMLR INSPIRE, else building footprint)" className={`h-8 px-2.5 rounded-[8px] text-[12px] font-bold inline-flex items-center gap-1 ${boundaryOn ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={boundaryOn ? { background: '#15223B' } : undefined}><Target size={12} />Plot</button>
+                  <button onClick={() => setMeasureOn((v) => !v)} title="Show roof measurements — edge lengths & face area" className={`h-8 px-2.5 rounded-[8px] text-[12px] font-bold inline-flex items-center gap-1 ${measureOn ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={measureOn ? { background: '#15223B' } : undefined}><Wrench size={12} />Measure</button>
                   <span className="w-px h-5 bg-divider" />
                 </>
               )}
               {(['2d', '3d'] as const).map((v) => (
-                <button key={v} onClick={() => setView(v)} className={`h-8 px-3 rounded-[8px] text-[12.5px] font-bold ${view === v ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={view === v ? { background: 'linear-gradient(135deg,#1FAE94,#159C86)' } : undefined}>{v.toUpperCase()}</button>
+                <button key={v} onClick={() => setView(v)} className={`h-8 px-3 rounded-[8px] text-[12.5px] font-bold ${view === v ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={view === v ? { background: '#15223B' } : undefined}>{v.toUpperCase()}</button>
               ))}
             </div>
             {busy && (
@@ -1201,7 +1178,7 @@ export function DesignEditor() {
               )
             })()}
             {drawing && !busy && (
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-[500] h-9 px-4 rounded-full text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Target size={14} />Click each corner of the roof, then click the first point to close</div>
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-[500] h-9 px-4 rounded-full text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: '#15223B' }}><Target size={14} />Click each corner of the roof, then click the first point to close</div>
             )}
             {view === '2d' && tool === 'note' && (
               <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[520] w-[340px] rounded-[12px] bg-white shadow-modal border border-border p-3">
@@ -1286,11 +1263,11 @@ export function DesignEditor() {
             {design.planes.length === 0 && !busy && !drawing && (
               <div className="absolute inset-0 z-[400] flex items-center justify-center pointer-events-none">
                 <div className="bg-surface/95 backdrop-blur border border-border rounded-card px-6 py-5 text-center shadow-modal max-w-[380px] pointer-events-auto">
-                  <span className="w-12 h-12 mx-auto rounded-2xl flex items-center justify-center text-white mb-3" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Sun size={22} /></span>
+                  <span className="w-12 h-12 mx-auto rounded-2xl flex items-center justify-center text-white mb-3" style={{ background: '#15223B' }}><Sun size={22} /></span>
                   <div className="text-[15px] font-bold text-ink">Capture the roof</div>
                   <div className="text-[12.5px] text-muted-b mt-1"><b>Detect roof</b> traces the building outline and splits it into panes along the ridges, hips and valleys. Or <b>draw</b> a face by hand. Wrong house? Right-click the right roof → <i>Detect the roof here</i>.</div>
                   <div className="flex items-center gap-2 justify-center mt-3 flex-wrap">
-                    <button onClick={() => runDetect()} className="h-9 px-3.5 rounded-control text-white text-[13px] font-semibold inline-flex items-center gap-1.5 whitespace-nowrap" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Radar size={14} />Detect roof</button>
+                    <button onClick={() => runDetect()} className="h-9 px-3.5 rounded-control text-white text-[13px] font-semibold inline-flex items-center gap-1.5 whitespace-nowrap" style={{ background: '#15223B' }}><Radar size={14} />Detect roof</button>
                     <button onClick={() => selectTool('draw')} className="h-9 px-3.5 rounded-control border border-border text-[13px] font-semibold text-ink-3 hover:bg-control inline-flex items-center gap-1.5 whitespace-nowrap"><Plus size={14} />Draw a face</button>
                   </div>
                 </div>
@@ -1367,7 +1344,7 @@ function DesignInspector({ roofStyle, onRoofStyle, design, selId, onSelect, onUp
         ) : design.planes.map((p) => (
           <div key={p.id} className={`px-4 py-3 border-b border-divider cursor-pointer ${p.id === selId ? 'bg-accent-wash' : 'hover:bg-control/40'}`} onClick={() => onSelect(p.id)}>
             <div className="flex items-center justify-between gap-2">
-              <div className="font-semibold text-[13px] text-ink-2 flex items-center gap-1.5 min-w-0"><span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: p.id === selId ? '#159C86' : '#00E5FF' }} /><span className="truncate">{p.name}</span></div>
+              <div className="font-semibold text-[13px] text-ink-2 flex items-center gap-1.5 min-w-0"><span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: p.id === selId ? '#62E4CC' : '#62E4CC' }} /><span className="truncate">{p.name}</span></div>
               <button onClick={(e) => { e.stopPropagation(); onDelete(p.id) }} className="text-muted-2 hover:text-negative text-[15px] leading-none shrink-0">✕</button>
             </div>
             <div className="grid grid-cols-4 gap-1.5 mt-2 text-center">
@@ -1382,7 +1359,7 @@ function DesignInspector({ roofStyle, onRoofStyle, design, selId, onSelect, onUp
                 <Slider label="Azimuth" value={p.azimuthDeg} min={0} max={359} suffix="°" onChange={(v) => onUpdate(p.id, { azimuthDeg: v })} />
                 <Slider label="Array angle" value={Math.round(p.arrayAngleDeg ?? 0)} min={0} max={179} suffix="°" onChange={(v) => onUpdate(p.id, { arrayAngleDeg: v }, true)} />
                 <div className="flex items-center gap-2">
-                  <button onClick={(e) => { e.stopPropagation(); onFill(p.id) }} className="flex-1 h-8 rounded-control text-white text-[12px] font-semibold inline-flex items-center justify-center gap-1.5" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Grid size={13} />Fill panels</button>
+                  <button onClick={(e) => { e.stopPropagation(); onFill(p.id) }} className="flex-1 h-8 rounded-control text-white text-[12px] font-semibold inline-flex items-center justify-center gap-1.5" style={{ background: '#15223B' }}><Grid size={13} />Fill panels</button>
                   {p.panels?.length ? <button onClick={(e) => { e.stopPropagation(); onClear(p.id) }} className="h-8 px-3 rounded-control border border-border text-[12px] font-semibold text-muted-b hover:bg-control">Clear</button> : null}
                 </div>
               </div>
@@ -1413,7 +1390,7 @@ function ArrayInspector({ design, sel, moduleId, setModuleId, onSelect, onUpdate
       {/* Goal-driven auto-layout */}
       <div className="p-3.5 border-b border-divider">
         <div className="eyebrow text-muted-3 mb-2">Ovi auto-layout</div>
-        <button onClick={() => onGoal({ kind: 'max' })} className="w-full h-9 rounded-control text-white text-[13px] font-semibold inline-flex items-center justify-center gap-2 mb-2" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Sparkle size={14} />Maximum coverage</button>
+        <button onClick={() => onGoal({ kind: 'max' })} className="w-full h-9 rounded-control text-white text-[13px] font-semibold inline-flex items-center justify-center gap-2 mb-2" style={{ background: '#15223B' }}><Sparkle size={14} />Maximum coverage</button>
         <div className="flex items-center gap-2">
           <input value={targetKwp} onChange={(e) => setTargetKwp(e.target.value.replace(/[^0-9.]/g, ''))} placeholder="Target kWp" className="flex-1 h-9 px-3 rounded-control border border-input-border bg-white text-[13px] outline-none focus:border-accent" />
           <button onClick={() => { const v = parseFloat(targetKwp); if (v > 0) onGoal({ kind: 'target-kwp', kwp: v }) }} className="h-9 px-3.5 rounded-control border border-border text-[12.5px] font-semibold text-ink-3 hover:bg-control inline-flex items-center gap-1.5"><Bolt size={13} />Size it</button>
@@ -1428,7 +1405,7 @@ function ArrayInspector({ design, sel, moduleId, setModuleId, onSelect, onUpdate
       <div className="px-2 flex flex-col gap-1 max-h-[26%] overflow-y-auto">
         {design.planes.map((p) => (
           <button key={p.id} onClick={() => onSelect(p.id)} className={`w-full text-left px-2.5 py-2 rounded-lg flex items-center gap-2 ${p.id === sel?.id ? 'bg-accent-wash-2 text-accent-700' : 'hover:bg-control text-ink-3'}`}>
-            <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: p.id === sel?.id ? '#159C86' : '#00E5FF' }} />
+            <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: p.id === sel?.id ? '#62E4CC' : '#62E4CC' }} />
             <span className="flex-1 truncate text-[12.5px] font-medium">{p.name}</span>
             <span className="text-[11px] tabular-nums text-muted-2">{p.panels?.length ?? 0}</span>
           </button>
@@ -1463,7 +1440,7 @@ function ArrayInspector({ design, sel, moduleId, setModuleId, onSelect, onUpdate
               <div className="grid grid-cols-3 gap-1.5">
                 {rackingOpts.map((r) => {
                   const on = (sel.racking ?? 'flush') === r.id
-                  return <button key={r.id} onClick={() => onUpdate(sel.id, { racking: r.id }, true)} className={`h-8 rounded-control text-[12px] font-semibold ${on ? 'text-white' : 'border border-border text-ink-3 hover:bg-control'}`} style={on ? { background: 'linear-gradient(135deg,#1FAE94,#159C86)' } : undefined}>{r.label}</button>
+                  return <button key={r.id} onClick={() => onUpdate(sel.id, { racking: r.id }, true)} className={`h-8 rounded-control text-[12px] font-semibold ${on ? 'text-white' : 'border border-border text-ink-3 hover:bg-control'}`} style={on ? { background: '#15223B' } : undefined}>{r.label}</button>
                 })}
               </div>
             </Field>
@@ -1474,7 +1451,7 @@ function ArrayInspector({ design, sel, moduleId, setModuleId, onSelect, onUpdate
                 {([['auto', 'Auto'], ['portrait', 'Portrait'], ['landscape', 'Landscape']] as const).map(([id, label]) => {
                   const cur = sel.orientation ?? 'auto'
                   const on = cur === id
-                  return <button key={id} onClick={() => onUpdate(sel.id, { orientation: id === 'auto' ? undefined : (id as PanelOrientation) }, true)} className={`h-8 rounded-control text-[12px] font-semibold ${on ? 'text-white' : 'border border-border text-ink-3 hover:bg-control'}`} style={on ? { background: 'linear-gradient(135deg,#1FAE94,#159C86)' } : undefined}>{label}</button>
+                  return <button key={id} onClick={() => onUpdate(sel.id, { orientation: id === 'auto' ? undefined : (id as PanelOrientation) }, true)} className={`h-8 rounded-control text-[12px] font-semibold ${on ? 'text-white' : 'border border-border text-ink-3 hover:bg-control'}`} style={on ? { background: '#15223B' } : undefined}>{label}</button>
                 })}
               </div>
             </Field>
@@ -1492,7 +1469,7 @@ function ArrayInspector({ design, sel, moduleId, setModuleId, onSelect, onUpdate
             </label>
 
             <div className="flex items-center gap-2 pt-1">
-              <button onClick={() => onFill(sel.id)} className="flex-1 h-9 rounded-control text-white text-[12.5px] font-semibold inline-flex items-center justify-center gap-1.5" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Grid size={13} />Fill this group</button>
+              <button onClick={() => onFill(sel.id)} className="flex-1 h-9 rounded-control text-white text-[12.5px] font-semibold inline-flex items-center justify-center gap-1.5" style={{ background: '#15223B' }}><Grid size={13} />Fill this group</button>
               {sel.panels?.length ? <button onClick={() => onClear(sel.id)} className="h-9 px-3 rounded-control border border-border text-[12.5px] font-semibold text-muted-b hover:bg-control">Clear</button> : null}
             </div>
           </div>
@@ -1528,7 +1505,7 @@ function ProductionPane({ design, moduleId, kwp, count, annualKwh }: { design: D
                 return (
                   <div key={p.id} className="flex items-center gap-3">
                     <div className="w-40 shrink-0 text-[12.5px] font-medium text-ink-2 truncate">{p.name} <span className="text-muted-2">· {compass(p.azimuthDeg)} {effTilt(p)}°</span></div>
-                    <div className="flex-1 h-6 rounded-md bg-control overflow-hidden"><div className="h-full rounded-md flex items-center px-2 text-[10.5px] font-bold text-white" style={{ width: `${Math.max(pct, 6)}%`, background: 'linear-gradient(90deg,#1FAE94,#159C86)' }}>{pct}%</div></div>
+                    <div className="flex-1 h-6 rounded-md bg-control overflow-hidden"><div className="h-full rounded-md flex items-center px-2 text-[10.5px] font-bold text-white" style={{ width: `${Math.max(pct, 6)}%`, background: '#62E4CC' }}>{pct}%</div></div>
                     <div className="w-32 shrink-0 text-right text-[12.5px] tabular-nums text-ink-2"><b>{pkwh.toLocaleString()}</b> kWh · {n}×</div>
                   </div>
                 )
@@ -1557,7 +1534,7 @@ function ProposalPane({ design, kwp, count, annualKwh, onOpen, onConfirm, onPush
             <BigStat v={annualKwh ? annualKwh.toLocaleString() : '—'} u="kWh / yr" />
           </div>
           <div className="flex items-center gap-2 mt-4">
-            <button onClick={onConfirm} className="h-10 px-4 rounded-control text-white text-[13px] font-semibold inline-flex items-center gap-2" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Check size={15} />Confirm design {design.status === 'confirmed' && '✓'}</button>
+            <button onClick={onConfirm} className="h-10 px-4 rounded-control text-white text-[13px] font-semibold inline-flex items-center gap-2" style={{ background: '#15223B' }}><Check size={15} />Confirm design {design.status === 'confirmed' && '✓'}</button>
             <button onClick={onPush} className="h-10 px-4 rounded-control bg-[#15223B] text-white text-[13px] font-semibold inline-flex items-center gap-2 hover:bg-[#1E2F4E]"><File size={15} className="text-[#62E4CC]" />{hasProposal ? 'Update showroom proposal' : 'Create showroom proposal'}</button>
             <button onClick={onOpen} className="h-10 px-4 rounded-control border border-border text-[13px] font-semibold text-ink-3 hover:bg-control inline-flex items-center gap-2">Open proposals</button>
           </div>
@@ -1576,7 +1553,7 @@ function BigStat({ v, u }: { v: string; u: string }) {
 }
 function ToolBtn({ on, onClick, icon, label }: { on: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
   return (
-    <button onClick={onClick} aria-label={label} className={`group relative h-9 w-9 rounded-[8px] flex items-center justify-center ${on ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={on ? { background: 'linear-gradient(135deg,#1FAE94,#159C86)' } : undefined}>
+    <button onClick={onClick} aria-label={label} className={`group relative h-9 w-9 rounded-[8px] flex items-center justify-center ${on ? 'text-[#62E4CC]' : 'text-ink-3 hover:bg-control'}`} style={on ? { background: '#15223B' } : undefined}>
       {icon}
       <span className="pointer-events-none absolute left-[calc(100%+10px)] top-1/2 -translate-y-1/2 whitespace-nowrap rounded-md bg-[#0A1B2B] text-white text-[11.5px] font-semibold px-2.5 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-modal z-[20]">{label}</span>
     </button>
@@ -1602,14 +1579,14 @@ function ArrayToolbar({ sel, moduleId, onUpdate, onCentre, onFill, onEdit }: {
       <ToolSep />
       <div className="flex items-center rounded-[7px] border border-border overflow-hidden">
         {([['portrait', '▯'], ['landscape', '▭']] as const).map(([o, g]) => (
-          <button key={o} title={o} onClick={() => onUpdate(sel.id, { orientation: o as PanelOrientation }, true)} className={`h-7 px-2 text-[12px] font-semibold ${orient === o ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={orient === o ? { background: 'linear-gradient(135deg,#1FAE94,#159C86)' } : undefined}>{g}</button>
+          <button key={o} title={o} onClick={() => onUpdate(sel.id, { orientation: o as PanelOrientation }, true)} className={`h-7 px-2 text-[12px] font-semibold ${orient === o ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={orient === o ? { background: '#15223B' } : undefined}>{g}</button>
         ))}
       </div>
       <ToolSep />
       <NumField icon={<span className="text-[11px] font-bold">⇕</span>} label="Row gap" value={Math.round((sel.rowGapM ?? 0.02) * 1000)} suffix="mm" min={0} max={800} step={5} onChange={(v) => onUpdate(sel.id, { rowGapM: v / 1000 }, true)} />
       <NumField icon={<span className="text-[11px] font-bold">⇔</span>} label="Panel gap" value={Math.round((sel.panelGapM ?? 0.02) * 1000)} suffix="mm" min={0} max={800} step={5} onChange={(v) => onUpdate(sel.id, { panelGapM: v / 1000 }, true)} />
       <ToolSep />
-      <button onClick={onFill} title="Fill this face with panels" className="h-7 px-2.5 rounded-[7px] text-white text-[12px] font-semibold inline-flex items-center gap-1" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Grid size={12} />Fill</button>
+      <button onClick={onFill} title="Fill this face with panels" className="h-7 px-2.5 rounded-[7px] text-white text-[12px] font-semibold inline-flex items-center gap-1" style={{ background: '#15223B' }}><Grid size={12} />Fill</button>
       <button onClick={onCentre} disabled={!n} title="Centre the array on this face" className={`h-7 px-2.5 rounded-[7px] text-[12px] font-semibold inline-flex items-center gap-1 border border-border ${n ? 'text-ink-3 hover:bg-control' : 'text-muted-2/40 cursor-default'}`}><CentreIcon />Centre</button>
       {onEdit && <button onClick={onEdit} title="Reshape this face (or double-click it)" className="h-7 px-2.5 rounded-[7px] text-[12px] font-semibold inline-flex items-center gap-1 border border-border text-ink-3 hover:bg-control"><Wrench size={12} />Reshape</button>}
       <ToolSep />

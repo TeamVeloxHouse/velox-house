@@ -635,7 +635,7 @@ export function Design3D({ design, onCapture, adding, selecting, moduleId, onCom
         </div>
       )}
       {adding && (
-        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-10 text-white rounded-full shadow-modal px-4 py-2 text-[12px] font-semibold inline-flex items-center gap-2 text-center" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}>Click to place · drag empty roof for a block · drag a panel to move the array · click one to remove · right-drag to orbit</div>
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-10 text-white rounded-full shadow-modal px-4 py-2 text-[12px] font-semibold inline-flex items-center gap-2 text-center" style={{ background: '#15223B' }}>Click to place · drag empty roof for a block · drag a panel to move the array · click one to remove · right-drag to orbit</div>
       )}
       {hasGeom && !hasPanels && !adding && (
         <div className="absolute top-16 left-1/2 -translate-x-1/2 z-10 bg-white/95 backdrop-blur border border-border rounded-full shadow-modal px-4 py-2 text-[12.5px] font-semibold text-ink-2">Hit <b>Ovi auto-layout</b>, or use <b>Add panels</b> to place them on the roof</div>
@@ -645,14 +645,14 @@ export function Design3D({ design, onCapture, adding, selecting, moduleId, onCom
           <div className="bg-surface/95 border border-border rounded-card px-6 py-5 shadow-modal max-w-[340px] pointer-events-auto">
             <div className="text-[15px] font-bold text-ink">No roof captured yet</div>
             <div className="text-[12.5px] text-muted-b mt-1">3D builds from the roof — capture one first. On big buildings Google often misses, so drawing it by hand is the sure way.</div>
-            {onCapture && <button onClick={onCapture} className="mt-3 h-9 px-4 rounded-control text-white text-[13px] font-semibold inline-flex items-center gap-2" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}>Capture the roof →</button>}
+            {onCapture && <button onClick={onCapture} className="mt-3 h-9 px-4 rounded-control text-white text-[13px] font-semibold inline-flex items-center gap-2" style={{ background: '#15223B' }}>Capture the roof →</button>}
           </div>
         </div>
       )}
       {hasGeom && (
         <>
           <div className="absolute top-[152px] left-3 z-10 flex flex-col items-start gap-2">
-            <button onClick={() => setSpin((s) => !s)} className={`h-9 px-3.5 rounded-full backdrop-blur border shadow-modal text-[12.5px] font-semibold inline-flex items-center gap-2 ${spin ? 'text-white border-transparent' : 'bg-white/95 text-ink-2 border-border'}`} style={spin ? { background: 'linear-gradient(135deg,#1FAE94,#159C86)' } : undefined}>
+            <button onClick={() => setSpin((s) => !s)} className={`h-9 px-3.5 rounded-full backdrop-blur border shadow-modal text-[12.5px] font-semibold inline-flex items-center gap-2 ${spin ? 'text-white border-transparent' : 'bg-white/95 text-ink-2 border-border'}`} style={spin ? { background: '#15223B' } : undefined}>
               <span className={spin ? 'animate-spin' : ''}>⟳</span>{spin ? 'Orbiting' : 'Orbit'}
             </button>
             {dsmStatus === 'loading' && (
@@ -663,8 +663,8 @@ export function Design3D({ design, onCapture, adding, selecting, moduleId, onCom
             )}
             {dsmStatus === 'ready' && (
               <>
-                <button onClick={() => setPhotoreal((v) => !v)} title="Toggle the real 3D roof (Google DSM) vs the clean model" className={`h-9 px-3.5 rounded-full backdrop-blur border shadow-modal text-[12.5px] font-semibold inline-flex items-center gap-1.5 ${photoreal ? 'text-white border-transparent' : 'bg-white/95 text-ink-2 border-border'}`} style={photoreal ? { background: 'linear-gradient(135deg,#1FAE94,#159C86)' } : undefined}>◈ Photoreal</button>
-                <button onClick={() => setShowFaces((v) => !v)} title="Highlight the usable roof faces we mapped" className={`h-9 px-3.5 rounded-full backdrop-blur border shadow-modal text-[12.5px] font-semibold inline-flex items-center gap-1.5 ${showFaces ? 'text-white border-transparent' : 'bg-white/95 text-ink-2 border-border'}`} style={showFaces ? { background: 'linear-gradient(135deg,#00E5FF,#1FAE94)' } : undefined}>▧ Usable area</button>
+                <button onClick={() => setPhotoreal((v) => !v)} title="Toggle the real 3D roof (Google DSM) vs the clean model" className={`h-9 px-3.5 rounded-full backdrop-blur border shadow-modal text-[12.5px] font-semibold inline-flex items-center gap-1.5 ${photoreal ? 'text-white border-transparent' : 'bg-white/95 text-ink-2 border-border'}`} style={photoreal ? { background: '#15223B' } : undefined}>◈ Photoreal</button>
+                <button onClick={() => setShowFaces((v) => !v)} title="Highlight the usable roof faces we mapped" className={`h-9 px-3.5 rounded-full backdrop-blur border shadow-modal text-[12.5px] font-semibold inline-flex items-center gap-1.5 ${showFaces ? 'text-white border-transparent' : 'bg-white/95 text-ink-2 border-border'}`} style={showFaces ? { background: 'linear-gradient(135deg,#62E4CC,#1FAE94)' } : undefined}>▧ Usable area</button>
                 {photoreal && dsm?.flux && (
                   <button onClick={() => setShowFlux((v) => !v)} title="Annual sun / shading heatmap" className={`h-9 px-3.5 rounded-full backdrop-blur border shadow-modal text-[12.5px] font-semibold inline-flex items-center gap-1.5 ${showFlux ? 'text-white border-transparent' : 'bg-white/95 text-ink-2 border-border'}`} style={showFlux ? { background: 'linear-gradient(90deg,#2f6bd6,#e6dc3c,#dc3228)' } : undefined}>☀ Heatmap</button>
                 )}

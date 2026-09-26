@@ -56,9 +56,9 @@ export function DesignHome() {
       <TopBar title="Design Studio" crumbs={['Design']} />
       <PageBody>
         {/* Start a new design */}
-        <div className="rounded-card p-6" style={{ background: 'linear-gradient(135deg,#EAF6F2,#F5F0FF 70%)', border: '1px solid #E3E8F5' }}>
+        <div className="rounded-card p-6 bg-surface">
           <div className="flex items-center gap-3">
-            <span className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shrink-0" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Sun size={24} /></span>
+            <span className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shrink-0" style={{ background: '#15223B' }}><Sun size={24} /></span>
             <div className="flex-1">
               <div className="text-[17px] font-bold text-ink">Design a solar system</div>
               <div className="text-[13px] text-muted-b mt-0.5">Enter a site and Ovi measures the roof, then you lay out panels, angles and strings — a full design that flows into the proposal.</div>
@@ -92,7 +92,7 @@ export function DesignHome() {
         {/* Existing designs */}
         {designs.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center gap-3 py-16 rounded-card border border-dashed border-border">
-            <span className="w-14 h-14 rounded-2xl flex items-center justify-center text-white" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Layers size={28} /></span>
+            <span className="w-14 h-14 rounded-2xl flex items-center justify-center text-white" style={{ background: '#15223B' }}><Layers size={28} /></span>
             <div className="text-[16px] font-bold text-ink">No designs yet</div>
             <div className="text-[13px] text-muted-b max-w-[440px]">Start one from an address above, or from a prospect you’ve already measured. Every design attaches to its deal and feeds the proposal.</div>
           </div>
@@ -171,7 +171,7 @@ function DesignCard({ d, onOpen }: { d: Design; onOpen: () => void }) {
           <div className="font-bold text-[15px] text-ink truncate">{d.name}</div>
           <div className="text-[11.5px] text-muted-2 truncate">{d.address || 'No address'}</div>
         </div>
-        <span className="text-[10.5px] font-bold px-2 py-1 rounded-full shrink-0" style={done ? { background: '#E4F5EE', color: '#0E9F6E' } : { background: '#EAF6F2', color: '#1FAE94' }}>{done ? 'Confirmed' : 'Draft'}</span>
+        <span className="text-[10.5px] font-bold px-2 py-1 rounded-full shrink-0" style={done ? { background: '#62E4CC', color: '#15223B' } : { background: '#E9EDF2', color: '#15223B' }}>{done ? 'Confirmed' : 'Draft'}</span>
       </div>
       <div className="grid grid-cols-3 gap-2 text-center">
         <Mini v={String(d.planes.length)} u="planes" />
