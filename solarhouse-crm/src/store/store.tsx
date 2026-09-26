@@ -534,8 +534,21 @@ function reducer(state: State, action: Action): State {
   }
 }
 
+/** Remove copies of the app state from older versions (simplr.state.v22, v23…) — each schema bump left a full
+ *  copy behind, and together they filled the browser's ~5 MB storage so new saves silently failed. */
+function pruneOldStates() {
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i)
+      if (k && /^simplr\.state\.v\d+$/.test(k) && k !== KEY) localStorage.removeItem(k)
+    }
+  } catch { /* storage unavailable */ }
+}
+let warnedQuota = false
+
 function load(): State {
   const seed = buildSeed()
+  pruneOldStates()
   try {
     const raw = localStorage.getItem(KEY)
     if (raw) {
@@ -557,10 +570,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   live.state = state
   useEffect(() => {
     live.state = state
+    const json = JSON.stringify(state)
     try {
-      localStorage.setItem(KEY, JSON.stringify(state))
+      localStorage.setItem(KEY, json)
     } catch {
-      /* ignore quota */
+      // Storage full: clear stale copies and retry once; if it still fails, SAY so — silently losing designs is worse
+      pruneOldStates()
+      try { localStorage.setItem(KEY, json) } catch {
+        if (!warnedQuota) {
+          warnedQuota = true
+          console.error(`Could not save — browser storage is full (${(json.length / 1e6).toFixed(1)} MB of app data)`)
+          dispatch({ type: 'TOAST', toast: { id: uid('t'), text: 'Couldn’t save — your browser’s storage is full. Recent changes will be lost if you reload.', tone: 'warning' } })
+        }
+      }
     }
   }, [state])
   const value = useMemo(() => ({ state, dispatch }), [state])
