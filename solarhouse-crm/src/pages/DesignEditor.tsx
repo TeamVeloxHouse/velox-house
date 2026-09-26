@@ -845,7 +845,9 @@ export function DesignEditor() {
         act.toast(panes.message + (panes.measured ? '' : ' — set each pane’s pitch on survey'), panes.measured ? 'positive' : undefined)
         return
       }
-      // 2) No outline anywhere → Google's own roof read (needs the Solar API).
+      // 2) No building under the pin: don't guess (the old fallback grabbed the biggest building nearby — often a
+      //    neighbour's). Ask for the roof instead.
+      if (at) { act.toast('No building right under the pin — right-click the roof you’re designing and choose “Detect the roof here”', 'warning'); return }
       setStatus('Measuring the roof from satellite…')
       const { planes, center: c, measured } = await detectPlanes(design.address, center || design.center)
       if (c && map.current) map.current.setView([c.lat, c.lng], 20)

@@ -17,7 +17,7 @@
  * Without height data the pitch is ASSUMED (35°, typical UK) and flagged on every pane. */
 
 import type { DesignPlane } from '../store/types'
-import { fetchBuildingOutline, fetchDsm, fetchLidarDsm, sampleHeight, type DsmData } from './dsm'
+import { fetchBuildingOutline, fetchDsm, fetchLidarDsm, sampleHeight, regularizeRingMetric, type DsmData } from './dsm'
 
 type LatLng = { lat: number; lng: number }
 type XY = { x: number; y: number } // metres east (x) / north (y) of the query point
@@ -86,14 +86,42 @@ async function osmBuildings(c: LatLng): Promise<{ target: LatLng[] | null; other
       const f = frame(c), o = { x: 0, y: 0 }
       const rings = ways.map((w) => w.map(f.toXY))
       let ti = rings.findIndex((r) => inPoly(o, r))
-      if (ti < 0) { // pin just off the roof → nearest wall within 6 m
-        let bd = 6
+      if (ti < 0) { // pin just off the roof → nearest wall within 3 m
+        let bd = 3 // only if the pin is on it or right at its wall — never a neighbour's building
         rings.forEach((r, i) => { for (let k = 0; k < r.length - 1; k++) { const d = segDist(o, r[k], r[k + 1]).d; if (d < bd) { bd = d; ti = i } } })
       }
       return { target: ti >= 0 ? ways[ti] : null, others: ways.filter((_, i) => i !== ti) }
     } catch { /* next mirror */ }
   }
   return { target: null, others: [] }
+}
+
+/** The part of building `a` inside title boundary `b` (both metric rings) — rasterised at 10 cm, the piece
+ *  under the pin, traced and simplified. Cuts a terrace-wide Google building down to this house. */
+function intersectRings(a: XY[], b: XY[]): XY[] | null {
+  const res = 0.1
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+  for (const p of a) { minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x); minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y) }
+  const W = Math.ceil((maxX - minX) / res) + 2, H = Math.ceil((maxY - minY) / res) + 2
+  if (W * H > 4e6) return null
+  const px = (c: number) => minX + (c - 0.5) * res, py = (r: number) => maxY - (r - 0.5) * res
+  const inside = new Uint8Array(W * H)
+  for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) { const p = { x: px(c), y: py(r) }; if (inPoly(p, a) && inPoly(p, b)) inside[r * W + c] = 1 }
+  // the connected piece under (or nearest to) the pin at the origin
+  const c0 = Math.round((0 - minX) / res + 0.5), r0 = Math.round((maxY - 0) / res + 0.5)
+  let seed = -1, bd = Infinity
+  for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) if (inside[r * W + c]) { const d = (c - c0) ** 2 + (r - r0) ** 2; if (d < bd) { bd = d; seed = r * W + c } }
+  if (seed < 0 || bd * res * res > 16) return null // nothing of the building within 4 m of the pin inside this title
+  const comp = new Uint8Array(W * H), st = [seed]; comp[seed] = 1; let n = 0
+  while (st.length) { const q = st.pop()!; n++; const x = q % W, y = (q / W) | 0; for (const t of [x > 0 ? q - 1 : -1, x < W - 1 ? q + 1 : -1, y > 0 ? q - W : -1, y < H - 1 ? q + W : -1]) if (t >= 0 && inside[t] && !comp[t]) { comp[t] = 1; st.push(t) } }
+  if (n * res * res < 15) return null
+  const loop = trace((x, y) => x >= 0 && y >= 0 && x < W && y < H && comp[y * W + x] === 1, W, H)
+  if (!loop) return null
+  const simp = dp(loop, 2.5)
+  return simp.length >= 3 ? simp.map(([c, r]) => ({ x: px(c), y: py(r) })) : null
+}
+async function titleBoundary(c: LatLng): Promise<LatLng[] | null> {
+  try { const j = await (await fetch(`/api/parcel?lat=${c.lat}&lng=${c.lng}`)).json(); return j.configured && j.parcel?.length >= 3 && j.areaM2 < 3000 ? j.parcel : null } catch { return null }
 }
 
 /* ── 2 · wall roles ────────────────────────────────────────────────────── */
@@ -302,6 +330,35 @@ function dp(loop: PXY[], tol: number): PXY[] {
  * flat extension, a dormer — come out as separate panes because they're different planes. */
 
 type HPlane = { a: number; b: number; c: number } // z = a·east + b·north + c
+
+/** Keep the part of a polygon where f(x,y) ≥ 0, f linear (Sutherland–Hodgman against one half-plane). */
+function clipHalf(poly: XY[], f: (p: XY) => number): XY[] {
+  const out: XY[] = []
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i], b = poly[(i + 1) % poly.length], fa = f(a), fb = f(b)
+    if (fa >= 0) out.push(a)
+    if (fa * fb < 0) { const t = fa / (fa - fb); out.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }) }
+  }
+  return out
+}
+/** Convex hull (monotone chain), then pushed outward by d metres. */
+function grownHull(pts: XY[], d: number): XY[] {
+  const P = [...pts].sort((p, q) => p.x - q.x || p.y - q.y)
+  if (P.length < 3) return P
+  const cross = (o: XY, a: XY, b: XY) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x)
+  const lo: XY[] = [], hi: XY[] = []
+  for (const p of P) { while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p) }
+  for (let i = P.length - 1; i >= 0; i--) { const p = P[i]; while (hi.length >= 2 && cross(hi[hi.length - 2], hi[hi.length - 1], p) <= 0) hi.pop(); hi.push(p) }
+  const h = [...lo.slice(0, -1), ...hi.slice(0, -1)] // CCW
+  if (h.length < 3) return h
+  const lines = h.map((a, i) => { const b = h[(i + 1) % h.length], l = dist(a, b) || 1; const n = { x: (b.y - a.y) / l, y: -(b.x - a.x) / l }; return { p: { x: a.x + n.x * d, y: a.y + n.y * d }, d: { x: (b.x - a.x) / l, y: (b.y - a.y) / l } } })
+  return lines.map((L2, i) => {
+    const L1 = lines[(i - 1 + lines.length) % lines.length], den = L1.d.x * L2.d.y - L1.d.y * L2.d.x
+    if (Math.abs(den) < 1e-6) return L2.p
+    const t = ((L2.p.x - L1.p.x) * L2.d.y - (L2.p.y - L1.p.y) * L2.d.x) / den
+    return { x: L1.p.x + L1.d.x * t, y: L1.p.y + L1.d.y * t }
+  })
+}
 export function panesFromHeights(dsm: DsmData, outline: XY[]): { ring: XY[]; plane: HPlane; areaM2: number }[] | null {
   const W = dsm.width, H = dsm.height, res = dsm.resM
   const halfW = (W * res) / 2, halfH = (H * res) / 2
@@ -396,7 +453,9 @@ export function panesFromHeights(dsm: DsmData, outline: XY[]): { ring: XY[]; pla
   for (const pix of groups.values()) {
     const S = new Array(9).fill(0)
     for (const i of pix) { const x = ex(i % W), y = no((i / W) | 0), z = hs[i]; S[0] += x * x; S[1] += x * y; S[2] += x; S[3] += y * y; S[4] += y; S[5] += 1; S[6] += x * z; S[7] += y * z; S[8] += z }
-    const pl = solve(S); if (pl && pix.length * res * res >= 2) planes.push({ pix, pl })
+    // a real roof pane is at least ~4 m² and under ~52°; smaller or steeper pieces are gutters, party-wall steps or
+    // wall edges — leave their pixels for the neighbouring panes to absorb below
+    const pl = solve(S); if (pl && pix.length * res * res >= 4 && Math.atan(Math.hypot(pl.a, pl.b)) / DEG <= 52) planes.push({ pix, pl })
   }
   if (!planes.length) return null
   // relabel, then give leftover roof pixels to whichever neighbouring plane explains them best
@@ -427,19 +486,62 @@ export function panesFromHeights(dsm: DsmData, outline: XY[]): { ring: XY[]; pla
       return dist(q, orig) < 1.2 ? q : orig
     })
   }
+  // STRAIGHT EDGES: a pane's outline = the building outline, cut by one straight line per neighbouring pane —
+  // the exact intersection of the two roof planes (ridge / hip / valley) where they meet, or a best-fit line
+  // snapped to the building's angles where there's a step between levels — then kept to the pane's own area.
+  const analytic = (pix: number[], k: number): XY[] | null => {
+    const P = planes[k].pl
+    const nb = new Map<number, XY[]>()
+    for (const i of pix) {
+      const x = ex(i % W), y = no((i / W) | 0)
+      for (const q of [i - 1, i + 1, i - W, i + W]) {
+        const j = label[q]; if (j < 0 || j === k) continue
+        if (!nb.has(j)) nb.set(j, [])
+        nb.get(j)!.push({ x: (x + ex(q % W)) / 2, y: (y + no((q / W) | 0)) / 2 })
+      }
+    }
+    const step = Math.max(1, (pix.length / 400) | 0)
+    let poly: XY[] = outline.slice()
+    for (const [j, pts] of nb) {
+      if (pts.length < 6) continue
+      const Q = planes[j].pl, A = P.a - Q.a, B = P.b - Q.b, C = P.c - Q.c, nn = Math.hypot(A, B)
+      let f: ((p: XY) => number) | null = null
+      if (nn > 0.02) {
+        const md = pts.reduce((s, p) => s + Math.abs(A * p.x + B * p.y + C) / nn, 0) / pts.length
+        if (md < 0.35) f = (p) => A * p.x + B * p.y + C // the planes really meet here: ridge / hip / valley
+      }
+      if (!f) { // a step between levels: straight line through the boundary, at the building's angle
+        const mx = pts.reduce((s, p) => s + p.x, 0) / pts.length, my = pts.reduce((s, p) => s + p.y, 0) / pts.length
+        let sxx = 0, syy = 0, sxy = 0; for (const p of pts) { sxx += (p.x - mx) ** 2; syy += (p.y - my) ** 2; sxy += (p.x - mx) * (p.y - my) }
+        const t = snapDir(0.5 * Math.atan2(2 * sxy, sxx - syy)), nx = -Math.sin(t), ny = Math.cos(t)
+        f = (p) => nx * (p.x - mx) + ny * (p.y - my)
+      }
+      let pos = 0, neg = 0
+      for (let s = 0; s < pix.length; s += step) { const i = pix[s]; if (f({ x: ex(i % W), y: no((i / W) | 0) }) >= 0) pos++; else neg++ }
+      const g = f, sgn = pos >= neg ? 1 : -1
+      poly = clipHalf(poly, (p) => sgn * g(p))
+      if (poly.length < 3) return null
+    }
+    const hullPts: XY[] = []; for (let s = 0; s < pix.length; s += step) { const i = pix[s]; hullPts.push({ x: ex(i % W), y: no((i / W) | 0) }) }
+    const hull = grownHull(hullPts, 0.45)
+    for (let h = 0; h < hull.length && poly.length >= 3; h++) { const a = hull[h], b = hull[(h + 1) % hull.length]; poly = clipHalf(poly, (p) => (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x)) }
+    if (poly.length < 3) return null
+    const area = Math.abs(signedArea(poly)), want = pix.length * res * res
+    return area >= want * 0.7 && area <= want * 1.45 ? poly : null // disagrees with the data → use the traced shape
+  }
   const out: { ring: XY[]; plane: HPlane; areaM2: number }[] = []
   planes.forEach((p, k) => {
     const done = new Uint8Array(W * H)
     for (const s0 of p.pix) {
       if (done[s0] || label[s0] !== k) continue
-      const comp = new Uint8Array(W * H), stack = [s0]; done[s0] = 1; comp[s0] = 1; let n = 0
-      while (stack.length) { const q = stack.pop()!; n++; for (const t of [q - 1, q + 1, q - W, q + W]) if (t >= 0 && t < W * H && label[t] === k && !done[t]) { done[t] = 1; comp[t] = 1; stack.push(t) } }
+      const comp = new Uint8Array(W * H), stack = [s0]; done[s0] = 1; comp[s0] = 1; let n = 0; const compPix: number[] = []
+      while (stack.length) { const q = stack.pop()!; n++; compPix.push(q); for (const t of [q - 1, q + 1, q - W, q + W]) if (t >= 0 && t < W * H && label[t] === k && !done[t]) { done[t] = 1; comp[t] = 1; stack.push(t) } }
       if (n * res * res < 1.5) continue
       const loop = trace((x, y) => x >= 0 && y >= 0 && x < W && y < H && comp[y * W + x] === 1, W, H)
       if (!loop) continue
       const simp = dp(loop, Math.max(1.5, 0.28 / res))
       if (simp.length < 3) continue
-      const ring = straighten(simp.map(([c, r]) => ({ x: ex(c), y: no(r) })))
+      const ring = analytic(compPix, k) ?? straighten(simp.map(([c, r]) => ({ x: ex(c), y: no(r) })))
       out.push({ ring, plane: p.pl, areaM2: n * res * res })
     }
   })
@@ -559,7 +661,16 @@ export async function detectRoofPanes(center: LatLng, style: RoofStyle = 'gable'
   const outlineLL = osm.target ?? (mask && mask.length >= 4 ? mask : null)
   if (!outlineLL) return null
   const source: 'google' | 'osm' = osm.target ? 'osm' : 'google'
-  const r = cleanRing(outlineLL.map(f.toXY))
+  const raw = cleanRing(outlineLL.map(f.toXY))
+  // Google's shape is traced from pixels — square it up to the building's main axis (OSM outlines are already drawn by hand)
+  // A Google shape often spans a whole terrace — cut it to this house's Land Registry title (party walls = title lines)
+  let piece = raw, clippedToTitle = false
+  if (source === 'google') {
+    const title = await titleBoundary(center)
+    const cut = title ? intersectRings(raw, title.map(f.toXY)) : null
+    if (cut && Math.abs(signedArea(cut)) < Math.abs(signedArea(raw)) * 0.9) { piece = cleanRing(cut); clippedToTitle = true }
+  }
+  const r = source === 'google' ? cleanRing(regularizeRingMetric(piece)) : piece
   if (r.length < 3) return null
   onStep?.('Reading walls, gables and party walls…')
   const party = partyWalls(r, osm.others.map((o) => o.map(f.toXY)))
@@ -593,7 +704,7 @@ export async function detectRoofPanes(center: LatLng, style: RoofStyle = 'gable'
       }).filter((p) => p.areaM2 >= 2).sort((a, b) => b.areaM2 - a.areaM2)
       if (planes.length) return {
         planes, model: { outline: r.map(f.toLL), roles, source, measured: true }, outlineSource: source, measured: true,
-        message: `${planes.length} pane${planes.length === 1 ? '' : 's'} cut from Google's 3D roof surface inside the ${source === 'osm' ? 'OpenStreetMap' : 'Google'} outline · pitch + facing measured`,
+        message: `${planes.length} pane${planes.length === 1 ? '' : 's'} cut from Google's 3D roof surface inside the ${source === 'osm' ? 'OpenStreetMap' : 'Google'} outline${clippedToTitle ? ' (cut to the Land Registry title)' : ''} · pitch + facing measured`,
       }
     }
   }

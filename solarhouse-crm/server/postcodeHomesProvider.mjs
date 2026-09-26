@@ -55,6 +55,46 @@ export async function buildingsAround(lat, lng, radius) {
 const areaM2 = (g, lat) => { const mx = 111320 * Math.cos((lat * Math.PI) / 180), my = 110540; let a = 0; for (let i = 0, j = g.length - 1; i < g.length; j = i++) a += (g[j].lon * mx + g[i].lon * mx) * (g[j].lat * my - g[i].lat * my); return Math.abs(a / 2) }
 const NON_HOME = /^(garage|garages|shed|carport|roof|hut|greenhouse|service|transformer_tower|kiosk)$/
 
+/** A street name without a house number ("Clos-y-Dolydd, Cardiff") → every home on that street. Finds the street,
+ *  asks postcodes.io for the postcodes around it, lists each postcode's homes, keeps the ones on this street. */
+export async function streetHomes(q, reverse, geocodeFn, rooftopFn) {
+  const street = String(q || '').split(',')[0].replace(/^\s*\d+[a-z]?\s+/i, '').trim()
+  const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z]/g, '')
+  if (norm(street).length < 4) return { ok: false, reason: 'Type the street name' }
+  const g = await geocodeFn(`${q}, UK`).catch(() => null)
+  if (!g || typeof g.lat !== 'number') return { ok: false, reason: 'Street not found' }
+  const r = await fetch(`https://api.postcodes.io/postcodes?lon=${g.lng}&lat=${g.lat}&radius=500&limit=15`)
+  const j = r.ok ? await r.json() : null
+  const pcs = [...new Set((j?.result ?? []).map((x) => x.postcode))].slice(0, 10)
+  const lists = await Promise.all(pcs.map((pc) => postcodeHomes(pc, reverse).catch(() => null)))
+  const want = norm(street), seen = new Set(), homes = []
+  for (const l of lists) for (const h of l?.homes ?? []) {
+    if (seen.has(h.id) || !(norm(h.street).includes(want) || want.includes(norm(h.street)) && norm(h.street).length > 4)) continue
+    seen.add(h.id); homes.push(h)
+  }
+  // Streets OpenStreetMap hasn't mapped (new estates): ask the geocoder for "1 <street>", "2 <street>"… and keep the
+  // answers it places on an actual rooftop. Real house numbers, each pinned on its own roof.
+  if (homes.length < 3 && rooftopFn) {
+    const town = String(q).split(',').slice(1).join(',').trim()
+    const found = []
+    for (let start = 1; start <= 120; start += 20) {
+      const batch = await Promise.all(Array.from({ length: 20 }, (_, k) => start + k).map((n) => rooftopFn(`${n} ${street}${town ? ', ' + town : ''}, UK`).then((r) => (r ? { n, r } : null)).catch(() => null)))
+      const hits = batch.filter((x) => x && norm(x.r.formatted.split(',')[0]).includes(want) && x.r.formatted.split(',')[0].trim().toLowerCase().startsWith(`${x.n} `))
+      found.push(...hits)
+      if (!hits.length && start > 20) break // a run of 20 numbers with nothing — the street's ended
+    }
+    for (const { n, r } of found) {
+      const key = `${r.lat.toFixed(6)},${r.lng.toFixed(6)}`
+      if (seen.has(key)) continue; seen.add(key)
+      const label = r.formatted.split(',')[0]
+      homes.push({ id: `g${key}`, label, number: String(n), street: label.replace(/^\s*\d+[a-z]?\s+/i, ''), address: r.formatted.replace(/, UK$/, ''), center: { lat: r.lat, lng: r.lng }, areaM2: 0, source: 'rooftop' })
+    }
+  }
+  const num = (s) => { const m = String(s).match(/\d+/); return m ? +m[0] : 1e9 }
+  homes.sort((a, b) => num(a.number) - num(b.number) || a.number.localeCompare(b.number))
+  return { ok: true, street, center: { lat: g.lat, lng: g.lng }, homes, postcodes: pcs }
+}
+
 /** reverse(lat,lng) → { formatted, postcode } | throws. */
 export async function postcodeHomes(pcRaw, reverse) {
   if (!isFullPostcode(pcRaw)) return { ok: false, reason: 'Enter a full postcode, e.g. CF14 2AA' }

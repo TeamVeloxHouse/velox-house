@@ -21,6 +21,10 @@ export function DesignHome() {
   async function createFromAddress() {
     if (creating) return
     if (!addr.trim()) { act.toast('Enter a site address first — or try the demo roof', 'warning'); return }
+    // a street or postcode on its own would pin the middle of the road and design a neighbour's roof
+    if (!pin && !/^\s*(\d|flat|apartment)/i.test(addr) && !/^\s*[^,\d]+ (house|cottage|farm|lodge|barn)\b/i.test(addr)) {
+      act.toast('Pick the house from the list below — a street or postcode on its own could land on a neighbour’s roof', 'warning'); return
+    }
     setCreating(true)
     const g = pin ? { lat: pin.lat, lng: pin.lng } : await geocodeLocation(addr).then((r) => r && { lat: r.lat, lng: r.lng }).catch(() => undefined)
     const d = act.createDesign({ name: addr.split(',')[0], address: addr, center: g || undefined })
@@ -114,14 +118,17 @@ const POSTCODE_RE = /^\s*([A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2})\s*(?:,.*)?$/i // "C
 
 /** Typed just a postcode? List every home in it (house number first) so you pick the exact roof. */
 function PostcodeHomes({ query, onPick, picked }: { query: string; onPick: (h: PostcodeHome) => void; picked?: { lat: number; lng: number } }) {
-  const pc = query.match(POSTCODE_RE)?.[1]?.toUpperCase() ?? null
+  // a full postcode, or a street picked/typed WITHOUT a house number ("Clos-y-Dolydd, Beddau") — either way, list the homes
+  const pcMatch = query.match(POSTCODE_RE)?.[1]?.toUpperCase() ?? null
+  const streetQ = !pcMatch && /,/.test(query) && !/^\s*\d/.test(query) && query.split(',')[0].trim().length >= 4 ? query.trim() : null
+  const pc = pcMatch ?? streetQ
   const [state, setState] = useState<{ pc: string; loading: boolean; homes: PostcodeHome[]; reason?: string; district?: string } | null>(null)
   const [filter, setFilter] = useState('')
   useEffect(() => {
     if (!pc) return
     let dead = false
     setState({ pc, loading: true, homes: [] }); setFilter('')
-    fetch(`/api/postcode-homes?pc=${encodeURIComponent(pc)}`).then((r) => r.json())
+    fetch(pcMatch ? `/api/postcode-homes?pc=${encodeURIComponent(pc)}` : `/api/street-homes?q=${encodeURIComponent(pc)}`).then((r) => r.json())
       .then((j) => { if (!dead) setState({ pc, loading: false, homes: j.homes ?? [], reason: j.ok ? undefined : j.reason, district: j.district }) })
       .catch(() => { if (!dead) setState({ pc, loading: false, homes: [], reason: 'Could not reach the address lookup' }) })
     return () => { dead = true }
@@ -134,7 +141,7 @@ function PostcodeHomes({ query, onPick, picked }: { query: string; onPick: (h: P
     <div className="mt-4 rounded-card bg-surface border border-border p-4">
       <div className="flex items-center gap-3">
         <div className="flex-1 min-w-0">
-          <div className="text-[13.5px] font-bold text-ink">Which home in {state.pc}?</div>
+          <div className="text-[13.5px] font-bold text-ink">Which home {POSTCODE_RE.test(state.pc) ? 'in' : 'on'} {state.pc.split(',')[0]}?</div>
           <div className="text-[12px] text-muted-b">{state.loading ? 'Finding every building in the postcode and its address…' : state.reason ? state.reason : `${state.homes.length} home${state.homes.length === 1 ? '' : 's'}${state.district ? ` · ${state.district}` : ''} — picking one pins the design on that exact roof`}</div>
         </div>
         {state.homes.length > 8 && <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="House number or name…" className="h-8 w-[180px] px-2.5 rounded-control border border-input-border bg-white text-[12.5px] outline-none focus:border-accent" />}

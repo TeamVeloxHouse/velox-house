@@ -11,7 +11,7 @@ import { placesSearch, placesRadiusScan, placesAutocomplete } from './server/pla
 import { pvgisHourly, pvgisMonthly } from './server/pvgisProvider.mjs'
 import { callOvi } from './server/oviProvider.mjs'
 import { mapboxGeocode, mapboxReverse, mapboxSuggest } from './server/mapboxProvider.mjs'
-import { postcodeHomes, buildingsAround } from './server/postcodeHomesProvider.mjs'
+import { postcodeHomes, buildingsAround, streetHomes } from './server/postcodeHomesProvider.mjs'
 import { lidarDsm } from './server/lidarProvider.mjs'
 
 /** Dev-only backend for the real Ovi operator — keeps the Anthropic key server-side.
@@ -348,7 +348,47 @@ function geocodeApi(env: Record<string, string>): Plugin {
       server.middlewares.use('/api/postcode-homes', async (req, res) => {
         res.setHeader('Content-Type', 'application/json')
         const pc = new URL(req.url || '', 'http://x').searchParams.get('pc') || ''
-        try { res.end(JSON.stringify(await postcodeHomes(pc, reverseAny))) }
+        try {
+          const out = await postcodeHomes(pc, reverseAny)
+          // Estate OpenStreetMap hasn't mapped? Find the postcode's street and list its rooftops instead.
+          if (out.ok && out.homes.length < 3 && key && out.center) {
+            const street = await reverseAny(out.center.lat, out.center.lng).catch(() => null)
+            const name = street?.formatted?.split(',')[0]?.replace(/^\s*\d+[a-z]?\s+/i, '')
+            if (name) {
+              const geo = async (a: string) => geocode(a, key)
+              const rooftop = async (a: string) => {
+                const r = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(a)}&region=uk&key=${key}`)
+                const j = await r.json(); const hit = j.results?.[0]
+                if (!hit || hit.geometry?.location_type !== 'ROOFTOP') return null
+                const p = hit.address_components?.find((c: { types: string[] }) => c.types.includes('postal_code'))?.long_name
+                return { lat: hit.geometry.location.lat, lng: hit.geometry.location.lng, formatted: hit.formatted_address as string, postcode: p }
+              }
+              const s = await streetHomes(`${name}, ${out.postcode}`, reverseAny, geo, rooftop)
+              const want = String(out.postcode).replace(/\s+/g, '').toUpperCase()
+              const extra = (s.homes ?? []).filter((h: { address: string }) => h.address.replace(/\s+/g, '').toUpperCase().includes(want))
+              if (extra.length) return res.end(JSON.stringify({ ...out, homes: [...out.homes, ...extra] }))
+            }
+          }
+          res.end(JSON.stringify(out))
+        }
+        catch (e) { res.end(JSON.stringify({ ok: false, reason: String((e as Error)?.message || e) })) }
+      })
+      // A street with no house number → every home on it (so a bare street name never designs a stranger's roof)
+      server.middlewares.use('/api/street-homes', async (req, res) => {
+        res.setHeader('Content-Type', 'application/json')
+        const q = new URL(req.url || '', 'http://x').searchParams.get('q') || ''
+        const geo = async (a: string) => { try { if (key) return await geocode(a, key) } catch { /* fall back */ } return mapboxGeocode(a, mbToken) }
+        // Google forward geocode that only counts an answer pinned on a real rooftop (not the street's centre)
+        const rooftop = async (a: string) => {
+          if (!key) return null
+          const r = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(a)}&region=uk&key=${key}`)
+          const j = await r.json()
+          const hit = j.results?.[0]
+          if (!hit || hit.geometry?.location_type !== 'ROOFTOP') return null
+          const pc = hit.address_components?.find((c: { types: string[] }) => c.types.includes('postal_code'))?.long_name
+          return { lat: hit.geometry.location.lat, lng: hit.geometry.location.lng, formatted: hit.formatted_address as string, postcode: pc }
+        }
+        try { res.end(JSON.stringify(await streetHomes(q, reverseAny, geo, rooftop))) }
         catch (e) { res.end(JSON.stringify({ ok: false, reason: String((e as Error)?.message || e) })) }
       })
       // Smart-meter data via n3rgy (consent-based DCC access). Wired but OFF: without N3RGY_API_KEY it says so, and

@@ -172,6 +172,12 @@ export async function fetchBuildingOutline(lat: number, lng: number, radius = 40
       if (size > bestSize) { bestSize = size; best = cur }
       cur++
     }
+    // The building UNDER the pin (or within ~3 m of it) — never simply the biggest thing in view, which on an
+    // estate is usually a neighbour or a whole terrace.
+    { const cx = (W / 2) | 0, cy = (H / 2) | 0, reach = Math.ceil(3 / res); let bd = Infinity; best = -1
+      for (let y = Math.max(0, cy - reach); y <= Math.min(H - 1, cy + reach); y++) for (let x = Math.max(0, cx - reach); x <= Math.min(W - 1, cx + reach); x++) {
+        const l = label[y * W + x]; if (l < 0) continue; const d = (x - cx) ** 2 + (y - cy) ** 2; if (d < bd) { bd = d; best = l } }
+      bestSize = 0; if (best >= 0) for (let i = 0; i < W * H; i++) if (label[i] === best) bestSize++ }
     if (best < 0 || bestSize < 24) return null
     const inComp = (x: number, y: number) => x >= 0 && y >= 0 && x < W && y < H && label[y * W + x] === best
     // Moore boundary trace (clockwise)
@@ -339,7 +345,7 @@ type MXY = { x: number; y: number } // metric east(+x)/north(+y) offset from the
  *  the DSM's ragged pixel trace into straight, parallel / right-angled edges. Only applied when the
  *  ring is already mostly rectilinear (≥70% of its perimeter within ~18° of the two axes) so hip and
  *  diagonal faces are left untouched. Returns the input unchanged when it can't confidently regularize. */
-function regularizeRingMetric(pts: MXY[]): MXY[] {
+export function regularizeRingMetric(pts: MXY[]): MXY[] {
   const n = pts.length
   if (n < 4) return pts
   // dominant axis U = direction of the longest edge; V is perpendicular
