@@ -89,20 +89,37 @@ function solve3(M: number[][], B: number[]): number[] | null {
 /** Least-squares fit of the real roof plane (y = a·x + b·z + c) from the DSM heights inside a
  *  footprint — the "intelligence" that reads each roof's true tilt/gradient so panels sit pinpoint. */
 function fitRoofPlane(dsm: DsmData, fp: XZ[], dcx: number, dcz: number): { a: number; b: number; c: number } | null {
+  // Robust: sample the pane's INTERIOR (≥ 35 cm in from its edges — the edges sit on ridges/hips/eaves where the
+  // heights belong to the neighbour or the ground), fit, drop the points that don't sit on the plane, refit.
   const xs = fp.map((p) => p.x), zs = fp.map((p) => p.z)
   const minX = Math.min(...xs), maxX = Math.max(...xs), minZ = Math.min(...zs), maxZ = Math.max(...zs)
-  const step = Math.max(0.4, Math.min(maxX - minX, maxZ - minZ) / 14)
-  let n = 0, Sxx = 0, Sxz = 0, Sx = 0, Szz = 0, Sz = 0, Sxy = 0, Szy = 0, Sy = 0
+  const step = Math.max(0.2, Math.sqrt(((maxX - minX) * (maxZ - minZ)) / 500))
+  const edgeD = (x: number, z: number) => { let d = Infinity; for (let i = 0; i < fp.length; i++) { const a = fp[i], b = fp[(i + 1) % fp.length], dx = b.x - a.x, dz = b.z - a.z, L2 = dx * dx + dz * dz || 1, t = Math.max(0, Math.min(1, ((x - a.x) * dx + (z - a.z) * dz) / L2)); d = Math.min(d, Math.hypot(x - a.x - t * dx, z - a.z - t * dz)) } return d }
+  const all: [number, number, number, number][] = [] // x, z, h, edge distance
   for (let x = minX; x <= maxX; x += step) for (let z = minZ; z <= maxZ; z += step) {
     if (!pointInPolyXZ({ x, z }, fp)) continue
     const h = sampleHeight(dsm, x - dcx, dcz - z)
-    if (!isFinite(h)) continue
-    n++; Sxx += x * x; Sxz += x * z; Sx += x; Szz += z * z; Sz += z; Sxy += x * h; Szy += z * h; Sy += h
+    if (isFinite(h)) all.push([x, z, h, edgeD(x, z)])
   }
-  if (n < 6) return null
-  const sol = solve3([[Sxx, Sxz, Sx], [Sxz, Szz, Sz], [Sx, Sz, n]], [Sxy, Szy, Sy])
-  if (!sol || !sol.every((v) => isFinite(v))) return null
-  return { a: sol[0], b: sol[1], c: sol[2] }
+  let pts = all.filter((p) => p[3] >= 0.35)
+  if (pts.length < 12) pts = all
+  if (pts.length < 6) return null
+  const solve = (P: typeof pts) => {
+    let n = 0, Sxx = 0, Sxz = 0, Sx = 0, Szz = 0, Sz = 0, Sxy = 0, Szy = 0, Sy = 0
+    for (const [x, z, h] of P) { n++; Sxx += x * x; Sxz += x * z; Sx += x; Szz += z * z; Sz += z; Sxy += x * h; Szy += z * h; Sy += h }
+    const sol = n >= 6 ? solve3([[Sxx, Sxz, Sx], [Sxz, Szz, Sz], [Sx, Sz, n]], [Sxy, Szy, Sy]) : null
+    return sol && sol.every((v) => isFinite(v)) ? { a: sol[0], b: sol[1], c: sol[2] } : null
+  }
+  let fit = solve(pts)
+  for (let it = 0; it < 3 && fit; it++) {
+    const F = fit
+    const res = pts.map((p) => Math.abs(p[2] - (F.a * p[0] + F.b * p[1] + F.c)))
+    const med = [...res].sort((a, b) => a - b)[Math.floor(res.length / 2)]
+    const keep = pts.filter((_, i) => res[i] <= Math.max(0.12, med * 2.5))
+    if (keep.length < 6 || keep.length === pts.length) break
+    pts = keep; fit = solve(pts)
+  }
+  return fit
 }
 
 /** A live, photoreal-ish 3D model of the design — each roof plane tilted to its true pitch/azimuth,
@@ -321,21 +338,44 @@ export function Design3D({ design, onCapture, adding, selecting, moduleId, onCom
     const panelMats: THREE.Matrix4[] = []
     const roofCenters: { x: number; y: number; z: number }[] = []
 
-    planes.forEach((p) => {
+    // Each facet's roof height. With the DSM, FIT the real plane (robustly); if that fit disagrees with the pane's
+    // measured pitch/facing by more than 15° (trees, a chimney, a pane edge over the ridge), trust the measured
+    // pitch/facing and only take the HEIGHT from the DSM (median offset). Without a DSM, the stored pitch.
+    const facets = planes.map((p) => {
       const fp = p.polygon.map((pt) => ({ x: X(pt), z: Z(pt) }))
       const pf = planeFrame(fp, p.pitchDeg, p.azimuthDeg, eaveH)
       const c = avg(fp)
-      // The roof surface height for this facet. When we have the DSM, FIT the real plane (true
-      // tilt/gradient) so the reconstructed facet + panels are pinpoint; else use the Google tilt.
-      let roofY: (x: number, z: number) => number
       let fit: { a: number; b: number; c: number } | null = null
+      let roofY: (x: number, z: number) => number = (x, z) => pf.elev(x, z)
       if (dsm && design.center) {
-        // The DSM fit is the source of truth for tilt — a hand-drawn outline (default 5° pitch) gets the
-        // SAME real pitch as auto-detect. Only fall back to the stored pitch if the fit can't be made.
         fit = fitRoofPlane(dsm, fp, dcx, dcz)
-        if (fit) roofY = (x, z) => fit!.a * x + fit!.b * z + fit!.c
-        else { const off = sampleHeight(dsm, c.x - dcx, dcz - c.z) - pf.elev(c.x, c.z); roofY = (x, z) => pf.elev(x, z) + off }
-      } else roofY = (x, z) => pf.elev(x, z)
+        const ga = pf.elev(c.x + 1, c.z) - pf.elev(c.x, c.z), gb = pf.elev(c.x, c.z + 1) - pf.elev(c.x, c.z)
+        const nrm = (a: number, b: number) => { const l = Math.hypot(a, 1, b); return [-a / l, 1 / l, -b / l] }
+        const agree = fit && p.pitchDeg > 0 ? (() => { const u = nrm(fit.a, fit.b), v = nrm(ga, gb); return Math.acos(Math.min(1, u[0] * v[0] + u[1] * v[1] + u[2] * v[2])) * 180 / Math.PI <= 15 })() : !!fit
+        if (fit && agree) { const F = fit; roofY = (x, z) => F.a * x + F.b * z + F.c }
+        else {
+          const offs: number[] = []
+          const xs = fp.map((v) => v.x), zs = fp.map((v) => v.z), st = Math.max(0.3, Math.sqrt(((Math.max(...xs) - Math.min(...xs)) * (Math.max(...zs) - Math.min(...zs))) / 300))
+          for (let x = Math.min(...xs); x <= Math.max(...xs); x += st) for (let z = Math.min(...zs); z <= Math.max(...zs); z += st) if (pointInPolyXZ({ x, z }, fp)) { const h = sampleHeight(dsm, x - dcx, dcz - z); if (isFinite(h)) offs.push(h - pf.elev(x, z)) }
+          const off = offs.length ? offs.sort((a, b) => a - b)[Math.floor(offs.length / 2)] : sampleHeight(dsm, c.x - dcx, dcz - c.z) - pf.elev(c.x, c.z)
+          roofY = (x, z) => pf.elev(x, z) + off
+          fit = { a: ga, b: gb, c: pf.elev(0, 0) + off }
+        }
+      }
+      return { fp, roofY, fit }
+    })
+    // A corner shared by several panes (ridge end, hip top, valley foot) gets ONE height — the mean of every pane's
+    // plane there — so the faces meet exactly in 3D instead of each stopping at its own height.
+    const meshY = (x: number, z: number, own: number) => {
+      let s = 0, n = 0
+      facets.forEach((F, j) => { if (j === own || F.fp.some((v) => Math.hypot(v.x - x, v.z - z) < 0.15)) { s += F.roofY(x, z); n++ } })
+      return n ? s / n : facets[own].roofY(x, z)
+    }
+
+    planes.forEach((p, pi) => {
+      const { fp, roofY, fit } = facets[pi]
+      const c = avg(fp)
+      const cornerY = (x: number, z: number) => meshY(x, z, pi)
       // The whole array is ONE rigid plane (the facet's fitted tilt), lifted just enough to rest on the
       // highest point of the real roof beneath it — so it's clean/coplanar AND never buried or jagged.
       let arrayLift = 0.15
@@ -364,7 +404,7 @@ export function Design3D({ design, onCapture, adding, selecting, moduleId, onCom
         const pos = rg.attributes.position as THREE.BufferAttribute, uv = rg.attributes.uv as THREE.BufferAttribute
         for (let i = 0; i < pos.count; i++) {
           const sx = pos.getX(i), sz = pos.getY(i)
-          pos.setXYZ(i, sx, roofY(sx, sz), sz)
+          pos.setXYZ(i, sx, cornerY(sx, sz), sz)
           if (aerialTex && uv) { const [u, v] = uvFor(sx, sz); uv.setXY(i, u, v) }
         }
         rg.computeVertexNormals()
@@ -376,7 +416,7 @@ export function Design3D({ design, onCapture, adding, selecting, moduleId, onCom
         const wv: number[] = []
         for (let i = 0; i < fp.length; i++) {
           const a = fp[i], b = fp[(i + 1) % fp.length]
-          const ay = roofY(a.x, a.z), by = roofY(b.x, b.z)
+          const ay = cornerY(a.x, a.z), by = cornerY(b.x, b.z)
           wv.push(a.x, 0, a.z, b.x, 0, b.z, b.x, by, b.z)
           wv.push(a.x, 0, a.z, b.x, by, b.z, a.x, ay, a.z)
         }
@@ -386,7 +426,7 @@ export function Design3D({ design, onCapture, adding, selecting, moduleId, onCom
         const walls = new THREE.Mesh(wg, wallMat)
         walls.castShadow = true; walls.receiveShadow = true
         scene.add(walls)
-        const ring = fp.map((v) => new THREE.Vector3(v.x, roofY(v.x, v.z), v.z)); ring.push(ring[0])
+        const ring = fp.map((v) => new THREE.Vector3(v.x, cornerY(v.x, v.z), v.z)); ring.push(ring[0])
         scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(ring), edgeMat))
       }
 
@@ -396,10 +436,10 @@ export function Design3D({ design, onCapture, adding, selecting, moduleId, onCom
         const fshape = new THREE.Shape(fp.map((v) => new THREE.Vector2(v.x, v.z)))
         const fgeo = new THREE.ShapeGeometry(fshape)
         const fp2 = fgeo.attributes.position as THREE.BufferAttribute
-        for (let i = 0; i < fp2.count; i++) { const sx = fp2.getX(i), sz = fp2.getY(i); fp2.setXYZ(i, sx, heightAt(sx, sz) + 0.06, sz) }
+        for (let i = 0; i < fp2.count; i++) { const sx = fp2.getX(i), sz = fp2.getY(i); fp2.setXYZ(i, sx, cornerY(sx, sz) + (usePhotoreal ? 0.12 : 0.06), sz) }
         const fill = new THREE.Mesh(fgeo, new THREE.MeshBasicMaterial({ color: 0x27e0ff, transparent: true, opacity: 0.15, side: THREE.DoubleSide, depthWrite: false }))
         fill.renderOrder = 2; scene.add(fill)
-        const ring = fp.map((v) => new THREE.Vector3(v.x, heightAt(v.x, v.z) + 0.09, v.z)); ring.push(ring[0])
+        const ring = fp.map((v) => new THREE.Vector3(v.x, cornerY(v.x, v.z) + (usePhotoreal ? 0.15 : 0.09), v.z)); ring.push(ring[0])
         const outline = new THREE.Line(new THREE.BufferGeometry().setFromPoints(ring), new THREE.LineBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.9, depthTest: false }))
         outline.renderOrder = 3; scene.add(outline)
       }

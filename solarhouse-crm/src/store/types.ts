@@ -1236,6 +1236,8 @@ export interface Design {
   evDesign?: EvDesign
   // Detected roof model (lib/roofPanes.ts): the building outline + per-edge roles, so the panes can be re-split (gable ⇄ hip)
   roofModel?: { outline: { lat: number; lng: number }[]; roles: ('eave' | 'gable' | 'party')[]; source: 'google' | 'osm'; measured: boolean }
+  /** What auto-detection produced, kept untouched so Roof QA can measure how far a person corrected it (the correction log). */
+  detected?: { at: number; message: string; planes: { polygon: { lat: number; lng: number }[]; pitchDeg: number; azimuthDeg: number; areaM2: number }[] }
   createdAt: number
   updatedAt: number
 }

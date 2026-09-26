@@ -46,6 +46,17 @@ async function buildingInsights(lat, lng, key) {
   return j.solarPotential
 }
 
+/** Every roof segment Google measured for the building at (lat,lng) — pitch, compass azimuth, area, centre, box.
+ *  Independent of our own pane detection, so it's used as a cross-check (roof QA). */
+export async function roofSegmentsAt(lat, lng, key) {
+  const sp = await buildingInsights(lat, lng, key)
+  return (sp.roofSegmentStats || []).map((s) => ({
+    pitchDeg: s.pitchDegrees ?? 0, azimuthDeg: s.azimuthDegrees ?? 0, areaM2: s.stats?.areaMeters2 ?? 0, groundAreaM2: s.stats?.groundAreaMeters2 ?? 0,
+    center: s.center ? { lat: s.center.latitude, lng: s.center.longitude } : null, heightM: s.planeHeightAtCenterMeters ?? null,
+    box: s.boundingBox ? { sw: { lat: s.boundingBox.sw.latitude, lng: s.boundingBox.sw.longitude }, ne: { lat: s.boundingBox.ne.latitude, lng: s.boundingBox.ne.longitude } } : null,
+  }))
+}
+
 /** Measure a roof directly from coordinates — skips geocoding. Preferred when the caller already
  *  has a precise building centre (e.g. from Places), which is more accurate for large sites than
  *  geocoding a company name (that often lands on the office/gate, not the main roof). */

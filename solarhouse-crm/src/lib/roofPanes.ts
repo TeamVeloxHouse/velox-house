@@ -18,6 +18,7 @@
 
 import type { DesignPlane } from '../store/types'
 import { fetchBuildingOutline, fetchDsm, fetchLidarDsm, sampleHeight, regularizeRingMetric, type DsmData } from './dsm'
+import { tidyRing, tidyRoof, dropCollinear, mergeShortEdges, paneDirections } from './paneShape'
 
 type LatLng = { lat: number; lng: number }
 type XY = { x: number; y: number } // metres east (x) / north (y) of the query point
@@ -755,7 +756,10 @@ export async function detectRoofPanes(center: LatLng, style: RoofStyle = 'gable'
     const cut = title ? intersectRings(raw, title.map(f.toXY)) : null
     if (cut && Math.abs(signedArea(cut)) < Math.abs(signedArea(raw)) * 0.9) { piece = cleanRing(cut); clippedToTitle = true }
   }
-  const r = source === 'google' ? cleanRing(regularizeRingMetric(piece)) : piece
+  // OSM outlines carry 20–40 cm jogs (bay windows, drainpipes traced by hand) that become extra pane corners — drop them
+  const r0 = source === 'google' ? cleanRing(regularizeRingMetric(piece)) : piece
+  const rt = mergeShortEdges(dropCollinear(r0, 0.3), 0.7)
+  const r = rt.length >= 3 && Math.abs(Math.abs(signedArea(rt)) - Math.abs(signedArea(r0))) < Math.abs(signedArea(r0)) * 0.05 ? rt : r0
   if (r.length < 3) return null
   onStep?.('Reading walls, gables and party walls…')
   const party = partyWalls(r, osm.others.map((o) => o.map(f.toXY)))
@@ -789,7 +793,18 @@ export async function detectRoofPanes(center: LatLng, style: RoofStyle = 'gable'
     const covered = hp ? hp.reduce((s, p) => s + p.areaM2, 0) / Math.max(1, polyArea(rs)) : 0
     if (hp && covered >= 0.6) {
       const hpF = hp
-      const welded = weld(hpF.map((p, i) => ({ edge: i, ring: p.ring, areaM2: p.areaM2 })), rs) // edge = index into hp (weld may drop a sliver)
+      // Shape rules before the corners are welded: no near-collinear corners, no tiny edges, edges square to the
+      // slope (eave/ridge/gable) or on its 45°s (hips), and a rectangle where it's really a rectangle.
+      const wallDirs: number[] = []
+      for (let k = 0; k < rs.length; k++) { const a = rs[k], b = rs[(k + 1) % rs.length]; if (dist(a, b) >= 1.5) wallDirs.push(Math.atan2(b.y - a.y, b.x - a.x)) }
+      const tidied = hpF.map((p) => {
+        const pl = p.plane, az = ((Math.atan2(-pl.a, -pl.b) / DEG) + 360) % 360
+        return tidyRing(p.ring, { dirs: paneDirections(Math.hypot(pl.a, pl.b) > 0.1 ? az : undefined, wallDirs) })
+      })
+      const welded0 = weld(hpF.map((p, i) => ({ edge: i, ring: tidied[i], areaM2: p.areaM2 })), rs) // edge = index into hp (weld may drop a sliver)
+      // mesh the whole roof: near-miss corners become one shared corner, T-junctions shared exactly
+      const meshed = tidyRoof(welded0.map((p) => ({ ring: p.ring })), { perPane: false })
+      const welded = welded0.map((p, i) => ({ ...p, ring: meshed[i] }))
       const planes: DesignPlane[] = welded.map((p) => {
         const pl = hpF[p.edge].plane
         const pitch = Math.atan(Math.hypot(pl.a, pl.b)) / DEG, flat = pitch < 6

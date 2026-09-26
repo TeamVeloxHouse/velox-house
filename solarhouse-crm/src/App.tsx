@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { Layout } from './components/Layout'
+import { RoofQa } from './pages/RoofQa'
 import { Home } from './pages/Home'
 import { MyTasks } from './pages/MyTasks'
 import { DealsBoard } from './pages/DealsBoard'
@@ -150,6 +151,7 @@ export const router = createBrowserRouter([
       // Design Studio — its own lifecycle stage (Find→Engage→Design→Close→Deliver)
       { path: 'design', element: <DesignHome /> },
       { path: 'design/whole-home', element: <WholeHome /> },
+      { path: 'design/qa', element: <RoofQa /> },
       { path: 'design/:id', element: <DesignEditor /> },
       // Solar House Studio — design, proposals & analytics
       { path: 'studio', element: <StudioOverview /> },

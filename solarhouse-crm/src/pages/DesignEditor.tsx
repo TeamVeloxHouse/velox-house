@@ -33,6 +33,7 @@ import { DesignCopilot } from '../components/DesignCopilot'
 import { EnergyPanel } from '../components/EnergyPanel'
 import type { Design, DesignObstacle, DesignObstacleKind, DesignPanel, DesignPlane, PanelOrientation, RackingType } from '../store/types'
 import { Dropdown } from '../components/Dropdown'
+import { tidyPolygon, paneQuality, tidyRoofLL } from '../lib/paneShape'
 
 type LatLng = { lat: number; lng: number }
 const uid = (p: string) => `${p}${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`
@@ -174,6 +175,9 @@ export function DesignEditor() {
   const toolRef = useRef(tool); toolRef.current = tool
   const moduleIdRef = useRef(moduleId); moduleIdRef.current = moduleId
   const commitRef = useRef<(planes: DesignPlane[]) => void>(() => {})
+  const selectArrayRef = useRef<(ll: LatLng) => boolean>(() => false)
+  const tidyRef = useRef<(ids?: string[], opts?: { silent?: boolean }) => void>(() => {})
+  const autoTidied = useRef<string | null>(null)
   const [view, setView] = useState<'2d' | '3d'>('2d')
   const [targetKwp, setTargetKwp] = useState<string>('')
   const [oviOpen, setOviOpen] = useState(false)
@@ -284,11 +288,24 @@ export function DesignEditor() {
     let grpMode: 'move' | 'rotate' | null = null
     let grpStart: L.LatLng | null = null, grpRot0 = 0, grpInvalid = false
     let marqStart: L.LatLng | null = null
-    const findPanelAt = (ll: { lat: number; lng: number }) => {
-      const planes = designRef.current?.planes ?? []
-      for (let i = planes.length - 1; i >= 0; i--) { const pans = planes[i].panels ?? []; for (let j = pans.length - 1; j >= 0; j--) if (pointInRing(pans[j].corners, ll)) return { pid: planes[i].id, panel: pans[j] } }
+    let marqPid: string | null = null, marqAdd = false, pendingToggle: string | null = null
+    // Working on a face locks everything else: while a face is selected only ITS panels can be hit, dragged or
+    // box-selected — panels on the neighbouring faces can't be grabbed by accident. Click another face to switch.
+    const findPanelAt = (ll: { lat: number; lng: number }, any = false) => {
+      const planes = designRef.current?.planes ?? [], lock = any ? null : selIdRef.current
+      for (let i = planes.length - 1; i >= 0; i--) { if (lock && planes[i].id !== lock) continue; const pans = planes[i].panels ?? []; for (let j = pans.length - 1; j >= 0; j--) if (pointInRing(pans[j].corners, ll)) return { pid: planes[i].id, panel: pans[j] } }
       return null
     }
+    // the whole array a panel belongs to: every panel on the face joined to it (corners within 30 cm), transitively
+    const arrayOf = (pid: string, panelId: string): string[] => {
+      const pans = designRef.current?.planes.find((x) => x.id === pid)?.panels ?? []
+      const mLat = 110540, mLng = mLngAt(pans[0]?.corners[0].lat ?? 52)
+      const touch = (a: DesignPanel, b: DesignPanel) => a.corners.some((u) => b.corners.some((v) => Math.hypot((u.lat - v.lat) * mLat, (u.lng - v.lng) * mLng) < 0.3))
+      const out = new Set([panelId]), queue = [panelId]
+      while (queue.length) { const cur = pans.find((x) => x.id === queue.pop()); if (!cur) continue; for (const o of pans) if (!out.has(o.id) && touch(cur, o)) { out.add(o.id); queue.push(o.id) } }
+      return [...out]
+    }
+    selectArrayRef.current = (ll: LatLng) => { const hit = findPanelAt(ll, true); if (!hit) return false; setSelId(hit.pid); setSelPanelIds(arrayOf(hit.pid, hit.panel.id)); return true }
     const selectionItems = () => { const ids = new Set(selPanelRef.current); const out: { pid: string; panel: DesignPanel }[] = []; for (const p of designRef.current?.planes ?? []) for (const pn of p.panels ?? []) if (ids.has(pn.id)) out.push({ pid: p.id, panel: pn }); return out }
     const panelsOutside = (ids: Set<string>) => (designRef.current?.planes.flatMap((p) => p.panels ?? []) ?? []).filter((pn) => !ids.has(pn.id))
     // Oriented bounding box of the current selection, aligned to the first panel's angle (so a joined
@@ -347,6 +364,8 @@ export function DesignEditor() {
     m.on('mousedown', (e: any) => {
       setCtx(null)
       if (e.originalEvent?.button === 2) return // right button → context menu, never a drag
+      // a press on the map never starts a browser text/image selection (the blue wash across the page)
+      try { (document.activeElement as HTMLElement | null)?.blur?.(); window.getSelection()?.removeAllRanges() } catch { /* */ }
       if (editPlaneRef.current) return // reshaping a face — geoman owns the pointer
       const t = toolRef.current; const p = planeAt(e.latlng)
       if (t === 'pin') { L.DomEvent.stop(e); onPinRef.current({ lat: e.latlng.lat, lng: e.latlng.lng }); return }
@@ -371,22 +390,26 @@ export function DesignEditor() {
         // 3) a panel under the cursor → select just it, then free-drag it
         const hit = findPanelAt(ll)
         const shift = !!e.originalEvent?.shiftKey
+        const ctrl = !!(e.originalEvent?.ctrlKey || e.originalEvent?.metaKey)
         if (hit) {
-          if (shift) { const cur = selPanelRef.current; setSelPanelIds(cur.includes(hit.panel.id) ? cur.filter((x) => x !== hit.panel.id) : [...cur, hit.panel.id]); setSelId(hit.pid); L.DomEvent.stop(e); return }
+          e.originalEvent?.preventDefault?.()
+          if (ctrl) { const cur = selPanelRef.current; setSelPanelIds(cur.includes(hit.panel.id) ? cur.filter((x) => x !== hit.panel.id) : [...cur, hit.panel.id]); setSelId(hit.pid); L.DomEvent.stop(e); return }
+          if (shift) { pendingToggle = hit.panel.id; marqStart = e.latlng; marqPid = hit.pid; marqAdd = true; m.dragging.disable(); L.DomEvent.stop(e); return }
           setSelPanelIds([hit.panel.id]); setSelId(hit.pid); startGroupWith([{ pid: hit.pid, panelId: hit.panel.id, corners0: hit.panel.corners }], 'move', e.latlng); L.DomEvent.stop(e); return
         }
         // 4) open roof on the face you're working on: a click drops one panel, a drag box-selects panels
         //    (the standard design-tool gesture), and shift-drag paints a block of new panels
         if (p && p.id === selIdRef.current) {
           dragPid = p.id; dragCells = gridFor(p); startCell = nearestCell(dragCells, e.latlng); moved = false
-          if (shift) painting = true
-          else { pendingAdd = { cp: m.latLngToContainerPoint(e.latlng) }; marqStart = e.latlng; setSelPanelIds([]) }
+          if (shift && !(p.panels ?? []).length) painting = true
+          else if (shift) { marqStart = e.latlng; marqPid = p.id; marqAdd = true } // shift-drag on a face with panels = add to the selection
+          else { pendingAdd = { cp: m.latLngToContainerPoint(e.latlng) }; marqStart = e.latlng; marqPid = p.id; marqAdd = false; setSelPanelIds([]) }
           m.dragging.disable(); L.DomEvent.stop(e); return
         }
         // 5) another face → select it (dragging from here box-selects panels); shift-drag box-selects anywhere
         if (p || shift) {
           setSelPanelIds([]); if (p) { setSelId(p.id); setSelObsId(null) }
-          marqStart = e.latlng; m.dragging.disable(); L.DomEvent.stop(e); return
+          marqStart = e.latlng; marqPid = p?.id ?? null; marqAdd = false; m.dragging.disable(); L.DomEvent.stop(e); return
         }
         // 6) open ground → Leaflet pans the map on drag; a plain click clears the selection ('click' below)
       }
@@ -490,14 +513,18 @@ export function DesignEditor() {
         const dragged = Math.abs(a.lat - b.lat) * 110540 > 0.6 || Math.abs(a.lng - b.lng) * mLngAt(a.lat) > 0.6
         if (dragged) {
           const ids: string[] = []; let firstPid: string | null = null
-          for (const p of designRef.current?.planes ?? []) for (const pn of p.panels ?? []) { const c = panelCenter(pn); if (c.lat >= latLo && c.lat <= latHi && c.lng >= lngLo && c.lng <= lngHi) { ids.push(pn.id); if (!firstPid) firstPid = p.id } }
-          setSelPanelIds(ids); if (firstPid) setSelId(firstPid)
-        }
+          const inBox = (v: LatLng) => v.lat >= latLo && v.lat <= latHi && v.lng >= lngLo && v.lng <= lngHi
+          for (const p of designRef.current?.planes ?? []) {
+            if (marqPid && p.id !== marqPid) continue
+            for (const pn of p.panels ?? []) if (inBox(panelCenter(pn)) || pn.corners.some(inBox)) { ids.push(pn.id); if (!firstPid) firstPid = p.id }
+          }
+          setSelPanelIds(marqAdd ? [...new Set([...selPanelRef.current, ...ids])] : ids); if (firstPid) setSelId(firstPid)
+        } else if (pendingToggle) { const cur = selPanelRef.current; setSelPanelIds(cur.includes(pendingToggle) ? cur.filter((x) => x !== pendingToggle) : [...cur, pendingToggle]) }
       }
       ghostLayer.current?.clearLayers(); setGhostN(null); setRotDeg(null)
       startCell = null; dragCells = []; dragPid = null; moveOccupied = []; rotPid = null; rotCenLL = null; rotPanels0 = []
       if (grp) panelCanvas.current?.setDim([])
-      grp = null; grpMode = null; grpStart = null; grpInvalid = false; marqStart = null; painting = false; pendingAdd = null; m.dragging.enable()
+      grp = null; grpMode = null; grpStart = null; grpInvalid = false; marqStart = null; marqPid = null; marqAdd = false; pendingToggle = null; painting = false; pendingAdd = null; m.dragging.enable()
     })
     // A plain click on open ground (off every roof) clears the selection and finishes corner editing.
     m.on('click', (e: any) => {
@@ -613,6 +640,8 @@ export function DesignEditor() {
       if (!c && design.address) { const g = await geocodeLocation(design.address); if (g) { c = { lat: g.lat, lng: g.lng }; act.updateDesign(design.id, { center: c }) } }
       if (c) map.current!.setView([c.lat, c.lng], 20)
       if (c && design.planes.length === 0 && design.scope?.pv !== false) runDetect(c) // no roof needed for a battery/EV-only job
+      // Designs detected before the roof was auto-tidied: straighten + join their faces once on open (undoable)
+      if (design.planes.length > 1 && autoTidied.current !== design.id) { autoTidied.current = design.id; setTimeout(() => tidyRef.current(undefined, { silent: true }), 400) }
       // Pull the real building height from OSM once (free, no key) so the 3D model isn't a guess.
       if (c && design.eaveHeightM == null) {
         fetchBuildingHeight(c).then((h) => { if (h && designRef.current?.id === design.id) { act.updateDesign(design.id, { eaveHeightM: h.eaveM, heightSource: h.source }); act.toast(`Building height ${h.eaveM} m from OpenStreetMap`) } }).catch(() => {})
@@ -639,7 +668,7 @@ export function DesignEditor() {
       poly.on('click', (e) => { L.DomEvent.stopPropagation(e); if (toolRef.current !== 'pan') { setSelId(p.id); setSelObsId(null) } })
       poly.on('mouseover', () => { if (!on) poly.setStyle({ weight: 2.2, fillOpacity: (p.panels?.length ? 0.08 : 0.18) }) })
       poly.on('mouseout', () => poly.setStyle(base as any))
-      poly.on('dblclick', (e) => { L.DomEvent.stop(e); if (toolRef.current === 'select') { setSelId(p.id); setSelPanelIds([]); setEditPlaneId(p.id) } })
+      poly.on('dblclick', (e: any) => { L.DomEvent.stop(e); if (toolRef.current !== 'select') return; if (selectArrayRef.current({ lat: e.latlng.lat, lng: e.latlng.lng })) return; setSelId(p.id); setSelPanelIds([]); setEditPlaneId(p.id) })
       poly.on('pm:edit', () => syncGeometry(p.id, poly))
       // A compact label chip on the face's top edge: permanent while empty, on hover once filled.
       const topPt = p.polygon.reduce((a, v) => (v.lat > a.lat ? v : a), p.polygon[0])
@@ -656,7 +685,7 @@ export function DesignEditor() {
           const shared = design.planes.flatMap((q) => (q.id === p.id ? [] : q.polygon.map((w, wi) => ({ pid: q.id, wi, w })).filter((o) => near(o.w, v, 0.2))))
           const mk = L.marker([v.lat, v.lng], {
             draggable: true, keyboard: false, pmIgnore: true, zIndexOffset: 1000,
-            icon: L.divIcon({ className: '', html: `<div title="Drag to reshape" style="width:13px;height:13px;border-radius:50%;background:#fff;border:2.5px solid #15223B;box-shadow:0 1px 4px rgba(0,0,0,.55);cursor:move"></div>`, iconSize: [13, 13], iconAnchor: [6.5, 6.5] }),
+            icon: L.divIcon({ className: '', html: `<div title="Drag to move · double-click or right-click to delete" style="width:13px;height:13px;border-radius:50%;background:#fff;border:2.5px solid #15223B;box-shadow:0 1px 4px rgba(0,0,0,.55);cursor:move"></div>`, iconSize: [13, 13], iconAnchor: [6.5, 6.5] }),
           } as any)
           mk.on('drag', (e: any) => {
             const ll = e.target.getLatLng()
@@ -680,7 +709,34 @@ export function DesignEditor() {
               return s.length ? moved(q, q.polygon.map((w, i) => (s.some((o) => o.wi === i) ? ll : w))) : q
             })), 0)
           })
+          // delete this corner (a triangle is the minimum) — double-click or right-click it
+          const drop = (e: any) => {
+            L.DomEvent.stop(e)
+            const d = designRef.current; if (!d || p.polygon.length <= 3) return
+            const ring = p.polygon.filter((_, i) => i !== vi)
+            setTimeout(() => commitRef.current(d.planes.map((q) => (q.id === p.id ? { ...q, polygon: ring, areaM2: Math.round(polygonAreaM2(ring)), panels: (q.panels ?? []).filter((pn) => pn.corners.every((c) => pointInRing(ring, c))) } : q))), 0)
+          }
+          mk.on('dblclick', drop); mk.on('contextmenu', drop)
           mk.addTo(lyr)
+        })
+        // a faint handle on the middle of every edge: drag it (or click it) to add a corner there
+        p.polygon.forEach((v, vi) => {
+          const w = p.polygon[(vi + 1) % p.polygon.length]
+          if (Math.hypot((v.lat - w.lat) * mLat, (v.lng - w.lng) * mLng) < 0.8) return
+          const mid = { lat: (v.lat + w.lat) / 2, lng: (v.lng + w.lng) / 2 }
+          const mm = L.marker([mid.lat, mid.lng], {
+            draggable: true, keyboard: false, pmIgnore: true, zIndexOffset: 900,
+            icon: L.divIcon({ className: '', html: `<div title="Drag to add a corner" style="width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.55);border:1.5px solid #15223B;cursor:copy"></div>`, iconSize: [9, 9], iconAnchor: [4.5, 4.5] }),
+          } as any)
+          const insert = (ll: LatLng) => {
+            const d = designRef.current; if (!d) return
+            const ring = [...p.polygon.slice(0, vi + 1), ll, ...p.polygon.slice(vi + 1)]
+            setTimeout(() => commitRef.current(d.planes.map((q) => (q.id === p.id ? { ...q, polygon: ring, areaM2: Math.round(polygonAreaM2(ring)), panels: (q.panels ?? []).filter((pn) => pn.corners.every((c) => pointInRing(ring, c))) } : q))), 0)
+          }
+          mm.on('drag', (e: any) => { const ll = e.target.getLatLng(); poly.setLatLngs([...p.polygon.slice(0, vi + 1).map((x) => [x.lat, x.lng]), [ll.lat, ll.lng], ...p.polygon.slice(vi + 1).map((x) => [x.lat, x.lng])] as [number, number][]) })
+          mm.on('dragend', (e: any) => insert({ lat: e.target.getLatLng().lat, lng: e.target.getLatLng().lng }))
+          mm.on('click', (e: any) => { L.DomEvent.stop(e); insert(mid) })
+          mm.addTo(lyr)
         })
       }
       // Modules go to the photoreal canvas (hidden while a suggested layout is previewed on this plane).
@@ -823,6 +879,7 @@ export function DesignEditor() {
       if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) { if (typing) return; e.preventDefault(); e.shiftKey ? redoRef.current() : undoRef.current(); return }
       if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || e.key === 'Y')) { if (typing) return; e.preventDefault(); redoRef.current(); return }
       if (!typing && (e.key === 'x' || e.key === 'X') && !e.ctrlKey && !e.metaKey) { setSeeThrough((v) => !v); return }
+      if (!typing && (e.key === 't' || e.key === 'T') && !e.ctrlKey && !e.metaKey && selIdRef.current) { tidyRef.current([selIdRef.current]); return }
       // arrow keys nudge the selected panels 5 cm (shift: 25 cm) — fine placement without dragging
       if (!typing && selPanelRef.current.length && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
         e.preventDefault()
@@ -875,7 +932,7 @@ export function DesignEditor() {
         const kept = design.planes.filter((p) => p.source === 'manual')
         const keptObs = (design.obstacles ?? []).filter((o) => o.source === 'manual')
         recordHistory()
-        act.updateDesign(design.id, { planes: [...panes.planes, ...kept], obstacles: keptObs, center: at, roofModel: panes.model })
+        act.updateDesign(design.id, { planes: [...panes.planes, ...kept], obstacles: keptObs, center: at, roofModel: panes.model, detected: { at: Date.now(), message: panes.message, planes: panes.planes.map((p) => ({ polygon: p.polygon, pitchDeg: p.pitchDeg, azimuthDeg: p.azimuthDeg, areaM2: p.areaM2 })) } })
         setSelId(null); setSelPanelIds([])
         act.toast(panes.message + (panes.measured ? '' : ' — set each pane’s pitch on survey'), panes.measured ? 'positive' : undefined)
         return
@@ -935,6 +992,45 @@ export function DesignEditor() {
       act.toast('Traced the outline — split it into roof faces with Draw / Edit vertices', 'positive')
     } catch { act.toast('Could not fetch the outline', 'warning') } finally { setBusy(false); setStatus('') }
   }
+  /** Tidy pane shapes to the roof rules (paneShape.ts): drop near-collinear corners and tiny edges, square the edges
+   *  to the slope, make near-rectangles rectangles. Corners it moves that were shared with a neighbour snap back onto
+   *  that neighbour's corner so the roof stays joined. Modules still fully on the face are kept. */
+  function tidyPlanes(ids?: string[], opts?: { silent?: boolean }) {
+    const d = designRef.current; if (!d || !d.planes.length) return
+    // whole roof (Tidy all / auto): shape rules on every face AND mesh them — shared corners, shared edges
+    if (!ids) {
+      const rings = tidyRoofLL(d.planes)
+      const mLat0 = 110540, mLng0 = 111320 * Math.cos(((d.center?.lat ?? 52) * Math.PI) / 180)
+      const same = (a: LatLng[], b: LatLng[]) => a.length === b.length && a.every((v, i) => Math.hypot((v.lat - b[i].lat) * mLat0, (v.lng - b[i].lng) * mLng0) < 0.02)
+      let removed = 0, changed = 0
+      const next = d.planes.map((p, i) => {
+        const poly = rings[i]; if (!poly || same(poly, p.polygon)) return p
+        removed += Math.max(0, p.polygon.length - poly.length); changed++
+        return { ...p, polygon: poly, areaM2: Math.round(polygonAreaM2(poly)), panels: (p.panels ?? []).filter((pn) => pn.corners.every((c) => pointInRing(poly, c))) }
+      })
+      if (!changed) { if (!opts?.silent) act.toast('Every face is already tidy and joined'); return }
+      commitSnapshot(next)
+      act.toast(`${opts?.silent ? 'Roof tidied automatically' : 'Roof tidied'} · ${changed} face${changed === 1 ? '' : 's'} joined up${removed > 0 ? `, ${removed} stray corner${removed === 1 ? '' : 's'} removed` : ''} — Ctrl+Z to undo`)
+      return
+    }
+    const want = new Set(ids)
+    const mLat = 110540, mLng = 111320 * Math.cos(((d.center?.lat ?? 52) * Math.PI) / 180)
+    const near = (a: LatLng, b: LatLng) => Math.hypot((a.lat - b.lat) * mLat, (a.lng - b.lng) * mLng)
+    let removed = 0, changed = 0
+    const next = d.planes.map((p) => {
+      if (!want.has(p.id) || p.polygon.length < 4) return p
+      let poly = tidyPolygon(p.polygon, p.pitchDeg >= 6 ? p.azimuthDeg : undefined)
+      const others = d.planes.filter((q) => q.id !== p.id).flatMap((q) => q.polygon)
+      poly = poly.map((v) => { let b: LatLng | null = null, bd = 0.4; for (const w of others) { const e = near(v, w); if (e < bd) { bd = e; b = w } } return b ? { ...b } : v })
+      if (poly.length === p.polygon.length && poly.every((v, i) => near(v, p.polygon[i]) < 0.02)) return p
+      removed += p.polygon.length - poly.length; changed++
+      return { ...p, polygon: poly, areaM2: Math.round(polygonAreaM2(poly)), panels: (p.panels ?? []).filter((pn) => pn.corners.every((c) => pointInRing(poly, c))) }
+    })
+    if (!changed) { act.toast(ids?.length === 1 ? 'That face is already tidy' : 'Every face is already tidy'); return }
+    commitSnapshot(next)
+    act.toast(`Tidied ${changed} face${changed === 1 ? '' : 's'}${removed > 0 ? ` · ${removed} stray corner${removed === 1 ? '' : 's'} removed` : ''} — undo with Ctrl+Z`)
+  }
+  tidyRef.current = tidyPlanes
   function clearAllPlanes() {
     const d = designRef.current; if (!d || !d.planes.length) return
     const n = d.planes.length
@@ -1207,7 +1303,7 @@ export function DesignEditor() {
         {/* Canvas + inspector — always mounted, hidden (not unmounted) on info tabs so Leaflet survives */}
         <div className={`absolute inset-0 flex gap-4 px-5 py-4 ${canvasVisible ? '' : 'invisible pointer-events-none'}`}>
           <div className="relative flex-1 min-h-0 rounded-card overflow-hidden border border-border">
-            <div ref={mapEl} className="absolute inset-0" style={{ background: '#0b1220', isolation: 'isolate' }} />
+            <div ref={mapEl} className="absolute inset-0 select-none" style={{ background: '#0b1220', isolation: 'isolate', WebkitUserSelect: 'none', userSelect: 'none', WebkitTapHighlightColor: 'transparent' }} onMouseDown={(e) => { if (e.detail > 1) e.preventDefault() }} />
             {view === '3d' && canvasVisible && <Design3D design={design} adding={adding} selecting={tool === 'select'} moduleId={moduleId} onCommitPanels={(pid, panels) => commitSnapshot(design.planes.map((p) => (p.id === pid ? { ...p, panels, moduleId: p.moduleId ?? moduleId } : p)))} onSelectPanels={(pid, ids) => { if (pid) setSelId(pid); setSelPanelIds(ids) }} onCapture={() => { setView('2d'); setTimeout(() => selectTool('draw'), 80) }} />}
             {canvasVisible && (
               <div className="absolute top-3 left-3 z-[560] flex flex-col gap-1 bg-white/95 backdrop-blur border border-border rounded-control shadow-modal p-1 overflow-y-auto" style={{ maxHeight: 'calc(100% - 24px)' }}>
@@ -1298,6 +1394,7 @@ export function DesignEditor() {
                 <div className="absolute z-[600] min-w-[200px] rounded-[10px] bg-white border border-border shadow-modal p-1" style={{ left: Math.min(ctx.x, (mapEl.current?.clientWidth ?? 800) - 210), top: Math.min(ctx.y, (mapEl.current?.clientHeight ?? 600) - 250) }} onContextMenu={(e) => e.preventDefault()}>
                   {ctx.panelId && nSel > 0 && <>
                     <div className="px-3 pt-1.5 pb-1 text-[10.5px] font-bold uppercase tracking-wide text-muted-3">{nSel} panel{nSel === 1 ? '' : 's'}</div>
+                    {item('Select the whole array', () => selectArrayRef.current(ctx.ll))}
                     {face && item('Select all on this face', () => setSelPanelIds((face.panels ?? []).map((pn) => pn.id)))}
                     {item(`Delete ${nSel === 1 ? 'panel' : `${nSel} panels`}`, deleteSelected, true)}
                     <div className="h-px bg-divider my-1" />
@@ -1306,6 +1403,7 @@ export function DesignEditor() {
                     <div className="px-3 pt-1.5 pb-1 text-[10.5px] font-bold uppercase tracking-wide text-muted-3">{face.name}</div>
                     {item('Fill with panels', () => fillPlane(face.id))}
                     {!!face.panels?.length && item('Clear panels', () => clearPlane(face.id))}
+                    {item('Tidy shape (T)', () => tidyPlanes([face.id]))}
                     {item('Reshape corners', () => { setSelId(face.id); setEditPlaneId(face.id) })}
                     {item('Delete face', () => deletePlane(face.id), true)}
                     <div className="h-px bg-divider my-1" />
@@ -1363,7 +1461,7 @@ export function DesignEditor() {
           {tab === 'array'
             ? <ArrayInspector design={design} sel={sel} moduleId={moduleId} setModuleId={setModuleId} onSelect={setSelId} onUpdate={updatePlane} onFill={fillPlane} onClear={clearPlane} onDelete={deletePlane}
                 targetKwp={targetKwp} setTargetKwp={setTargetKwp} onGoal={runAutoLayout} kwp={kwp} count={totals.count} />
-            : <DesignInspector roofStyle={roofStyleOf(design.roofModel)} onRoofStyle={setRoofStyle} design={design} selId={selId} onSelect={setSelId} onUpdate={updatePlane} onFill={fillPlane} onClear={clearPlane} onDelete={deletePlane} moduleId={moduleId} setModuleId={setModuleId} kwp={kwp} totalPanels={totals.count} annualKwh={totals.kwh} roofArea={roofArea} module={module} onHeight={(m) => act.updateDesign(design.id, { eaveHeightM: m, heightSource: 'manual' })} onPatch={(patch) => act.updateDesign(design.id, patch)} onClearPlanes={clearAllPlanes} onBackToProspect={design.prospectId ? () => nav('/tools/company-search') : undefined} />
+            : <DesignInspector roofStyle={roofStyleOf(design.roofModel)} onRoofStyle={setRoofStyle} design={design} selId={selId} onSelect={setSelId} onUpdate={updatePlane} onFill={fillPlane} onClear={clearPlane} onDelete={deletePlane} moduleId={moduleId} setModuleId={setModuleId} kwp={kwp} totalPanels={totals.count} annualKwh={totals.kwh} roofArea={roofArea} module={module} onHeight={(m) => act.updateDesign(design.id, { eaveHeightM: m, heightSource: 'manual' })} onPatch={(patch) => act.updateDesign(design.id, patch)} onClearPlanes={clearAllPlanes} onTidy={tidyPlanes} onBackToProspect={design.prospectId ? () => nav('/tools/company-search') : undefined} />
           }
         </div>
 
@@ -1383,11 +1481,17 @@ export function DesignEditor() {
 }
 
 /* ── Design-tab inspector: plane list + quick pitch/azimuth + fill ── */
-function DesignInspector({ roofStyle, onRoofStyle, design, selId, onSelect, onUpdate, onFill, onClear, onDelete, moduleId, setModuleId, kwp, totalPanels, annualKwh, roofArea, module, onHeight, onPatch, onClearPlanes, onBackToProspect }: {
+function DesignInspector({ roofStyle, onRoofStyle, design, selId, onSelect, onUpdate, onFill, onClear, onDelete, moduleId, setModuleId, kwp, totalPanels, annualKwh, roofArea, module, onHeight, onPatch, onClearPlanes, onTidy, onBackToProspect }: {
   roofStyle: RoofStyle | null; onRoofStyle: (s: RoofStyle) => void; design: Design; selId: string | null; onSelect: (id: string) => void; onUpdate: (id: string, patch: Partial<DesignPlane>, repack?: boolean) => void
   onFill: (id: string) => void; onClear: (id: string) => void; onDelete: (id: string) => void; moduleId: string; setModuleId: (v: string) => void
-  kwp: number; totalPanels: number; annualKwh: number; roofArea: number; module: Module; onHeight: (m: number) => void; onPatch: (patch: Partial<Design>) => void; onClearPlanes: () => void; onBackToProspect?: () => void
+  kwp: number; totalPanels: number; annualKwh: number; roofArea: number; module: Module; onHeight: (m: number) => void; onPatch: (patch: Partial<Design>) => void; onClearPlanes: () => void; onTidy: (ids?: string[]) => void; onBackToProspect?: () => void
 }) {
+  const quality = new Map(design.planes.map((p) => [p.id, paneQuality(p.polygon, p.pitchDeg >= 6 ? p.azimuthDeg : undefined, design.planes.filter((q) => q.id !== p.id).map((q) => q.polygon))]))
+  // flag a face only when Tidy would actually change it — a warning the button can't clear is just noise
+  const tidied = tidyRoofLL(design.planes)
+  const mL = 111320 * Math.cos(((design.center?.lat ?? 52) * Math.PI) / 180)
+  const wouldTidy = new Set(design.planes.filter((p, i) => { const t = tidied[i]; return !!t && (t.length !== p.polygon.length || t.some((v, k) => Math.hypot((v.lat - p.polygon[k].lat) * 110540, (v.lng - p.polygon[k].lng) * mL) > 0.05)) }).map((p) => p.id))
+  const nIssues = wouldTidy.size
   return (
     <div className="w-[330px] shrink-0 rounded-card bg-surface border border-border flex flex-col overflow-hidden">
       <div className="p-4 border-b border-divider">
@@ -1406,7 +1510,10 @@ function DesignInspector({ roofStyle, onRoofStyle, design, selId, onSelect, onUp
       {design.planes.length > 0 && (
         <div className="px-4 py-2 flex items-center justify-between border-b border-divider">
           <div className="eyebrow text-muted-3">Roof panes · {design.planes.length}</div>
-          <button onClick={onClearPlanes} className="text-[11.5px] font-semibold text-muted-b hover:text-negative inline-flex items-center gap-1"><span className="text-[13px] leading-none">✕</span> Clear all</button>
+          <div className="flex items-center gap-3">
+            <button onClick={() => onTidy()} title="Straighten every face and join them up: stray corners and tiny edges removed, edges squared to the slope, near-miss corners merged into one" className="text-[11.5px] font-semibold text-[#0E7A66] hover:text-ink inline-flex items-center gap-1"><Sparkle size={12} />Tidy all{nIssues > 0 ? ` · ${nIssues}` : ''}</button>
+            <button onClick={onClearPlanes} className="text-[11.5px] font-semibold text-muted-b hover:text-negative inline-flex items-center gap-1"><span className="text-[13px] leading-none">✕</span> Clear all</button>
+          </div>
         </div>
       )}
       {design.roofModel && roofStyle && (
@@ -1441,6 +1548,12 @@ function DesignInspector({ roofStyle, onRoofStyle, design, selId, onSelect, onUp
               <Metric v={`${Math.round(slopedAreaM2(p.areaM2, p.pitchDeg))}`} u="m²" small />
               <Metric v={p.panels?.length ? String(p.panels.length) : '—'} u="panels" small />
             </div>
+            {wouldTidy.has(p.id) && !quality.get(p.id)!.ok && (
+              <div className="mt-2 flex items-center justify-between gap-2 rounded-[8px] bg-[#FFF7E6] border border-[#F5D9A8] px-2.5 py-1.5">
+                <span className="text-[11px] text-[#92400E] leading-snug">{quality.get(p.id)!.corners} corners · {quality.get(p.id)!.summary}</span>
+                <button onClick={(e) => { e.stopPropagation(); onTidy([p.id]) }} className="shrink-0 h-6 px-2 rounded-[6px] bg-white border border-[#F5D9A8] text-[11px] font-semibold text-[#92400E] hover:bg-[#FFF1D6]">Tidy</button>
+              </div>
+            )}
             {p.id === selId && (
               <div className="mt-3 flex flex-col gap-2.5">
                 <Slider label="Pitch" value={p.pitchDeg} min={0} max={60} suffix="°" onChange={(v) => onUpdate(p.id, { pitchDeg: v }, true)} />

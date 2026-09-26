@@ -105,6 +105,7 @@ export const STAGES: Stage[] = [
         { to: '/design/whole-home', icon: Sparkle, label: 'Whole-home', feature: 'studio' },
         { to: '/studio/ev', icon: Bolt, label: 'EV charging', feature: 'studio' },
         { to: '/studio/proposals', icon: Layers, label: 'Proposals', feature: 'studio' },
+        { to: '/design/qa', icon: Target, label: 'Roof QA', feature: 'studio', roles: MD },
         { to: '/studio/pricing', icon: Dollar, label: 'Pricing & finance', feature: 'studio', roles: MD },
         { to: '/products', icon: Box, label: 'Products', roles: MD },
         { to: '/studio/brand', icon: File, label: 'Brand & documents', feature: 'studio', roles: MD },

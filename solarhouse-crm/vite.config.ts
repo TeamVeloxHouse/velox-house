@@ -1,6 +1,6 @@
 import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
-import { googleSolarAnalysis, googleSolarAnalysisAt, geocode, solarLayerBytes } from './server/solarProvider.mjs'
+import { googleSolarAnalysis, googleSolarAnalysisAt, geocode, solarLayerBytes, roofSegmentsAt } from './server/solarProvider.mjs'
 import { mapTileBytes } from './server/mapTilesProvider.mjs'
 import { parcelAt } from './server/parcelProvider.mjs'
 import { pdlSearch } from './server/sourcingProvider.mjs'
@@ -186,6 +186,14 @@ function solarLayerApi(env: Record<string, string>): Plugin {
   return {
     name: 'solar-layer-api',
     configureServer(server) {
+      // every roof segment Google measured (roof QA cross-check)
+      server.middlewares.use('/api/roof-segments', (req, res) => {
+        const u = new URL(req.url || '', 'http://localhost')
+        const lat = Number(u.searchParams.get('lat')), lng = Number(u.searchParams.get('lng'))
+        res.setHeader('Content-Type', 'application/json')
+        if (!key || !isFinite(lat) || !isFinite(lng)) return res.end('[]')
+        roofSegmentsAt(lat, lng, key).then((s) => res.end(JSON.stringify(s))).catch(() => res.end('[]'))
+      })
       server.middlewares.use('/api/solar-layer', (req, res) => {
         const u = new URL(req.url || '', 'http://localhost')
         const lat = Number(u.searchParams.get('lat')), lng = Number(u.searchParams.get('lng'))
