@@ -153,11 +153,42 @@ const ASPECT_AZIMUTH: Record<string, number> = {
 }
 /** Fraction of optimal yield for a given orientation/pitch (matches the Google provider). */
 export function orientationTiltFactor(azimuthDeg: number, pitchDeg: number): number {
+  // Physical, not a rule of thumb: annual light on the roof plane relative to the best roof, from the sun's path
+  // at UK latitude (hourly, 24 days a year) with a UK-typical 50% diffuse / 50% direct split and 20% ground
+  // reflection (isotropic sky). Gives the familiar UK table — S 35° 100%, SE/SW 30° ≈ 95%, E/W 30° ≈ 80–83%,
+  // flat ≈ 87%, N 30° ≈ 60% — where the old formula clamped every off-south roof to 55%.
   const az = ((azimuthDeg % 360) + 360) % 360
-  const off = Math.min(az, 360 - az) // 0 = due south, 180 = due north
-  const azFactor = Math.cos((off * Math.PI) / 180) * 0.42 + 0.58 // south 1.0 → north ~0.16, floored below
-  const pitchFactor = 1 - Math.abs((pitchDeg || 30) - 35) / 120 // best near 35°
-  return Math.max(0.55, Math.min(1, azFactor * pitchFactor))
+  const key = `${Math.round(az / 2) * 2}|${Math.round(Math.max(0, Math.min(90, pitchDeg || 0)))}`
+  const hit = POA_CACHE.get(key); if (hit != null) return hit
+  const [a, t] = key.split('|').map(Number)
+  const v = Math.max(0.05, Math.min(1, poaAnnual(a, t) / poaBest()))
+  POA_CACHE.set(key, v)
+  return v
+}
+const POA_CACHE = new Map<string, number>()
+let POA_BEST = 0
+const poaBest = () => (POA_BEST ||= Math.max(...[25, 30, 35, 40, 45].map((t) => poaAnnual(0, t))))
+/** Relative annual plane-of-array irradiation. azimuth: 0 = due south (this module's convention), tilt in degrees. */
+function poaAnnual(azFromSouth: number, tiltDeg: number, latDeg = 52): number {
+  const R = Math.PI / 180, lat = latDeg * R, beta = tiltDeg * R, gam = azFromSouth * R
+  // plane normal (x = east, y = north, z = up); azimuth measured from south, positive toward west
+  const nx = Math.sin(beta) * -Math.sin(gam), ny = Math.sin(beta) * -Math.cos(gam), nz = Math.cos(beta)
+  let sum = 0
+  for (let d = 0; d < 365; d += 15.2) {
+    const decl = 23.45 * R * Math.sin((2 * Math.PI * (284 + d)) / 365)
+    for (let hr = 4; hr <= 20; hr += 0.5) {
+      const H = (hr - 12) * 15 * R
+      const sinEl = Math.sin(lat) * Math.sin(decl) + Math.cos(lat) * Math.cos(decl) * Math.cos(H)
+      if (sinEl <= 0.02) continue
+      // sun vector
+      const sx = -Math.cos(decl) * Math.sin(H), sy = Math.cos(lat) * Math.sin(decl) - Math.sin(lat) * Math.cos(decl) * Math.cos(H), sz = sinEl
+      const ghi = 1000 * sinEl * Math.exp(-0.2 / sinEl) // clear-sky-ish horizontal
+      const beam = 0.5 * ghi, diff = 0.5 * ghi
+      const cosI = nx * sx + ny * sy + nz * sz
+      sum += (cosI > 0 ? (beam / sinEl) * cosI : 0) + diff * (1 + Math.cos(beta)) / 2 + 0.2 * ghi * (1 - Math.cos(beta)) / 2
+    }
+  }
+  return sum
 }
 
 // ── MGD 003 self-consumption ───────────────────────────────────────────────

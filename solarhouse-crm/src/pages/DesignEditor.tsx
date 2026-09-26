@@ -34,6 +34,7 @@ import { EnergyPanel } from '../components/EnergyPanel'
 import type { Design, DesignObstacle, DesignObstacleKind, DesignPanel, DesignPlane, PanelOrientation, RackingType } from '../store/types'
 import { Dropdown } from '../components/Dropdown'
 import { tidyPolygon, paneQuality, tidyRoofLL } from '../lib/paneShape'
+import { oviDesign, type OviGoal, type OviResult } from '../lib/oviLayout'
 
 type LatLng = { lat: number; lng: number }
 const uid = (p: string) => `${p}${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`
@@ -159,6 +160,9 @@ export function DesignEditor() {
   const [tool, setTool] = useState<Tool>('select')
   const [ghostN, setGhostN] = useState<number | null>(null)
   const [preview, setPreview] = useState<{ planes: DesignPlane[]; removed: Set<string> } | null>(null)
+  // "Preview Ovi's design": the goal picked, and what Ovi decided face by face (drives the review card)
+  const [ovi, setOvi] = useState<{ goal: 'max' | 'kwp' | 'usage'; kwp: number; result: OviResult } | null>(null)
+  const [oviMin, setOviMin] = useState(false)
   const [rotDeg, setRotDeg] = useState<number | null>(null)
   const [hdReady, setHdReady] = useState(false)
   const [hdOn, setHdOn] = useState(true)
@@ -740,7 +744,9 @@ export function DesignEditor() {
         })
       }
       // Modules go to the photoreal canvas (hidden while a suggested layout is previewed on this plane).
-      if (!preview?.planes.some((pp) => pp.id === p.id)) p.panels?.forEach((pn) => canvasPanels.push({ id: pn.id, corners: pn.corners, azimuthDeg: p.azimuthDeg }))
+      const pv = preview?.planes.find((pp) => pp.id === p.id)
+      if (!pv) p.panels?.forEach((pn) => canvasPanels.push({ id: pn.id, corners: pn.corners, azimuthDeg: p.azimuthDeg }))
+      else pv.panels?.forEach((pn) => { if (!preview!.removed.has(pn.id)) canvasPanels.push({ id: pn.id, corners: pn.corners, azimuthDeg: p.azimuthDeg }) }) // the preview looks exactly like the real thing
     })
     panelCanvas.current?.setPanels(canvasPanels)
     panelCanvas.current?.setSelected(selPanelIds)
@@ -787,7 +793,7 @@ export function DesignEditor() {
         if (preview.removed.has(pn.id)) return
         const poly = L.polygon(pn.corners.map((v) => [v.lat, v.lng]) as [number, number][], {
           renderer: panelRenderer.current!, pmIgnore: true, interactive: true,
-          color: '#62E4CC', weight: 1.4, dashArray: '3 2', fillColor: '#15223B', fillOpacity: 0.55,
+          color: '#62E4CC', weight: 1, opacity: 0.5, dashArray: '3 2', fillColor: '#15223B', fillOpacity: 0.01, // click target; the module itself is drawn by the photoreal canvas
         } as any)
         poly.on('click', (e) => { L.DomEvent.stopPropagation(e); setPreview((cur) => (cur ? { ...cur, removed: new Set(cur.removed).add(pn.id) } : cur)) })
         poly.addTo(lyr)
@@ -795,8 +801,20 @@ export function DesignEditor() {
     })
   }, [preview, mapReady])
 
+  /** Ovi designs the roof toward a goal and shows it as a preview — nothing changes until it's approved. */
+  function previewOvi(goalSel: 'max' | 'kwp' | 'usage' = ovi?.goal ?? 'max', kwpSel: number = ovi?.kwp ?? 6) {
+    const d = designRef.current; if (!d || !d.planes.length) { act.toast('Detect or draw the roof first', 'warning'); return }
+    const yieldPerKwp = regionYield(d.address).yield
+    const usage = d.annualConsumptionKwh ?? d.home?.smartMeter?.annualKwh
+    const goal: OviGoal = goalSel === 'kwp' ? { kind: 'target-kwp', kwp: kwpSel } : goalSel === 'usage' && usage ? { kind: 'target-kwh', kwh: usage, yieldPerKwp } : { kind: 'max' }
+    const result = oviDesign(d.planes, module, goal, { obstacles: obsRings(d), setbackM: d.setbackM })
+    setOvi({ goal: goalSel === 'usage' && !usage ? 'max' : goalSel, kwp: kwpSel, result })
+    setPreview({ planes: result.planes, removed: new Set() })
+    setSelPanelIds([])
+  }
   function acceptPreview() {
     if (!preview) return
+    setOvi(null)
     const planes = preview.planes.map((p) => ({ ...p, panels: (p.panels ?? []).filter((pn) => !preview.removed.has(pn.id)) }))
     commitSnapshot(planes)
     const kept = planes.reduce((s, p) => s + (p.panels?.length ?? 0), 0)
@@ -804,6 +822,7 @@ export function DesignEditor() {
     act.toast(`${kept} panel${kept === 1 ? '' : 's'} accepted`, 'positive')
   }
   function discardPreview() {
+    setOvi(null)
     setPreview(null)
   }
 
@@ -1194,14 +1213,16 @@ export function DesignEditor() {
     const mod = moduleById(intent.moduleId ?? moduleId)
     const planesIn = intent.moduleId ? d.planes.map((p) => ({ ...p, moduleId: undefined })) : d.planes
     emit('Packing panels on the best-facing planes…'); await delay(650)
-    const res = autoLayout(planesIn, mod, intent.goal, d.setbackM, { restrict, obstacles: obsRings(d) })
-    commitSnapshot(res.planes)
+    // Ovi's installer-style designer, shown as a preview to approve — nothing changes until it's approved
+    const res = oviDesign(planesIn, mod, intent.goal, { restrict, obstacles: obsRings(d), setbackM: d.setbackM })
+    setOvi({ goal: intent.goal.kind === 'target-kwp' ? 'kwp' : intent.goal.kind === 'target-kwh' ? 'usage' : 'max', kwp: intent.goal.kind === 'target-kwp' ? intent.goal.kwp : 6, result: res })
+    setPreview({ planes: res.planes, removed: new Set() })
     const annual = res.planes.reduce((s, p) => { const m = moduleById(p.moduleId ?? mod.id); const n = p.panels?.length ?? 0; return s + (n * m.watts / 1000) * yieldPerKwp * planeYieldFactor(p) }, 0)
     const used = res.planes.filter((p) => p.panels?.length).length
     if (res.count === 0) return 'No panels fit those constraints — the roofs may be too small or the scope too narrow. Try “maximum coverage”, or widen the setback.'
     let out = `${aiMessage ? aiMessage + '\n' : ''}Placed ${res.count} panels — ${res.kwp} kWp across ${used} plane${used === 1 ? '' : 's'} (~${Math.round(annual).toLocaleString()} kWh/yr).`
     if (intent.billKwh) out += `\nThat covers ~${Math.round((annual / intent.billKwh) * 100)}% of the ${intent.billKwh.toLocaleString()} kWh bill.`
-    out += '\nOpen the Array tab to fine-tune racking, spacing or the module.'
+    out += '\nIt’s on the roof as a preview — approve it there, or tell me what to change.'
     return out
   }
   // One entry point for the top-left tool rail. Cleans up the mode we're leaving, arms the next one.
@@ -1321,7 +1342,7 @@ export function DesignEditor() {
                 </>}
                 <span className="h-px mx-1.5 my-0.5 bg-divider" />
                 <ToolBtn on={busy} onClick={() => runDetect()} icon={<Radar size={15} />} label="Detect roof — outline + panes" />
-                <ToolBtn on={false} onClick={() => runAutoLayout({ kind: 'max' })} icon={<Grid size={15} />} label="Auto-layout — fill the best panes" />
+                <ToolBtn on={!!ovi} onClick={() => previewOvi()} icon={<Grid size={15} />} label="Preview Ovi's design" />
                 <ToolBtn on={oviOpen} onClick={() => setOviOpen(true)} icon={<Sparkle size={15} />} label="Design with Ovi — describe the system you want" />
                 {totals.count > 0 && <ToolBtn on={false} onClick={clearAllPanels} icon={<EraseIcon />} label="Clear all panels" />}
                 <span className="h-px mx-1.5 my-0.5 bg-divider" />
@@ -1332,6 +1353,7 @@ export function DesignEditor() {
             <div className={`absolute z-[550] flex items-center gap-1 bg-white/95 backdrop-blur border border-border rounded-control shadow-modal p-1 ${view === '3d' ? 'bottom-3 right-3' : 'top-3 right-3'}`}>
               {view === '2d' && (
                 <>
+                  <button onClick={() => (ovi ? discardPreview() : previewOvi())} title="Ovi designs the roof the way an installer would — see it first, approve it if you like it" className="h-8 px-2.5 rounded-[8px] text-[12px] font-bold inline-flex items-center gap-1 text-[#15223B]" style={{ background: '#62E4CC' }}><Sparkle size={12} />{ovi ? 'Close preview' : 'Preview Ovi’s design'}</button>
                   {hdReady && <button onClick={() => setHdOn((v) => !v)} title={hdOn ? 'High-res Google aerial — on' : 'Show high-res Google aerial'} className={`h-8 px-2.5 rounded-[8px] text-[12px] font-bold inline-flex items-center gap-1 ${hdOn ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={hdOn ? { background: '#15223B' } : undefined}><Sun size={12} />HD</button>}
                   <button onClick={() => setBoundaryOn((v) => !v)} title="Land-ownership boundary (HMLR INSPIRE, else building footprint)" className={`h-8 px-2.5 rounded-[8px] text-[12px] font-bold inline-flex items-center gap-1 ${boundaryOn ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={boundaryOn ? { background: '#15223B' } : undefined}><Target size={12} />Plot</button>
                   <button onClick={() => setSeeThrough((v) => !v)} title="See-through panels (X) — see the roof under the array" className={`h-8 px-2.5 rounded-[8px] text-[12px] font-bold inline-flex items-center gap-1 ${seeThrough ? 'text-white' : 'text-ink-3 hover:bg-control'}`} style={seeThrough ? { background: '#15223B' } : undefined}><Grid size={12} />See-through</button>
@@ -1346,7 +1368,54 @@ export function DesignEditor() {
             {busy && (
               <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[500] h-9 px-4 rounded-full bg-black/75 text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal"><span className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />{status}</div>
             )}
-            {preview && (() => {
+            {preview && ovi && (() => {
+              const kept = preview.planes.reduce((s, p) => s + (p.panels ?? []).filter((pn) => !preview.removed.has(pn.id)).length, 0)
+              const y = regionYield(design.address).yield
+              const kwh = preview.planes.reduce((s, p) => s + (p.panels ?? []).filter((pn) => !preview.removed.has(pn.id)).length * (module.watts / 1000) * y * planeYieldFactor(p), 0)
+              const usage = design.annualConsumptionKwh ?? design.home?.smartMeter?.annualKwh
+              const goalBtn = (g: 'max' | 'kwp' | 'usage', label: string, disabled = false) => (
+                <button disabled={disabled} onClick={() => previewOvi(g)} title={disabled ? 'Add the home’s annual usage on the Home & usage tab first' : undefined} className={`h-7 px-2.5 rounded-[6px] text-[12px] font-semibold ${ovi.goal === g ? 'bg-white text-ink font-bold shadow-sm' : 'text-muted-b hover:text-ink-3'} disabled:opacity-40`}>{label}</button>
+              )
+              return (
+                <div className="absolute top-16 right-3 z-[520] w-[310px] max-h-[calc(100%-5rem)] overflow-y-auto rounded-[14px] bg-white shadow-modal border border-border">
+                  <div className="px-4 pt-3.5 pb-3 border-b border-divider">
+                    <div className="flex items-center gap-2"><span className="w-7 h-7 rounded-[8px] flex items-center justify-center text-[#15223B]" style={{ background: '#62E4CC' }}><Sparkle size={14} /></span><div className="text-[14px] font-bold text-ink">Ovi’s design</div><span className="text-[11px] text-muted-b">{oviMin ? `· ${kept} panels · ${kwpOf(kept, module.watts)} kWp` : 'preview'}</span><button onClick={() => setOviMin((v) => !v)} title={oviMin ? 'Show details' : 'Minimise — see the roof'} className="ml-auto h-6 w-6 rounded-[6px] text-muted-b hover:bg-control text-[14px] leading-none">{oviMin ? '▾' : '▴'}</button></div>
+                    {!oviMin && <>
+                    <div className="mt-2.5 flex p-0.5 rounded-[8px] bg-[#E9EDF2] border border-[#DDE3EA] w-fit">
+                      {goalBtn('max', 'Best fit')}{goalBtn('kwp', 'Target kWp')}{goalBtn('usage', 'Match usage', !usage)}
+                    </div>
+                    {ovi.goal === 'kwp' && (
+                      <label className="mt-2 flex items-center gap-2 text-[12px] text-muted-b">Size
+                        <input type="number" min={1} max={30} step={0.5} value={ovi.kwp} onChange={(e) => { const v = Number(e.target.value); if (v > 0) previewOvi('kwp', v) }} className="w-20 h-7 px-2 rounded-control border border-input-border text-[12.5px] text-ink outline-none focus:border-accent" />kWp
+                        <span className="ml-1 text-[11px]">≈ {Math.round((ovi.kwp * 1000) / module.watts)} × {module.watts} W</span>
+                      </label>
+                    )}
+                    {ovi.goal === 'usage' && usage ? <div className="mt-2 text-[11.5px] text-muted-b">Sized to generate the home’s {usage.toLocaleString()} kWh a year.</div> : null}
+                    </>}
+                  </div>
+                  {!oviMin && <div className="px-4 py-3 grid grid-cols-3 gap-2 border-b border-divider text-center">
+                    <div><div className="text-[18px] font-bold text-ink leading-none">{kept}</div><div className="text-[10.5px] text-muted-b mt-1">panels</div></div>
+                    <div><div className="text-[18px] font-bold text-ink leading-none">{kwpOf(kept, module.watts)}</div><div className="text-[10.5px] text-muted-b mt-1">kWp</div></div>
+                    <div><div className="text-[18px] font-bold text-ink leading-none">{Math.round(kwh).toLocaleString()}</div><div className="text-[10.5px] text-muted-b mt-1">kWh / yr</div></div>
+                  </div>}
+                  {!oviMin && <div className="px-4 py-2.5 flex flex-col gap-1.5">
+                    <div className="text-[10.5px] font-bold uppercase tracking-wide text-muted-3">Face by face</div>
+                    {ovi.result.notes.map((n) => (
+                      <div key={n.planeId} className="flex items-start gap-2 text-[12px] leading-snug">
+                        <span className={`mt-[3px] w-2 h-2 rounded-full shrink-0 ${n.used ? 'bg-[#0E9A82]' : 'bg-[#C9D1DB]'}`} />
+                        <div><b className="text-ink-2">{n.name}</b> <span className="text-muted-b">— {n.text}</span></div>
+                      </div>
+                    ))}
+                    <div className="text-[11px] text-muted-2 mt-1">Click any panel on the map to leave it out.</div>
+                  </div>}
+                  <div className="px-4 pb-3.5 pt-1 flex items-center gap-2">
+                    <Button onClick={discardPreview}>Discard</Button>
+                    <Button variant="primary" icon={<Check size={15} />} onClick={acceptPreview} className={`flex-1 justify-center ${kept === 0 ? 'opacity-40 pointer-events-none' : ''}`}>Approve Ovi’s design</Button>
+                  </div>
+                </div>
+              )
+            })()}
+            {preview && !ovi && (() => {
               const kept = preview.planes.reduce((s, p) => s + (p.panels ?? []).filter((pn) => !preview.removed.has(pn.id)).length, 0)
               return (
                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[500] bg-surface rounded-card shadow-modal border border-border px-4 py-3 flex items-center gap-3">

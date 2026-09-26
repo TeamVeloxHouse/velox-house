@@ -24,7 +24,7 @@ const DEG = Math.PI / 180
 const uid = (p: string) => `${p}${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`
 
 type XY = { x: number; y: number }
-function projector(origin: LatLng) {
+export function projector(origin: LatLng) {
   const mPerLat = 110540
   const mPerLng = 111320 * Math.cos(origin.lat * DEG)
   return {
@@ -32,10 +32,10 @@ function projector(origin: LatLng) {
     toLL: (p: XY): LatLng => ({ lat: origin.lat + p.y / mPerLat, lng: origin.lng + p.x / mPerLng }),
   }
 }
-const rot = (p: XY, a: number): XY => ({ x: p.x * Math.cos(a) + p.y * Math.sin(a), y: -p.x * Math.sin(a) + p.y * Math.cos(a) })
-const unrot = (p: XY, a: number): XY => ({ x: p.x * Math.cos(a) - p.y * Math.sin(a), y: p.x * Math.sin(a) + p.y * Math.cos(a) })
+export const rot = (p: XY, a: number): XY => ({ x: p.x * Math.cos(a) + p.y * Math.sin(a), y: -p.x * Math.sin(a) + p.y * Math.cos(a) })
+export const unrot = (p: XY, a: number): XY => ({ x: p.x * Math.cos(a) - p.y * Math.sin(a), y: p.x * Math.sin(a) + p.y * Math.cos(a) })
 
-function pointInPoly(pt: XY, poly: XY[]): boolean {
+export function pointInPoly(pt: XY, poly: XY[]): boolean {
   let inside = false
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
     if ((poly[i].y > pt.y) !== (poly[j].y > pt.y) && pt.x < ((poly[j].x - poly[i].x) * (pt.y - poly[i].y)) / (poly[j].y - poly[i].y) + poly[i].x) inside = !inside
@@ -48,14 +48,14 @@ function segCross(a: XY, b: XY, c: XY, d: XY): boolean {
   const o = (p: XY, q: XY, r: XY) => Math.sign((q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x))
   return o(a, b, c) !== o(a, b, d) && o(c, d, a) !== o(c, d, b)
 }
-function polysOverlap(A: XY[], B: XY[]): boolean {
+export function polysOverlap(A: XY[], B: XY[]): boolean {
   for (const p of A) if (pointInPoly(p, B)) return true
   for (const p of B) if (pointInPoly(p, A)) return true
   for (let i = 0; i < A.length; i++) { const a = A[i], b = A[(i + 1) % A.length]; for (let j = 0; j < B.length; j++) { if (segCross(a, b, B[j], B[(j + 1) % B.length])) return true } }
   return false
 }
 /** Bearing (rad) of the polygon's longest edge — the grid aligns to this so panels follow the roof. */
-function dominantAngle(poly: XY[]): number {
+export function dominantAngle(poly: XY[]): number {
   let best = 0, blen = -1
   for (let i = 0; i < poly.length; i++) {
     const a = poly[i], b = poly[(i + 1) % poly.length]
@@ -69,7 +69,7 @@ const signedArea = (poly: XY[]) => { let a = 0; for (let i = 0; i < poly.length;
 /** Inset a polygon inward by d (angle-bisector offset) — the panel-safe area inside the fire setback.
  *  Robust: the per-vertex offset is clamped, and if the inset collapses/inverts (small or spiky faces)
  *  we return the original polygon so those faces still take panels. */
-function insetXY(poly: XY[], d: number): XY[] {
+export function insetXY(poly: XY[], d: number): XY[] {
   const n = poly.length; if (n < 3) return poly
   const orig = signedArea(poly); const s = orig > 0 ? 1 : -1
   const nrm = (vx: number, vy: number) => { const l = Math.hypot(vx, vy) || 1; return { x: vx / l, y: vy / l } }

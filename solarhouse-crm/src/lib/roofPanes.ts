@@ -484,6 +484,34 @@ export function panesFromHeights(dsm: DsmData, outline: XY[]): { ring: XY[]; pla
     const pl = solve(S); if (pl && n * res * res >= 4 && width >= 1.1 && Math.atan(Math.hypot(pl.a, pl.b)) / DEG <= 52) planes.push({ pix, pl })
   }
   if (!planes.length) return null
+  // ONE face, several pieces: a rooflight, vent or valley can split a slope so the pieces don't touch pixel to
+  // pixel. Pieces lying on the SAME plane (facing within 10°, heights agreeing within 25 cm at each other's
+  // centre) and within 1.5 m of each other are one roof face — merge them.
+  {
+    const cen = planes.map((p) => { let x = 0, y = 0; for (const i of p.pix) { x += ex(i % W); y += no((i / W) | 0) } return { x: x / p.pix.length, y: y / p.pix.length } })
+    const nrmOf = (pl: HPlane) => { const l = Math.hypot(pl.a, pl.b, 1); return [-pl.a / l, -pl.b / l, 1 / l] }
+    const samp = planes.map((p) => { const st = Math.max(1, (p.pix.length / 250) | 0), o: XY[] = []; for (let k = 0; k < p.pix.length; k += st) { const i = p.pix[k]; o.push({ x: ex(i % W), y: no((i / W) | 0) }) } return o })
+    const par = planes.map((_, i) => i)
+    const fnd = (i: number): number => (par[i] === i ? i : (par[i] = fnd(par[i])))
+    for (let i = 0; i < planes.length; i++) for (let j = i + 1; j < planes.length; j++) {
+      const A = planes[i].pl, B = planes[j].pl, u = nrmOf(A), v = nrmOf(B)
+      if (u[0] * v[0] + u[1] * v[1] + u[2] * v[2] < Math.cos((10 * Math.PI) / 180)) continue
+      const at = (P: HPlane, c: XY) => P.a * c.x + P.b * c.y + P.c
+      if (Math.abs(at(A, cen[j]) - at(B, cen[j])) > 0.25 || Math.abs(at(A, cen[i]) - at(B, cen[i])) > 0.25) continue
+      let near = false
+      for (const p of samp[i]) { for (const q of samp[j]) if (Math.abs(p.x - q.x) < 1.5 && Math.hypot(p.x - q.x, p.y - q.y) < 1.5) { near = true; break } if (near) break }
+      if (near) par[fnd(i)] = fnd(j)
+    }
+    const merged = new Map<number, number[]>()
+    planes.forEach((p, i) => { const g = fnd(i); if (!merged.has(g)) merged.set(g, []); merged.get(g)!.push(...p.pix) })
+    if (merged.size < planes.length) {
+      planes = [...merged.values()].map((pix) => {
+        const S = new Array(9).fill(0)
+        for (const i of pix) { const x = ex(i % W), y = no((i / W) | 0), z = hs[i]; S[0] += x * x; S[1] += x * y; S[2] += x; S[3] += y * y; S[4] += y; S[5] += 1; S[6] += x * z; S[7] += y * z; S[8] += z }
+        return { pix, pl: solve(S)! }
+      }).filter((p) => p.pl)
+    }
+  }
   // relabel, then give leftover roof pixels to whichever neighbouring plane explains them best
   label.fill(-1); planes.forEach((p, k) => p.pix.forEach((i) => (label[i] = k)))
   for (let pass = 0; pass < 40; pass++) {
