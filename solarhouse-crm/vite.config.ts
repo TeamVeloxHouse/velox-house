@@ -11,6 +11,7 @@ import { placesSearch, placesRadiusScan, placesAutocomplete } from './server/pla
 import { pvgisHourly, pvgisMonthly } from './server/pvgisProvider.mjs'
 import { callOvi } from './server/oviProvider.mjs'
 import { mapboxGeocode, mapboxReverse, mapboxSuggest } from './server/mapboxProvider.mjs'
+import { postcodeHomes, buildingsAround } from './server/postcodeHomesProvider.mjs'
 
 /** Dev-only backend for the real Ovi operator — keeps the Anthropic key server-side.
  *  Set ANTHROPIC_API_KEY in .env to go live; without it, /api/ovi returns
@@ -334,6 +335,30 @@ function geocodeApi(env: Record<string, string>): Plugin {
           }
           res.end(JSON.stringify({ fallback: true, reason: reasons.join(' | ') || 'no-key' }))
         })
+      })
+      // Postcode → the homes in it (OSM buildings + an address each), for the "pick the house" step.
+      let googleOk = true
+      const reverseAny = async (lat: number, lng: number) => {
+        if (key && googleOk) {
+          try { return await googleReverse(lat, lng) } catch (e) { if (/REQUEST_DENIED|billing/i.test(String(e))) googleOk = false }
+        }
+        return mapboxReverse(lat, lng, mbToken)
+      }
+      server.middlewares.use('/api/postcode-homes', async (req, res) => {
+        res.setHeader('Content-Type', 'application/json')
+        const pc = new URL(req.url || '', 'http://x').searchParams.get('pc') || ''
+        try { res.end(JSON.stringify(await postcodeHomes(pc, reverseAny))) }
+        catch (e) { res.end(JSON.stringify({ ok: false, reason: String((e as Error)?.message || e) })) }
+      })
+      // OSM building footprints around a point — server-side so every caller shares the retry,
+      // the mirror fallback and the User-Agent Overpass now insists on.
+      server.middlewares.use('/api/osm-buildings', async (req, res) => {
+        res.setHeader('Content-Type', 'application/json')
+        const u = new URL(req.url || '', 'http://x').searchParams
+        const lat = +(u.get('lat') || NaN), lng = +(u.get('lng') || NaN), r = Math.min(400, +(u.get('r') || 70))
+        if (!isFinite(lat) || !isFinite(lng)) { res.statusCode = 400; return res.end('{}') }
+        const els = await buildingsAround(lat, lng, r).catch(() => [])
+        res.end(JSON.stringify({ buildings: els.map((e: { id: number; tags?: Record<string, string>; geometry: { lat: number; lon: number }[] }) => ({ id: e.id, tags: e.tags || {}, ring: e.geometry.map((g) => ({ lat: g.lat, lng: g.lon })) })) }))
       })
     },
   }

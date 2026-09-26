@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { TopBar } from '../components/TopBar'
 import { PageBody } from '../components/Page'
@@ -74,6 +74,7 @@ export function DesignHome() {
             <Button variant="primary" icon={<Plus size={16} />} onClick={createFromAddress} className={creating ? 'opacity-60 pointer-events-none' : ''}>{creating ? 'Creating…' : 'New design'}</Button>
             <Button variant="secondary" icon={<Sun size={16} />} onClick={createDemo}>Demo roof</Button>
           </div>
+          <PostcodeHomes query={addr} onPick={(h) => { setAddr(h.address); setPin(h.center) }} picked={pin} />
           {startable.length > 0 && (
             <div className="mt-4">
               <div className="eyebrow text-[10px] text-muted-3 mb-2">Or start from a prospect</div>
@@ -105,6 +106,59 @@ export function DesignHome() {
         )}
       </PageBody>
     </>
+  )
+}
+
+type PostcodeHome = { id: string; label: string; number: string; street: string; address: string; center: { lat: number; lng: number }; areaM2: number }
+const POSTCODE_RE = /^\s*([A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2})\s*(?:,.*)?$/i // "CF14 2AG" or a picked "CF14 2AG, Cardiff, UK"
+
+/** Typed just a postcode? List every home in it (house number first) so you pick the exact roof. */
+function PostcodeHomes({ query, onPick, picked }: { query: string; onPick: (h: PostcodeHome) => void; picked?: { lat: number; lng: number } }) {
+  const pc = query.match(POSTCODE_RE)?.[1]?.toUpperCase() ?? null
+  const [state, setState] = useState<{ pc: string; loading: boolean; homes: PostcodeHome[]; reason?: string; district?: string } | null>(null)
+  const [filter, setFilter] = useState('')
+  useEffect(() => {
+    if (!pc) return
+    let dead = false
+    setState({ pc, loading: true, homes: [] }); setFilter('')
+    fetch(`/api/postcode-homes?pc=${encodeURIComponent(pc)}`).then((r) => r.json())
+      .then((j) => { if (!dead) setState({ pc, loading: false, homes: j.homes ?? [], reason: j.ok ? undefined : j.reason, district: j.district }) })
+      .catch(() => { if (!dead) setState({ pc, loading: false, homes: [], reason: 'Could not reach the address lookup' }) })
+    return () => { dead = true }
+  }, [pc])
+  // keep showing the list after a pick (the input then holds the full address, not the postcode)
+  if (!state || (!pc && !picked)) return null
+  const shown = state.homes.filter((h) => !filter || h.label.toLowerCase().includes(filter.toLowerCase()))
+  const streets = [...new Set(shown.map((h) => h.street))]
+  return (
+    <div className="mt-4 rounded-card bg-surface border border-border p-4">
+      <div className="flex items-center gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="text-[13.5px] font-bold text-ink">Which home in {state.pc}?</div>
+          <div className="text-[12px] text-muted-b">{state.loading ? 'Finding every building in the postcode and its address…' : state.reason ? state.reason : `${state.homes.length} home${state.homes.length === 1 ? '' : 's'}${state.district ? ` · ${state.district}` : ''} — picking one pins the design on that exact roof`}</div>
+        </div>
+        {state.homes.length > 8 && <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="House number or name…" className="h-8 w-[180px] px-2.5 rounded-control border border-input-border bg-white text-[12.5px] outline-none focus:border-accent" />}
+      </div>
+      {state.loading && <div className="mt-3 grid grid-cols-6 gap-2">{Array.from({ length: 12 }, (_, i) => <div key={i} className="h-[52px] rounded-[10px] bg-control animate-pulse" />)}</div>}
+      {!state.loading && streets.map((st) => (
+        <div key={st} className="mt-3">
+          {streets.length > 1 && <div className="eyebrow text-[10px] text-muted-3 mb-1.5">{st || 'Named homes'}</div>}
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(112px,1fr))] gap-2">
+            {shown.filter((h) => h.street === st).map((h) => {
+              const on = !!picked && Math.abs(picked.lat - h.center.lat) < 1e-7 && Math.abs(picked.lng - h.center.lng) < 1e-7
+              return (
+                <button key={h.id} onClick={() => onPick(h)} title={h.address}
+                  className={`text-left rounded-[10px] border px-3 py-2 transition-colors ${on ? 'border-[#15223B] bg-[#15223B] text-white' : 'border-border bg-white hover:border-[#62E4CC]'}`}>
+                  <div className={`text-[15px] font-bold leading-tight truncate ${on ? 'text-white' : 'text-ink'}`}>{h.number}</div>
+                  <div className={`text-[10.5px] truncate ${on ? 'text-[#62E4CC]' : 'text-muted-b'}`}>{h.street || h.label} · {h.areaM2} m²</div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+      {!state.loading && !state.reason && !state.homes.length && <div className="mt-2 text-[12px] text-muted-b">No mapped homes found in this postcode — type the full address instead.</div>}
+    </div>
   )
 }
 

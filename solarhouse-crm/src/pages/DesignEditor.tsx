@@ -18,6 +18,7 @@ import { detectPlanes, slopedAreaM2, totalRoofArea, compass, polygonAreaM2 } fro
 import { MODULES, moduleById, packWithSettings, autoLayout, kwpOf, planeSolarFactor, planeQuality, planeGrid, type Module, type LayoutGoal, type GridCell } from '../lib/panels'
 import { regionYield, fetchBuildingHeight, fetchBuildingFootprint } from '../lib/solar'
 import { fetchRgbOverlay, fetchBuildingOutline } from '../lib/dsm'
+import { detectRoofPanes, resplitRoof, roofStyleOf, ASSUMED_PITCH, type RoofStyle } from '../lib/roofPanes'
 import { parseDesignBrief } from '../lib/oviDesign'
 import { designIntentFromClaude } from '../lib/oviDesignAI'
 import { Design3D } from '../components/Design3D'
@@ -133,6 +134,12 @@ export function DesignEditor() {
   const selObsRef = useRef<string | null>(null); selObsRef.current = selObsId
   const [selPanelIds, setSelPanelIds] = useState<string[]>([])
   const selPanelRef = useRef<string[]>([]); selPanelRef.current = selPanelIds
+  const selIdRef = useRef<string | null>(null); selIdRef.current = selId
+  // Corner editing for ONE face (double-click it) — replaces the old global "Edit vertices" mode.
+  const [editPlaneId, setEditPlaneId] = useState<string | null>(null)
+  const editPlaneRef = useRef<string | null>(null); editPlaneRef.current = editPlaneId
+  // Right-click menu: what was under the pointer, and where to draw the menu.
+  const [ctx, setCtx] = useState<{ x: number; y: number; ll: LatLng; pid?: string; panelId?: string } | null>(null)
   const [tool, setTool] = useState<Tool>('select')
   const [ghostN, setGhostN] = useState<number | null>(null)
   const [preview, setPreview] = useState<{ planes: DesignPlane[]; removed: Set<string> } | null>(null)
@@ -161,7 +168,7 @@ export function DesignEditor() {
   // ── Map init (once) ──
   useEffect(() => {
     if (map.current || !mapEl.current) return
-    const m = L.map(mapEl.current, { center: [52.6, -1.9], zoom: 6, maxZoom: 23, zoomControl: false, attributionControl: false })
+    const m = L.map(mapEl.current, { center: [52.6, -1.9], zoom: 6, maxZoom: 23, zoomControl: false, attributionControl: false, doubleClickZoom: false })
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 23, maxNativeZoom: 19 }).addTo(m)
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', { maxZoom: 23, maxNativeZoom: 19, opacity: 0.9 }).addTo(m)
     panelRenderer.current = L.canvas({ padding: 0.5 })
@@ -319,7 +326,11 @@ export function DesignEditor() {
       drawGhostSet(sets, grpInvalid ? 'bad' : 'move')
     }
 
+    let painting = false // select tool: placing panels on the already-selected face (click = one, drag = a block)
     m.on('mousedown', (e: any) => {
+      setCtx(null)
+      if (e.originalEvent?.button === 2) return // right button → context menu, never a drag
+      if (editPlaneRef.current) return // reshaping a face — geoman owns the pointer
       const t = toolRef.current; const p = planeAt(e.latlng)
       if (t === 'pin') { L.DomEvent.stop(e); onPinRef.current({ lat: e.latlng.lat, lng: e.latlng.lng }); return }
       if (t === 'note') { L.DomEvent.stop(e); onNoteRef.current({ lat: e.latlng.lat, lng: e.latlng.lng }); return }
@@ -342,10 +353,22 @@ export function DesignEditor() {
         if (box && selPanelRef.current.length && pointInRing(box.corners, ll)) { startGroup('move', e.latlng); L.DomEvent.stop(e); return }
         // 3) a panel under the cursor → select just it, then free-drag it
         const hit = findPanelAt(ll)
-        if (hit) { setSelPanelIds([hit.panel.id]); setSelId(hit.pid); startGroupWith([{ pid: hit.pid, panelId: hit.panel.id, corners0: hit.panel.corners }], 'move', e.latlng); L.DomEvent.stop(e); return }
-        // 4) empty → clear the selection and start a marquee box-select
-        setSelPanelIds([]); if (p) setSelId(p.id)
-        marqStart = e.latlng; m.dragging.disable(); L.DomEvent.stop(e)
+        const shift = !!e.originalEvent?.shiftKey
+        if (hit) {
+          if (shift) { const cur = selPanelRef.current; setSelPanelIds(cur.includes(hit.panel.id) ? cur.filter((x) => x !== hit.panel.id) : [...cur, hit.panel.id]); setSelId(hit.pid); L.DomEvent.stop(e); return }
+          setSelPanelIds([hit.panel.id]); setSelId(hit.pid); startGroupWith([{ pid: hit.pid, panelId: hit.panel.id, corners0: hit.panel.corners }], 'move', e.latlng); L.DomEvent.stop(e); return
+        }
+        // 4) open roof on the face you're working on → place panels: click drops one, drag paints a block
+        if (p && !shift && p.id === selIdRef.current) {
+          dragPid = p.id; dragCells = gridFor(p); startCell = nearestCell(dragCells, e.latlng); moved = false; painting = true
+          setSelPanelIds([]); m.dragging.disable(); L.DomEvent.stop(e); return
+        }
+        // 5) another face → select it (dragging from here box-selects panels); shift-drag box-selects anywhere
+        if (p || shift) {
+          setSelPanelIds([]); if (p) { setSelId(p.id); setSelObsId(null) }
+          marqStart = e.latlng; m.dragging.disable(); L.DomEvent.stop(e); return
+        }
+        // 6) open ground → Leaflet pans the map on drag; a plain click clears the selection ('click' below)
       }
     })
     m.on('mousemove', (e: any) => {
@@ -356,10 +379,12 @@ export function DesignEditor() {
         drawGhostSet(rotPanels0.map((pn) => rotateCorners(pn.corners, rotCenLL!, delta)), 'move')
         return
       }
-      if ((t === 'add' || t === 'remove') && dragPid && startCell) {
+      if ((t === 'add' || t === 'remove' || painting) && dragPid && startCell) {
         const cur = nearestCell(dragCells, e.latlng); if (!cur) return
         if (cur.row !== startCell.row || cur.col !== startCell.col) moved = true
-        drawGhosts(cellBlock(dragCells, startCell, cur), t === 'remove' ? 'remove' : 'add'); setGhostN(cellBlock(dragCells, startCell, cur).length); return
+        const pl = designRef.current?.planes.find((x) => x.id === dragPid)
+        const block = cellBlock(dragCells, startCell, cur).filter((c) => t === 'remove' || !pl || !hasPanelAt(pl, c))
+        drawGhosts(block, t === 'remove' ? 'remove' : 'add'); setGhostN(block.length); return
       }
       if (t === 'select' && grpMode && grp) {
         if (grpMode === 'move' && grpStart) { const [sd1, sd2] = snapMove(e.latlng.lat - grpStart.lat, e.latlng.lng - grpStart.lng); drawGroupGhost((c) => translateCorners(c, sd1, sd2), true) }
@@ -372,11 +397,18 @@ export function DesignEditor() {
         L.polygon([[a.lat, a.lng], [a.lat, b.lng], [b.lat, b.lng], [b.lat, a.lng]] as [number, number][], { renderer: panelRenderer.current!, pmIgnore: true, interactive: false, color: '#159C86', weight: 1.4, dashArray: '5 3', fillColor: '#159C86', fillOpacity: 0.08 } as any).addTo(g)
         return
       }
-      if (t === 'select' && !grpMode && !marqStart) { // idle hover → show a rotate cursor over nodes/handle, move cursor over the selection/panels
+      if (t === 'select' && !grpMode && !marqStart) {
+        // Idle hover says what a click will do: rotate (selection corners/handle), move (a panel),
+        // add (open roof on the face you're working on — a ghost module shows where it lands),
+        // select (any other face), or pan (open ground).
+        if (editPlaneRef.current) return
         const ll = { lat: e.latlng.lat, lng: e.latlng.lng }, box = selectionBox(); let cur = ''
         if (box) { const cp = m.latLngToContainerPoint(e.latlng); if (box.corners.some((c) => cp.distanceTo(m.latLngToContainerPoint([c.lat, c.lng])) < 12) || cp.distanceTo(boxHandlePt(box.corners)) < 16) cur = ROTATE_CURSOR; else if (selPanelRef.current.length && pointInRing(box.corners, ll)) cur = 'move' }
         const hovHit = findPanelAt(ll); panelCanvas.current?.setHover(hovHit?.panel.id ?? null)
         if (!cur && hovHit) cur = 'move'
+        const p = !cur ? planeAt(e.latlng) : undefined
+        if (p && p.id === selIdRef.current) { const grid = gridFor(p); drawAddHover(p, grid, nearestCell(grid, e.latlng)); cur = 'copy' }
+        else { ghostLayer.current?.clearLayers(); if (!cur && p) cur = 'pointer' }
         m.getContainer().style.cursor = cur
         return
       }
@@ -398,7 +430,7 @@ export function DesignEditor() {
         commitRef.current(d.planes.map((x) => (x.id === rotPid ? { ...x, panels: rotPanels0.map((pn) => ({ ...pn, corners: rotateCorners(pn.corners, rotCenLL!, delta) })) } : x)))
         rotPid = null; rotCenLL = null; rotPanels0 = []
       }
-      else if ((t === 'add' || t === 'remove') && dragPid && startCell) {
+      else if ((t === 'add' || t === 'remove' || painting) && dragPid && startCell) {
         const d = designRef.current!; const p = d.planes.find((x) => x.id === dragPid)
         if (p) {
           const cur = nearestCell(dragCells, e.latlng) ?? startCell
@@ -407,6 +439,9 @@ export function DesignEditor() {
           if (t === 'remove') {
             if (!moved) { const hit = findPanelAt({ lat: e.latlng.lat, lng: e.latlng.lng }); panels = hit ? panels.filter((pn) => pn.id !== hit.panel.id) : panels }
             else panels = panels.filter((pn) => !block.some((c) => sameCell(panelCenter(pn), c.center)))
+          }
+          else if (painting) { // select-tool placement: only ever ADDS, and never on top of an existing module
+            for (const c of block) if (!panels.some((pn) => sameCell(panelCenter(pn), c.center) || quadsOverlap(pn.corners, c.corners))) panels.push({ id: uid('pn'), corners: c.corners })
           }
           else if (!moved) { const i = panels.findIndex((pn) => sameCell(panelCenter(pn), startCell!.center)); if (i >= 0) panels.splice(i, 1); else panels.push({ id: uid('pn'), corners: startCell.corners }) }
           else for (const c of block) if (!panels.some((pn) => sameCell(panelCenter(pn), c.center))) panels.push({ id: uid('pn'), corners: c.corners })
@@ -434,7 +469,22 @@ export function DesignEditor() {
       }
       ghostLayer.current?.clearLayers(); setGhostN(null); setRotDeg(null)
       startCell = null; dragCells = []; dragPid = null; moveOccupied = []; rotPid = null; rotCenLL = null; rotPanels0 = []
-      grp = null; grpMode = null; grpStart = null; grpInvalid = false; marqStart = null; m.dragging.enable()
+      grp = null; grpMode = null; grpStart = null; grpInvalid = false; marqStart = null; painting = false; m.dragging.enable()
+    })
+    // A plain click on open ground (off every roof) clears the selection and finishes corner editing.
+    m.on('click', (e: any) => {
+      if (toolRef.current !== 'select' || planeAt(e.latlng) || findPanelAt({ lat: e.latlng.lat, lng: e.latlng.lng })) return
+      setSelId(null); setSelPanelIds([]); setSelObsId(null); setEditPlaneId(null)
+    })
+    // Right-click anywhere → a menu of what you can do right there.
+    m.on('contextmenu', (e: any) => {
+      if (toolRef.current === 'draw') return
+      L.DomEvent.preventDefault(e.originalEvent)
+      const ll = { lat: e.latlng.lat, lng: e.latlng.lng }
+      const hit = findPanelAt(ll), p = planeAt(e.latlng)
+      if (hit && !selPanelRef.current.includes(hit.panel.id)) { setSelPanelIds([hit.panel.id]); setSelId(hit.pid) }
+      else if (!hit && p) { setSelId(p.id); setSelPanelIds([]) }
+      setCtx({ x: e.containerPoint.x, y: e.containerPoint.y, ll, pid: hit?.pid ?? p?.id, panelId: hit?.panel.id })
     })
     map.current = m
     if ((import.meta as any).env?.DEV) (window as any).__lmap = m
@@ -560,12 +610,14 @@ export function DesignEditor() {
       poly.on('click', (e) => { L.DomEvent.stopPropagation(e); if (toolRef.current !== 'pan') { setSelId(p.id); setSelObsId(null) } })
       poly.on('mouseover', () => { if (!on) poly.setStyle({ weight: 2.2, fillOpacity: (p.panels?.length ? 0.08 : 0.18) }) })
       poly.on('mouseout', () => poly.setStyle(base as any))
+      poly.on('dblclick', (e) => { L.DomEvent.stop(e); if (toolRef.current === 'select') { setSelId(p.id); setSelPanelIds([]); setEditPlaneId(p.id) } })
       poly.on('pm:edit', () => syncGeometry(p.id, poly))
       // A compact label chip on the face's top edge: permanent while empty, on hover once filled.
       const topPt = p.polygon.reduce((a, v) => (v.lat > a.lat ? v : a), p.polygon[0])
-      const tip = poly.bindTooltip(`${compass(p.azimuthDeg)} · ${effTilt(p)}° · ${p.panels?.length ? `${p.panels.length} panels · ${kwpOf(p.panels.length, moduleById(p.moduleId ?? moduleIdRef.current).watts).toFixed(2)} kWp` : `${p.areaM2} m²`}`, { permanent: !p.panels?.length, direction: 'top', className: 'roof-label', offset: [0, -4] })
-      if (!p.panels?.length) tip.openTooltip([topPt.lat, topPt.lng])
+      const tip = poly.bindTooltip(`${compass(p.azimuthDeg)} · ${effTilt(p)}° · ${p.panels?.length ? `${p.panels.length} panels · ${kwpOf(p.panels.length, moduleById(p.moduleId ?? moduleIdRef.current).watts).toFixed(2)} kWp` : `${p.areaM2} m²`}`, { permanent: !p.panels?.length && (on || design.planes.length <= 4), direction: 'top', className: 'roof-label', offset: [0, -4] })
+      if (!p.panels?.length && (on || design.planes.length <= 4)) tip.openTooltip([topPt.lat, topPt.lng])
       poly.addTo(lyr)
+      if (p.id === editPlaneId) (poly as any).pm.enable({ allowSelfIntersection: false, snappable: true })
       if (on) p.polygon.forEach((v) => L.circleMarker([v.lat, v.lng], { radius: 3.5, color: '#FFFFFF', weight: 1.5, fillColor: '#15223B', fillOpacity: 1, pmIgnore: true, interactive: false } as any).addTo(lyr))
       // Modules go to the photoreal canvas (hidden while a suggested layout is previewed on this plane).
       if (!preview?.planes.some((pp) => pp.id === p.id)) p.panels?.forEach((pn) => canvasPanels.push({ id: pn.id, corners: pn.corners, azimuthDeg: p.azimuthDeg }))
@@ -601,7 +653,7 @@ export function DesignEditor() {
       try { map.current.fitBounds(L.latLngBounds(all).pad(0.3), { maxZoom: 20, animate: false }) } catch { /* single point */ }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [design?.planes, selId, selPanelIds, mapReady, preview])
+  }, [design?.planes, selId, selPanelIds, mapReady, preview, editPlaneId])
 
   // ── Suggested-layout preview — teal-framed navy ghosts from the last auto-layout run, click one to drop it
   // before accepting. Nothing here is committed to the design until "Accept" is pressed. ──
@@ -670,7 +722,7 @@ export function DesignEditor() {
     const lyr = measureLayer.current
     if (!lyr || !map.current || !mapReady || !design) return
     lyr.clearLayers()
-    if ((!measureOn && tool !== 'edit') || view !== '2d') return // measurements: on demand, or always while editing a face
+    if ((!measureOn && tool !== 'edit' && !editPlaneId) || view !== '2d') return // measurements: on demand, or always while editing a face
     const label = (lat: number, lng: number, text: string, tone: 'edge' | 'area') => {
       const bg = tone === 'area' ? 'rgba(124,58,237,.92)' : 'rgba(10,14,23,.86)'
       L.marker([lat, lng], { interactive: false, pmIgnore: true, keyboard: false, icon: L.divIcon({ className: '', html: `<div style="transform:translate(-50%,-50%);white-space:nowrap;font:700 11px/1 system-ui;color:#fff;background:${bg};padding:2px 5px;border-radius:5px;box-shadow:0 1px 3px rgba(0,0,0,.4)">${text}</div>`, iconSize: [0, 0] }) }).addTo(lyr)
@@ -697,7 +749,7 @@ export function DesignEditor() {
       label(cx, cy, `${Math.round(slopedAreaM2(p.areaM2, p.pitchDeg))} m² · ${effTilt(p)}°`, 'area')
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [design?.planes, measureOn, view, mapReady, tool, selId])
+  }, [design?.planes, measureOn, view, mapReady, tool, selId, editPlaneId])
 
   // Delete / Backspace removes the selected panel (ignored while typing in a field).
   useEffect(() => {
@@ -706,10 +758,24 @@ export function DesignEditor() {
       const typing = !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)
       if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) { if (typing) return; e.preventDefault(); e.shiftKey ? redoRef.current() : undoRef.current(); return }
       if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || e.key === 'Y')) { if (typing) return; e.preventDefault(); redoRef.current(); return }
+      if (e.key === 'Escape' && !typing) {
+        setCtx(null)
+        if (editPlaneRef.current) { setEditPlaneId(null); return }
+        if (selPanelRef.current.length) { setSelPanelIds([]); return }
+        setSelId(null); setSelObsId(null); return
+      }
+      if (!typing && (e.ctrlKey || e.metaKey) && (e.key === 'a' || e.key === 'A') && selIdRef.current) { // select every panel on the face
+        e.preventDefault(); const pl = designRef.current?.planes.find((x) => x.id === selIdRef.current); setSelPanelIds((pl?.panels ?? []).map((pn) => pn.id)); return
+      }
       if (e.key !== 'Delete' && e.key !== 'Backspace') return
       if (typing) return
       if (selObsRef.current) { e.preventDefault(); deleteObstacle(selObsRef.current); return }
-      if (!selPanelRef.current.length) return
+      if (!selPanelRef.current.length) {
+        // nothing picked but a face is → Delete removes the face (Ctrl+Z brings it back)
+        const d0 = designRef.current, fid = selIdRef.current
+        if (d0 && fid && !editPlaneRef.current) { e.preventDefault(); commitRef.current(d0.planes.filter((p) => p.id !== fid)); setSelId(null); act.toast('Roof face removed — Ctrl+Z to undo') }
+        return
+      }
       e.preventDefault()
       const d = designRef.current; if (!d) return
       const ids = new Set(selPanelRef.current)
@@ -724,8 +790,22 @@ export function DesignEditor() {
   async function runDetect(center?: LatLng) {
     if (!design || busy || detectingRef.current) return
     detectingRef.current = true
-    setBusy(true); setStatus('Measuring the roof from satellite…')
+    setBusy(true); setStatus('Finding the building outline…')
     try {
+      // 1) The outline → panes engine (Google mask or OSM outline, split along ridges/hips/valleys).
+      const at = center || design.center
+      const panes = at ? await detectRoofPanes(at, 'gable', setStatus).catch(() => null) : null
+      if (panes && panes.planes.length) {
+        const kept = design.planes.filter((p) => p.source === 'manual')
+        const keptObs = (design.obstacles ?? []).filter((o) => o.source === 'manual')
+        recordHistory()
+        act.updateDesign(design.id, { planes: [...panes.planes, ...kept], obstacles: keptObs, center: at, roofModel: panes.model })
+        setSelId(null); setSelPanelIds([])
+        act.toast(panes.message + (panes.measured ? '' : ' — set each pane’s pitch on survey'), panes.measured ? 'positive' : undefined)
+        return
+      }
+      // 2) No outline anywhere → Google's own roof read (needs the Solar API).
+      setStatus('Measuring the roof from satellite…')
       const { planes, center: c, measured } = await detectPlanes(design.address, center || design.center)
       if (c && map.current) map.current.setView([c.lat, c.lng], 20)
       if (!measured) {
@@ -788,9 +868,9 @@ export function DesignEditor() {
   const obsRings = (d: { obstacles?: { polygon: LatLng[] }[] }) => (d.obstacles ?? []).map((o) => o.polygon)
   // ── Obstructions (chimneys / vents / HVAC / skylights) — detected or hand-placed keep-outs ──
   function setObstacles(next: DesignObstacle[]) { const d = designRef.current; if (!d) return; act.updateDesign(d.id, { obstacles: next }) }
-  function addKeepout() {
+  function addKeepout(at?: LatLng) {
     const d = designRef.current, m = map.current; if (!d || !m) return
-    const c = m.getCenter(), s = 0.8 // ~0.8 m square dropped at the map centre, ready to drag onto the obstruction
+    const c = at ?? m.getCenter(), s = 0.8 // ~0.8 m square dropped at the map centre, ready to drag onto the obstruction
     const dLat = s / 2 / 110540, dLng = s / 2 / (111320 * Math.cos((c.lat * Math.PI) / 180))
     const polygon = [{ lat: c.lat - dLat, lng: c.lng - dLng }, { lat: c.lat - dLat, lng: c.lng + dLng }, { lat: c.lat + dLat, lng: c.lng + dLng }, { lat: c.lat + dLat, lng: c.lng - dLng }]
     const ob: DesignObstacle = { id: uid('ob'), kind: 'keepout', polygon, source: 'manual' }
@@ -963,6 +1043,22 @@ export function DesignEditor() {
     if (next === 'draw') m.pm.enableDraw('Polygon', { snappable: true })
     else if (next === 'edit') m.pm.enableGlobalEditMode({ allowSelfIntersection: false })
     else if ((next === 'add' || next === 'remove' || next === 'rotate') && !design?.planes.length) act.toast('Draw or detect a roof first, then use the panel tools', 'warning')
+    setEditPlaneId(null); setCtx(null)
+  }
+
+  /** Re-split the detected roof as gabled or hipped (keeps hand-drawn faces; panels on the old panes go). */
+  async function setRoofStyle(style: RoofStyle) {
+    const d = designRef.current; if (!d?.roofModel || !d.center || busy) return
+    if (roofStyleOf(d.roofModel) === style) return
+    setBusy(true); setStatus(style === 'hip' ? 'Re-splitting as a hipped roof…' : 'Re-splitting with gable ends…')
+    try {
+      const res = await resplitRoof(d.center, d.roofModel, style)
+      const kept = d.planes.filter((p) => p.source === 'manual')
+      recordHistory()
+      act.updateDesign(d.id, { planes: [...res.planes, ...kept], roofModel: res.model, ...computeTotals([...res.planes, ...kept]) })
+      setSelId(null); setSelPanelIds([])
+      act.toast(`${style === 'hip' ? 'Hipped' : 'Gabled'} roof — ${res.planes.length} panes`)
+    } finally { setBusy(false); setStatus('') }
   }
 
   if (!design) return (<><TopBar title="Design" crumbs={['Design']} /><PageMissing onBack={() => nav('/design')} /></>)
@@ -1017,29 +1113,28 @@ export function DesignEditor() {
     <div ref={rootRef} className="flex flex-col flex-1 min-h-0 h-full bg-surface">
       <TopBar title={design.name} crumbs={['Design', 'Studio']}
         actions={<div className="flex items-center gap-2">
-          <Button variant="secondary" icon={<MaximizeIcon on={isFs} />} onClick={toggleFs}>{isFs ? 'Exit full screen' : 'Full screen'}</Button>
-          <Button variant="secondary" icon={<Radar size={15} />} onClick={() => runDetect()} className={busy ? 'opacity-60 pointer-events-none' : ''}>{busy ? 'Working…' : 'Detect roof'}</Button>
-          <Button variant="secondary" icon={<Layers size={15} />} onClick={traceBuilding} className={busy ? 'opacity-60 pointer-events-none' : ''}>Trace building</Button>
-          <Button variant="primary" icon={<Sparkle size={15} />} onClick={() => runAutoLayout({ kind: 'max' })} className={busy ? 'opacity-60 pointer-events-none' : ''}>Ovi auto-layout</Button>
-          {totals.count > 0 && <Button variant="secondary" icon={<EraseIcon />} onClick={clearAllPanels}>Clear all</Button>}
+          {/* Only the page-level decisions live up here — the roof/panel tools sit on the canvas where you use them. */}
+          <span title={isFs ? 'Exit full screen' : 'Full screen'}><Button variant="secondary" icon={<MaximizeIcon on={isFs} />} onClick={toggleFs} className="px-2.5">{null}</Button></span>
           <Button variant="secondary" icon={<Check size={15} />} onClick={() => act.updateDesign(design.id, { status: design.status === 'confirmed' ? 'draft' : 'confirmed' })}>{design.status === 'confirmed' ? 'Confirmed' : 'Confirm'}</Button>
           <Button variant="primary" icon={<File size={15} />} onClick={pushToProposal}>{showroom.some((s) => s.designId === design.id) ? 'Update proposal' : 'Create proposal'}</Button>
         </div>} />
 
       {/* OpenSolar-style tab row — navigation *inside* the tool, CRM rail stays put */}
-      <div className="px-5 border-b border-divider flex items-center gap-1">
+      <div className="px-5 border-b border-divider flex items-center gap-1 min-w-0">
+        <div className="flex items-center gap-1 min-w-0 overflow-x-auto [scrollbar-width:none]">
         {tabs.map((t) => {
           const on = t.id === tab
           return (
-            <button key={t.id} onClick={() => setTab(t.id)} className={`relative h-11 px-3.5 text-[13.5px] font-semibold inline-flex items-center gap-2 transition-colors ${on ? 'text-accent' : 'text-muted-b hover:text-ink-3'}`}>
+            <button key={t.id} onClick={() => setTab(t.id)} className={`relative h-11 px-3.5 text-[13.5px] font-semibold inline-flex items-center gap-2 whitespace-nowrap shrink-0 transition-colors ${on ? 'text-accent' : 'text-muted-b hover:text-ink-3'}`}>
               <t.icon size={15} />{t.label}
-              {on && <span className="absolute left-2 right-2 -bottom-px h-[2.5px] rounded-full" style={{ background: 'linear-gradient(90deg,#1FAE94,#159C86)' }} />}
+              {on && <span className="absolute left-2 right-2 bottom-0 h-[2.5px] rounded-full" style={{ background: 'linear-gradient(90deg,#1FAE94,#159C86)' }} />}
             </button>
           )
         })}
-        <div className="ml-auto flex items-center gap-3">
-          <button onClick={() => setOviOpen(true)} className="h-8 px-3 rounded-full text-white text-[12.5px] font-semibold inline-flex items-center gap-1.5 shadow-primary" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Sparkle size={13} />Design with Ovi</button>
-          <div className="flex items-center gap-2 text-[12px] text-muted-b">
+        </div>
+        <div className="ml-auto flex items-center gap-3 shrink-0 pl-2">
+          <button onClick={() => setOviOpen(true)} className="h-8 px-3 whitespace-nowrap rounded-full text-white text-[12.5px] font-semibold inline-flex items-center gap-1.5 shadow-primary" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Sparkle size={13} />Design with Ovi</button>
+          <div className="hidden xl:flex items-center gap-2 text-[12px] text-muted-b whitespace-nowrap">
             <span className="font-bold text-ink tabular-nums">{kwp || '—'}</span> kWp
             <span className="w-px h-4 bg-divider" />
             <span className="font-bold text-ink tabular-nums">{totals.count || '—'}</span> panels
@@ -1057,20 +1152,25 @@ export function DesignEditor() {
             {view === '3d' && canvasVisible && <Design3D design={design} adding={adding} selecting={tool === 'select'} moduleId={moduleId} onCommitPanels={(pid, panels) => commitSnapshot(design.planes.map((p) => (p.id === pid ? { ...p, panels, moduleId: p.moduleId ?? moduleId } : p)))} onSelectPanels={(pid, ids) => { if (pid) setSelId(pid); setSelPanelIds(ids) }} onCapture={() => { setView('2d'); setTimeout(() => selectTool('draw'), 80) }} />}
             {canvasVisible && (
               <div className="absolute top-3 left-3 z-[560] flex flex-col gap-1 bg-white/95 backdrop-blur border border-border rounded-control shadow-modal p-1 overflow-y-auto" style={{ maxHeight: 'calc(100% - 24px)' }}>
-                <ToolBtn on={tool === 'pan'} onClick={() => selectTool('pan')} icon={<HandIcon />} label={view === '3d' ? 'Orbit / move the camera' : 'Pan (move the map)'} />
-                <ToolBtn on={tool === 'select'} onClick={() => selectTool('select')} icon={<CursorIcon />} label={view === '3d' ? 'Select / move a panel' : 'Select / move array'} />
-                <ToolBtn on={tool === 'add'} onClick={() => selectTool('add')} icon={<Grid size={15} />} label="Add panels" />
-                {view === '2d' && <>
-                <ToolBtn on={tool === 'remove'} onClick={() => selectTool('remove')} icon={<EraseIcon />} label="Remove panels" />
-                <ToolBtn on={tool === 'rotate'} onClick={() => selectTool('rotate')} icon={<RotateIcon />} label="Rotate array" />
-                <span className="h-px mx-1.5 my-0.5 bg-divider" />
-                <ToolBtn on={tool === 'draw'} onClick={() => selectTool('draw')} icon={<Plus size={15} />} label="Draw roof face" />
-                <ToolBtn on={tool === 'edit'} onClick={() => selectTool('edit')} icon={<Wrench size={14} />} label="Edit vertices" />
-                <ToolBtn on={tool === 'pin'} onClick={() => selectTool('pin')} icon={<Target size={15} />} label="Drop pin & detect here" />
-                <ToolBtn on={tool === 'note'} onClick={() => selectTool('note')} icon={<File size={14} />} label="Pin a site note" />
-                <span className="h-px mx-1.5 my-0.5 bg-divider" />
-                <ToolBtn on={false} onClick={addKeepout} icon={<Box size={15} />} label="Add keep-out (vent / chimney / skylight)" />
+                {view === '3d' ? <>
+                  <ToolBtn on={tool === 'pan'} onClick={() => selectTool('pan')} icon={<HandIcon />} label="Orbit / move the camera" />
+                  <ToolBtn on={tool === 'select'} onClick={() => selectTool('select')} icon={<CursorIcon />} label="Select / move a panel" />
+                  <ToolBtn on={tool === 'add'} onClick={() => selectTool('add')} icon={<Grid size={15} />} label="Add panels" />
+                </> : <>
+                  {/* One pointer does the everyday work (select, move, place panels, pan) — the rail is only
+                      for the few things that genuinely need a mode, plus the whole-roof actions. */}
+                  <ToolBtn on={tool === 'select'} onClick={() => selectTool('select')} icon={<CursorIcon />} label="Select & place — click a face, then click the roof to add panels" />
+                  <ToolBtn on={tool === 'draw'} onClick={() => selectTool('draw')} icon={<Plus size={15} />} label="Draw a roof face" />
+                  <ToolBtn on={false} onClick={() => addKeepout()} icon={<Box size={15} />} label="Add keep-out (vent / chimney / skylight)" />
+                  <ToolBtn on={tool === 'note'} onClick={() => selectTool('note')} icon={<File size={14} />} label="Pin a site note" />
                 </>}
+                <span className="h-px mx-1.5 my-0.5 bg-divider" />
+                <ToolBtn on={busy} onClick={() => runDetect()} icon={<Radar size={15} />} label="Detect roof — outline + panes" />
+                <ToolBtn on={false} onClick={() => runAutoLayout({ kind: 'max' })} icon={<Sparkle size={15} />} label="Ovi auto-layout — fill the best panes" />
+                {totals.count > 0 && <ToolBtn on={false} onClick={clearAllPanels} icon={<EraseIcon />} label="Clear all panels" />}
+                <span className="h-px mx-1.5 my-0.5 bg-divider" />
+                <ToolBtn on={false} onClick={undo} icon={<UndoIcon />} label={`Undo (Ctrl+Z)${undoStack.current.length ? '' : ' — nothing to undo'}`} />
+                <ToolBtn on={false} onClick={redo} icon={<RedoIcon />} label="Redo (Ctrl+Shift+Z)" />
               </div>
             )}
             <div className={`absolute z-[550] flex items-center gap-1 bg-white/95 backdrop-blur border border-border rounded-control shadow-modal p-1 ${view === '3d' ? 'bottom-3 right-3' : 'top-3 right-3'}`}>
@@ -1115,17 +1215,47 @@ export function DesignEditor() {
                 </>}
               </div>
             )}
-            {view === '2d' && !busy && tool === 'pin' && (
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-[510] h-9 px-4 rounded-full text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Target size={14} />Click the exact roof to re-centre &amp; detect here</div>
-            )}
-            {view === '2d' && !busy && tool === 'edit' && (
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-[510] h-9 px-4 rounded-full text-white text-[12px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Wrench size={13} />Drag a corner to reshape · click an edge to add a point · right-click a point to remove — live dimensions show as you drag</div>
-            )}
-            {!busy && sel && !(view === '2d' && tool === 'pin') && (
-              <div className={`absolute top-3 left-[64px] z-[540] flex pointer-events-none [&>*]:pointer-events-auto overflow-x-auto ${view === '3d' ? 'right-3' : 'right-[232px]'}`}>
-                <ArrayToolbar sel={sel} moduleId={moduleId} onUpdate={updatePlane} onUndo={undo} onRedo={redo} canUndo={undoStack.current.length > 0} canRedo={redoStack.current.length > 0} onCentre={centreArray} onFill={() => fillPlane(sel.id)} />
+            {view === '2d' && !busy && editPlaneId && (
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-[510] h-10 pl-4 pr-1.5 rounded-full text-white text-[12px] font-semibold flex items-center gap-3 shadow-modal whitespace-nowrap" style={{ background: '#15223B' }}>
+                <span className="flex items-center gap-2"><Wrench size={13} />Drag a corner to reshape · click an edge for a new corner · right-click a corner to remove it</span>
+                <button onClick={() => setEditPlaneId(null)} className="h-7 px-3 rounded-full text-[12px] font-bold" style={{ background: '#62E4CC', color: '#15223B' }}>Done</button>
               </div>
             )}
+            {!busy && sel && !editPlaneId && (
+              <div className={`absolute top-3 left-[64px] z-[540] flex pointer-events-none [&>*]:pointer-events-auto overflow-x-auto ${view === '3d' ? 'right-3' : 'right-[232px]'}`}>
+                <ArrayToolbar sel={sel} moduleId={moduleId} onUpdate={updatePlane} onCentre={centreArray} onFill={() => fillPlane(sel.id)} onEdit={view === '2d' ? () => setEditPlaneId(sel.id) : undefined} />
+              </div>
+            )}
+            {ctx && view === '2d' && (() => {
+              const face = design.planes.find((p) => p.id === ctx.pid)
+              const nSel = selPanelIds.length
+              const item = (label: string, fn: () => void, danger?: boolean) => (
+                <button key={label} onClick={() => { setCtx(null); fn() }} className={`w-full text-left h-8 px-3 rounded-[7px] text-[12.5px] font-semibold whitespace-nowrap hover:bg-control ${danger ? 'text-[#E5484D]' : 'text-ink-2'}`}>{label}</button>
+              )
+              const deleteSelected = () => { const ids = new Set(selPanelIds); commitSnapshot(design.planes.map((p) => ({ ...p, panels: (p.panels ?? []).filter((pn) => !ids.has(pn.id)) }))); setSelPanelIds([]) }
+              return (
+                <div className="absolute z-[600] min-w-[200px] rounded-[10px] bg-white border border-border shadow-modal p-1" style={{ left: Math.min(ctx.x, (mapEl.current?.clientWidth ?? 800) - 210), top: Math.min(ctx.y, (mapEl.current?.clientHeight ?? 600) - 250) }} onContextMenu={(e) => e.preventDefault()}>
+                  {ctx.panelId && nSel > 0 && <>
+                    <div className="px-3 pt-1.5 pb-1 text-[10.5px] font-bold uppercase tracking-wide text-muted-3">{nSel} panel{nSel === 1 ? '' : 's'}</div>
+                    {face && item('Select all on this face', () => setSelPanelIds((face.panels ?? []).map((pn) => pn.id)))}
+                    {item(`Delete ${nSel === 1 ? 'panel' : `${nSel} panels`}`, deleteSelected, true)}
+                    <div className="h-px bg-divider my-1" />
+                  </>}
+                  {face && <>
+                    <div className="px-3 pt-1.5 pb-1 text-[10.5px] font-bold uppercase tracking-wide text-muted-3">{face.name}</div>
+                    {item('Fill with panels', () => fillPlane(face.id))}
+                    {!!face.panels?.length && item('Clear panels', () => clearPlane(face.id))}
+                    {item('Reshape corners', () => { setSelId(face.id); setEditPlaneId(face.id) })}
+                    {item('Delete face', () => deletePlane(face.id), true)}
+                    <div className="h-px bg-divider my-1" />
+                  </>}
+                  {item('Detect the roof here', () => onPinRef.current(ctx.ll))}
+                  {item('Add a keep-out here', () => addKeepout(ctx.ll))}
+                  {item('Pin a site note here', () => { setTool('note'); setNoteDraft({ lat: ctx.ll.lat, lng: ctx.ll.lng, text: '' }) })}
+                  {!face && item('Draw a roof face', () => selectTool('draw'))}
+                </div>
+              )
+            })()}
             {view === '2d' && !busy && selObsId && (() => {
               const o = (design.obstacles ?? []).find((x) => x.id === selObsId); if (!o) return null
               const meta = OBST[o.kind]
@@ -1144,12 +1274,13 @@ export function DesignEditor() {
                 <span className="truncate">{boundaryInfo.source === 'inspire' ? 'Land Registry title boundary (INSPIRE)' : boundaryInfo.found ? 'Building footprint — connect INSPIRE for the legal plot' : 'No boundary found here'}</span>
               </div>
             )}
-            {view === '2d' && !busy && !drawing && !sel && !preview && design.planes.length > 0 && (tool === 'add' || tool === 'remove' || tool === 'rotate' || tool === 'select') && (
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-[500] h-9 px-4 rounded-full text-white text-[12.5px] font-semibold flex items-center gap-2 shadow-modal" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}>
-                {tool === 'add' && <><Grid size={14} />Click to place a module · drag for a block{ghostN != null ? ` · ${ghostN}` : ''}</>}
-                {tool === 'remove' && <><EraseIcon />Click a panel to remove · drag to clear a block{ghostN != null ? ` · ${ghostN}` : ''}</>}
-                {tool === 'rotate' && <><RotateIcon />Drag around the array to spin the grid{rotDeg != null ? ` · ${rotDeg}°` : ''}</>}
-                {tool === 'select' && <><CursorIcon />Click a panel to select · drag to move · Del removes</>}
+            {view === '2d' && !busy && !drawing && !editPlaneId && !preview && design.planes.length > 0 && tool === 'select' && (
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-[500] h-9 px-4 rounded-full bg-white/95 backdrop-blur border border-border text-ink-2 text-[12.5px] font-semibold flex items-center gap-2 shadow-modal whitespace-nowrap max-w-[calc(100%-24px)] overflow-hidden">
+                {selPanelIds.length
+                  ? <><CursorIcon /><b className="text-ink">{selPanelIds.length} panel{selPanelIds.length === 1 ? '' : 's'}</b> · drag to move · drag a corner to rotate · Del removes · Esc</>
+                  : sel
+                    ? <><Grid size={14} />Click the roof to add a panel · drag to paint a block{ghostN != null ? ` (${ghostN})` : ''} · shift-drag to select</>
+                    : <><CursorIcon />Click a roof face to work on it · drag the map to pan · double-click a face to reshape · right-click for more</>}
               </div>
             )}
             {design.planes.length === 0 && !busy && !drawing && (
@@ -1157,11 +1288,10 @@ export function DesignEditor() {
                 <div className="bg-surface/95 backdrop-blur border border-border rounded-card px-6 py-5 text-center shadow-modal max-w-[380px] pointer-events-auto">
                   <span className="w-12 h-12 mx-auto rounded-2xl flex items-center justify-center text-white mb-3" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Sun size={22} /></span>
                   <div className="text-[15px] font-bold text-ink">Capture the roof</div>
-                  <div className="text-[12.5px] text-muted-b mt-1"><b>Trace building</b> pulls the real outline from OpenStreetMap (most reliable), <b>Detect</b> tries Google's read, or <b>Draw</b> by hand. Then split into faces and <b>Ovi auto-layout</b>.</div>
+                  <div className="text-[12.5px] text-muted-b mt-1"><b>Detect roof</b> traces the building outline and splits it into panes along the ridges, hips and valleys. Or <b>draw</b> a face by hand. Wrong house? Right-click the right roof → <i>Detect the roof here</i>.</div>
                   <div className="flex items-center gap-2 justify-center mt-3 flex-wrap">
-                    <button onClick={traceBuilding} className="h-9 px-3.5 rounded-control text-white text-[13px] font-semibold inline-flex items-center gap-1.5" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Layers size={14} />Trace building</button>
-                    <button onClick={() => runDetect()} className="h-9 px-3.5 rounded-control border border-border text-[13px] font-semibold text-ink-3 hover:bg-control inline-flex items-center gap-1.5"><Radar size={14} />Detect</button>
-                    <button onClick={() => selectTool('draw')} className="h-9 px-3.5 rounded-control border border-border text-[13px] font-semibold text-ink-3 hover:bg-control inline-flex items-center gap-1.5"><Plus size={14} />Draw</button>
+                    <button onClick={() => runDetect()} className="h-9 px-3.5 rounded-control text-white text-[13px] font-semibold inline-flex items-center gap-1.5 whitespace-nowrap" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Radar size={14} />Detect roof</button>
+                    <button onClick={() => selectTool('draw')} className="h-9 px-3.5 rounded-control border border-border text-[13px] font-semibold text-ink-3 hover:bg-control inline-flex items-center gap-1.5 whitespace-nowrap"><Plus size={14} />Draw a face</button>
                   </div>
                 </div>
               </div>
@@ -1172,7 +1302,7 @@ export function DesignEditor() {
           {tab === 'array'
             ? <ArrayInspector design={design} sel={sel} moduleId={moduleId} setModuleId={setModuleId} onSelect={setSelId} onUpdate={updatePlane} onFill={fillPlane} onClear={clearPlane} onDelete={deletePlane}
                 targetKwp={targetKwp} setTargetKwp={setTargetKwp} onGoal={runAutoLayout} kwp={kwp} count={totals.count} />
-            : <DesignInspector design={design} selId={selId} onSelect={setSelId} onUpdate={updatePlane} onFill={fillPlane} onClear={clearPlane} onDelete={deletePlane} moduleId={moduleId} setModuleId={setModuleId} kwp={kwp} totalPanels={totals.count} annualKwh={totals.kwh} roofArea={roofArea} module={module} onHeight={(m) => act.updateDesign(design.id, { eaveHeightM: m, heightSource: 'manual' })} onPatch={(patch) => act.updateDesign(design.id, patch)} onClearPlanes={clearAllPlanes} onBackToProspect={design.prospectId ? () => nav('/tools/company-search') : undefined} />
+            : <DesignInspector roofStyle={roofStyleOf(design.roofModel)} onRoofStyle={setRoofStyle} design={design} selId={selId} onSelect={setSelId} onUpdate={updatePlane} onFill={fillPlane} onClear={clearPlane} onDelete={deletePlane} moduleId={moduleId} setModuleId={setModuleId} kwp={kwp} totalPanels={totals.count} annualKwh={totals.kwh} roofArea={roofArea} module={module} onHeight={(m) => act.updateDesign(design.id, { eaveHeightM: m, heightSource: 'manual' })} onPatch={(patch) => act.updateDesign(design.id, patch)} onClearPlanes={clearAllPlanes} onBackToProspect={design.prospectId ? () => nav('/tools/company-search') : undefined} />
           }
         </div>
 
@@ -1188,8 +1318,8 @@ export function DesignEditor() {
 }
 
 /* ── Design-tab inspector: plane list + quick pitch/azimuth + fill ── */
-function DesignInspector({ design, selId, onSelect, onUpdate, onFill, onClear, onDelete, moduleId, setModuleId, kwp, totalPanels, annualKwh, roofArea, module, onHeight, onPatch, onClearPlanes, onBackToProspect }: {
-  design: Design; selId: string | null; onSelect: (id: string) => void; onUpdate: (id: string, patch: Partial<DesignPlane>, repack?: boolean) => void
+function DesignInspector({ roofStyle, onRoofStyle, design, selId, onSelect, onUpdate, onFill, onClear, onDelete, moduleId, setModuleId, kwp, totalPanels, annualKwh, roofArea, module, onHeight, onPatch, onClearPlanes, onBackToProspect }: {
+  roofStyle: RoofStyle | null; onRoofStyle: (s: RoofStyle) => void; design: Design; selId: string | null; onSelect: (id: string) => void; onUpdate: (id: string, patch: Partial<DesignPlane>, repack?: boolean) => void
   onFill: (id: string) => void; onClear: (id: string) => void; onDelete: (id: string) => void; moduleId: string; setModuleId: (v: string) => void
   kwp: number; totalPanels: number; annualKwh: number; roofArea: number; module: Module; onHeight: (m: number) => void; onPatch: (patch: Partial<Design>) => void; onClearPlanes: () => void; onBackToProspect?: () => void
 }) {
@@ -1210,8 +1340,25 @@ function DesignInspector({ design, selId, onSelect, onUpdate, onFill, onClear, o
       </div>
       {design.planes.length > 0 && (
         <div className="px-4 py-2 flex items-center justify-between border-b border-divider">
-          <div className="eyebrow text-muted-3">Roof planes · {design.planes.length}</div>
+          <div className="eyebrow text-muted-3">Roof panes · {design.planes.length}</div>
           <button onClick={onClearPlanes} className="text-[11.5px] font-semibold text-muted-b hover:text-negative inline-flex items-center gap-1"><span className="text-[13px] leading-none">✕</span> Clear all</button>
+        </div>
+      )}
+      {design.roofModel && roofStyle && (
+        <div className="px-4 py-2.5 border-b border-divider flex flex-col gap-2">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11.5px] text-muted-b">Roof shape</span>
+            <div className="flex p-0.5 rounded-[8px] bg-[#E9EDF2] border border-[#DDE3EA]">
+              {(['gable', 'hip'] as const).map((s) => (
+                <button key={s} onClick={() => onRoofStyle(s)} className={`h-7 px-3 rounded-[6px] text-[12px] font-semibold ${roofStyle === s ? 'bg-white text-ink font-bold shadow-sm' : 'text-muted-b hover:text-ink-3'}`}>{s === 'gable' ? 'Gable ends' : 'Hipped'}</button>
+              ))}
+            </div>
+          </div>
+          <div className="text-[11px] text-muted-b leading-snug">
+            Outline from {design.roofModel.source === 'google' ? 'Google' : 'OpenStreetMap'}
+            {design.roofModel.roles.includes('party') ? ' · party wall found' : ''}
+            {design.roofModel.measured ? ' · pitch measured from Google’s height model.' : <> · <b className="text-[#92400E]">pitch assumed {ASSUMED_PITCH}°</b> — no height data here, set it on survey.</>}
+          </div>
         </div>
       )}
       <div className="flex-1 overflow-y-auto">
@@ -1436,9 +1583,9 @@ function ToolBtn({ on, onClick, icon, label }: { on: boolean; onClick: () => voi
   )
 }
 /* ── Pylon-style top toolbar for the selected array — inline tilt, azimuth, orientation, margins, undo/redo ── */
-function ArrayToolbar({ sel, moduleId, onUpdate, onUndo, onRedo, canUndo, canRedo, onCentre, onFill }: {
+function ArrayToolbar({ sel, moduleId, onUpdate, onCentre, onFill, onEdit }: {
   sel: DesignPlane; moduleId: string; onUpdate: (id: string, patch: Partial<DesignPlane>, repack?: boolean) => void
-  onUndo: () => void; onRedo: () => void; canUndo: boolean; canRedo: boolean; onCentre: () => void; onFill: () => void
+  onCentre: () => void; onFill: () => void; onEdit?: () => void
 }) {
   const mod = moduleById(sel.moduleId ?? moduleId)
   const n = sel.panels?.length ?? 0
@@ -1446,9 +1593,9 @@ function ArrayToolbar({ sel, moduleId, onUpdate, onUndo, onRedo, canUndo, canRed
   const tilt = flush ? sel.pitchDeg : (sel.tiltDeg ?? 10)
   const orient = sel.orientation ?? 'auto'
   return (
-    <div className="flex items-center gap-1 h-11 px-1.5 rounded-control bg-white/95 backdrop-blur border border-border shadow-modal">
-      <TB onClick={onUndo} disabled={!canUndo} title="Undo (Ctrl+Z)"><UndoIcon /></TB>
-      <TB onClick={onRedo} disabled={!canRedo} title="Redo (Ctrl+Shift+Z)"><RedoIcon /></TB>
+    <div className="flex items-center gap-1 h-11 px-1.5 rounded-control bg-white/95 backdrop-blur border border-border shadow-modal whitespace-nowrap">
+      <span className="pl-1.5 pr-1 text-[12px] font-bold text-ink max-w-[140px] truncate" title={sel.name}>{sel.name}</span>
+      {sel.pitchSource === 'assumed' && <span title="Split from the outline without height data — confirm the pitch on survey" className="text-[10.5px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: '#FEF3C7', color: '#92400E' }}>pitch est.</span>}
       <ToolSep />
       <NumField icon={<RotateIcon />} label="Tilt" value={tilt} suffix="°" min={0} max={60} onChange={(v) => (flush ? onUpdate(sel.id, { pitchDeg: v }, true) : onUpdate(sel.id, { tiltDeg: v }))} />
       <NumField icon={<Target size={12} />} label="Azimuth" value={sel.azimuthDeg} suffix="°" min={0} max={359} onChange={(v) => onUpdate(sel.id, { azimuthDeg: v })} />
@@ -1464,6 +1611,7 @@ function ArrayToolbar({ sel, moduleId, onUpdate, onUndo, onRedo, canUndo, canRed
       <ToolSep />
       <button onClick={onFill} title="Fill this face with panels" className="h-7 px-2.5 rounded-[7px] text-white text-[12px] font-semibold inline-flex items-center gap-1" style={{ background: 'linear-gradient(135deg,#1FAE94,#159C86)' }}><Grid size={12} />Fill</button>
       <button onClick={onCentre} disabled={!n} title="Centre the array on this face" className={`h-7 px-2.5 rounded-[7px] text-[12px] font-semibold inline-flex items-center gap-1 border border-border ${n ? 'text-ink-3 hover:bg-control' : 'text-muted-2/40 cursor-default'}`}><CentreIcon />Centre</button>
+      {onEdit && <button onClick={onEdit} title="Reshape this face (or double-click it)" className="h-7 px-2.5 rounded-[7px] text-[12px] font-semibold inline-flex items-center gap-1 border border-border text-ink-3 hover:bg-control"><Wrench size={12} />Reshape</button>}
       <ToolSep />
       <div className="px-1.5 text-[11.5px] text-muted-b whitespace-nowrap"><b className="text-ink tabular-nums">{n}</b> · <b className="text-ink tabular-nums">{kwpOf(n, mod.watts)}</b> kWp</div>
     </div>

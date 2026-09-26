@@ -1,0 +1,413 @@
+/* Roof panes from the building outline.
+ *
+ * The outline (Google's building mask where Solar coverage exists, else OpenStreetMap) is the part we
+ * trust. A pitched roof over that outline is, to a very good approximation, its straight skeleton:
+ * every wall that carries an eave gets a roof plane rising inward from it at the roof pitch, and the
+ * roof surface is the LOWEST of those planes at each point. Ridges, hips and valleys then fall out as
+ * the lines where two planes meet. Walls that carry no roof slope — gable ends and party walls with the
+ * neighbour — are left out, so the planes either side run through to them.
+ *
+ *   1. OUTLINE   Google mask → OSM footprint (+ neighbouring buildings for party-wall detection)
+ *   2. ROLES     each wall: eave (a roof plane slopes down to it), gable, or party wall
+ *   3. SPLIT     rasterise at ~10 cm, label every point with the plane that forms the roof there
+ *   4. TRACE     outline each pane, weld shared corners, snap eaves onto the walls
+ *   5. MEASURE   with Google's height model: fit each pane's true pitch + facing, and turn any wall
+ *                whose "pane" doesn't actually slope towards it into a gable, then re-split
+ *
+ * Without height data the pitch is ASSUMED (35°, typical UK) and flagged on every pane. */
+
+import type { DesignPlane } from '../store/types'
+import { fetchBuildingOutline, fetchDsm, sampleHeight, type DsmData } from './dsm'
+
+type LatLng = { lat: number; lng: number }
+type XY = { x: number; y: number } // metres east (x) / north (y) of the query point
+export type EdgeRole = 'eave' | 'gable' | 'party'
+export type RoofStyle = 'gable' | 'hip'
+export type RoofModel = NonNullable<import('../store/types').Design['roofModel']>
+
+const DEG = Math.PI / 180
+export const ASSUMED_PITCH = 35
+const uid = (p: string) => `${p}${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`
+
+/* ── geometry ──────────────────────────────────────────────────────────── */
+
+function frame(o: LatLng) {
+  const mLat = 110540, mLng = 111320 * Math.cos(o.lat * DEG)
+  return {
+    toXY: (p: LatLng): XY => ({ x: (p.lng - o.lng) * mLng, y: (p.lat - o.lat) * mLat }),
+    toLL: (p: XY): LatLng => ({ lat: o.lat + p.y / mLat, lng: o.lng + p.x / mLng }),
+  }
+}
+const signedArea = (r: XY[]) => { let a = 0; for (let i = 0; i < r.length; i++) { const p = r[i], q = r[(i + 1) % r.length]; a += p.x * q.y - q.x * p.y } return a / 2 }
+const dist = (a: XY, b: XY) => Math.hypot(a.x - b.x, a.y - b.y)
+function inPoly(p: XY, r: XY[]) {
+  let inside = false
+  for (let i = 0, j = r.length - 1; i < r.length; j = i++) if ((r[i].y > p.y) !== (r[j].y > p.y) && p.x < ((r[j].x - r[i].x) * (p.y - r[i].y)) / (r[j].y - r[i].y) + r[i].x) inside = !inside
+  return inside
+}
+function segDist(p: XY, a: XY, b: XY) {
+  const dx = b.x - a.x, dy = b.y - a.y, l2 = dx * dx + dy * dy || 1
+  const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / l2))
+  return { d: Math.hypot(p.x - a.x - t * dx, p.y - a.y - t * dy), q: { x: a.x + t * dx, y: a.y + t * dy } }
+}
+
+/** CCW, no duplicate points, no near-collinear corners, no stub edges — a roofer's outline. */
+function cleanRing(r0: XY[]): XY[] {
+  let r = r0.slice()
+  if (r.length > 1 && dist(r[0], r[r.length - 1]) < 0.05) r.pop()
+  if (signedArea(r) < 0) r.reverse()
+  for (let pass = 0; pass < 6; pass++) {
+    let changed = false
+    const out: XY[] = []
+    for (let i = 0; i < r.length; i++) {
+      const p = r[(i - 1 + r.length) % r.length], c = r[i], n = r[(i + 1) % r.length]
+      if (dist(c, n) < 0.3) { changed = true; continue } // stub edge — drop this corner
+      const a1 = Math.atan2(c.y - p.y, c.x - p.x), a2 = Math.atan2(n.y - c.y, n.x - c.x)
+      let turn = Math.abs(a2 - a1); if (turn > Math.PI) turn = 2 * Math.PI - turn
+      if (turn < 12 * DEG) { changed = true; continue } // nearly straight — not a real corner
+      out.push(c)
+    }
+    r = out
+    if (!changed || r.length < 4) break
+  }
+  return r
+}
+
+/* ── 1 · outline ───────────────────────────────────────────────────────── */
+
+/** The building at `c` from OpenStreetMap plus the buildings touching it (for party walls). */
+async function osmBuildings(c: LatLng): Promise<{ target: LatLng[] | null; others: LatLng[][] }> {
+  {
+    try {
+      const r = await fetch(`/api/osm-buildings?lat=${c.lat}&lng=${c.lng}&r=70`)
+      if (!r.ok) return { target: null, others: [] }
+      const j = await r.json()
+      const ways: LatLng[][] = (j.buildings || []).map((b: { ring: LatLng[] }) => b.ring)
+      const f = frame(c), o = { x: 0, y: 0 }
+      const rings = ways.map((w) => w.map(f.toXY))
+      let ti = rings.findIndex((r) => inPoly(o, r))
+      if (ti < 0) { // pin just off the roof → nearest wall within 6 m
+        let bd = 6
+        rings.forEach((r, i) => { for (let k = 0; k < r.length - 1; k++) { const d = segDist(o, r[k], r[k + 1]).d; if (d < bd) { bd = d; ti = i } } })
+      }
+      return { target: ti >= 0 ? ways[ti] : null, others: ways.filter((_, i) => i !== ti) }
+    } catch { /* next mirror */ }
+  }
+  return { target: null, others: [] }
+}
+
+/* ── 2 · wall roles ────────────────────────────────────────────────────── */
+
+/** Walls shared with a neighbouring building (semis, terraces): parallel, within 0.8 m, overlapping. */
+function partyWalls(r: XY[], others: XY[][]): boolean[] {
+  return r.map((a, i) => {
+    const b = r[(i + 1) % r.length], len = dist(a, b); if (len < 1.5) return false
+    const ux = (b.x - a.x) / len, uy = (b.y - a.y) / len
+    for (const o of others) for (let k = 0; k < o.length - 1; k++) {
+      const c = o[k], d = o[k + 1], l2 = dist(c, d); if (l2 < 1) continue
+      const vx = (d.x - c.x) / l2, vy = (d.y - c.y) / l2
+      if (Math.abs(ux * vy - uy * vx) > 0.17) continue // not parallel (±10°)
+      const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
+      if (Math.abs((mid.x - c.x) * vy - (mid.y - c.y) * vx) > 0.8) continue
+      const t1 = (a.x - c.x) * vx + (a.y - c.y) * vy, t2 = (b.x - c.x) * vx + (b.y - c.y) * vy
+      const overlap = Math.min(Math.max(t1, t2), l2) - Math.max(Math.min(t1, t2), 0)
+      if (overlap > 0.5 * len) return true
+    }
+    return false
+  })
+}
+
+const isConvex = (r: XY[], i: number) => { const p = r[(i - 1 + r.length) % r.length], c = r[i], n = r[(i + 1) % r.length]; return (c.x - p.x) * (n.y - c.y) - (c.y - p.y) * (n.x - c.x) > 0 }
+
+/** Default roles. Gable style (most UK houses): the short end wall of each wing — convex at both
+ *  corners and no longer than the walls either side — is a gable. Hip style: every free wall is an eave. */
+export function defaultRoles(r: XY[], party: boolean[], style: RoofStyle): EdgeRole[] {
+  const n = r.length
+  const roles: EdgeRole[] = party.map((p) => (p ? 'party' : 'eave'))
+  if (style === 'gable') {
+    const len = r.map((a, i) => dist(a, r[(i + 1) % n]))
+    const dir = (i: number) => { const a = r[i], b = r[(i + 1) % n], l = len[i] || 1; return { x: (b.x - a.x) / l, y: (b.y - a.y) / l } }
+    const parallel = (i: number, j: number) => { const u = dir(i), v = dir(j); return Math.abs(u.x * v.y - u.y * v.x) < 0.17 }
+    const partyIdx = party.map((p, i) => (p ? i : -1)).filter((i) => i >= 0)
+    const cands = r.map((_, i) => i)
+      .filter((i) => roles[i] === 'eave' && isConvex(r, i) && isConvex(r, (i + 1) % n))
+      // Semis and end-terraces: the ridge runs away from the party wall, so the free end wall PARALLEL
+      // to it is the gable, however long it is. Otherwise the short end of each wing is.
+      .filter((i) => partyIdx.length ? partyIdx.some((j) => parallel(i, j)) : len[i] <= 1.02 * Math.min(len[(i - 1 + n) % n], len[(i + 1) % n]))
+      .sort((a, b) => len[a] - len[b])
+    for (const i of cands) {
+      const prev = roles[(i - 1 + n) % n], next = roles[(i + 1) % n]
+      if (prev !== 'eave' || next !== 'eave') continue // a gable needs eaves either side to run through to it
+      roles[i] = 'gable'
+    }
+  }
+  if (roles.filter((x) => x === 'eave').length < 2) return party.map((p) => (p ? 'party' : 'eave'))
+  return roles
+}
+
+/* ── 3 · split into panes ──────────────────────────────────────────────── */
+
+type Pane = { edge: number; ring: XY[]; areaM2: number }
+
+/** Label the outline with the plane that forms the roof at each point (the lower envelope of the eave
+ *  planes, each confined to its skeleton wedge), then trace each pane. */
+export function splitPanes(r: XY[], roles: EdgeRole[], pitch: number[]): Pane[] {
+  const n = r.length
+  const area = Math.abs(signedArea(r))
+  const res = Math.max(0.1, Math.sqrt(area / 160000)) // ≤ ~160k samples even on a big shed
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+  for (const p of r) { minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x); minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y) }
+  const W = Math.ceil((maxX - minX) / res) + 2, H = Math.ceil((maxY - minY) / res) + 2
+  const px = (c: number) => minX + (c - 0.5) * res, py = (rr: number) => maxY - (rr - 0.5) * res
+  // per-edge inward normal + slope
+  const E = r.map((a, i) => {
+    const b = r[(i + 1) % n], l = dist(a, b)
+    return { a, nx: -(b.y - a.y) / l, ny: (b.x - a.x) / l, t: Math.tan((pitch[i] ?? ASSUMED_PITCH) * DEG), on: roles[i] === 'eave' }
+  })
+  const h = (i: number, p: XY) => ((p.x - E[i].a.x) * E[i].nx + (p.y - E[i].a.y) * E[i].ny) * E[i].t
+  const convex = r.map((_, i) => isConvex(r, i))
+  const label = new Int32Array(W * H).fill(-2) // -2 = outside
+  for (let rr = 0; rr < H; rr++) for (let c = 0; c < W; c++) {
+    const p = { x: px(c), y: py(rr) }
+    if (!inPoly(p, r)) continue
+    let best = -1, bh = Infinity, loose = -1, lh = Infinity
+    for (let i = 0; i < n; i++) {
+      if (!E[i].on) continue
+      const hi = h(i, p); if (hi < -1e-6) continue
+      if (hi < lh) { lh = hi; loose = i }
+      // skeleton wedge: bounded by the bisector with each ACTIVE neighbour (convex corner → we're the
+      // lower plane; reflex corner → the higher one). A gable/party neighbour doesn't bound us.
+      const pv = (i - 1 + n) % n, nx = (i + 1) % n
+      if (E[pv].on && (convex[i] ? hi > h(pv, p) + 1e-6 : hi < h(pv, p) - 1e-6)) continue
+      if (E[nx].on && (convex[nx] ? hi > h(nx, p) + 1e-6 : hi < h(nx, p) - 1e-6)) continue
+      if (hi < bh) { bh = hi; best = i }
+    }
+    label[rr * W + c] = best >= 0 ? best : loose
+  }
+  // Absorb crumbs (< 1.5 m²) into whichever pane surrounds them most.
+  const minPx = Math.round(1.5 / (res * res))
+  for (let pass = 0; pass < 3; pass++) {
+    const seen = new Uint8Array(W * H); let changed = false
+    for (let s = 0; s < W * H; s++) {
+      if (label[s] < 0 || seen[s]) continue
+      const lb = label[s], pix = [s]; seen[s] = 1
+      const border = new Map<number, number>()
+      for (let k = 0; k < pix.length; k++) {
+        const p = pix[k], x = p % W, y = (p / W) | 0
+        for (const q of [x > 0 ? p - 1 : -1, x < W - 1 ? p + 1 : -1, y > 0 ? p - W : -1, y < H - 1 ? p + W : -1]) {
+          if (q < 0 || label[q] === -2) continue
+          if (label[q] === lb) { if (!seen[q]) { seen[q] = 1; pix.push(q) } } else border.set(label[q], (border.get(label[q]) ?? 0) + 1)
+        }
+      }
+      if (pix.length < minPx && border.size) {
+        const to = [...border.entries()].sort((a, b) => b[1] - a[1])[0][0]
+        for (const p of pix) label[p] = to
+        changed = true
+      }
+    }
+    if (!changed) break
+  }
+  // Trace each connected pane.
+  const panes: Pane[] = []
+  const done = new Uint8Array(W * H)
+  for (let s = 0; s < W * H; s++) {
+    if (label[s] < 0 || done[s]) continue
+    const lb = label[s], inComp = new Uint8Array(W * H), pix = [s]; done[s] = 1; inComp[s] = 1
+    for (let k = 0; k < pix.length; k++) {
+      const p = pix[k], x = p % W, y = (p / W) | 0
+      for (const q of [x > 0 ? p - 1 : -1, x < W - 1 ? p + 1 : -1, y > 0 ? p - W : -1, y < H - 1 ? p + W : -1]) if (q >= 0 && label[q] === lb && !done[q]) { done[q] = 1; inComp[q] = 1; pix.push(q) }
+    }
+    const a = pix.length * res * res
+    if (a < 1.5) continue
+    const loop = trace((x, y) => x >= 0 && y >= 0 && x < W && y < H && inComp[y * W + x] === 1, W, H)
+    if (!loop) continue
+    const simp = dp(loop, Math.max(1.6, 0.22 / res))
+    if (simp.length < 3) continue
+    panes.push({ edge: lb, ring: simp.map(([c, rr]) => ({ x: px(c), y: py(rr) })), areaM2: a })
+  }
+  return weld(panes, r)
+}
+
+/** Snap pane corners onto the outline's corners and walls, and merge the corners panes share (ridge
+ *  ends, hip tops) so neighbouring panes meet exactly with no slivers. */
+function weld(panes: Pane[], outline: XY[]): Pane[] {
+  const pts: { pane: number; k: number; p: XY }[] = []
+  panes.forEach((pn, i) => pn.ring.forEach((p, k) => pts.push({ pane: i, k, p })))
+  const fixed = new Set<number>()
+  pts.forEach((v, idx) => {
+    let bd = 0.5, snap: XY | null = null
+    for (const c of outline) { const d = dist(v.p, c); if (d < bd) { bd = d; snap = c } }
+    if (snap) { v.p = { ...snap }; fixed.add(idx) }
+  })
+  // cluster the free corners (≤ 0.45 m apart) and move each cluster to its mean
+  const used = new Set<number>()
+  pts.forEach((v, i) => {
+    if (fixed.has(i) || used.has(i)) return
+    const grp = pts.map((w, j) => ({ w, j })).filter(({ w, j }) => !fixed.has(j) && !used.has(j) && dist(w.p, v.p) < 0.45)
+    if (grp.length < 2) return
+    const m = { x: grp.reduce((s, g) => s + g.w.p.x, 0) / grp.length, y: grp.reduce((s, g) => s + g.w.p.y, 0) / grp.length }
+    grp.forEach((g) => { used.add(g.j); g.w.p = { ...m } })
+  })
+  // free corners lying on a wall → exactly onto that wall (eaves line up with the outline)
+  pts.forEach((v, i) => {
+    if (fixed.has(i)) return
+    let bd = 0.3, q: XY | null = null
+    for (let k = 0; k < outline.length; k++) { const s = segDist(v.p, outline[k], outline[(k + 1) % outline.length]); if (s.d < bd) { bd = s.d; q = s.q } }
+    if (q) v.p = q
+  })
+  const out = panes.map((pn) => ({ ...pn, ring: pn.ring.map((p) => ({ ...p })) }))
+  pts.forEach((v) => (out[v.pane].ring[v.k] = v.p))
+  return out.map((pn) => ({ ...pn, ring: pn.ring.filter((p, k) => dist(p, pn.ring[(k + 1) % pn.ring.length]) > 0.05) })).filter((pn) => pn.ring.length >= 3)
+}
+
+type PXY = [number, number]
+function trace(inR: (x: number, y: number) => boolean, W: number, H: number): PXY[] | null {
+  let sx = -1, sy = -1
+  for (let y = 0; y < H && sy < 0; y++) for (let x = 0; x < W; x++) if (inR(x, y)) { sx = x; sy = y; break }
+  if (sx < 0) return null
+  const dirs = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]]
+  const out: PXY[] = []; let cx = sx, cy = sy, dir = 6, guard = 0
+  do {
+    out.push([cx, cy]); let found = false
+    for (let k = 0; k < 8; k++) { const d = (dir + k) % 8, nx = cx + dirs[d][0], ny = cy + dirs[d][1]; if (inR(nx, ny)) { cx = nx; cy = ny; dir = (d + 5) % 8; found = true; break } }
+    if (!found) break
+  } while ((cx !== sx || cy !== sy) && ++guard < W * H)
+  return out.length >= 3 ? out : null
+}
+/** Douglas–Peucker on a closed pixel loop (split at the two farthest points). */
+function dp(loop: PXY[], tol: number): PXY[] {
+  if (loop.length < 5) return loop
+  let a = 0, b = 0, best = -1
+  for (let i = 0; i < loop.length; i += Math.max(1, (loop.length / 60) | 0)) for (let j = 0; j < loop.length; j++) { const d = (loop[i][0] - loop[j][0]) ** 2 + (loop[i][1] - loop[j][1]) ** 2; if (d > best) { best = d; a = i; b = j } }
+  if (a > b) [a, b] = [b, a]
+  const run = (idx: number[]): number[] => {
+    if (idx.length < 3) return idx
+    const p0 = loop[idx[0]], p1 = loop[idx[idx.length - 1]]
+    const dx = p1[0] - p0[0], dy = p1[1] - p0[1], l = Math.hypot(dx, dy) || 1
+    let md = 0, mi = -1
+    for (let k = 1; k < idx.length - 1; k++) { const p = loop[idx[k]]; const d = Math.abs((p[0] - p0[0]) * dy - (p[1] - p0[1]) * dx) / l; if (d > md) { md = d; mi = k } }
+    if (md <= tol) return [idx[0], idx[idx.length - 1]]
+    return [...run(idx.slice(0, mi + 1)).slice(0, -1), ...run(idx.slice(mi))]
+  }
+  const c1 = Array.from({ length: b - a + 1 }, (_, k) => a + k)
+  const c2 = Array.from({ length: loop.length - b + a + 1 }, (_, k) => (b + k) % loop.length)
+  return [...run(c1).slice(0, -1), ...run(c2).slice(0, -1)].map((i) => loop[i])
+}
+
+/* ── 5 · measure with the height model ─────────────────────────────────── */
+
+type Fit = { pitch: number; azimuth: number; rms: number; n: number }
+function fitPane(dsm: DsmData, ring: XY[]): Fit | null {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+  for (const p of ring) { minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x); minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y) }
+  // sample the pane's interior, 0.4 m in from its edges (the edges straddle ridges and gutters)
+  const pts: [number, number, number][] = []
+  for (let x = minX; x <= maxX; x += 0.3) for (let y = minY; y <= maxY; y += 0.3) {
+    const p = { x, y }; if (!inPoly(p, ring)) continue
+    let edge = Infinity; for (let k = 0; k < ring.length; k++) edge = Math.min(edge, segDist(p, ring[k], ring[(k + 1) % ring.length]).d)
+    if (edge < 0.4) continue
+    const z = sampleHeight(dsm, x, y); if (z > 0.5) pts.push([x, y, z])
+  }
+  if (pts.length < 20) return null
+  // least-squares plane z = a·x + b·y + c
+  let Sxx = 0, Sxy = 0, Sx = 0, Syy = 0, Sy = 0, Sxz = 0, Syz = 0, Sz = 0
+  for (const [x, y, z] of pts) { Sxx += x * x; Sxy += x * y; Sx += x; Syy += y * y; Sy += y; Sxz += x * z; Syz += y * z; Sz += z }
+  const N = pts.length
+  const M = [[Sxx, Sxy, Sx], [Sxy, Syy, Sy], [Sx, Sy, N]], B = [Sxz, Syz, Sz]
+  const det = (m: number[][]) => m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0])
+  const d = det(M); if (Math.abs(d) < 1e-9) return null
+  const sol = [0, 1, 2].map((k) => det(M.map((row, i) => row.map((v, j) => (j === k ? B[i] : v)))) / d)
+  const [a, b, c] = sol
+  const rms = Math.sqrt(pts.reduce((s, [x, y, z]) => s + (z - (a * x + b * y + c)) ** 2, 0) / N)
+  return { pitch: Math.atan(Math.hypot(a, b)) / DEG, azimuth: ((Math.atan2(-a, -b) / DEG) + 360) % 360, rms, n: N }
+}
+
+/* ── the whole pipeline ────────────────────────────────────────────────── */
+
+const outwardAz = (r: XY[], i: number) => { const a = r[i], b = r[(i + 1) % r.length]; return ((Math.atan2(b.y - a.y, -(b.x - a.x)) / DEG) + 360) % 360 } // azimuth (from N) the pane on wall i faces
+const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
+const compassOf = (az: number) => COMPASS[Math.round((((az % 360) + 360) % 360) / 45) % 8]
+const polyArea = (ring: XY[]) => Math.abs(signedArea(ring))
+
+export type PaneResult = { planes: DesignPlane[]; model: RoofModel; outlineSource: 'google' | 'osm'; measured: boolean; message: string }
+
+/** Build DesignPlanes from an outline + roles (and optional height model). */
+function planesFrom(origin: LatLng, r: XY[], roles: EdgeRole[], dsm: DsmData | null): { planes: DesignPlane[]; roles: EdgeRole[]; measured: boolean } {
+  const f = frame(origin)
+  let pitch = r.map(() => ASSUMED_PITCH)
+  let panes = splitPanes(r, roles, pitch)
+  let fits: (Fit | null)[] = panes.map(() => null)
+  if (dsm) {
+    fits = panes.map((p) => fitPane(dsm, p.ring))
+    // A wall whose pane doesn't slope towards it is really a gable (or the roof is flat): fix + re-split once.
+    let changed = false
+    const nextRoles = roles.slice()
+    panes.forEach((p, i) => {
+      const ft = fits[i]; if (!ft || ft.rms > 0.4 || ft.pitch < 8) return
+      const off = Math.abs(((ft.azimuth - outwardAz(r, p.edge) + 540) % 360) - 180)
+      if (off > 60 && nextRoles[p.edge] === 'eave' && nextRoles.filter((x) => x === 'eave').length > 2) { nextRoles[p.edge] = 'gable'; changed = true }
+      else if (off <= 40) pitch[p.edge] = Math.max(5, Math.min(60, ft.pitch))
+    })
+    if (changed || pitch.some((x) => x !== ASSUMED_PITCH)) {
+      roles = nextRoles
+      pitch = pitch.map((x, i) => (roles[i] === 'eave' ? x : ASSUMED_PITCH))
+      panes = splitPanes(r, roles, pitch)
+      fits = panes.map((p) => fitPane(dsm, p.ring))
+    }
+  }
+  let measured = false
+  const planes: DesignPlane[] = panes.map((p) => {
+    const ft = fits[panes.indexOf(p)]
+    const good = !!ft && ft.rms <= 0.4
+    const flat = good && ft!.pitch < 6
+    if (good) measured = true
+    const az = flat ? 180 : Math.round(outwardAz(r, p.edge))
+    const pt = good ? Math.round(ft!.pitch) : ASSUMED_PITCH
+    return {
+      id: uid('pl'), name: flat ? 'Flat roof' : `${compassOf(az)}-facing pane`,
+      polygon: p.ring.map(f.toLL), pitchDeg: flat ? 0 : pt, azimuthDeg: az, areaM2: Math.round(polyArea(p.ring)),
+      source: 'google' as const, racking: 'flush' as const, pitchSource: good ? 'measured' as const : 'assumed' as const,
+    }
+  }).sort((a, b) => b.areaM2 - a.areaM2)
+  return { planes, roles, measured }
+}
+
+/** Detect the building at `center` and split its roof into panes. */
+export async function detectRoofPanes(center: LatLng, style: RoofStyle = 'gable', onStep?: (s: string) => void): Promise<PaneResult | null> {
+  const f = frame(center)
+  onStep?.('Finding the building outline…')
+  const [mask, osm] = await Promise.all([fetchBuildingOutline(center.lat, center.lng).catch(() => null), osmBuildings(center)])
+  const outlineLL = mask && mask.length >= 4 ? mask : osm.target
+  if (!outlineLL) return null
+  const source: 'google' | 'osm' = mask && mask.length >= 4 ? 'google' : 'osm'
+  const r = cleanRing(outlineLL.map(f.toXY))
+  if (r.length < 3) return null
+  onStep?.('Reading walls, gables and party walls…')
+  const party = partyWalls(r, osm.others.map((o) => o.map(f.toXY)))
+  let roles = defaultRoles(r, party, style)
+  onStep?.('Checking for Google height data…')
+  const ext = Math.max(...r.map((p) => Math.hypot(p.x, p.y)))
+  // the height model comes from the same Google layer as the mask — no mask, no point asking
+  const dsm = source !== 'google' ? null : await fetchDsm(center.lat, center.lng, Math.min(100, Math.ceil(ext + 6)), 0.25).catch(() => null)
+  onStep?.(dsm ? 'Measuring each pane’s pitch from the height model…' : 'Splitting the roof into panes…')
+  const res = planesFrom(center, r, roles, dsm)
+  roles = res.roles
+  const nParty = roles.filter((x) => x === 'party').length, nGable = roles.filter((x) => x === 'gable').length
+  const message = `${res.planes.length} pane${res.planes.length === 1 ? '' : 's'} from the ${source === 'google' ? 'Google' : 'OpenStreetMap'} outline`
+    + (nGable ? ` · ${nGable} gable${nGable === 1 ? '' : 's'}` : '') + (nParty ? ` · ${nParty} party wall${nParty === 1 ? '' : 's'}` : '')
+    + (res.measured ? ' · pitch measured' : ` · pitch assumed ${ASSUMED_PITCH}° (no height data)`)
+  return { planes: res.planes, model: { outline: r.map(f.toLL), roles, source, measured: res.measured }, outlineSource: source, measured: res.measured, message }
+}
+
+/** Re-split a detected roof with a different style (gable ⇄ hip) or hand-set wall roles. */
+export async function resplitRoof(center: LatLng, model: RoofModel, rolesOrStyle: RoofStyle | EdgeRole[]): Promise<PaneResult> {
+  const f = frame(center)
+  const r = model.outline.map(f.toXY)
+  const party = model.roles.map((x) => x === 'party')
+  const roles = Array.isArray(rolesOrStyle) ? rolesOrStyle : defaultRoles(r, party, rolesOrStyle)
+  const dsm = model.measured ? await fetchDsm(center.lat, center.lng, Math.min(100, Math.ceil(Math.max(...r.map((p) => Math.hypot(p.x, p.y))) + 6)), 0.25).catch(() => null) : null
+  const res = planesFrom(center, r, roles, dsm)
+  return { planes: res.planes, model: { ...model, roles: res.roles, measured: res.measured }, outlineSource: model.source, measured: res.measured, message: `${res.planes.length} panes` }
+}
+
+export const roofStyleOf = (m?: RoofModel): RoofStyle | null => (m ? (m.roles.includes('gable') ? 'gable' : 'hip') : null)

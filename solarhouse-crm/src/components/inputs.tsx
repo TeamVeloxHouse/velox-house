@@ -91,13 +91,15 @@ export function AddressAutocomplete({ value, onPick, onChange, placeholder }: {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => setQ(value), [value])
+  const pickedRef = useRef<string | null>(null) // text set by a pick (or by the parent) — don't re-open suggestions for it
+  useEffect(() => { if (value !== q) pickedRef.current = value; setQ(value) }, [value])
   useEffect(() => {
     const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
     window.addEventListener('mousedown', h); return () => window.removeEventListener('mousedown', h)
   }, [])
   useEffect(() => {
     if (!q || q.length < 3) { setSug([]); return }
+    if (pickedRef.current === q) { setOpen(false); return }
     let dead = false
     const t = setTimeout(async () => {
       setLoading(true)
@@ -119,7 +121,7 @@ export function AddressAutocomplete({ value, onPick, onChange, placeholder }: {
       {open && sug.length > 0 && (
         <div className="absolute z-50 left-0 right-0 mt-1 bg-surface rounded-overlay shadow-modal border border-border overflow-hidden max-h-[260px] overflow-y-auto">
           {sug.map((s, i) => (
-            <button key={i} onClick={() => { setQ(s.text); onPick(s); setOpen(false) }} className="w-full text-left px-3 py-2.5 text-[13px] text-ink-2 hover:bg-control border-b border-divider last:border-0 flex items-center gap-2">
+            <button key={i} onClick={() => { pickedRef.current = s.text; setQ(s.text); onPick(s); setOpen(false) }} className="w-full text-left px-3 py-2.5 text-[13px] text-ink-2 hover:bg-control border-b border-divider last:border-0 flex items-center gap-2">
               <span className="text-muted-2">📍</span><span className="truncate">{s.text}</span>
             </button>
           ))}

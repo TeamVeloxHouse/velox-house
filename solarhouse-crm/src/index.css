@@ -115,9 +115,11 @@ body {
 .roof-label::before { display: none; } /* hide tooltip arrow */
 .biz-label { background: rgba(255,255,255,0.94); color: #1B2436; }
 .biz-label::before { display: none; }
-/* Aiming: crosshair over the map so you place the measurement precisely */
-.leaflet-container, .leaflet-container .leaflet-interactive, .leaflet-grab { cursor: crosshair; }
-.leaflet-container.leaflet-dragging, .leaflet-dragging .leaflet-grab { cursor: crosshair; }
+/* Maps use normal pointers (Tony: no crosshair) — arrow over the map, hand over things you can click,
+   grabbing hand while panning. The design editor sets move/rotate/add cursors itself as you hover. */
+.leaflet-container, .leaflet-grab { cursor: default; }
+.leaflet-container .leaflet-interactive { cursor: pointer; }
+.leaflet-container.leaflet-dragging, .leaflet-dragging .leaflet-grab, .leaflet-dragging .leaflet-interactive { cursor: grabbing; }
 
 /* ============================================================
    The Solar House — customer portal glassmorphism system

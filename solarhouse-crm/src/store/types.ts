@@ -1137,6 +1137,7 @@ export interface DesignPlane {
   panelGapM?: number // gap between panels within a row (m); the column margin
   setbackM?: number // per-plane fire-setback override (defaults to design.setbackM)
   optimisers?: boolean // module-level power electronics on this array
+  pitchSource?: 'measured' | 'assumed' // assumed = pane split from the outline alone (no height data) — check the pitch on site
 }
 export type DesignObstacleKind = 'chimney' | 'skylight' | 'hvac' | 'keepout'
 export interface DesignObstacle {
@@ -1181,6 +1182,8 @@ export interface Design {
     acCableM?: number; acCableMm2?: number; dcCableM?: number; dcCableMm2?: number; ze?: number; exportLimitKw?: number
   }
   notes?: { id: ID; lat: number; lng: number; text: string; at: number }[] // pinned site notes (access, scaffold, cable route…)
+  // Detected roof model (lib/roofPanes.ts): the building outline + per-edge roles, so the panes can be re-split (gable ⇄ hip)
+  roofModel?: { outline: { lat: number; lng: number }[]; roles: ('eave' | 'gable' | 'party')[]; source: 'google' | 'osm'; measured: boolean }
   createdAt: number
   updatedAt: number
 }

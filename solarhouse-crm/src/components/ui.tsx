@@ -12,7 +12,7 @@ type BtnProps = {
 }
 export function Button({ children, variant = 'secondary', onClick, icon, className, color }: BtnProps) {
   const base =
-    'h-9 inline-flex items-center gap-2 px-3.5 rounded-control text-[13px] transition-[transform,box-shadow,background] duration-150 ease-out select-none active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2'
+    'h-9 inline-flex items-center gap-2 whitespace-nowrap shrink-0 px-3.5 rounded-control text-[13px] transition-[transform,box-shadow,background] duration-150 ease-out select-none active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2'
   if (variant === 'primary')
     return (
       <button
