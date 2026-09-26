@@ -337,7 +337,7 @@ function reducer(state: State, action: Action): State {
     case 'TOGGLE_CONNECTION':
       return { ...state, connections: state.connections.map((c) => (c.id === action.id ? { ...c, connected: !c.connected } : c)) }
     case 'TOAST':
-      return { ...state, toasts: [...state.toasts, action.toast] }
+      return { ...state, toasts: [action.toast] } // one at a time — a new message replaces the last (no stacks)
     case 'DISMISS_TOAST':
       return { ...state, toasts: state.toasts.filter((t) => t.id !== action.id) }
     case 'SET_RAIL':

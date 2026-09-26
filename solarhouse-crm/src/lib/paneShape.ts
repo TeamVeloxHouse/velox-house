@@ -226,10 +226,30 @@ export function paneQuality(poly: LatLng[], azimuthDeg?: number, others: LatLng[
  */
 export function tidyRoof(panes: { ring: XY[]; azimuthDeg?: number }[], o: { weldM?: number; tjM?: number; perPane?: boolean } = {}): XY[][] {
   const weldM = o.weldM ?? 0.9, tjM = o.tjM ?? 0.25
+  // STABLE by design — tidying a tidy roof changes nothing:
+  //  · corners already shared by two panes are ANCHORS: they never move, near-misses snap onto them;
+  //  · a pane is only reshaped if it has a real defect (a stray straight-line corner, a tiny edge, > 6 corners).
+  const anchors: XY[] = []
+  panes.forEach((p, i) => p.ring.forEach((v) => { if (panes.some((q, j) => j !== i && q.ring.some((w) => dist(w, v) < 0.05)) && !anchors.some((a) => dist(a, v) < 0.05)) anchors.push({ ...v }) }))
+  const isAnchor = (v: XY) => anchors.some((a) => dist(a, v) < 0.05)
+  const defective = (r: XY[]) => {
+    const n = r.length
+    if (n > 6) return true
+    for (let i = 0; i < n; i++) {
+      const p = r[i], a = r[(i - 1 + n) % n], b = r[(i + 1) % n]
+      if (dist(p, b) < 0.5) return true
+      if (n > 3 && !isAnchor(p) && chordDist(p, a, b) < 0.25) return true
+    }
+    return false
+  }
   let rings = panes.map((p) => {
-    if (o.perPane === false) return p.ring.map((q) => ({ ...q }))
+    if (o.perPane === false || !defective(p.ring)) return p.ring.map((q) => ({ ...q }))
     const d = paneDirections(p.azimuthDeg)
-    return tidyRing(p.ring, { dirs: d.length ? d : undefined })
+    const t = tidyRing(p.ring, { dirs: d.length ? d : undefined })
+    // keep this pane's anchors exactly where they were (the reshape may have nudged them)
+    const t2 = t.map((v) => { const a = anchors.find((w) => dist(w, v) < 0.6); return a ? { ...a } : v })
+    // only if it actually helped (fewer corners or the defect gone) — otherwise a re-run would just creep the shape
+    return t2.length < p.ring.length || !defective(t2) ? t2 : p.ring.map((q) => ({ ...q }))
   })
   // 1 · weld clusters across panes (union-find over corners of DIFFERENT panes)
   const pts: { pi: number; vi: number }[] = []
@@ -245,7 +265,10 @@ export function tidyRoof(panes: { ring: XY[]; azimuthDeg?: number }[], o: { weld
   const next = rings.map((r) => r.map((p) => ({ ...p })))
   for (const g of groups.values()) {
     if (g.length < 2) continue
-    const m = { x: g.reduce((s, i) => s + at(i).x, 0) / g.length, y: g.reduce((s, i) => s + at(i).y, 0) / g.length }
+    if (g.every((i) => dist(at(i), at(g[0])) < 0.05)) continue // already one shared corner
+    // an existing shared corner wins; otherwise the cluster meets at its mean
+    const anc = g.map((i) => anchors.find((a) => dist(a, at(i)) < 0.05)).find(Boolean)
+    const m = anc ?? { x: g.reduce((s, i) => s + at(i).x, 0) / g.length, y: g.reduce((s, i) => s + at(i).y, 0) / g.length }
     for (const i of g) next[pts[i].pi][pts[i].vi] = { ...m }
   }
   rings = next.map((r) => r.filter((p, k) => dist(p, r[(k + 1) % r.length]) > 0.05))
@@ -315,9 +338,21 @@ function guardRoof(before: XY[][], after: XY[][]): XY[][] {
   return out
 }
 
+/** Tidy to a FIXED POINT: repeat until a pass changes nothing (≤ 8 passes), so pressing Tidy on a tidy roof is a no-op. */
+export function tidyRoofStable(panes: { ring: XY[]; azimuthDeg?: number }[], o?: Parameters<typeof tidyRoof>[1]): XY[][] {
+  let cur = panes.map((p) => p.ring)
+  for (let k = 0; k < 8; k++) {
+    const nxt = tidyRoof(cur.map((ring, i) => ({ ring, azimuthDeg: panes[i].azimuthDeg })), o)
+    const same = nxt.every((r, i) => r.length === cur[i].length && r.every((v, j) => dist(v, cur[i][j]) < 0.02))
+    cur = nxt
+    if (same) break
+  }
+  return cur
+}
+
 /** LatLng wrapper for the editor. */
 export function tidyRoofLL(planes: { polygon: LatLng[]; azimuthDeg: number; pitchDeg: number }[], o?: Parameters<typeof tidyRoof>[1]): LatLng[][] {
   if (!planes.length) return []
   const f = metricFrame(planes[0].polygon[0])
-  return tidyRoof(planes.map((p) => ({ ring: p.polygon.map(f.toXY), azimuthDeg: p.pitchDeg >= 6 ? p.azimuthDeg : undefined })), o).map((r) => r.map(f.toLL))
+  return tidyRoofStable(planes.map((p) => ({ ring: p.polygon.map(f.toXY), azimuthDeg: p.pitchDeg >= 6 ? p.azimuthDeg : undefined })), o).map((r) => r.map(f.toLL))
 }

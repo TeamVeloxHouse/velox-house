@@ -18,7 +18,7 @@
 
 import type { DesignPlane } from '../store/types'
 import { fetchBuildingOutline, fetchDsm, fetchLidarDsm, sampleHeight, regularizeRingMetric, type DsmData } from './dsm'
-import { tidyRing, tidyRoof, dropCollinear, mergeShortEdges, paneDirections } from './paneShape'
+import { tidyRing, tidyRoofStable, dropCollinear, mergeShortEdges, paneDirections } from './paneShape'
 
 type LatLng = { lat: number; lng: number }
 type XY = { x: number; y: number } // metres east (x) / north (y) of the query point
@@ -831,7 +831,7 @@ export async function detectRoofPanes(center: LatLng, style: RoofStyle = 'gable'
       })
       const welded0 = weld(hpF.map((p, i) => ({ edge: i, ring: tidied[i], areaM2: p.areaM2 })), rs) // edge = index into hp (weld may drop a sliver)
       // mesh the whole roof: near-miss corners become one shared corner, T-junctions shared exactly
-      const meshed = tidyRoof(welded0.map((p) => ({ ring: p.ring })), { perPane: false })
+      const meshed = tidyRoofStable(welded0.map((p) => ({ ring: p.ring, azimuthDeg: hpF[p.edge].plane && Math.hypot(hpF[p.edge].plane.a, hpF[p.edge].plane.b) > 0.1 ? ((Math.atan2(-hpF[p.edge].plane.a, -hpF[p.edge].plane.b) / DEG) + 360) % 360 : undefined })))
       const welded = welded0.map((p, i) => ({ ...p, ring: meshed[i] }))
       const planes: DesignPlane[] = welded.map((p) => {
         const pl = hpF[p.edge].plane

@@ -645,7 +645,7 @@ export function DesignEditor() {
       if (c) map.current!.setView([c.lat, c.lng], 20)
       if (c && design.planes.length === 0 && design.scope?.pv !== false) runDetect(c) // no roof needed for a battery/EV-only job
       // Designs detected before the roof was auto-tidied: straighten + join their faces once on open (undoable)
-      if (design.planes.length > 1 && autoTidied.current !== design.id) { autoTidied.current = design.id; setTimeout(() => tidyRef.current(undefined, { silent: true }), 400) }
+      if (design.planes.length > 1 && !design.detected && !design.tidiedAt && autoTidied.current !== design.id) { autoTidied.current = design.id; setTimeout(() => tidyRef.current(undefined, { silent: true }), 400) }
       // Pull the real building height from OSM once (free, no key) so the 3D model isn't a guess.
       if (c && design.eaveHeightM == null) {
         fetchBuildingHeight(c).then((h) => { if (h && designRef.current?.id === design.id) { act.updateDesign(design.id, { eaveHeightM: h.eaveM, heightSource: h.source }); act.toast(`Building height ${h.eaveM} m from OpenStreetMap`) } }).catch(() => {})
@@ -1027,8 +1027,9 @@ export function DesignEditor() {
         removed += Math.max(0, p.polygon.length - poly.length); changed++
         return { ...p, polygon: poly, areaM2: Math.round(polygonAreaM2(poly)), panels: (p.panels ?? []).filter((pn) => pn.corners.every((c) => pointInRing(poly, c))) }
       })
-      if (!changed) { if (!opts?.silent) act.toast('Every face is already tidy and joined'); return }
+      if (!changed) { act.updateDesign(d.id, { tidiedAt: Date.now() }); if (!opts?.silent) act.toast('Every face is already tidy and joined'); return }
       commitSnapshot(next)
+      act.updateDesign(d.id, { tidiedAt: Date.now() })
       act.toast(`${opts?.silent ? 'Roof tidied automatically' : 'Roof tidied'} · ${changed} face${changed === 1 ? '' : 's'} joined up${removed > 0 ? `, ${removed} stray corner${removed === 1 ? '' : 's'} removed` : ''} — Ctrl+Z to undo`)
       return
     }
@@ -1530,7 +1531,7 @@ export function DesignEditor() {
           {tab === 'array'
             ? <ArrayInspector design={design} sel={sel} moduleId={moduleId} setModuleId={setModuleId} onSelect={setSelId} onUpdate={updatePlane} onFill={fillPlane} onClear={clearPlane} onDelete={deletePlane}
                 targetKwp={targetKwp} setTargetKwp={setTargetKwp} onGoal={runAutoLayout} kwp={kwp} count={totals.count} />
-            : <DesignInspector roofStyle={roofStyleOf(design.roofModel)} onRoofStyle={setRoofStyle} design={design} selId={selId} onSelect={setSelId} onUpdate={updatePlane} onFill={fillPlane} onClear={clearPlane} onDelete={deletePlane} moduleId={moduleId} setModuleId={setModuleId} kwp={kwp} totalPanels={totals.count} annualKwh={totals.kwh} roofArea={roofArea} module={module} onHeight={(m) => act.updateDesign(design.id, { eaveHeightM: m, heightSource: 'manual' })} onPatch={(patch) => act.updateDesign(design.id, patch)} onClearPlanes={clearAllPlanes} onTidy={tidyPlanes} onBackToProspect={design.prospectId ? () => nav('/tools/company-search') : undefined} />
+            : <DesignInspector roofStyle={roofStyleOf(design.roofModel)} onRoofStyle={setRoofStyle} design={design} selId={selId} onSelect={setSelId} onUpdate={updatePlane} onFill={fillPlane} onClear={clearPlane} onDelete={deletePlane} moduleId={moduleId} setModuleId={setModuleId} kwp={kwp} totalPanels={totals.count} annualKwh={totals.kwh} roofArea={roofArea} module={module} onHeight={(m) => act.updateDesign(design.id, { eaveHeightM: m, heightSource: 'manual' })} onPatch={(patch) => act.updateDesign(design.id, patch)} onClearPlanes={clearAllPlanes} onTidy={tidyPlanes} onRedetect={() => runDetect(design.center)} onBackToProspect={design.prospectId ? () => nav('/tools/company-search') : undefined} />
           }
         </div>
 
@@ -1550,10 +1551,10 @@ export function DesignEditor() {
 }
 
 /* ── Design-tab inspector: plane list + quick pitch/azimuth + fill ── */
-function DesignInspector({ roofStyle, onRoofStyle, design, selId, onSelect, onUpdate, onFill, onClear, onDelete, moduleId, setModuleId, kwp, totalPanels, annualKwh, roofArea, module, onHeight, onPatch, onClearPlanes, onTidy, onBackToProspect }: {
+function DesignInspector({ roofStyle, onRoofStyle, design, selId, onSelect, onUpdate, onFill, onClear, onDelete, moduleId, setModuleId, kwp, totalPanels, annualKwh, roofArea, module, onHeight, onPatch, onClearPlanes, onTidy, onRedetect, onBackToProspect }: {
   roofStyle: RoofStyle | null; onRoofStyle: (s: RoofStyle) => void; design: Design; selId: string | null; onSelect: (id: string) => void; onUpdate: (id: string, patch: Partial<DesignPlane>, repack?: boolean) => void
   onFill: (id: string) => void; onClear: (id: string) => void; onDelete: (id: string) => void; moduleId: string; setModuleId: (v: string) => void
-  kwp: number; totalPanels: number; annualKwh: number; roofArea: number; module: Module; onHeight: (m: number) => void; onPatch: (patch: Partial<Design>) => void; onClearPlanes: () => void; onTidy: (ids?: string[]) => void; onBackToProspect?: () => void
+  kwp: number; totalPanels: number; annualKwh: number; roofArea: number; module: Module; onHeight: (m: number) => void; onPatch: (patch: Partial<Design>) => void; onClearPlanes: () => void; onTidy: (ids?: string[]) => void; onRedetect: () => void; onBackToProspect?: () => void
 }) {
   const quality = new Map(design.planes.map((p) => [p.id, paneQuality(p.polygon, p.pitchDeg >= 6 ? p.azimuthDeg : undefined, design.planes.filter((q) => q.id !== p.id).map((q) => q.polygon))]))
   // flag a face only when Tidy would actually change it — a warning the button can't clear is just noise
@@ -1583,6 +1584,12 @@ function DesignInspector({ roofStyle, onRoofStyle, design, selId, onSelect, onUp
             <button onClick={() => onTidy()} title="Straighten every face and join them up: stray corners and tiny edges removed, edges squared to the slope, near-miss corners merged into one" className="text-[11.5px] font-semibold text-[#0E7A66] hover:text-ink inline-flex items-center gap-1"><Sparkle size={12} />Tidy all{nIssues > 0 ? ` · ${nIssues}` : ''}</button>
             <button onClick={onClearPlanes} className="text-[11.5px] font-semibold text-muted-b hover:text-negative inline-flex items-center gap-1"><span className="text-[13px] leading-none">✕</span> Clear all</button>
           </div>
+        </div>
+      )}
+      {design.planes.length > 0 && !design.detected && (
+        <div className="mx-4 mt-3 rounded-[10px] bg-[#FFF7E6] border border-[#F5D9A8] px-3 py-2.5 flex items-start gap-2.5">
+          <div className="text-[11.5px] text-[#92400E] leading-snug flex-1"><b>Detected with an older version.</b> The roof faces were cut before the latest detection fixes. Tidy can straighten them, but re-detecting will cut them properly. Panels on the roof are cleared.</div>
+          <button onClick={onRedetect} className="shrink-0 h-7 px-2.5 rounded-[7px] text-white text-[11.5px] font-semibold" style={{ background: '#15223B' }}>Re-detect</button>
         </div>
       )}
       {design.roofModel && roofStyle && (
