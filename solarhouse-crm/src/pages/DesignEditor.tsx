@@ -673,11 +673,12 @@ export function DesignEditor() {
               // keep the modules that still sit fully on the reshaped face
               return { ...q, polygon: ring, areaM2: Math.round(polygonAreaM2(ring)), panels: (q.panels ?? []).filter((pn) => pn.corners.every(inside)) }
             }
-            commitRef.current(d.planes.map((q) => {
+            // commit on the next tick — rebuilding the layer while Leaflet is still finishing the drag crashes it
+            setTimeout(() => commitRef.current(d.planes.map((q) => {
               if (q.id === p.id) return moved(q, q.polygon.map((w, i) => (i === vi ? ll : w)))
               const s = shared.filter((o) => o.pid === q.id)
               return s.length ? moved(q, q.polygon.map((w, i) => (s.some((o) => o.wi === i) ? ll : w))) : q
-            }))
+            })), 0)
           })
           mk.addTo(lyr)
         })
